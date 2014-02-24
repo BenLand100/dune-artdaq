@@ -1,0 +1,10 @@
+
+# "prescale: N" means, update the plots every Nth event 
+
+prescale: 200
+
+
+# If "digital_sum_only" is "true" as opposed to "false", only show the
+#  histograms, not the event snapshots
+
+digital_sum_only: false
