@@ -108,7 +108,6 @@ fileSize=8000
 fsChoiceSpecified=0
 fileEventCount=0
 fileDuration=0
-fragmentsPerBoard=0
 verbose=0
 OPTIND=1
 while getopts "hc:N:o:t:m:Dn:d:s:w:v-:" opt; do
@@ -161,10 +160,6 @@ while getopts "hc:N:o:t:m:Dn:d:s:w:v-:" opt; do
         v)
             verbose=1
             ;;
-	fragments-per-board)
-	    fragmentsPerBoard=${!OPTIND}
-	    let OPTIND=$OPTIND+1
-	    ;;
         *)
             usage
             exit 1

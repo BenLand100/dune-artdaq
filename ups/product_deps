@@ -18,7 +18,7 @@ bindir      fq_dir      bin
 #
 product		version		optional
 gcc		v4_8_1
-artdaq		v1_05_06
+artdaq		v1_05_08
 
 # list products required ONLY for the build
 # any products here must NOT have qualifiers

@@ -16,8 +16,7 @@
 # Here, we simply create a FHiCL script designed to run the new
 # "ToyDump" module so as to print ADC values from fragments of type
 # TOY1 or TOY2 to screen (see the lbne-artdaq/Overlays/ToyFragment.hh
-# file for more, and/or look at the online Wiki,
-# cdcvs.fnal.gov/redmine/projects/lbne-artdaq/wiki
+# file for more)
 
 require File.join( File.dirname(__FILE__), 'generateToy' )
 
@@ -39,30 +38,34 @@ def main
   fragtype = ARGV[0]
   nEvents = ARGV[1]
 
-  if ARGV.length >= 3
-    saveFHiCL = ARGV[2]
-  else
-    saveFHiCL = false
-  end
-  
   # We'll pass "nADCcounts" to the generateToy function. If nADCcounts
   # is "nil", generateToy will search for a FHiCL file called
   # "ToySimulator.fcl" for the definition of nADCcounts
 
-  if ARGV.length == 4
+
+  if ARGV.length >= 3
+    if (ARGV[2] != "0" && ARGV[2] != "false" && ARGV[2] != "nil")
+      saveFHiCL = true
+    end
+  else
+    saveFHiCL = false
+  end
+
+  if ARGV.length >= 4
     nADCcounts = ARGV[3]
   else
     nADCcounts = nil
   end
 
+
   if fragtype == "TOY1" || fragtype == "TOY2"
 
     # From generateToy.rb :
 
-    # def generateToy(startingFragmentId, boardId, fragmentsPerBoard,
+    # def generateToy(startingFragmentId, boardId, 
     # fragmentType, throttleUsecs, nADCcounts = nil)
 
-    generatorCode = generateToy(0, 0, 1, fragtype, 0, nADCcounts)
+    generatorCode = generateToy(0, 0, fragtype, 0, nADCcounts)
   
   else
 

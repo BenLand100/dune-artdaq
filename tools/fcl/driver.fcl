@@ -11,7 +11,6 @@ fragment_receiver: {
    		    
    generator: ToySimulator 
    fragment_type: TOY2        # Make sure downstream modules know about this fragment_type!
-   fragments_per_board: 1  
    nADCcounts: 100
    random_seed: 6514
 

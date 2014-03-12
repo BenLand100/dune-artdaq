@@ -10,7 +10,7 @@
 
 require File.join( File.dirname(__FILE__), 'demo_utilities' )
 
-def generateWFViewer(totalFRs, fragmentsPerBoard, fragmentIDList, fragmentTypeList, prescale = nil, digital_sum_only = nil)
+def generateWFViewer(fragmentIDList, fragmentTypeList, prescale = nil, digital_sum_only = nil)
 
   wfViewerConfig = String.new( "\
     app: {
@@ -19,8 +19,6 @@ def generateWFViewer(totalFRs, fragmentsPerBoard, fragmentIDList, fragmentTypeLi
     }
     wf: {
       module_type: WFViewer
-      fragments_per_board: %{fragments_per_board}
-      fragment_receiver_count: %{total_frs}
       fragment_ids: %{fragment_ids}
       fragment_type_labels: %{fragment_type_labels} " \
       + read_fcl("WFViewer.fcl") \
@@ -32,15 +30,22 @@ def generateWFViewer(totalFRs, fragmentsPerBoard, fragmentIDList, fragmentTypeLi
     # strings listing fragment ids and fragment types which will be
     # used by the WFViewer
 
+    # John F., 3/8/14 -- adding a feature whereby the fragments are
+    # sorted in ascending order of ID
+
     fragmentIDListString, fragmentTypeListString = "[ ", "[ "
 
-    fragmentIDList.each { |id| fragmentIDListString += " %d," % [ id ] }
-    fragmentTypeList.each { |type| fragmentTypeListString += "%s," % [type ] }
+    typemap = Hash.new
+
+    0.upto(fragmentIDList.length-1) do |i|
+      typemap[ fragmentIDList[i]  ] = fragmentTypeList[i]
+    end
+
+    fragmentIDList.sort.each { |id| fragmentIDListString += " %d," % [ id ] }
+    fragmentIDList.sort.each { |id| fragmentTypeListString += "%s," % [ typemap[ id ] ] }
 
     fragmentIDListString[-1], fragmentTypeListString[-1] = "]", "]" 
 
-  wfViewerConfig.gsub!(/\%\{total_frs\}/, String(totalFRs))
-  wfViewerConfig.gsub!(/\%\{fragments_per_board\}/, String(fragmentsPerBoard))
   wfViewerConfig.gsub!(/\%\{fragment_ids\}/, String(fragmentIDListString))
   wfViewerConfig.gsub!(/\%\{fragment_type_labels\}/, String(fragmentTypeListString))
 

@@ -52,14 +52,16 @@ namespace lbne {
     bool digital_sum_only_;
     art::RunNumber_t current_run_;
 
-    int fragments_per_board_;
-    int fragment_receiver_count_;
+    std::size_t num_x_plots_;
+    std::size_t num_y_plots_;
+
+    std::vector<std::string> fragment_type_labels_;
+    std::vector<artdaq::Fragment::fragment_id_t> fragment_ids_;
 
     std::vector<std::unique_ptr<TGraph>> graphs_;
     std::vector<std::unique_ptr<TH1D>> histograms_;
 
-    std::vector<std::string> fragment_types_;
-
+    std::map<artdaq::Fragment::fragment_id_t, std::size_t> id_to_index_;
   };
 
 }
@@ -69,23 +71,46 @@ lbne::WFViewer::WFViewer (fhicl::ParameterSet const & ps):
   prescale_(ps.get<int> ("prescale")), 
   digital_sum_only_(ps.get<bool> ("digital_sum_only", false)), 
   current_run_(0), 
-  fragments_per_board_(ps.get<int>("fragments_per_board", 1)), 
-  fragment_receiver_count_(ps.get<int>("fragment_receiver_count")), 
-  graphs_(fragments_per_board_*fragment_receiver_count_), 
-  histograms_(fragments_per_board_*fragment_receiver_count_),
-  fragment_types_(ps.get<std::vector<std::string>>("fragment_type_labels"))
- {
+  num_x_plots_(ps.get<std::size_t>("num_x_plots", std::numeric_limits<std::size_t>::max() )),
+  num_y_plots_(ps.get<std::size_t>("num_y_plots", std::numeric_limits<std::size_t>::max() )),
+  fragment_type_labels_(ps.get<std::vector<std::string>>("fragment_type_labels")),
+  fragment_ids_(ps.get<std::vector<artdaq::Fragment::fragment_id_t> >("fragment_ids")),
+  graphs_( fragment_ids_.size() ), 
+  histograms_( fragment_ids_.size() )
+{
 
-  if (fragments_per_board_ != 1) {
-    throw cet::exception("Default value of fragments_per_board == 1 must be used; contact John Freeman if you have any questions");
-  }
+   if (num_x_plots_ == std::numeric_limits<std::size_t>::max() ||
+       num_y_plots_ == std::numeric_limits<std::size_t>::max() ) {
 
-  // Throw out any duplicate fragment_types_ ; we only care about the
-  // different types that we plan to encounter, not how many of each
-  // there are
+     switch ( fragment_ids_.size() ) {
+     case 1: num_x_plots_ = num_y_plots_ = 1; break;
+     case 2: num_x_plots_ = 2; num_y_plots_ = 1; break;
+     case 3:
+     case 4: num_x_plots_ = 2; num_y_plots_ = 2; break;
+     case 5: 
+     case 6:  num_x_plots_ = 3; num_y_plots_ = 2; break;
+     case 7:
+     case 8: num_x_plots_ = 4; num_y_plots_ = 2; break;
+     default: 
+       num_x_plots_ = num_y_plots_ = static_cast<std::size_t>( ceil( sqrt( fragment_type_labels_.size() ) ) );
+     }
 
-  sort( fragment_types_.begin(), fragment_types_.end() );
-  fragment_types_.erase( unique( fragment_types_.begin(), fragment_types_.end() ), fragment_types_.end() );
+   }
+
+   // id_to_index_ will translate between a fragment's ID and where in
+   // the vector of graphs and histograms it's located
+
+   for (std::size_t i_f = 0; i_f < fragment_ids_.size(); ++i_f) {
+     id_to_index_[ fragment_ids_[i_f] ] = i_f;
+   }
+
+
+  // Throw out any duplicate fragment_type_labels_ ; in this context we only
+  // care about the different types that we plan to encounter, not how
+  // many of each there are
+
+  sort( fragment_type_labels_.begin(), fragment_type_labels_.end() );
+  fragment_type_labels_.erase( unique( fragment_type_labels_.begin(), fragment_type_labels_.end() ), fragment_type_labels_.end() );
 
   gStyle->SetOptStat("irm");
   gStyle->SetMarkerStyle(22);
@@ -95,7 +120,7 @@ lbne::WFViewer::WFViewer (fhicl::ParameterSet const & ps):
 
 void lbne::WFViewer::analyze (art::Event const & e) {
 
-  static int evt_cntr = -1;
+  static std::size_t evt_cntr = -1;
   evt_cntr++;
 
   // John F., 1/22/14 -- there's probably a more elegant way of
@@ -105,26 +130,19 @@ void lbne::WFViewer::analyze (art::Event const & e) {
 
   artdaq::Fragments fragments;
 
-  for (auto label: fragment_types_) {
+  for (auto label: fragment_type_labels_) {
 
     art::Handle<artdaq::Fragments> fragments_with_label;
 
     e.getByLabel ("daq", label, fragments_with_label);
     
-    for (int i_l = 0; i_l < static_cast<int>(fragments_with_label->size()); ++i_l) {
-      fragments.emplace_back( (*fragments_with_label)[i_l] );
+    //    for (int i_l = 0; i_l < static_cast<int>(fragments_with_label->size()); ++i_l) {
+    //      fragments.emplace_back( (*fragments_with_label)[i_l] );
+    //    }
+
+    for (auto frag : *fragments_with_label) { 
+      fragments.emplace_back( frag);
     }
-  }
-
-  int total_frags = fragments_per_board_*fragment_receiver_count_;
-
-  // John F., 1/22/14 -- Changed consequences of an unexpected # of
-  // fragments from a warning to an exception throw
-
-  if (total_frags != static_cast<int>(fragments.size())) {
-    cerr << "Warning in WFViewer: mismatch between expected and actual fragments: fragments_per_board_ = " << fragments_per_board_ << ", fragment_receiver_count_ = " << fragment_receiver_count_ << ", number of fragments = " << fragments.size() << endl;
-
-    throw cet::exception("Error in WFViewer: mismatch between expected and actual fragments");
   }
 
   // John F., 1/5/14 
@@ -141,27 +159,30 @@ void lbne::WFViewer::analyze (art::Event const & e) {
   // string, then plot, for the Nth event, a graph of the ADC values
   // across all channels in each board_id / fragment_id combo
 
-  int expected_sequence_id = -1;
+  artdaq::Fragment::sequence_id_t expected_sequence_id = std::numeric_limits<artdaq::Fragment::sequence_id_t>::max();
 
-  for (size_t i = 0; i < fragments.size(); ++i) {
+  //  for (std::size_t i = 0; i < fragments.size(); ++i) {
+  for (const auto& frag : fragments ) {
 
     // Pointers to the types of fragment overlays WFViewer can handle;
     // only one will be used per fragment, of course
 
     std::unique_ptr<ToyFragment> toyPtr;
     
-    const auto& frag( fragments[i] );  // Basically a shorthand
+    //  const auto& frag( fragments[i] );  // Basically a shorthand
 
-    if (i == 0) 
+    //    if (i == 0) 
+    if (expected_sequence_id == std::numeric_limits<artdaq::Fragment::sequence_id_t>::max()) { 
       expected_sequence_id = frag.sequenceID();
+    }
 
-    if (expected_sequence_id != static_cast<int>(frag.sequenceID())) {
+    if (expected_sequence_id != frag.sequenceID()) {
       cerr << "Warning in WFViewer: expected fragment with sequence ID " << expected_sequence_id << ", received one with sequence ID " << frag.sequenceID() << endl;
     }
     
     FragmentType fragtype = static_cast<FragmentType>( frag.type() );
-    int max_adc_count = std::numeric_limits<int>::max();
-    int total_adc_values = std::numeric_limits<int>::max();
+    std::size_t max_adc_count = std::numeric_limits<std::size_t>::max();
+    std::size_t total_adc_values = std::numeric_limits<std::size_t>::max();
 
     // John F., 1/22/14 -- this should definitely be improved; I'm
     // just using the max # of bits per ADC value for a given fragment
@@ -187,23 +208,19 @@ void lbne::WFViewer::analyze (art::Event const & e) {
       throw cet::exception("Error in WFViewer: unknown fragment type supplied");
     }
 
+    artdaq::Fragment::fragment_id_t fragment_id = frag.fragmentID();
+    std::size_t ind = id_to_index_[ fragment_id ];
 
-
-    int fragment_id = static_cast<int>(frag.fragmentID() );
-
-    int lg = fragment_id; // assuming fragment counting begins at 0            
-    int lg_canvas = lg % total_frags + 1;
-    int padnum = lg_canvas;
 
     // If a histogram doesn't exist for this board_id / fragment_id combo, create it
 
-    if (!histograms_[lg]) {
+    if (!histograms_[ind]) {
 
-      histograms_[lg] = std::unique_ptr<TH1D>(new TH1D( Form ("Fragment_%d_hist", fragment_id), "", max_adc_count+1, -0.5, max_adc_count + 0.5));
+      histograms_[ind] = std::unique_ptr<TH1D>(new TH1D( Form ("Fragment_%d_hist", fragment_id), "", max_adc_count+1, -0.5, max_adc_count + 0.5));
 
-      histograms_[lg]->SetTitle (Form ("Frag %d, Type %s", fragment_id, 
+      histograms_[ind]->SetTitle (Form ("Frag %d, Type %s", fragment_id, 
 				       fragmentTypeToString( fragtype  ).c_str() ) );
-      histograms_[lg]->GetXaxis()->SetTitle("ADC value");
+      histograms_[ind]->GetXaxis()->SetTitle("ADC value");
     }
 
     // For every event, fill the histogram (prescale is ignored here)
@@ -213,17 +230,18 @@ void lbne::WFViewer::analyze (art::Event const & e) {
 
     switch ( fragtype ) {
 
+
     case FragmentType::TOY1: 
     case FragmentType::TOY2: 
       for (auto val = toyPtr->dataBegin(); val != toyPtr->dataEnd(); ++val ) 
-	histograms_[lg]->Fill( *val );
+	histograms_[ind]->Fill( *val );
       break;
   
     default: 
       throw cet::exception("Error in WFViewer: unknown fragment type supplied");
     }
 
-    if (evt_cntr % prescale_ - 1) {
+    if (evt_cntr % prescale_ - 1 && prescale_ > 1) {
       continue;
     }
 
@@ -234,7 +252,7 @@ void lbne::WFViewer::analyze (art::Event const & e) {
 
       // Create the graph's x-axis
 
-      if (x_.size () != static_cast<size_t>(total_adc_values)) {
+      if (x_.size () != total_adc_values) {
 	x_.resize (total_adc_values);
 
 	std::iota (x_.begin (), x_.end (), 0);
@@ -243,11 +261,11 @@ void lbne::WFViewer::analyze (art::Event const & e) {
       // If the graph doesn't exist, create it. Not sure whether to
       // make it an error if the total_adc_values is new
 
-      if (!graphs_[lg] || graphs_[lg]->GetN () != total_adc_values) {
-	graphs_[lg] = std::unique_ptr<TGraph>(new TGraph (total_adc_values));
-	graphs_[lg]->SetName( Form ("Fragment_%d_graph", fragment_id));
-	graphs_[lg]->SetLineColor ( 4 );
-	std::copy (x_.begin (), x_.end (), graphs_[lg]->GetX ());
+      if (!graphs_[ind] || static_cast<std::size_t>( graphs_[ind]->GetN () ) != total_adc_values) {
+	graphs_[ind] = std::unique_ptr<TGraph>(new TGraph (total_adc_values));
+	graphs_[ind]->SetName( Form ("Fragment_%d_graph", fragment_id));
+	graphs_[ind]->SetLineColor ( 4 );
+	std::copy (x_.begin (), x_.end (), graphs_[ind]->GetX ());
       }
 
       // Get the data from the fragment
@@ -256,10 +274,11 @@ void lbne::WFViewer::analyze (art::Event const & e) {
 
       switch ( fragtype ) {
 
+
       case FragmentType::TOY1: 
       case FragmentType::TOY2: 
 	{
-	  std::copy (toyPtr->dataBegin (), toyPtr->dataBegin() + total_adc_values, graphs_[lg]->GetY ());
+	  std::copy (toyPtr->dataBegin (), toyPtr->dataBegin() + total_adc_values, graphs_[ind]->GetY ());
 	}
 	break;
   
@@ -270,13 +289,13 @@ void lbne::WFViewer::analyze (art::Event const & e) {
 
       // And now prepare the graphics without actually drawing anything yet
       
-      canvas_[1] -> cd(padnum);
-      TVirtualPad* pad = static_cast<TVirtualPad*>(canvas_[1]->GetPad(padnum) ); 
+      canvas_[1] -> cd(ind+1);
+      TVirtualPad* pad = static_cast<TVirtualPad*>(canvas_[1]->GetPad(ind+1) ); 
 
       Double_t lo_x, hi_x, lo_y, hi_y, dummy;
 
-      graphs_[lg]->GetPoint(0, lo_x, dummy);
-      graphs_[lg]->GetPoint( graphs_[lg]->GetN()-1, hi_x, dummy);
+      graphs_[ind]->GetPoint(0, lo_x, dummy);
+      graphs_[ind]->GetPoint( graphs_[ind]->GetN()-1, hi_x, dummy);
 
       lo_x -= 0.5;
       hi_x += 0.5;
@@ -286,9 +305,9 @@ void lbne::WFViewer::analyze (art::Event const & e) {
 
 
       TH1F* padframe = static_cast<TH1F*>( pad->DrawFrame( lo_x, lo_y, hi_x, hi_y ) );
-      padframe->SetTitle( Form ("Frag %d, Type %s, SeqID %d", fragment_id, 
+      padframe->SetTitle( Form ("Frag %d, Type %s, SeqID %d", static_cast<int>(fragment_id), 
 				fragmentTypeToString( fragtype  ).c_str(), 
-				expected_sequence_id) );
+				static_cast<int>(expected_sequence_id)) );
       padframe->GetXaxis()->SetTitle("ADC #");
       pad->SetGrid();
       padframe->Draw("SAME");
@@ -297,8 +316,8 @@ void lbne::WFViewer::analyze (art::Event const & e) {
 
     // Draw the histogram
 
-    canvas_[0]->cd(lg+1);
-    histograms_[lg]->Draw();
+    canvas_[0]->cd(ind+1);
+    histograms_[ind]->Draw();
 
     canvas_[0] -> Modified();
     canvas_[0] -> Update();
@@ -306,8 +325,8 @@ void lbne::WFViewer::analyze (art::Event const & e) {
     // And, if desired, the Nth event's ADC counts
   
     if (!digital_sum_only_) {
-      canvas_[1]->cd(lg+1);
-      graphs_[lg]->Draw("PSAME");
+      canvas_[1]->cd(ind+1);
+      graphs_[ind]->Draw("PSAME");
 
       canvas_[1] -> Modified();
       canvas_[1] -> Update();
@@ -326,7 +345,7 @@ void lbne::WFViewer::beginRun(art::Run const &e) {
 
   for (int i = 0; (i < 2 && !digital_sum_only_) || i < 1 ; i++) {
     canvas_[i] = std::unique_ptr<TCanvas>(new TCanvas(Form("wf%d",i)));
-    canvas_[i]->Divide (fragments_per_board_, fragment_receiver_count_);
+    canvas_[i]->Divide (num_x_plots_, num_y_plots_);
     canvas_[i]->Update ();
     ((TRootCanvas*)canvas_[i]->GetCanvasImp ())->DontCallClose ();
   }

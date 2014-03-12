@@ -8,3 +8,6 @@ prescale: 200
 #  histograms, not the event snapshots
 
 digital_sum_only: false
+
+#num_x_plots: 2
+#num_y_plots: 1
