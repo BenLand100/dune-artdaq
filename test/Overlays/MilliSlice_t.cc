@@ -11,7 +11,7 @@ BOOST_AUTO_TEST_SUITE(MilliSlice_test)
 BOOST_AUTO_TEST_CASE(BaselineTest)
 {
   const uint16_t CHANNEL_NUMBER = 123;
-  const uint32_t MILLISLICE_BUFFER_WORDS = 2000;
+  const uint32_t MILLISLICE_BUFFER_SIZE = 8192;
   const uint32_t MICROSLICE_BUFFER_SIZE = 1024;
   const uint32_t NANOSLICE_BUFFER_SIZE = 128;
   const uint16_t SAMPLE1 = 0x1234;
@@ -19,6 +19,7 @@ BOOST_AUTO_TEST_CASE(BaselineTest)
   const uint16_t SAMPLE3 = 0xbeef;
   const uint16_t SAMPLE4 = 0xfe87;
   const uint16_t SAMPLE5 = 0x5a5a;
+  std::vector<uint8_t> work_buffer(MILLISLICE_BUFFER_SIZE);
   std::unique_ptr<lbne::MicroSlice> microslice_ptr;
   std::shared_ptr<lbne::MicroSliceWriter> microslice_writer_ptr;
   std::shared_ptr<lbne::NanoSliceWriter> nanoslice_writer_ptr;
@@ -27,9 +28,7 @@ BOOST_AUTO_TEST_CASE(BaselineTest)
   // *** Use a MilliSliceWriter to build up a MilliSlice, checking
   // *** that everything looks good as we go.
 
-  artdaq::Fragment fragment(MILLISLICE_BUFFER_WORDS);
-  lbne::MilliSliceWriter millislice_writer(fragment, MILLISLICE_BUFFER_WORDS *
-                                           sizeof(artdaq::RawDataType));
+  lbne::MilliSliceWriter millislice_writer(&work_buffer[0], MILLISLICE_BUFFER_SIZE);
   BOOST_REQUIRE_EQUAL(millislice_writer.size(), sizeof(lbne::MilliSlice::Header));
   BOOST_REQUIRE_EQUAL(millislice_writer.microSliceCount(), 0);
   microslice_ptr = millislice_writer.microSlice(0);
@@ -39,8 +38,7 @@ BOOST_AUTO_TEST_CASE(BaselineTest)
 
   // test a request for a microslice that is too large
   microslice_writer_ptr =
-    millislice_writer.reserveMicroSlice(MILLISLICE_BUFFER_WORDS *
-                                        sizeof(artdaq::RawDataType));
+    millislice_writer.reserveMicroSlice(MILLISLICE_BUFFER_SIZE);
   BOOST_REQUIRE(microslice_writer_ptr.get() == 0);
 
   // resume the building of the microslices in the millislice
@@ -113,7 +111,7 @@ BOOST_AUTO_TEST_CASE(BaselineTest)
   // *** add any more MicroSlices after it is finalized
 
   int32_t size_diff = millislice_writer.finalize();
-  BOOST_REQUIRE_EQUAL(size_diff, MILLISLICE_BUFFER_WORDS*sizeof(artdaq::RawDataType) -
+  BOOST_REQUIRE_EQUAL(size_diff, MILLISLICE_BUFFER_SIZE -
                       sizeof(lbne::MilliSlice::Header) -
                       3*sizeof(lbne::MicroSlice::Header) - 
                       4*sizeof(lbne::NanoSlice::Header) - 5*sizeof(uint16_t));
@@ -123,7 +121,7 @@ BOOST_AUTO_TEST_CASE(BaselineTest)
   // *** Now we construct an instance of a read-only MicroSlice from
   // *** the fragment and verify that everything still looks good
 
-  lbne::MilliSlice millislice(fragment);
+  lbne::MilliSlice millislice(&work_buffer[0]);
   BOOST_REQUIRE_EQUAL(millislice.size(), sizeof(lbne::MilliSlice::Header) +
                       3*sizeof(lbne::MicroSlice::Header) +
                       4*sizeof(lbne::NanoSlice::Header) + 5*sizeof(uint16_t));
