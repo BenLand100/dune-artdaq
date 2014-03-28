@@ -7,7 +7,7 @@
 
 namespace {
   static std::vector<std::string> const
-  names { "MISSED", "TOY1", "TOY2", "UNKNOWN" };
+  names { "MISSED", "TPC", "PHOTON", "TRIGGER", "TOY1", "TOY2", "UNKNOWN" };
 }
 
 lbne::FragmentType

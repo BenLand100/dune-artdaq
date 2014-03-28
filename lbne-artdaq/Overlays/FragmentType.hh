@@ -7,8 +7,11 @@ namespace lbne {
   namespace detail {
     enum FragmentType : artdaq::Fragment::type_t
     { MISSED = artdaq::Fragment::FirstUserFragmentType,
-	TOY1,
-	TOY2,
+        TPC,
+        PHOTON,
+        TRIGGER,
+        TOY1,
+        TOY2,
         INVALID // Should always be last.
         };
 
