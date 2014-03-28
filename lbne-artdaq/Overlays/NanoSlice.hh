@@ -48,10 +48,10 @@ public:
 protected:
 
   // returns a pointer to the header
-  Header const * header_() const;
+  Header const* header_() const;
 
   // returns a pointer to the first sample value
-  uint16_t const * data_() const;
+  uint16_t const* data_() const;
 
   uint8_t* buffer_;
 };

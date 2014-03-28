@@ -24,12 +24,12 @@ bool lbne::NanoSlice::sampleValue(uint32_t index, uint16_t& value) const
   return true;
 }
 
-lbne::NanoSlice::Header const * lbne::NanoSlice::header_() const
+lbne::NanoSlice::Header const* lbne::NanoSlice::header_() const
 {
-  return reinterpret_cast<Header const *>(buffer_);
+  return reinterpret_cast<Header const*>(buffer_);
 }
 
-uint16_t const * lbne::NanoSlice::data_() const
+uint16_t const* lbne::NanoSlice::data_() const
 {
-  return reinterpret_cast<uint16_t const *>(buffer_ + sizeof(Header));
+  return reinterpret_cast<uint16_t const*>(buffer_ + sizeof(Header));
 }
