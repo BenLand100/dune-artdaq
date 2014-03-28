@@ -26,7 +26,7 @@ std::unique_ptr<lbne::MicroSlice> lbne::MilliSlice::microSlice(uint32_t index) c
 
 lbne::MilliSlice::Header const* lbne::MilliSlice::header_() const
 {
-  return reinterpret_cast<Header const *>(buffer_);
+  return reinterpret_cast<Header const*>(buffer_);
 }
 
 uint8_t* lbne::MilliSlice::data_(int index) const
