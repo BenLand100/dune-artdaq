@@ -28,12 +28,6 @@ namespace lbne {
     // returned per call to getNext_().
     bool getNext_(artdaq::FragmentPtrs & output) override;
 
-    // The fragmentIDs_ method returns the list of fragmentIDs that
-    // this generator will produce.  
-    std::vector<artdaq::Fragment::fragment_id_t> fragmentIDs_() override {
-      return fragment_ids_;
-    }
-
     // State transition methods, for future use, if/when needed
     void start() override {}
     void stop() override {}
