@@ -145,16 +145,12 @@ class lbne::ToyFragment {
     return sizeof(Header::data_t) / sizeof(adc_t);
   }
 
-  static constexpr size_t words_per_frag_word_() {
-    return sizeof(artdaq::Fragment::value_type) / sizeof(Header::data_t);
-  }
-
   // header_() simply takes the address of the start of this overlay's
   // data (i.e., where the ToyFragment::Header object begins) and
   // casts it as a pointer to ToyFragment::Header
 
   Header const * header_() const {
-    return reinterpret_cast<ToyFragment::Header const *>(&*artdaq_Fragment_.dataBegin());
+    return reinterpret_cast<ToyFragment::Header const *>( artdaq_Fragment_.dataBeginBytes());
   }
 
 private:

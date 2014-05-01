@@ -40,8 +40,8 @@ public:
   // order to be able to perform writes
 
   Header * header_() {
-    assert(frag_.dataSize() >= words_to_frag_words_(Header::size_words ));
-    return reinterpret_cast<Header *>(&*artdaq_Fragment_.dataBegin());
+    assert(frag_.dataSizeBytes() >= sizeof(Header) );
+    return reinterpret_cast<Header *>( artdaq_Fragment_.dataBeginBytes());
   }
 
   void set_hdr_run_number(Header::run_number_t run_number) { 
@@ -54,7 +54,6 @@ private:
   size_t calc_event_size_words_(size_t nAdcs);
 
   static size_t adcs_to_words_(size_t nAdcs);
-  static size_t words_to_frag_words_(size_t nWords);
 
   // Note that this non-const reference hides the const reference in the base class
   artdaq::Fragment & artdaq_Fragment_;
@@ -75,24 +74,21 @@ lbne::ToyFragmentWriter::ToyFragmentWriter(artdaq::Fragment& f ) :
     assert( sizeof(Metadata::data_t) == sizeof(Header::data_t) );
 
  
-    if (artdaq_Fragment_.size() != 
-	artdaq::detail::RawFragmentHeader::num_words() + 
-	words_to_frag_words_( Metadata::size_words ))
-      {
-	std::cerr << "artdaq_Fragment size: " << artdaq_Fragment_.size() << std::endl;
-	std::cerr << "Expected size: " << artdaq::detail::RawFragmentHeader::num_words() + 
-	  words_to_frag_words_( Metadata::size_words) << std::endl;
+    if (! artdaq_Fragment_.hasMetadata() ) {
+      throw cet::exception("Error in ToyFragmentWriter: passed artdaq::Fragment object doesn't contain metadata");
+    }
 
-	throw cet::exception("ToyFragmentWriter: Raw artdaq::Fragment object size suggests it does not consist of its own header + the ToyFragment::Metadata object");
-      }
+    if (artdaq_Fragment_.dataSizeBytes() > 0) {
+      throw cet::exception("Error in ToyFragmentWriter: passed artdaq::Fragment object already contains payload");
+    }
  
     // Allocate space for the header
-    artdaq_Fragment_.resize( words_to_frag_words_(Header::size_words) );
+    artdaq_Fragment_.resizeBytes( sizeof(Header) );
 }
 
 
 inline lbne::ToyFragment::adc_t * lbne::ToyFragmentWriter::dataBegin() {
-  assert(frag_.dataSize() > words_to_frag_words_(Header::size_words));
+  assert(frag_.dataSizeBytes() > sizeof(Header) );
   return reinterpret_cast<adc_t *>(header_() + 1);
 }
 
@@ -103,7 +99,7 @@ inline lbne::ToyFragment::adc_t * lbne::ToyFragmentWriter::dataEnd() {
 
 inline void lbne::ToyFragmentWriter::resize(size_t nAdcs) {
   auto es(calc_event_size_words_(nAdcs));
-  artdaq_Fragment_.resize(words_to_frag_words_(es));
+  artdaq_Fragment_.resizeBytes( sizeof(Header::data_t) * es );
   header_()->event_size = es;
 }
 
@@ -116,13 +112,6 @@ inline size_t lbne::ToyFragmentWriter::adcs_to_words_(size_t nAdcs) {
   return (mod == 0) ?
     nAdcs / adcs_per_word_() :
     nAdcs / adcs_per_word_() + 1;
-}
-
-inline size_t lbne::ToyFragmentWriter::words_to_frag_words_(size_t nWords) {
-  size_t mod = nWords % words_per_frag_word_();
-  return mod ?
-    nWords / words_per_frag_word_() + 1 :
-    nWords / words_per_frag_word_();
 }
 
 #endif /* lbne_artdaq_Overlays_ToyFragmentWriter_hh */

@@ -51,8 +51,6 @@ namespace lbne {
     FragmentType const fragment_type_; // Type of fragment (see FragmentType.hh)
     std::size_t const throttle_usecs_;
     
-    std::vector<artdaq::Fragment::fragment_id_t> fragment_ids_; 
-
     // Members needed to generate the simulated data
 
     std::mt19937 engine_;
