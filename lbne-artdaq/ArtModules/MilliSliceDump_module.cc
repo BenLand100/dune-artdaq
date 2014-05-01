@@ -120,7 +120,7 @@ void lbne::MilliSliceDump::analyze(art::Event const & evt)
       }
 
       // In case we want to examine the header "invasively" :
-      //      const MilliSlice::Header* header = reinterpret_cast<const MilliSlice::Header*>( &*frag.dataBegin() );
+      //      const MilliSlice::Header* header = reinterpret_cast<const MilliSlice::Header*>( frag.dataBeginBytes() );
     }
   }
   else {

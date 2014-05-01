@@ -54,12 +54,12 @@ void lbne::MilliSliceFragmentWriter::finalizeLatestMicroSlice_()
 
 lbne::MilliSliceFragmentWriter::Header* lbne::MilliSliceFragmentWriter::header_()
 {
-  return reinterpret_cast<Header *>(artdaq_fragment_.dataAddress());
+  return reinterpret_cast<Header *>(artdaq_fragment_.dataBeginBytes());
 }
 
 uint8_t* lbne::MilliSliceFragmentWriter::data_(int index)
 {
-  uint8_t* ms_ptr = reinterpret_cast<uint8_t *>(artdaq_fragment_.dataAddress())
+  uint8_t* ms_ptr = reinterpret_cast<uint8_t *>(artdaq_fragment_.dataBeginBytes())
     + sizeof(Header);
   for (int idx = 0; idx < index; ++idx) {
     MicroSlice tmp_ms(ms_ptr);

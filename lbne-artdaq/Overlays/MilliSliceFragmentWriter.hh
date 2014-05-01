@@ -54,7 +54,7 @@ private:
   // Note that this non-const reference hides the const reference in the base
   // class.
   // Also Note that we store a reference to the artdaq::Fragment and look up
-  // the dataAddress() each time that we need it so that we are insulated
+  // the dataBeginBytes() each time that we need it so that we are insulated
   // from changes in the overall layout of the Fragment.  Of course, what we
   // have in the MilliSlice, MicroSlice, and NanoSlice writers isn't infinitely
   // flexible:  If the Fragment is modified in the middle of populating data at
