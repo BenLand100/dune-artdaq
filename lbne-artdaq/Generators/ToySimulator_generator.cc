@@ -89,16 +89,11 @@ bool lbne::ToySimulator::getNext_(artdaq::FragmentPtrs & frags) {
 
   std::size_t payloadInBytes = 0;
 
-  std::unique_ptr<artdaq::Fragment> fragPtr( new artdaq::Fragment(   
-								  artdaq::Fragment::FragmentBytes(payloadInBytes, 
-												  ev_counter(), 
-												  fragment_id() ,
-												  fragment_type_, 
-												  metadata)
-								     )
-					     );
-
-  frags.emplace_back( std::move( fragPtr )  );
+  frags.emplace_back( artdaq::Fragment::FragmentBytes(payloadInBytes, 
+						      ev_counter(), 
+						      fragment_id() ,
+						      fragment_type_, 
+						      metadata)  );
 
   // Then any overlay-specific quantities next; will need the
   // ToyFragmentWriter class's setter-functions for this

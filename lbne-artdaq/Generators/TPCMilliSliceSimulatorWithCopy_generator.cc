@@ -41,7 +41,7 @@ bool lbne::TPCMilliSliceSimulatorWithCopy::getNext_(artdaq::FragmentPtrs & frags
   uint8_t* data_ptr = get_start_address_of_third_party_buffer();
 
   // create the artdaq::Fragment (more suitable constructors coming soon)
-  std::unique_ptr<artdaq::Fragment> frag(new artdaq::Fragment(artdaq::Fragment::FragmentBytes(data_size)));
+  std::unique_ptr<artdaq::Fragment> frag( artdaq::Fragment::FragmentBytes(data_size));
   frag->setSequenceID(ev_counter());
   frag->setFragmentID(fragmentIDs()[0]);
   frag->setUserType(lbne::detail::TPC);
