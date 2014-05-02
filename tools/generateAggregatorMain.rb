@@ -76,7 +76,7 @@ process_name: DAQAG"
   # that were passed in from the command line.  Assure that files written out
   # by each AG are unique by including a timestamp in the file name.
   currentTime = Time.now
-  fileName = "artdaqdemo_"
+  fileName = "lbne_"
   fileName += "r%06r_sr%02s_%to"
   fileName += ".root"
   outputFile = File.join(dataDir, fileName)
