@@ -19,3 +19,18 @@ simple_plugin(ToySimulator "generator"
   ${FHICLCPP}
   ${CETLIB}
   )
+
+  
+simple_plugin(TpcRceReceiver "generator"
+  lbne-artdaq_Overlays
+  lbne-artdaq_Generators_RceSupportLib
+  ${ARTDAQ_APPLICATION}
+  ${ARTDAQ_DAQDATA}
+  ${ARTDAQ_UTILITIES}
+  ${ART_UTILITIES}
+  ${FHICLCPP}
+  ${MF_MESSAGELOGGER}
+  ${CETLIB}
+  )
+  
+  add_subdirectory(RceSupportLib)
