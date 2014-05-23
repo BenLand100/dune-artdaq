@@ -14,6 +14,7 @@
 #include <netinet/in.h>
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <sys/select.h>
 #include <string.h>
 #include <errno.h>
 
@@ -119,21 +120,63 @@ void lbne::RceDataReceiver::receiverLoop(void)
 			std::cout << "Receiving data into raw buffer at address " << (void*) (raw_buffer->dataPtr()) << std::endl;
 		}
 
-		struct sockaddr src_addr;
-		socklen_t src_addr_len = sizeof(src_addr);
-		ssize_t recv_size = recvfrom(recv_socket_, raw_buffer->dataPtr(), raw_buffer->size(), 0, &src_addr, &src_addr_len);
+		bool bufferComplete = false;
 
-		if (recv_size == -1)
+		fd_set master_set, working_set;
+		FD_ZERO(&master_set);
+		int max_fd = recv_socket_;
+		FD_SET(recv_socket_, &master_set);
+		struct timeval timeout;
+
+
+
+		while (run_receiver_ && !bufferComplete)
 		{
-			std::cout << "lbne::RceDataReceiver::receiverLoop receive failed: " << recv_size << std::endl;
+			memcpy(&working_set, &master_set, sizeof(master_set));
+			timeout.tv_sec = 0;
+			timeout.tv_usec = 100000;
+			int rc = select(max_fd + 1, &working_set, NULL, NULL, &timeout);
+
+			if (rc > 0)
+			{
+				if (FD_ISSET(recv_socket_, &working_set))
+				{
+					// Socket has data to receive on it
+					struct sockaddr src_addr;
+					socklen_t src_addr_len = sizeof(src_addr);
+					ssize_t recv_size = recvfrom(recv_socket_, raw_buffer->dataPtr(), raw_buffer->size(), 0, &src_addr, &src_addr_len);
+
+					if (recv_size == -1)
+					{
+						std::cout << "lbne::RceDataReceiver::receiverLoop receive failed: " << recv_size << std::endl;
+					}
+					else
+					{
+						struct sockaddr_in* sa = reinterpret_cast<struct sockaddr_in*>(&src_addr);
+						std::cout << "Received " << recv_size << " bytes from address " << inet_ntoa(sa->sin_addr) << std::endl;
+
+						// Temp hack to map on receive onto a single buffer
+						bufferComplete = true;
+						raw_buffer->setSize(recv_size);
+						filled_buffer_queue_.push(std::move(raw_buffer));
+					}
+				}
+				else
+				{
+					std::cout << "lbne::RceDataReceiver::receiverLoop select() call returned ready on unknown fd" << std::endl;
+				}
+			}
+			else if (rc < 0)
+			{
+				std::cout << "Error on socket select() call: " << strerror(errno) << std::endl;
+				break;
+			}
+			else
+			{
+				// rc = 0: timeout condition, keep running while receive is active
+			}
 		}
-		else
-		{
-			struct sockaddr_in* sa = reinterpret_cast<struct sockaddr_in*>(&src_addr);
-			std::cout << "Received " << recv_size << " bytes from address " << inet_ntoa(sa->sin_addr) << std::endl;
-			raw_buffer->setSize(recv_size);
-			filled_buffer_queue_.push(std::move(raw_buffer));
-		}
+
 	}
 
 	std::cout << "lbne::RceDataReceiver::receiverLoop terminating" << std::endl;
