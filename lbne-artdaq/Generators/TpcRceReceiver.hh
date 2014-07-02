@@ -24,6 +24,7 @@
 #include "artdaq/Application/CommandableFragmentGenerator.hh"
 #include "lbne-artdaq/Overlays/MilliSliceFragment.hh"
 #include "lbne-artdaq/Overlays/FragmentType.hh"
+#include "lbne-artdaq/Generators/RceSupportLib/RceClient.hh"
 #include "lbne-artdaq/Generators/RceSupportLib/RceDataReceiver.hh"
 
 #include <random>
@@ -66,9 +67,20 @@ namespace lbne {
     uint32_t number_of_values_to_generate_;
     uint32_t simulated_readout_time_usec_;
 
+    std::string rce_client_host_addr_;
+    std::string rce_client_host_port_;
+    uint32_t	rce_client_timeout_ms_;
+
+    std::string rce_data_dest_host_;
+    uint16_t    rce_data_dest_port_;
+    uint32_t    rce_data_num_frags_;
+    float       rce_data_frag_rate_;
+
     uint16_t udp_receive_port_;
     size_t raw_buffer_size_;
     uint32_t raw_buffer_precommit_;
+
+    std::unique_ptr<lbne::RceClient> rce_client_;
 
     bool run_receiver_;
     std::unique_ptr<lbne::RceDataReceiver> data_receiver_;

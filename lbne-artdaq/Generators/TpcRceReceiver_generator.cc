@@ -15,6 +15,7 @@
 #include <iomanip>
 #include <iterator>
 #include <iostream>
+#include <sstream>
 #include <thread>
 
 #include <unistd.h>
@@ -38,12 +39,33 @@ lbne::TpcRceReceiver::TpcRceReceiver(fhicl::ParameterSet const & ps)
 	ps.get<uint32_t>("number_of_values_to_generate", 3);
   simulated_readout_time_usec_ =
 	ps.get<uint32_t>("simulated_readout_time", 100000);
+
+  rce_client_host_addr_ =
+	ps.get<std::string>("rce_client_host_addr", "localhost");
+  rce_client_host_port_ =
+	ps.get<std::string>("rce_client_host_port", "9999");
+  rce_client_timeout_ms_ =
+	ps.get<uint32_t>("rce_client_timeout_ms", 0);
+
+  rce_data_dest_host_ =
+	ps.get<std::string>("rce_data_dest_host", "127.0.0.1");
+  rce_data_dest_port_ =
+	ps.get<uint16_t>("rce_data_dest_port", 8989);
+  rce_data_num_frags_ =
+	ps.get<uint32_t>("rce_data_num_frags", 10);
+  rce_data_frag_rate_ =
+	ps.get<float>("rce_data_frag_rate", 10.0);
+
   udp_receive_port_ =
 	ps.get<uint16_t>("udp_receive_port", 9999);
   raw_buffer_size_ =
 	ps.get<size_t>("raw_buffer_size", 10000);
   raw_buffer_precommit_ =
 	ps.get<uint32_t>("raw_buffer_precommit", 10);
+
+  // Create an RCE client instance
+  rce_client_ = std::unique_ptr<lbne::RceClient>(new lbne::RceClient(
+		  rce_client_host_addr_, rce_client_host_port_, rce_client_timeout_ms_));
 
   // Create a RceDataReceiver instance
   data_receiver_ = std::unique_ptr<lbne::RceDataReceiver>(new lbne::RceDataReceiver(udp_receive_port_, raw_buffer_size_));
@@ -64,12 +86,25 @@ void lbne::TpcRceReceiver::start(void)
 		data_receiver_->commitEmptyBuffer(raw_buffer);
 	}
 	data_receiver_->start();
+
+	// Set up parameters in RCE
+	rce_client_->set_param("host",  rce_data_dest_host_, "str");
+	rce_client_->set_param("port",  rce_data_dest_port_, "int");
+	rce_client_->set_param("frags", rce_data_num_frags_, "int");
+	rce_client_->set_param("rate",  rce_data_frag_rate_, "float");
+
+	// Send start command to RCE
+	rce_client_->send_command("START");
+
 }
 
 void lbne::TpcRceReceiver::stop(void)
 {
 	mf::LogInfo("TpcRceReceiver") << "stop() called";
 	data_receiver_->stop();
+
+	rce_client_->send_command("STOP");
+
 }
 
 

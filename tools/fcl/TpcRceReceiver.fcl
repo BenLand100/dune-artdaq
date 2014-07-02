@@ -2,7 +2,7 @@
 #  about the FHiCL language, please look at
 #  cdcvs.fnal.gov/redmine/documents/327 , the "FHiCL Quick Start Guide"
 
-events_to_generate: 5
+events_to_generate: 10
 run_number: 101
 
 fragment_receiver: {
@@ -16,6 +16,15 @@ fragment_receiver: {
    number_of_nanoslices_to_generate: 2
    number_of_values_to_generate: 5
    simulated_readout_time: 200000   # in usec
+   
+   rce_client_host_addr: lbnedaq3 
+   rce_client_host_port: 9999
+   rce_client_timeout_ms: 5000
+   
+   rce_data_dest_host: '10.0.0.2'
+   rce_data_dest_port: 8989  
+   rce_data_num_frags: @local::events_to_generate
+   rce_data_frag_rate: 100.0
    
    udp_receive_port: 8989
    

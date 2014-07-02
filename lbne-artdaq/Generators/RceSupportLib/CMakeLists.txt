@@ -5,5 +5,7 @@ art_make(
 	${CETLIB}
 	${MF_MESSAGELOGGER}
 	${MF_UTILITIES}
+	${Boost_SYSTEM_LIBRARY}
+	-lpthread
 	)
 	
