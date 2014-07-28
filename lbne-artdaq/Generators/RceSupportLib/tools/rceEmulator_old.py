@@ -1,12 +1,11 @@
 import SocketServer
+import threading
 import string
 import time
 import struct
 import socket
 import argparse
 import signal
-
-from rceDataSender import *
 
 class RceEmulator(object):
 
@@ -20,7 +19,7 @@ class RceEmulator(object):
         self.args = parser.parse_args()
 
         self.doneEvent = threading.Event()
-
+        
         SocketServer.TCPServer.allow_reuse_address = True
         self.server = SocketServer.TCPServer((self.args.host, self.args.port), RceServerHandler)
         self.server.parser = RceCommandParser()
@@ -29,20 +28,20 @@ class RceEmulator(object):
 
         signal.signal(signal.SIGINT, self.signal_handler)
 
-        print "\n\nRCE Server emulator starting up on", self.args.host, "port", self.args.port
+        print "\n\nRCE Server emulator starting up on", self.args.host, "port", self.args.port        
         self.server.serve_forever()
-
+        
         self.doneEvent.wait()
-
+   
     def terminate(self):
         self.server.shutdown()
         self.doneEvent.set()
-
+        
     def signal_handler(self, signum, frame):
         print "Caught interrupt, shutting down emulator..."
         t = threading.Thread(target=self.terminate)
         t.start()
-
+        
 class RceServerHandler(SocketServer.BaseRequestHandler):
     """
     RceServerHandler - request handler for RCE emulator
@@ -90,13 +89,10 @@ class RceCommandParser(object):
                           'SET'   : self.set_cmd,
                           'GET'   : self.get_cmd,
                         }
-
+        
         # Define empty dictionary of parameters to be set/get
         self.params = {}
         
-        self.sender = RceDataSender(use_tcp=True)       
-
-
     def parse_command(self, cmd_data):
         """
         Command parser - takes a line of space-separated data and parses it
@@ -119,11 +115,11 @@ class RceCommandParser(object):
 
                 # Pass arguments to command method
                 (cmd_ok, reply) = self.commands[req_command](args)
-
+                
             except ValueError:
                 cmd_ok = False
                 reply = "Illegal argument format specified"
-
+                
         else:
             cmd_ok = False
             reply = "Unrecognised command"
@@ -146,14 +142,17 @@ class RceCommandParser(object):
 
         print "Got START command", args
 
+        # Create a data sender
+        sender = RceDataSender()
+
         # Loop over legal parameters for the data sender; if they exist in
         # the current parameter list, call the appropriate set_ method on the sender.
         # Trap any exceptions raised by the set_ methods trying to convert
         # an argument value to the approriate type
         try:
-            for param in ['host', 'port', 'rate', 'millislices', 'microslices', 'adcmode', 'adcmean', 'adcsigma']:
+            for param in ['host', 'port', 'rate', 'frags']:
                 if param in self.params:
-                    getattr(self.sender, 'set_' + param)(self.params[param])
+                    getattr(sender, 'set_' + param)(self.params[param])
 
         except ValueError as e:
             print "Error parsing argument to START command:", e
@@ -164,7 +163,7 @@ class RceCommandParser(object):
             cmd_ok = False
 
         else:
-            (cmd_ok, reply) = self.sender.run()
+            sender.run()
 
         return cmd_ok, reply
 
@@ -174,8 +173,6 @@ class RceCommandParser(object):
         reply = ""
         print "Got STOP command", args
 
-        (cmd_ok, reply) = self.sender.stop()
-        
         return cmd_ok, reply
 
     def ping_cmd(self, args):
@@ -224,6 +221,57 @@ class RceCommandParser(object):
             cmd_ok = False
 
         return cmd_ok, reply
+
+class RceDataSender(object):
+
+    def __init__(self):
+
+        self.dest_host = '127.0.0.1'
+        self.dest_port = 8989
+        self.frag_rate = 10.0
+        self.num_frags = 10
+
+    def set_host(self, host):
+        self.dest_host = host
+
+    def set_port(self, port):
+        self.dest_port = int(port)
+
+    def set_rate(self, rate):
+        self.frag_rate = float(rate)
+
+    def set_frags(self, frags):
+        self.num_frags = int(frags)
+
+    def run(self):
+
+        self.run_thread = threading.Thread(target=self.send_loop)
+        self.run_thread.daemon = True
+        self.run_thread.start()
+
+    def send_loop(self):
+
+        print "Sender loop starting: %d frags at rate %.1f host %s port %d" % (
+          self.num_frags, self.frag_rate, self.dest_host, self.dest_port)
+
+        num_samples = 40
+        start_sample = 1000
+        data = range(start_sample, start_sample + num_samples)
+        pack_format = '<' + str(num_samples) + 'H'
+        message = struct.pack(pack_format, *data)
+
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+
+        start_time = time.time()
+        for count in range(self.num_frags):
+            sock.sendto(message, (self.dest_host, self.dest_port))
+            time.sleep(1.0 / self.frag_rate)
+        elapsed_time = time.time() - start_time
+
+        sent_rate = float(self.num_frags) / elapsed_time
+        print "Sender loop terminating: sent %d frags in %f secs, rate %.1f Hz" % (
+          self.num_frags, elapsed_time, sent_rate
+        )
 
 if __name__ == "__main__":
 

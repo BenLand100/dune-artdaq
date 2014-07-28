@@ -71,6 +71,15 @@ class SafeQueue
     cond_.notify_one();
   }
 
+  size_t size(void)
+  {
+	  std::unique_lock<std::mutex> mlock(mutex_);
+	  size_t queue_size = queue_.size();
+	  mlock.unlock();
+
+	  return queue_size;
+  }
+
   SafeQueue()=default;
   SafeQueue(const SafeQueue&) = delete;            // disable copying
   SafeQueue& operator=(const SafeQueue&) = delete; // disable assignment

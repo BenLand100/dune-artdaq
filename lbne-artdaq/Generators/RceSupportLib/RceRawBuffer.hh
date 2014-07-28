@@ -20,14 +20,19 @@ namespace lbne
     data_(new std::vector<uint8_t>(size)),
     dataPtr_(&*(data_->begin())),
     size_(size),
-    flags_(0)
+    flags_(0),
+    count_(0)
     { }
 
     RceRawBuffer(uint8_t* dataPtr, size_t size) :
     data_(0),
     dataPtr_(dataPtr),
     size_(size),
-    flags_(0)
+    flags_(0),
+    count_(0)
+    { }
+
+    ~RceRawBuffer()
     { }
 
     void setSize(size_t size)
@@ -40,9 +45,11 @@ namespace lbne
     }
 
     void setFlags(uint32_t flags) { flags_ = flags; }
+    void setCount(uint32_t count) { count_ = count; }
 
     size_t size(void) { return size_; }
     uint32_t flags(void) { return flags_; }
+    uint32_t count(void) { return count_; }
     uint8_t* dataPtr(void) { return dataPtr_; }
 
   private:
@@ -50,6 +57,7 @@ namespace lbne
     uint8_t* dataPtr_;
     size_t size_;
     uint32_t flags_;
+    uint32_t count_;
 
   };
 

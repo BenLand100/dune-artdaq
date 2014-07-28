@@ -94,7 +94,7 @@ lbne::RceClient::~RceClient()
 
 void lbne::RceClient::send_command(std::string const & command)
 {
-	std::cout << "Sending command: " << command << std::endl;
+	std::cout << "Sending command: " << command << " ... ";
 
 	// Send the command
 	this->send(command);
@@ -105,11 +105,11 @@ void lbne::RceClient::send_command(std::string const & command)
 	// Parse the response to ensure the command was acknowledged
 	if (this->response_is_ack(response, command))
 	{
-		std::cout << "Command " << command << " acknowledged OK: " << response << std::endl;
+		std::cout << "Acknowledged OK: " << response << std::endl;
 	}
 	else
 	{
-		std::cout << "Command " << command << " failed: " << response <<std::endl;
+		std::cout << "Failed: " << response <<std::endl;
 	}
 }
 // ------------ Private methods ---------------
@@ -242,13 +242,9 @@ void lbne::RceClient::set_param_(std::string const & name, std::string const & e
 	std::string response = this->receive();
 
 	// Parse the response to ensure the command was acknowledged
-	if (response_is_ack(response, "SET"))
+	if (!response_is_ack(response, "SET"))
 	{
-		std::cout << "SET command acknowledged OK: " << response << std::endl;
-	}
-	else
-	{
-		std::cout << "SET command failed: " << response <<std::endl;
+		std::cout << "SET command failed: " << response;
 	}
 
 }

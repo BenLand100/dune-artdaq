@@ -32,6 +32,8 @@
 #include <atomic>
 #include <thread>
 #include <memory>
+#include <map>
+#include <chrono>
 
 namespace lbne {    
 
@@ -73,21 +75,35 @@ namespace lbne {
 
     std::string rce_data_dest_host_;
     uint16_t    rce_data_dest_port_;
-    uint32_t    rce_data_num_frags_;
+    uint32_t    rce_data_num_millislices_;
+    uint32_t    rce_data_num_microslices_;
     float       rce_data_frag_rate_;
+    uint16_t    rce_data_adc_mode_;
+    float		rce_data_adc_mean_;
+    float		rce_data_adc_sigma_;
 
-    uint16_t udp_receive_port_;
+    uint16_t receive_port_;
     size_t raw_buffer_size_;
     uint32_t raw_buffer_precommit_;
+    size_t empty_buffer_low_mark_;
+    bool   use_fragments_as_raw_buffer_;
+
+    std::map<uint8_t*, std::unique_ptr<artdaq::Fragment>> raw_to_frag_map_;
+    uint16_t number_of_microslices_per_millislice_;
 
     std::unique_ptr<lbne::RceClient> rce_client_;
 
     bool run_receiver_;
     std::unique_ptr<lbne::RceDataReceiver> data_receiver_;
 
+    std::size_t millislices_received_;
+    std::size_t total_bytes_received_;
+    std::chrono::high_resolution_clock::time_point start_time_;
+
+    RceRawBufferPtr create_new_buffer_from_fragment(void);
     uint32_t format_millislice_from_raw_buffer(uint16_t* src_addr, size_t src_size,
     		                                   uint8_t* dest_addr, size_t dest_size);
-
+    uint32_t validate_millislice_from_fragment_buffer(uint8_t* data_addr, size_t data_size, uint32_t count);
 
   };
 }
