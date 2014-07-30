@@ -21,6 +21,7 @@ class RceDataSender(object):
         self.adc_sigma = 100.0
         
         self.use_tcp = use_tcp
+        self.do_send = False
 
     def set_host(self, host):
         self.dest_host = host
@@ -72,6 +73,7 @@ class RceDataSender(object):
                 reply = "Unexpected socket error: %s" % sock_err
                 print reply
         else:
+            self.do_send = True
             self.run_thread = threading.Thread(target=self.send_loop)
             self.run_thread.daemon = True
             self.run_thread.start()
@@ -83,26 +85,21 @@ class RceDataSender(object):
         print "Sender loop starting: %d millislices of %d microslices at rate %.1f host %s port %d" % (
           self.num_millislices, self.num_microslices, self.send_rate, self.dest_host, self.dest_port)
 
-        # num_samples = 40
-        # start_sample = 1000
-        # data = range(start_sample, start_sample + num_samples)
-        # pack_format = '<' + str(num_samples) + 'H'
-        # message = struct.pack(pack_format, *data)
-
         send_interval = 1.0 / self.send_rate
 
         uslice = RceMicroslice(0)
         uslice.generate_nanoslices(self.num_nanoslices, self.adc_mode, self.adc_mean, self.adc_sigma)
-#        message = uslice.pack()
         
         start_time = time.time()
 
         num_uslices_total = self.num_millislices * self.num_microslices
+        num_uslices_sent = 0
         
-        for count in range(num_uslices_total):
+        while self.do_send:
+                
             next_time = time.time() + send_interval
 
-            uslice.set_sequence_id(count)
+            uslice.set_sequence_id(num_uslices_sent)
             uslice.set_timestamp()
             message = uslice.pack()
             
@@ -111,15 +108,20 @@ class RceDataSender(object):
             else:
                 self.sock.sendto(message, (self.dest_host, self.dest_port))
 
+            num_uslices_sent += 1
+            
+            if (not self.do_send) or ((num_uslices_total > 0) and (num_uslices_sent >= num_uslices_total)):
+                break;
+            
             wait_interval = next_time - time.time()
             if wait_interval > 0.0:
                 time.sleep(wait_interval)
 
         elapsed_time = time.time() - start_time
 
-        sent_rate = float(num_uslices_total) / elapsed_time
+        sent_rate = float(num_uslices_sent) / elapsed_time
         print "Sender loop terminating: sent %d microslices total in %f secs, rate %.1f Hz" % (
-          num_uslices_total, elapsed_time, sent_rate
+          num_uslices_sent, elapsed_time, sent_rate
         )
 
         if self.use_tcp:
@@ -129,6 +131,8 @@ class RceDataSender(object):
         
         cmd_ok = True
         reply = ""
+        
+        self.do_send = False
         
         self.run_thread.join()
         
