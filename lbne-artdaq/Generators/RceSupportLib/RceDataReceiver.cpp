@@ -1,22 +1,14 @@
 /*
- * RceDataReceiver.cpp
+ * RceDataReceiver.cpp - RCE data recevier classed based on the Boost asynchronous IO network library
  *
  *  Created on: May 16, 2014
- *      Author: tcn45
+ *      Author: Tim Nicholls, STFC Application Engineering Group
  */
 
 #include "RceDataReceiver.hh"
 
 #include <iostream>
-
-//#include <unistd.h>
-//#include <arpa/inet.h>
-//#include <netinet/in.h>
-//#include <sys/types.h>
-//#include <sys/socket.h>
-//#include <sys/select.h>
-//#include <string.h>
-//#include <errno.h>
+#include <unistd.h>
 
 struct RceMicrosliceHeader
 {
@@ -25,17 +17,20 @@ struct RceMicrosliceHeader
 
 #define RECV_DEBUG(level) if (level <= debug_level_) std::cout
 
-lbne::RceDataReceiver::RceDataReceiver(int debug_level, uint16_t receive_port, size_t raw_buffer_size, uint16_t number_of_microslices_per_millislice) :
+lbne::RceDataReceiver::RceDataReceiver(int debug_level, uint32_t tick_period_usecs,
+		uint16_t receive_port, uint16_t number_of_microslices_per_millislice) :
 	debug_level_(debug_level),
 	acceptor_(io_service_, tcp::endpoint(tcp::v4(), (short)receive_port)),
 	accept_socket_(io_service_),
 	data_socket_(io_service_),
 	deadline_(io_service_),
 	deadline_io_object_(None),
+	tick_period_usecs_(tick_period_usecs),
 	receive_port_(receive_port),
-	raw_buffer_size_(raw_buffer_size),
 	number_of_microslices_per_millislice_(number_of_microslices_per_millislice),
 	run_receiver_(true),
+	suspend_readout_(false),
+	readout_suspended_(false),
 	recv_socket_(0)
 {
 	RECV_DEBUG(1) << "lbne::RceDataReceiver constructor" << std::endl;
@@ -58,7 +53,7 @@ lbne::RceDataReceiver::~RceDataReceiver()
 	RECV_DEBUG(1) << "lbne::RceDataReceiver destructor" << std::endl;
 
 	// Flag receiver as no longer running
-	run_receiver_ = false;
+	run_receiver_.store(false);
 
 	// Cancel any currently pending IO object deadlines and terminate timer
 	deadline_.expires_at(boost::asio::deadline_timer::traits_type::now());
@@ -76,6 +71,15 @@ void lbne::RceDataReceiver::start(void)
 
 	start_time_ = std::chrono::high_resolution_clock::now();
 
+	// Clean up current buffer state of any partially-completed readouts in previous runs
+	if (current_raw_buffer_ != nullptr)
+	{
+		RECV_DEBUG(2) << "TpcRceReceiver::start: dropping unused or partially filled buffer containing "
+				      << microslices_recvd_ << " microslices" << std::endl;
+		current_raw_buffer_.reset();
+		millislice_state_ = MillisliceEmpty;
+	}
+
 	// Initialise millislice state
 	millislice_state_ = MillisliceEmpty;
 	millislices_recvd_ = 0;
@@ -88,11 +92,22 @@ void lbne::RceDataReceiver::start(void)
 	next_receive_state_ = ReceiveMicrosliceHeader;
 	next_receive_size_  = sizeof(RceMicrosliceHeader);
 
+	// Clear suspend readout handshake flags
+	suspend_readout_.store(false);
+	readout_suspended_.store(false);
+
 }
 
 void lbne::RceDataReceiver::stop(void)
 {
 	RECV_DEBUG(1) << "lbne::RceDataReceiver::stop called" << std::endl;
+
+	// Suspend readout and wait for receiver thread to respond accordingly
+	suspend_readout_.store(true);
+	while (!readout_suspended_.load())
+	{
+		usleep(tick_period_usecs_);
+	}
 
 	auto elapsed_msecs = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - start_time_).count();
 	double elapsed_secs = ((double)elapsed_msecs) / 1000;
@@ -119,19 +134,19 @@ size_t lbne::RceDataReceiver::filled_buffers_available(void)
 	return filled_buffer_queue_.size();
 }
 
-bool lbne::RceDataReceiver::retrieve_filled_buffer(RceRawBufferPtr& buffer, unsigned int timeout_millisecs)
+bool lbne::RceDataReceiver::retrieve_filled_buffer(RceRawBufferPtr& buffer, unsigned int timeout_us)
 {
 	bool buffer_available = true;
 
 	// If timeout is specified, try to pop the buffer from the queue and time out, otherwise
 	// block waiting for the queue to contain a buffer
-	if (timeout_millisecs == 0)
+	if (timeout_us == 0)
 	{
 		buffer = filled_buffer_queue_.pop();
 	}
 	else
 	{
-		buffer_available = filled_buffer_queue_.try_pop(buffer, std::chrono::milliseconds(timeout_millisecs));
+		buffer_available = filled_buffer_queue_.try_pop(buffer, std::chrono::microseconds(timeout_us));
 	}
 
 	return buffer_available;
@@ -146,6 +161,14 @@ void lbne::RceDataReceiver::release_empty_buffers(void)
 	}
 }
 
+void lbne::RceDataReceiver::release_filled_buffers(void)
+{
+	while (filled_buffer_queue_.size() > 0)
+	{
+		filled_buffer_queue_.pop();
+	}
+}
+
 void lbne::RceDataReceiver::run_service(void)
 {
 	RECV_DEBUG(1) << "lbne::RceDataReceiver::run_service starting" << std::endl;
@@ -157,12 +180,20 @@ void lbne::RceDataReceiver::run_service(void)
 
 void lbne::RceDataReceiver::do_accept(void)
 {
-	if (!run_receiver_) {
+	// Suspend readout and cleanup any incomplete millislices if stop has been called
+	if (suspend_readout_.load())
+	{
+		RECV_DEBUG(2) << "Suspending readout at do_accept entry" << std::endl;
+		this->suspend_readout(false);
+	}
+
+	// Exit if shutting receiver down
+	if (!run_receiver_.load()) {
 		RECV_DEBUG(1) << "Stopping do_accept() at entry" << std::endl;
 		return;
 	}
 
-	this->set_deadline(Acceptor, 500);
+	this->set_deadline(Acceptor, tick_period_usecs_);
 
 	acceptor_.async_accept(accept_socket_,
 		[this](boost::system::error_code ec)
@@ -192,19 +223,22 @@ void lbne::RceDataReceiver::do_accept(void)
 void lbne::RceDataReceiver::do_read(void)
 {
 
+	// Suspend readout and cleanup any incomplete millislices if stop has been called
+	if (suspend_readout_.load())
+	{
+		RECV_DEBUG(2) << "Suspending readout at do_read entry" << std::endl;
+		this->suspend_readout(true);
+	}
+
 	// Terminate receiver read loop if required
-	if (!run_receiver_)
+	if (!run_receiver_.load())
 	{
 		RECV_DEBUG(1) << "Stopping do_read at entry" << std::endl;
-		if (data_socket_.is_open())
-		{
-			data_socket_.close();
-		}
 		return;
 	}
 
-	// Disable timeout on read from data socket (for now - TODO improve this to flag error)
-	this->set_deadline(DataSocket, 0);
+	// Set timeout on read from data socket
+	this->set_deadline(DataSocket, tick_period_usecs_);
 
 	if (millislice_state_ == MillisliceEmpty)
 	{
@@ -231,7 +265,7 @@ void lbne::RceDataReceiver::do_read(void)
 			microslices_recvd_ = 0;
 			microslice_size_recvd_ = 0;
 			current_write_ptr_ = (void*)(current_raw_buffer_->dataPtr());
-			RECV_DEBUG(1) << "Receiving new millislice into raw buffer at address " << current_write_ptr_ << std::endl;
+			RECV_DEBUG(2) << "Receiving new millislice into raw buffer at address " << current_write_ptr_ << std::endl;
 		}
 		else
 		{
@@ -377,7 +411,23 @@ void lbne::RceDataReceiver::handle_received_data(std::size_t length)
 	}
 }
 
-void lbne::RceDataReceiver::set_deadline(DeadlineIoObject io_object, unsigned int timeout_ms)
+void lbne::RceDataReceiver::suspend_readout(bool await_restart)
+{
+	readout_suspended_.store(true);
+
+	if (await_restart)
+	{
+		RECV_DEBUG(2) << "TpcRceReceiver::suspend_readout: awaiting restart or shutdown" << std::endl;
+		while (suspend_readout_.load() && run_receiver_.load())
+		{
+			usleep(tick_period_usecs_);
+		}
+		RECV_DEBUG(2) << "TpcRceReceiver::suspend_readout: restart or shutdown detected, exiting wait loop" << std::endl;
+	}
+
+}
+
+void lbne::RceDataReceiver::set_deadline(DeadlineIoObject io_object, unsigned int timeout_usecs)
 {
 
 	// Set the current IO object that the deadline is being used for
@@ -385,9 +435,9 @@ void lbne::RceDataReceiver::set_deadline(DeadlineIoObject io_object, unsigned in
 
 	// Set the deadline for the asynchronous write operation if the timeout is set, otherwise
 	// revert back to +ve infinity to stall the deadline timer actor
-	if (timeout_ms > 0)
+	if (timeout_usecs > 0)
 	{
-		deadline_.expires_from_now(boost::posix_time::milliseconds(timeout_ms));
+		deadline_.expires_from_now(boost::posix_time::microseconds(timeout_usecs));
 	}
 	else
 	{
@@ -424,7 +474,7 @@ void lbne::RceDataReceiver::check_deadline(void)
 	}
 
 	// Put the deadline actor back to sleep if receiver is still running
-	if (run_receiver_)
+	if (run_receiver_.load())
 	{
 		deadline_.async_wait(boost::bind(&lbne::RceDataReceiver::check_deadline, this));
 	}

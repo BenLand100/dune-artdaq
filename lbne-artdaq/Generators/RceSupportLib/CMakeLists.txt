@@ -9,3 +9,4 @@ art_make(
 	-lpthread
 	)
 	
+ add_subdirectory(tools)

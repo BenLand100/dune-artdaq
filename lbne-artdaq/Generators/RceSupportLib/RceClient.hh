@@ -24,7 +24,7 @@ namespace lbne {
 	class RceClient
 	{
 	public:
-		RceClient(const std::string& host_name, const std::string& port_or_service, const unsigned int timeout_ms);
+		RceClient(const std::string& host_name, const std::string& port_or_service, const unsigned int timeout_usecs);
 		virtual ~RceClient();
 
 		void send_command(std::string const & command);
@@ -47,7 +47,7 @@ namespace lbne {
 		boost::asio::io_service     io_service_;
 		tcp::socket                 socket_;
 		boost::asio::deadline_timer deadline_;
-		unsigned int                timeout_ms_;
+		unsigned int                timeout_usecs_;
 
 	};
 

@@ -10,10 +10,10 @@
 #include <sstream>
 #include <boost/algorithm/string.hpp>
 
-lbne::RceClient::RceClient(const std::string& host_name, const std::string& port_or_service, const unsigned int timeout_ms) :
+lbne::RceClient::RceClient(const std::string& host_name, const std::string& port_or_service, const unsigned int timeout_usecs) :
 	socket_(io_service_),
 	deadline_(io_service_),
-	timeout_ms_(timeout_ms)
+	timeout_usecs_(timeout_usecs)
 {
 
 	// Initialise deadline timer to positive infinity so that no action will be taken until a
@@ -118,9 +118,9 @@ void lbne::RceClient::set_deadline(void)
 {
 	// Set the deadline for the asynchronous write operation if the timeout is set, otherwise
 	// revert back to +ve infinity to stall the deadline timer actor
-	if (timeout_ms_ > 0)
+	if (timeout_usecs_ > 0)
 	{
-		deadline_.expires_from_now(boost::posix_time::milliseconds(timeout_ms_));
+		deadline_.expires_from_now(boost::posix_time::microseconds(timeout_usecs_));
 	}
 	else
 	{

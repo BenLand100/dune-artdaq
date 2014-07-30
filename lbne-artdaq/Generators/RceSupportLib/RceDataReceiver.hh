@@ -10,6 +10,7 @@
 
 #include <memory>
 #include <thread>
+#include <atomic>
 #include <chrono>
 #include <ctime>
 #include <boost/asio.hpp>
@@ -28,7 +29,7 @@ namespace lbne {
 class RceDataReceiver {
 
 public:
-	RceDataReceiver(int debug_level, uint16_t udp_receive_port, size_t raw_buffer_size, uint16_t number_of_microslices_per_millislice);
+	RceDataReceiver(int debug_level, uint32_t tick_period_usecs, uint16_t udp_receive_port, uint16_t number_of_microslices_per_millislice);
 	virtual ~RceDataReceiver();
 
 	void start();
@@ -37,9 +38,9 @@ public:
 	void commit_empty_buffer(RceRawBufferPtr& buffer);
 	size_t empty_buffers_available(void);
 	size_t filled_buffers_available(void);
-	bool retrieve_filled_buffer(RceRawBufferPtr& buffer, unsigned int timeout_millisecs=0);
+	bool retrieve_filled_buffer(RceRawBufferPtr& buffer, unsigned int timeout_us=0);
 	void release_empty_buffers(void);
-
+	void release_filled_buffers(void);
 
 private:
 
@@ -49,10 +50,10 @@ private:
 	void do_accept(void);
 	void do_read(void);
 	void handle_received_data(std::size_t length);
+	void suspend_readout(bool await_restart);
 
-	void set_deadline(DeadlineIoObject io_object, unsigned int timeout_ms);
+	void set_deadline(DeadlineIoObject io_object, unsigned int timeout_us);
 	void check_deadline(void);
-
 
 	int debug_level_;
 
@@ -63,12 +64,15 @@ private:
 
 	boost::asio::deadline_timer deadline_;
 	DeadlineIoObject deadline_io_object_;
+	uint32_t tick_period_usecs_;
 
 	uint16_t receive_port_;
-	const size_t raw_buffer_size_;
 	uint16_t number_of_microslices_per_millislice_;
 
-	bool run_receiver_;
+	std::atomic<bool> run_receiver_;
+	std::atomic<bool> suspend_readout_;
+	std::atomic<bool> readout_suspended_;
+
 	int recv_socket_;
 
 	std::unique_ptr<std::thread> receiver_thread_;

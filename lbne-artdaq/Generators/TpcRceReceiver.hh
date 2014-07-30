@@ -71,7 +71,7 @@ namespace lbne {
 
     std::string rce_client_host_addr_;
     std::string rce_client_host_port_;
-    uint32_t	rce_client_timeout_ms_;
+    uint32_t	rce_client_timeout_usecs_;
 
     std::string rce_data_dest_host_;
     uint16_t    rce_data_dest_port_;
@@ -87,6 +87,8 @@ namespace lbne {
     uint32_t raw_buffer_precommit_;
     size_t empty_buffer_low_mark_;
     bool   use_fragments_as_raw_buffer_;
+
+    uint32_t receiver_tick_period_usecs_;
 
     std::map<uint8_t*, std::unique_ptr<artdaq::Fragment>> raw_to_frag_map_;
     uint16_t number_of_microslices_per_millislice_;

@@ -46,8 +46,8 @@ lbne::TpcRceReceiver::TpcRceReceiver(fhicl::ParameterSet const & ps)
 	ps.get<std::string>("rce_client_host_addr", "localhost");
   rce_client_host_port_ =
 	ps.get<std::string>("rce_client_host_port", "9999");
-  rce_client_timeout_ms_ =
-	ps.get<uint32_t>("rce_client_timeout_ms", 0);
+  rce_client_timeout_usecs_ =
+	ps.get<uint32_t>("rce_client_timeout_usecs", 0);
 
   rce_data_dest_host_ =
 	ps.get<std::string>("rce_data_dest_host", "127.0.0.1");
@@ -76,6 +76,9 @@ lbne::TpcRceReceiver::TpcRceReceiver(fhicl::ParameterSet const & ps)
   use_fragments_as_raw_buffer_ =
 	ps.get<bool>("use_fragments_as_raw_buffer", false);
 
+  receiver_tick_period_usecs_ =
+    ps.get<uint32_t>("receiver_tick_period_usecs", 10000);
+
   int receiver_debug_level =
 	ps.get<int>("receiver_debug_level", 0);
 
@@ -84,17 +87,26 @@ lbne::TpcRceReceiver::TpcRceReceiver(fhicl::ParameterSet const & ps)
 
   // Create an RCE client instance
   rce_client_ = std::unique_ptr<lbne::RceClient>(new lbne::RceClient(
-		  rce_client_host_addr_, rce_client_host_port_, rce_client_timeout_ms_));
+		  rce_client_host_addr_, rce_client_host_port_, rce_client_timeout_usecs_));
 
   // Create a RceDataReceiver instance
   data_receiver_ = std::unique_ptr<lbne::RceDataReceiver>(new lbne::RceDataReceiver(
-		  receiver_debug_level, receive_port_, raw_buffer_size_, number_of_microslices_per_millislice_));
+		  receiver_debug_level, receiver_tick_period_usecs_, receive_port_, number_of_microslices_per_millislice_));
 
 }
 
 void lbne::TpcRceReceiver::start(void)
 {
 	mf::LogDebug("TpcRceReceiver") << "start() called";
+
+	// Tell the data receiver to drain any unused buffers from the empty queue
+	data_receiver_->release_empty_buffers();
+
+	// Tell the data receiver to release any unused filled buffers
+	data_receiver_->release_filled_buffers();
+
+	// Clear the fragment map of any pre-allocated fragments still present
+	raw_to_frag_map_.clear();
 
 	// Pre-commit buffers to the data receiver object - creating either fragments or raw buffers depending on raw buffer mode
 	mf::LogDebug("TpcRceReceiver") << "Pre-committing " << raw_buffer_precommit_ << " buffers of size " << raw_buffer_size_ << " to receiver";
@@ -142,17 +154,18 @@ void lbne::TpcRceReceiver::stop(void)
 {
 	mf::LogInfo("TpcRceReceiver") << "stop() called";
 
+	// Instruct the RCE to stop
+	rce_client_->send_command("STOP");
+
 	// Stop the data receiver.
 	data_receiver_->stop();
-
-	rce_client_->send_command("STOP");
 
 	mf::LogInfo("TpcRceReceiver") << "Low water mark on empty buffer queue is " << empty_buffer_low_mark_;
 
 	auto elapsed_msecs = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - start_time_).count();
 	double elapsed_secs = ((double)elapsed_msecs) / 1000;
 	double rate = ((double)millislices_received_) / elapsed_secs;
-	double data_rate_mbs = ((double)total_bytes_received_) / (1024*1024) * elapsed_secs;
+	double data_rate_mbs = ((double)total_bytes_received_) / ((1024*1024) * elapsed_secs);
 
 	mf::LogInfo("TpcRceReceiver") << "Received " << millislices_received_ << " millislices in "
 			      << elapsed_secs << " seconds, rate "
@@ -163,29 +176,35 @@ void lbne::TpcRceReceiver::stop(void)
 
 bool lbne::TpcRceReceiver::getNext_(artdaq::FragmentPtrs & frags) {
 
-  // returning false indicates that we are done with the events in
-  // this subrun or run
+  RceRawBufferPtr recvd_buffer;
+  bool buffer_available = false;
+
+  // Wait for a filled buffer to be available, with a timeout tick to allow the should_stop() state
+  // to be checked
+  do
+  {
+    buffer_available = data_receiver_->retrieve_filled_buffer(recvd_buffer, 500000);
+  }
+  while (!buffer_available && !should_stop());
+
+  // If stopping, Check if there are any filled buffers available (i.e. fragments received but not processed)
+  // and print a warning, then return false to indicate no more fragments to process
   if (should_stop()) {
 
-	// Clear the fragment map of any pre-allocated fragments still present
-	raw_to_frag_map_.clear();
-
-	// Tell the data receiver to drain any unused buffers from the empty queue
-	data_receiver_->release_empty_buffers();
-
-	if( data_receiver_->filled_buffers_available() > 0)
-	{
-		mf::LogWarning("TpcRceRecevier") << "getNext_ stopping while there were still filled buffers available";
-	}
+		if( data_receiver_->filled_buffers_available() > 0)
+		{
+			mf::LogWarning("TpcRceRecevier") << "getNext_ stopping while there were still filled buffers available";
+		}
+		else
+		{
+	    	mf::LogInfo("TpcRceReceiver") << "No unprocessed filled buffers available at end of run";
+		}
 
 	return false;
   }
 
-  // Wait to receive a raw fragment buffer from the receiver thread
-  RceRawBufferPtr recvd_buffer;
-  data_receiver_->retrieve_filled_buffer(recvd_buffer);
 
-  // If there was no data recevied (or an error flagged), simply return
+  // If there was no data received (or an error flagged), simply return
   // an empty list
   if (recvd_buffer->size() == 0)
   {
@@ -210,7 +229,7 @@ bool lbne::TpcRceReceiver::getNext_(artdaq::FragmentPtrs & frags) {
 		  // Validate and finalize the fragment received
 		  millislice_size = validate_millislice_from_fragment_buffer(frag->dataBeginBytes(), recvd_buffer->size(), recvd_buffer->count());
 
-		  // Clean up entry in map to remove raw buffer
+		  // Clean up entry in map to remove raw fragment buffer
 		  raw_to_frag_map_.erase(data_ptr);
 
 		  // Create a new raw buffer pointing at a new fragment and replace the received buffer
@@ -251,8 +270,6 @@ bool lbne::TpcRceReceiver::getNext_(artdaq::FragmentPtrs & frags) {
   {
 	  empty_buffer_low_mark_ = empty_buffers_available;
   }
-  std::cout << "Empty buffer commit queue has " <<  empty_buffers_available
-		    << " buffers available (low mark is " << empty_buffer_low_mark_ << ")" << std::endl;
 
   data_receiver_->commit_empty_buffer(recvd_buffer);
 

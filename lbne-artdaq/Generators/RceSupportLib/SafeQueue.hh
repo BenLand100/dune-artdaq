@@ -42,7 +42,7 @@ class SafeQueue
     queue_.pop();
   }
 
-  bool try_pop(T& item, std::chrono::milliseconds timeout)
+  bool try_pop(T& item, std::chrono::microseconds timeout)
   {
       std::unique_lock<std::mutex> mlock(mutex_);
 
