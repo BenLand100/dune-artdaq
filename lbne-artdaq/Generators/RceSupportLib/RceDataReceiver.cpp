@@ -104,9 +104,19 @@ void lbne::RceDataReceiver::stop(void)
 
 	// Suspend readout and wait for receiver thread to respond accordingly
 	suspend_readout_.store(true);
+
+	const uint32_t stop_timeout_usecs = 5000000;
+	uint32_t max_timeout_count = stop_timeout_usecs / tick_period_usecs_;
+	uint32_t timeout_count = 0;
 	while (!readout_suspended_.load())
 	{
 		usleep(tick_period_usecs_);
+		timeout_count++;
+		if (timeout_count > max_timeout_count)
+		{
+			std::cout << "ERROR - timeout waiting for RceDataReceiver thread to suspend readout" << std::endl;
+			break;
+		}
 	}
 
 	auto elapsed_msecs = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - start_time_).count();
@@ -183,7 +193,7 @@ void lbne::RceDataReceiver::do_accept(void)
 	// Suspend readout and cleanup any incomplete millislices if stop has been called
 	if (suspend_readout_.load())
 	{
-		RECV_DEBUG(2) << "Suspending readout at do_accept entry" << std::endl;
+		RECV_DEBUG(3) << "Suspending readout at do_accept entry" << std::endl;
 		this->suspend_readout(false);
 	}
 
@@ -226,7 +236,7 @@ void lbne::RceDataReceiver::do_read(void)
 	// Suspend readout and cleanup any incomplete millislices if stop has been called
 	if (suspend_readout_.load())
 	{
-		RECV_DEBUG(2) << "Suspending readout at do_read entry" << std::endl;
+		RECV_DEBUG(3) << "Suspending readout at do_read entry" << std::endl;
 		this->suspend_readout(true);
 	}
 
