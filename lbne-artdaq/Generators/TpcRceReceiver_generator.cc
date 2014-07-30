@@ -85,6 +85,9 @@ lbne::TpcRceReceiver::TpcRceReceiver(fhicl::ParameterSet const & ps)
   number_of_microslices_per_millislice_ =
 	ps.get<uint16_t>("number_of_microslices_per_millislice", 10);
 
+  reporting_interval_fragments_ =
+    ps.get<uint32_t>("reporting_interval_fragments", 100);
+
   // Create an RCE client instance
   rce_client_ = std::unique_ptr<lbne::RceClient>(new lbne::RceClient(
 		  rce_client_host_addr_, rce_client_host_port_, rce_client_timeout_usecs_));
@@ -213,7 +216,6 @@ bool lbne::TpcRceReceiver::getNext_(artdaq::FragmentPtrs & frags) {
   }
 
   uint8_t* data_ptr = recvd_buffer->dataPtr();
-  mf::LogDebug("TpcRceReceiver") << "Received buffer at address " << data_ptr << " size " << recvd_buffer->size();
 
   std::unique_ptr<artdaq::Fragment> frag;
   uint32_t millislice_size = 0;
@@ -261,6 +263,15 @@ bool lbne::TpcRceReceiver::getNext_(artdaq::FragmentPtrs & frags) {
   // Update statistics counters
   millislices_received_++;
   total_bytes_received_ += millislice_size;
+
+  if ((millislices_received_ % reporting_interval_fragments_) == 0)
+  {
+	  auto elapsed_msecs = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - start_time_).count();
+	  double elapsed_secs = ((double)elapsed_msecs)/1000;
+
+	  mf::LogInfo("TpcRceReceiver") << "Received " << millislices_received_ << " millislices, "
+			  << float(total_bytes_received_)/(1024*1024) << " MB in " << elapsed_secs << " seconds";
+  }
 
   // Recycle the raw buffer onto the commit queue for re-use by the receiver.
   // TODO at this point we could test the number of unused buffers on the commit queue
