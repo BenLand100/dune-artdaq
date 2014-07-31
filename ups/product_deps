@@ -17,13 +17,13 @@ bindir      fq_dir      bin
 
 #
 product		version		optional
-gcc		v4_8_1
+gcc		v4_8_2
 artdaq		v1_10_00
 lbne-raw-data 	v1_01_00
 
 # list products required ONLY for the build
 # any products here must NOT have qualifiers
-only_for_build	cetbuildtools	v3_07_03
+only_for_build	cetbuildtools	v3_13_00
 
 # e2  - with gcc 4.7.1 and -std=c++11
 # -nq- here means there is no qualifier
