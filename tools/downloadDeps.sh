@@ -11,7 +11,7 @@ extraqual=${3}
 if [ -z ${basequal} ]
 then
    echo "ERROR: qualifier not specified"
-   echo "USAGE:  `basename ${0}` <product directory> <e2|e2:eth|nu:e2:eth|e4:eth> <debug|opt|prof>"
+   echo "USAGE:  `basename ${0}` <product directory> <e2|e2:eth|nu:e2:eth|e4:eth|e5:eth> <debug|opt|prof>"
    exit 1
 fi
 
@@ -151,20 +151,25 @@ then
   set +x
 fi
 
-if [ "${basequal}" = "e4:eth" ]
+if [ "${basequal}" = "e4:eth" ] || [ "${basequal}" = "e5:eth" ]
 then
   set -x
   cd ${thisdir}
-  curl -O http://oink.fnal.gov/distro/art/daq_extras-1.00.04-${OS}-${plat}-${xqual2}-${extraqual}.tar.bz2
-  curl -O http://oink.fnal.gov/distro/packages/gccxml/gccxml-0.9.20130621-${OS}-${plat}.tar.bz2
-#  curl -O http://oink.fnal.gov/distro/packages/artdaq/artdaq-1.05.00-${OS}-${plat}-${xqual}-${extraqual}.tar.bz2
+#  curl -O http://oink.fnal.gov/distro/art/daq_extras-1.00.04-${OS}-${plat}-${xqual2}-${extraqual}.tar.bz2
+#  curl -O http://oink.fnal.gov/distro/packages/gccxml/gccxml-0.9.20130621-${OS}-${plat}.tar.bz2
+  curl -O http://oink.fnal.gov/distro/art/daq_extras-1.00.04-slf6-x86_64-e4-prof.tar.bz2 
+  curl -O http://oink.fnal.gov/distro/packages/gccxml/gccxml-0.9.20130621-slf6-x86_64.tar.bz2
 
   cd ${productdir}
-  tar xf $thisdir/daq_extras-1.00.04-${OS}-${plat}-${xqual2}-${extraqual}.tar.bz2
-  tar xf $thisdir/gccxml-0.9.20130621-${OS}-${plat}.tar.bz2
-#  tar xf  $thisdir/artdaq-1.05.00-${OS}-${plat}-${xqual}-${extraqual}.tar.bz2
+  #tar xf $thisdir/daq_extras-1.00.04-${OS}-${plat}-${xqual2}-${extraqual}.tar.bz2
+  #tar xf $thisdir/gccxml-0.9.20130621-${OS}-${plat}.tar.bz2
+
+  tar xf $thisdir/daq_extras-1.00.04-slf6-x86_64-e4-prof.tar.bz2 
+  tar xf $thisdir/gccxml-0.9.20130621-slf6-x86_64.tar.bz2
+
   set +x
 fi
+
 
 
 if [ "${basequal}" = "mu2e:e2:eth" ]

@@ -1,7 +1,7 @@
 #include "lbne-artdaq/Generators/TPCMilliSliceSimulatorWithCopy.hh"
-#include "lbne-artdaq/Overlays/MilliSliceWriter.hh"
+#include "lbne-raw-data/Overlays/MilliSliceWriter.hh"
 #include "artdaq/Application/GeneratorMacros.hh"
-#include "lbne-artdaq/Overlays/FragmentType.hh"
+#include "lbne-raw-data/Overlays/FragmentType.hh"
 #include "messagefacility/MessageLogger/MessageLogger.h"
 
 lbne::TPCMilliSliceSimulatorWithCopy::

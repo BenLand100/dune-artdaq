@@ -13,7 +13,7 @@
 // called "TOY2"; the only difference between the two boards is the #
 // of bits in the ADC values they send. These values are declared as
 // FragmentType enum's in lbne-artdaq's
-// lbne-artdaq/Overlays/FragmentType.hh header.
+// lbne-raw-data/Overlays/FragmentType.hh header.
 
 // Some C++ conventions used:
 
@@ -22,8 +22,8 @@
 #include "fhiclcpp/fwd.h"
 #include "artdaq/DAQdata/Fragments.hh" 
 #include "artdaq/Application/CommandableFragmentGenerator.hh"
-#include "lbne-artdaq/Overlays/ToyFragment.hh"
-#include "lbne-artdaq/Overlays/FragmentType.hh"
+#include "lbne-raw-data/Overlays/ToyFragment.hh"
+#include "lbne-raw-data/Overlays/FragmentType.hh"
 
 #include <random>
 #include <vector>

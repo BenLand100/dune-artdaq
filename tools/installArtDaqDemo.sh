@@ -51,11 +51,11 @@ test -d "$demo_dir/build_lbne-artdaq" || mkdir "$demo_dir/build_lbne-artdaq"  # 
 test -d artdaq || git clone http://cdcvs.fnal.gov/projects/artdaq
 cd artdaq
 git fetch origin
-git checkout v1_07_01
+git checkout v1_10_00
 cd ../build_artdaq
 echo IN $PWD: about to . ../artdaq/ups/setup_for_development
 . $products_dir/setup
-. ../artdaq/ups/setup_for_development -p e4 eth
+. ../artdaq/ups/setup_for_development -p e5 eth
 echo FINISHED ../artdaq/ups/setup_for_development
 export CETPKG_INSTALL=$products_dir
 export CETPKG_J=16
