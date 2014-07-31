@@ -133,11 +133,11 @@ if [ ! -d products -o ! -d download ];then
     test -d products || mkdir products
     test -d download || mkdir download
     cd download
-    $git_working_path/tools/downloadDeps.sh  ../products e4:eth prof
+    $git_working_path/tools/downloadDeps.sh  ../products e5:eth prof
     cd ..
 elif [ -n "${opt_force-}" ];then
     cd download
-    $git_working_path/tools/downloadDeps.sh  ../products e4:eth prof
+    $git_working_path/tools/downloadDeps.sh  ../products e5:eth prof
     cd ..
 fi
 

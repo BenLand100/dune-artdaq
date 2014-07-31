@@ -81,7 +81,7 @@ if [[ ! -e ./setupLBNEARTDAQ ]]; then
 
 	echo changing directory to \$LBNEARTDAQ_BUILD
 	cd \$LBNEARTDAQ_BUILD  # note: next line adjusts PATH based one cwd
-	. \$LBNEARTDAQ_REPO/ups/setup_for_development -p e4 eth
+	. \$LBNEARTDAQ_REPO/ups/setup_for_development -p e5 eth
 
 	EOF
     #
