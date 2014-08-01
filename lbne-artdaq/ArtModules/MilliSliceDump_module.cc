@@ -11,8 +11,8 @@
 #include "art/Framework/Principal/Handle.h"
 
 #include "art/Utilities/Exception.h"
-#include "lbne-artdaq/Overlays/MilliSliceFragment.hh"
-#include "artdaq/DAQdata/Fragments.hh"
+#include "lbne-raw-data/Overlays/MilliSliceFragment.hh"
+#include "artdaq-core/Data/Fragments.hh"
 
 #include <algorithm>
 #include <cassert>

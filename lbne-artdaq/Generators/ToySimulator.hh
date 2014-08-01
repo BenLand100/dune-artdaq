@@ -20,7 +20,7 @@
 // -Append a "_" to every private member function and variable
 
 #include "fhiclcpp/fwd.h"
-#include "artdaq/DAQdata/Fragments.hh" 
+#include "artdaq-core/Data/Fragments.hh" 
 #include "artdaq/Application/CommandableFragmentGenerator.hh"
 #include "lbne-raw-data/Overlays/ToyFragment.hh"
 #include "lbne-raw-data/Overlays/FragmentType.hh"

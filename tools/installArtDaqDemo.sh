@@ -48,7 +48,8 @@ test -d "$demo_dir/build_lbne-artdaq" || mkdir "$demo_dir/build_lbne-artdaq"  # 
 
 
 # Get artdaq from central git repository
-test -d artdaq || git clone http://cdcvs.fnal.gov/projects/artdaq
+#test -d artdaq || git clone http://cdcvs.fnal.gov/projects/artdaq
+test -d artdaq || git clone ssh://p-artdaq@cdcvs.fnal.gov/cvs/projects/artdaq
 cd artdaq
 git fetch origin
 git checkout v1_10_00

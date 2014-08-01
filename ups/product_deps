@@ -29,11 +29,12 @@ only_for_build	cetbuildtools	v3_13_00
 # -nq- here means there is no qualifier
 # a "-" here means the dependent product is not required by the parent and will not be setup
 qualifier		artdaq
+e5:eth:prof		e5:eth:prof
 e4:ib:debug		e4:ib:debug
 e4:ib:prof		e4:ib:prof
 e4:eth:debug		e4:eth:debug
 e4:eth:prof		e4:eth:prof
-e5:eth:prof		e5:eth:prof
+
 
 # Preserve tabs and formatting in emacs and vi / vim:
 
