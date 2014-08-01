@@ -10,7 +10,7 @@ example: `basename $0` products lbne-artdaq --run-demo
 Currently this script will clone (if not already cloned) artdaq
 along side of the lbne-artdaq dir.
 Also it will create, if not already created, build directories
-for artdaq and lbne-artdaq.
+for artdaq, lbne-artdaq, and lbne-raw-data.
 "
 # Process script arguments and options
 eval env_opts=\${$env_opts_var-} # can be args too
@@ -44,8 +44,14 @@ lbne_artdaq_dir=`cd "$2" >/dev/null;pwd`
 demo_dir=`dirname "$lbne_artdaq_dir"`
 
 test -d "$demo_dir/build_artdaq"      || mkdir "$demo_dir/build_artdaq"  # This is where we will build artdaq
+test -d "$demo_dir/build_lbne-raw-data"      || mkdir "$demo_dir/build_lbne-raw-data"  # This is where we will build lbne-raw-data
 test -d "$demo_dir/build_lbne-artdaq" || mkdir "$demo_dir/build_lbne-artdaq"  # This is where we will build lbne-artdaq
 
+
+# JCF, 8/1/14
+
+# Interestingly, it seems like git clone'ing via http isn't working,
+# so I'm switching to ssh for now
 
 # Get artdaq from central git repository
 #test -d artdaq || git clone http://cdcvs.fnal.gov/projects/artdaq
@@ -61,6 +67,20 @@ echo FINISHED ../artdaq/ups/setup_for_development
 export CETPKG_INSTALL=$products_dir
 export CETPKG_J=16
 buildtool -i
+
+test -d lbne-raw-data || git clone ssh://p-artdaq@cdcvs.fnal.gov/cvs/projects/lbne-raw-data
+cd lbne-raw-data
+git fetch origin
+git checkout v0_00_02
+cd ../build_lbne-raw-data
+echo IN $PWD: about to . ../lbne-raw-data/ups/setup_for_development
+. $products_dir/setup
+. ../lbne-raw-data/ups/setup_for_development -p e5 eth
+echo FINISHED ../lbne-raw-data/ups/setup_for_development
+export CETPKG_INSTALL=$products_dir
+export CETPKG_J=16
+buildtool -i
+
 
 cd $demo_dir >/dev/null
 if [[ ! -e ./setupLBNEARTDAQ ]]; then
