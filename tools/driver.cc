@@ -15,7 +15,7 @@
 #include "artdaq-core/Data/Fragments.hh"
 #include "artdaq/Application/CommandableFragmentGenerator.hh"
 #include "artdaq/Application/makeCommandableFragmentGenerator.hh"
-#include "artdaq-core/Core/EventStore.hh"
+#include "artdaq/DAQrate/EventStore.hh"
 #include "artdaq-core/Core/SimpleQueueReader.hh"
 #include "artdaq/Utilities/SimpleLookupPolicy.h"
 #include "cetlib/container_algorithms.h"
