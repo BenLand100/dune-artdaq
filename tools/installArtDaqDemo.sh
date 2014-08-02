@@ -68,10 +68,12 @@ export CETPKG_INSTALL=$products_dir
 export CETPKG_J=16
 buildtool -i
 
-test -d lbne-raw-data || git clone ssh://p-artdaq@cdcvs.fnal.gov/cvs/projects/lbne-raw-data
+#test -d lbne-raw-data || git clone ssh://p-artdaq@cdcvs.fnal.gov/cvs/projects/lbne-raw-data
+echo "IF YOU CAN SEE THIS, PLS. CONTACT JOHN FREEMAN"
+test -d lbne-raw-data || git clone $HOME/scratch/lbne-raw-data-repo
 cd lbne-raw-data
 git fetch origin
-git checkout v0_00_02
+git checkout master
 cd ../build_lbne-raw-data
 echo IN $PWD: about to . ../lbne-raw-data/ups/setup_for_development
 . $products_dir/setup

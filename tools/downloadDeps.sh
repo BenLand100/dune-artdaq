@@ -17,29 +17,6 @@ productdir=${1}
 
 starttime=`date`
 
-# # require qualifier
-# if [ -z ${basequal} ]
-# then
-#    echo "ERROR: qualifier not specified"
-#    echo "USAGE:  `basename ${0}` <product directory> <e2|e2:eth|nu:e2:eth|e4:eth|e5:eth> <debug|opt|prof>"
-#    exit 1
-# fi
-
-# if [ "${extraqual}" = "opt" ]
-# then
-#    qualdir=${qual}.${extraqual}
-# elif [ "${extraqual}" = "debug" ]
-# then
-#    qualdir=${qual}.${extraqual}
-# elif [ "${extraqual}" = "prof" ]
-# then
-#    qualdir=${qual}.${extraqual}
-# else
-#    echo "ERROR: please specify debug, opt, or prof"
-#    echo "USAGE:  `basename ${0}` <product directory> <e2|e2:eth|nu:e2:eth|e4:eth> <debug|opt|prof>"
-#    exit 1
-# fi
-
 cd ${productdir}
 
 # Some packages (lbne_raw_data) aren't yet on oink; we'll need to
@@ -50,10 +27,10 @@ artdaq_core v1_01_01 -f Linux64bit+2.6-2.12 -z ${productdir} -q e5:prof
 artdaq v1_10_00 -f Linux64bit+2.6-2.12 -z ${productdir} -q e5:eth:prof
 art v1_09_03 -f Linux64bit+2.6-2.12 -z ${productdir} -q e5:prof
 boost v1_55_0 -f Linux64bit+2.6-2.12 -z ${productdir} -q e5:prof
-cetbuildtools v3_13_00 -z ${productdir}
 cetlib v1_04_04 -f Linux64bit+2.6-2.12 -z ${productdir} -q e5:prof
 cetpkgsupport v1_05_02 -f NULL -z ${productdir} -g current
 clhep v2_1_4_1 -f Linux64bit+2.6-2.12 -z ${productdir} -q e5:prof
+cmake v2_8_12_2 -f Linux64bit+2.6-2.12 -z ${productdir}
 cpp0x v1_04_04 -f Linux64bit+2.6-2.12 -z ${productdir} -q e5:prof
 cppunit v1_12_1 -f Linux64bit+2.6-2.12 -z ${productdir} -q e5:prof
 fftw v3_3_3 -f Linux64bit+2.6-2.12 -z ${productdir} -q prof
@@ -67,7 +44,6 @@ python v2_7_6 -f Linux64bit+2.6-2.12 -z ${productdir}
 root v5_34_18a -f Linux64bit+2.6-2.12 -z ${productdir} -q e5:prof
 sqlite v3_08_03_00 -f Linux64bit+2.6-2.12 -z ${productdir}
 tbb v4_2_3 -f Linux64bit+2.6-2.12 -z ${productdir} -q e5:prof
-TRACE v3_03_03 -f Linux64bit+2.6 -z ${productdir}
 xmlrpc_c v1_25_28 -f Linux64bit+2.6-2.12 -z ${productdir} -q e5:prof
 xrootd v3_3_6a -f Linux64bit+2.6-2.12 -z ${productdir} -q e5:prof"
 
@@ -97,9 +73,17 @@ download()
      done
 }
 
-download ${productdir} "$prods"
+# Some tarfiles have names that deviate from the standard "template",
+# so we can't use the download function's algorithm
 
-#wget http://oink.fnal.gov/distro/packages/cetbuildtools-3.13.00-noarch.tar.bz2
+wget -O- http://oink.fnal.gov/distro/packages/cetbuildtools/cetbuildtools-3.13.00-noarch.tar.bz2 2>/dev/null | tar xjf -
+wget -O- http://oink.fnal.gov/distro/packages/smc_compiler/smc_compiler-6.1.0-noarch.tar.bz2 2>/dev/null | tar xjf -
+wget -O- http://oink.fnal.gov/distro/packages/TRACE/TRACE-3.03.03-slf6.tar.bz2 2>/dev/null | tar xjf -
+wget -O- http://oink.fnal.gov/distro/packages/ups/ups-upd-5.0.5-slf6-x86_64.tar.bz2 2>/dev/null | tar xjf -
+
+# Everything else, we can
+
+download ${productdir} "$prods"
 
 echo -ne "\a"
 
