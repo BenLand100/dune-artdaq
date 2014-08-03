@@ -133,18 +133,18 @@ if [ ! -d products -o ! -d download ];then
     test -d products || mkdir products
     test -d download || mkdir download
 
-    cd products
+    # cd products
 
-    if [ ! -e /products/setup ] ; then
-	echo "Unable to find /products/setup to link to; will abort"
-	return
-    else
-	cp -p /products/setup .
-	cp -rp /products/.upsfiles .
-	cp -rp /products/.updfiles .
-    fi
+    # if [ ! -e /products/setup ] ; then
+    # 	echo "Unable to find /products/setup to link to; will abort"
+    # 	return
+    # else
+    # 	cp -p /products/setup .
+    # 	cp -rp /products/.upsfiles .
+    # 	cp -rp /products/.updfiles .
+    # fi
 
-    cd ..
+    # cd ..
 
     cd download
     $git_working_path/tools/downloadDeps.sh  ../products e5:eth prof
