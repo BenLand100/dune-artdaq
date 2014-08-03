@@ -43,33 +43,21 @@ products_dir=`cd "$1" >/dev/null;pwd`
 lbne_artdaq_dir=`cd "$2" >/dev/null;pwd`
 demo_dir=`dirname "$lbne_artdaq_dir"`
 
-#test -d "$demo_dir/build_artdaq"      || mkdir "$demo_dir/build_artdaq"  # This is where we will build artdaq
 test -d "$demo_dir/build_lbne-raw-data"      || mkdir "$demo_dir/build_lbne-raw-data"  # This is where we will build lbne-raw-data
 test -d "$demo_dir/build_lbne-artdaq" || mkdir "$demo_dir/build_lbne-artdaq"  # This is where we will build lbne-artdaq
 
+# JCF, 8/3/14
 
-# JCF, 8/1/14
+# As of now lbne-raw-data is not yet on oink and is not yet centrally
+# available, so the only way to get it is via a local clone on
+# cluck.fnal.gov
 
-# Interestingly, it seems like git clone'ing via http isn't working,
-# so I'm switching to ssh for now
+if [ `hostname` != "cluck.fnal.gov" ] ; then
+    echo "IF YOU CAN SEE THIS, THE SCRIPT CAN ONLY BE RUN ON CLUCK; PLS. CONTACT JOHN FREEMAN"
+    exit 1
+fi
 
-# # Get artdaq from central git repository
-# #test -d artdaq || git clone http://cdcvs.fnal.gov/projects/artdaq
-# test -d artdaq || git clone ssh://p-artdaq@cdcvs.fnal.gov/cvs/projects/artdaq
-# cd artdaq
-# git fetch origin
-# git checkout v1_10_00
-# cd ../build_artdaq
-# echo IN $PWD: about to . ../artdaq/ups/setup_for_development
-# . $products_dir/setup
-# . ../artdaq/ups/setup_for_development -p e5 eth
-# echo FINISHED ../artdaq/ups/setup_for_development
-# export CETPKG_INSTALL=$products_dir
-# export CETPKG_J=16
-# buildtool -i
 
-#test -d lbne-raw-data || git clone ssh://p-artdaq@cdcvs.fnal.gov/cvs/projects/lbne-raw-data
-echo "IF YOU CAN SEE THIS, PLS. CONTACT JOHN FREEMAN"
 test -d lbne-raw-data || git clone $HOME/scratch/lbne-raw-data
 cd lbne-raw-data
 git fetch origin

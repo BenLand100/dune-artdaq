@@ -9,11 +9,6 @@ rev='$Revision: 1.20 $$Date: 2010/02/18 13:20:16 $'
 #  This script is based on the original createArtDaqDemo.sh script created by
 #  Kurt and modified by John.
 
-# This script is stored at:
-#        https://cdcvs.fnal.gov/redmine/projects/lbne-artdaq/repository/revisions/develop/raw/tools/lbne-artdaq-quick-start.sh
-# and can be retrieved via wget:
-#   wget https://cdcvs.fnal.gov/redmine/projects/lbne-artdaq/repository/revisions/develop/raw/tools/lbne-artdaq-quick-start.sh
-
 #
 # This script will:
 #      1.  get (if not already gotten) lbne-artdaq and all support products
@@ -132,19 +127,6 @@ if [ ! -d products -o ! -d download ];then
     fi
     test -d products || mkdir products
     test -d download || mkdir download
-
-    # cd products
-
-    # if [ ! -e /products/setup ] ; then
-    # 	echo "Unable to find /products/setup to link to; will abort"
-    # 	return
-    # else
-    # 	cp -p /products/setup .
-    # 	cp -rp /products/.upsfiles .
-    # 	cp -rp /products/.updfiles .
-    # fi
-
-    # cd ..
 
     cd download
     $git_working_path/tools/downloadDeps.sh  ../products e5:eth prof

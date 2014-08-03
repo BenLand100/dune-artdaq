@@ -9,11 +9,7 @@
 # sophisticated may be used in the future as package dependencies change
 
 
-#thisdir=`pwd`
-
 productdir=${1}
-#basequal=${2}
-#extraqual=${3}
 
 starttime=`date`
 
@@ -45,8 +41,16 @@ root v5_34_18a -f Linux64bit+2.6-2.12 -z ${productdir} -q e5:prof
 sqlite v3_08_03_00 -f Linux64bit+2.6-2.12 -z ${productdir}
 tbb v4_2_3 -f Linux64bit+2.6-2.12 -z ${productdir} -q e5:prof
 xmlrpc_c v1_25_28 -f Linux64bit+2.6-2.12 -z ${productdir} -q e5:prof
-xrootd v3_3_6a -f Linux64bit+2.6-2.12 -z ${productdir} -q e5:prof"
+xrootd v3_3_6a -f Linux64bit+2.6-2.12 -z ${productdir} -q e5:prof "
 
+# Some tarfiles have names that deviate from the standard "template",
+# so we can't use the download function's algorithm
+
+prods2="\
+cetbuildtools/cetbuildtools-3.13.00-noarch.tar.bz2
+smc_compiler/smc_compiler-6.1.0-noarch.tar.bz2
+TRACE/TRACE-3.03.03-slf6.tar.bz2
+ups/ups-upd-5.0.5-slf6-x86_64.tar.bz2"
 
 # $1=prod_area $2="prod_lines"
 
@@ -73,15 +77,13 @@ download()
      done
 }
 
-# Some tarfiles have names that deviate from the standard "template",
-# so we can't use the download function's algorithm
+cd ${productdir}
 
-wget -O- http://oink.fnal.gov/distro/packages/cetbuildtools/cetbuildtools-3.13.00-noarch.tar.bz2 2>/dev/null | tar xjf -
-wget -O- http://oink.fnal.gov/distro/packages/smc_compiler/smc_compiler-6.1.0-noarch.tar.bz2 2>/dev/null | tar xjf -
-wget -O- http://oink.fnal.gov/distro/packages/TRACE/TRACE-3.03.03-slf6.tar.bz2 2>/dev/null | tar xjf -
-wget -O- http://oink.fnal.gov/distro/packages/ups/ups-upd-5.0.5-slf6-x86_64.tar.bz2 2>/dev/null | tar xjf -
-
-# Everything else, we can
+for packagestring in `echo $prods2 | tr " " "\n"`; do
+    url=http://oink.fnal.gov/distro/packages/$packagestring
+    echo url=$url
+    wget -O- $url 2>/dev/null | tar xjf -
+done
 
 download ${productdir} "$prods"
 
