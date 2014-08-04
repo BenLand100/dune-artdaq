@@ -46,19 +46,7 @@ demo_dir=`dirname "$lbne_artdaq_dir"`
 test -d "$demo_dir/build_lbne-raw-data"      || mkdir "$demo_dir/build_lbne-raw-data"  # This is where we will build lbne-raw-data
 test -d "$demo_dir/build_lbne-artdaq" || mkdir "$demo_dir/build_lbne-artdaq"  # This is where we will build lbne-artdaq
 
-# JCF, 8/3/14
-
-# As of now lbne-raw-data is not yet on oink and is not yet centrally
-# available, so the only way to get it is via a local clone on
-# cluck.fnal.gov
-
-if [ `hostname` != "cluck.fnal.gov" ] ; then
-    echo "IF YOU CAN SEE THIS, THE SCRIPT CAN ONLY BE RUN ON CLUCK; PLS. CONTACT JOHN FREEMAN"
-    exit 1
-fi
-
-
-test -d lbne-raw-data || git clone $HOME/scratch/lbne-raw-data
+test -d lbne-raw-data || git clone ssh://p-lbne-raw-data@cdcvs.fnal.gov/cvs/projects/lbne-raw-data
 cd lbne-raw-data
 git fetch origin
 git checkout master
