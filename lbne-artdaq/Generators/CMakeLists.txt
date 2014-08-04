@@ -1,6 +1,7 @@
 
 simple_plugin(TPCMilliSliceSimulatorWithCopy "generator"
-  lbne-artdaq_Overlays
+  lbne-raw-data_Overlays
+  ${ARTDAQ-CORE_DATA}
   ${ARTDAQ_APPLICATION}
   ${ARTDAQ_DAQDATA}
   ${ARTDAQ_UTILITIES}
@@ -11,7 +12,8 @@ simple_plugin(TPCMilliSliceSimulatorWithCopy "generator"
   )
 
 simple_plugin(ToySimulator "generator"
-  lbne-artdaq_Overlays
+  lbne-raw-data_Overlays
+  ${ARTDAQ-CORE_DATA}
   ${ARTDAQ_APPLICATION}
   ${ARTDAQ_DAQDATA}
   ${ARTDAQ_UTILITIES}
