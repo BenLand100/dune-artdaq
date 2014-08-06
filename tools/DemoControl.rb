@@ -23,6 +23,7 @@ require File.join( File.dirname(__FILE__), 'demo_utilities' )
 # (BoardReaderMain, EventBuilderMain, AggregatorMain)
 
 require File.join( File.dirname(__FILE__), 'generateToy' )
+require File.join( File.dirname(__FILE__), 'generateTpc' )
 require File.join( File.dirname(__FILE__), 'generateWFViewer' )
 
 require File.join( File.dirname(__FILE__), 'generateBoardReaderMain' )
@@ -177,6 +178,17 @@ daq: {
         xmlrpcClients += ",3"  # group number
       end
     end
+    (cmdLineOptions.tpcs).each do |proc|
+      br = cmdLineOptions.boardReaders[proc.board_reader_index]
+      if br.hasBeenIncludedInXMLRPCList
+        next
+      else
+        br.hasBeenIncludedInXMLRPCList = true
+        xmlrpcClients += ";http://" + proc.host + ":" +
+          String(proc.port) + "/RPC2"
+        xmlrpcClients += ",3"  # group number
+      end
+    end
     (cmdLineOptions.eventBuilders).each do |proc|
       xmlrpcClients += ";http://" + proc.host + ":" +
         String(proc.port) + "/RPC2"
@@ -204,6 +216,7 @@ class CommandLineParser
     @options.aggregators = []
     @options.eventBuilders = []
     @options.toys = []
+    @options.tpcs = []
     @options.boardReaders = []
     @options.dataDir = nil
     @options.command = nil
@@ -255,7 +268,24 @@ class CommandLineParser
         @options.aggregators << agConfig
       end
     
-
+	  opts.on("--tpc [host.port,board_id]", Array,
+              "Add a TPC fragment receiver that runs on the specified host, port, ",
+              "and board ID.") do |tpc|
+        if tpc.length != 3
+          puts "You must specify a host, port, and board ID."
+          exit
+        end
+        tpcConfig = OpenStruct.new
+        tpcConfig.host = tpc[0]
+        tpcConfig.port = Integer(tpc[1])
+        tpcConfig.board_id = Integer(tpc[2])
+        tpcConfig.kind = "TPC"
+        tpcConfig.index = (@options.tpcs).length
+        tpcConfig.board_reader_index = addToBoardReaderList(tpcConfig.host, tpcConfig.port,
+                                                              tpcConfig.kind, tpcConfig.index)
+        @options.tpcs << tpcConfig
+      end
+	  
       opts.on("--toy1 [host,port,board_id]", Array, 
               "Add a TOY1 fragment receiver that runs on the specified host, port, ",
               "and board ID.") do |toy1|
@@ -411,7 +441,7 @@ class CommandLineParser
     # is running on which host.
     puts "Configuration Summary:"
     hostMap = {}
-    (@options.eventBuilders + @options.toys + @options.aggregators).each do |proc|
+    (@options.eventBuilders + @options.toys + @options.tpcs + @options.aggregators).each do |proc|
       if not hostMap.keys.include?(proc.host)
         hostMap[proc.host] = []
       end
@@ -432,6 +462,12 @@ class CommandLineParser
           puts "    EventBuilder, port %d, rank %d" % [item.port, totalFRs + item.index]
         when "ag"
           puts "    Aggregator, port %d, rank %d" % [item.port, totalEBs + totalFRs + item.index]
+        when "TPC"
+          puts "    TpcRceReceiver, %s, port %d, rank %d, board_id %d" %
+            [item.kind.upcase,
+             item.port,
+             item.index,
+             item.board_id]
         when "TOY1", "TOY2"
           puts "    FragmentReceiver, Simulated %s, port %d, rank %d, board_id %d" % 
             [item.kind.upcase,
@@ -469,7 +505,8 @@ class SystemControl
     agIndex = 0
     totaltoy1s = 0
     totaltoy2s = 0
-
+	totalTpcs = 0
+	
     @options.toys.each do |proc|
       case proc.kind
       when "TOY1"
@@ -478,7 +515,10 @@ class SystemControl
         totaltoy2s += 1
       end
     end
-    totalBoards = @options.toys.length
+    
+	totalTpcs = @options.tpcs.length
+	
+    totalBoards = @options.toys.length + @options.tpcs.length
     totalFRs = @options.boardReaders.length
     totalEBs = @options.eventBuilders.length
     totalAGs = @options.aggregators.length
@@ -497,8 +537,9 @@ class SystemControl
     # store the CFGs in the boardReader list for everything
 
     # John F., 1/21/14 -- added the toy fragment generators
+	# Tim N., 7/29/14 -- added the TPC RCE fragment generators
 
-    (@options.toys).each { |boardreaderOptions|
+    (@options.toys + @options.tpcs).each { |boardreaderOptions|	
       br = @options.boardReaders[boardreaderOptions.board_reader_index]
       listIndex = 0
       br.kindList.each do |kind|
@@ -509,6 +550,11 @@ class SystemControl
                                         boardreaderOptions.board_id, kind)
           end
 
+	      if kind == "TPC" 
+	        generatorCode = generateTpc(boardreaderOptions.index,
+	                                    boardreaderOptions.board_id, kind)
+	      end
+	      
           cfg = generateBoardReaderMain(totalEBs, totalFRs,
                                         Integer(inputBuffSizeWords/8), 
                                         generatorCode)
@@ -525,7 +571,7 @@ class SystemControl
 
     threads = []
 
-    (@options.toys).each { |proc|
+    (@options.toys + @options.tpcs).each { |proc|
       br = @options.boardReaders[proc.board_reader_index]
       if br.boardCount > 1
         if br.commandHasBeenSent
@@ -654,6 +700,7 @@ class SystemControl
     self.sendCommandSet("start", @options.aggregators, runNumber)
     self.sendCommandSet("start", @options.eventBuilders, runNumber)
     self.sendCommandSet("start", @options.toys, runNumber)
+    self.sendCommandSet("start", @options.tpcs, runNumber)
   end
 
   def sendCommandSet(commandName, procs, commandArg = nil)
@@ -712,6 +759,9 @@ class SystemControl
         when "TOY2"
           puts "%s: TOY2 FragmentReceiver on %s:%d result: %s" %
             [currentTime, proc.host, proc.port, result]
+        when "TPC"
+          puts "%s: TPC TpcRceReceiver on %s:%d result: %s" %
+            [currentTime, proc.host, proc.port, result]
         when "multi-board"
           puts "%s: multi-board FragmentReceiver on %s:%d result: %s" %
             [currentTime, proc.host, proc.port, result]
@@ -725,12 +775,14 @@ class SystemControl
   end
 
   def shutdown()
+    self.sendCommandSet("shutdown", @options.tpcs)
     self.sendCommandSet("shutdown", @options.toys)
     self.sendCommandSet("shutdown", @options.eventBuilders)
     self.sendCommandSet("shutdown", @options.aggregators)
   end
 
   def pause()
+    self.sendCommandSet("pause", @options.tpcs)
     self.sendCommandSet("pause", @options.toys)
     self.sendCommandSet("pause", @options.eventBuilders)
     self.sendCommandSet("pause", @options.aggregators)
@@ -865,6 +917,7 @@ class SystemControl
       end
     end
 
+    self.sendCommandSet("stop", @options.tpcs)
     self.sendCommandSet("stop", @options.toys)
     self.sendCommandSet("stop", @options.eventBuilders)
     @options.aggregators.each do |proc|
@@ -878,18 +931,21 @@ class SystemControl
     self.sendCommandSet("resume", @options.aggregators)
     self.sendCommandSet("resume", @options.eventBuilders)
     self.sendCommandSet("resume", @options.toys)
+    self.sendCommandSet("resume", @options.tpcs)
   end
 
   def checkStatus()
     self.sendCommandSet("status", @options.aggregators)
     self.sendCommandSet("status", @options.eventBuilders)
     self.sendCommandSet("status", @options.toys)
+    self.sendCommandSet("status", @options.tpcs)
   end
 
   def getLegalCommands()
     self.sendCommandSet("legal_commands", @options.aggregators)
     self.sendCommandSet("legal_commands", @options.eventBuilders)
     self.sendCommandSet("legal_commands", @options.toys)
+    self.sendCommandSet("legal_commands", @options.tpcs)
   end
 end
 
