@@ -1,19 +1,19 @@
-#ifndef lbne_artdaq_Generators_ToySimulator_hh
-#define lbne_artdaq_Generators_ToySimulator_hh
+#ifndef artdaq_lbne_Generators_SSP_hh
+#define artdaq_lbne_Generators_SSP_hh
 
-// ToySimulator is a simple type of fragment generator intended to be
+// SSP is a simple type of fragment generator intended to be
 // studied by new users of artdaq as an example of how to create such
 // a generator in the "best practices" manner. Derived from artdaq's
 // CommandableFragmentGenerator class, it can be used in a full DAQ
 // simulation, generating all ADC counts with equal probability via
 // the std::uniform_int_distribution class
 
-// ToySimulator is designed to simulate values coming in from one of
+// SSP is designed to simulate values coming in from one of
 // two types of digitizer boards, one called "TOY1" and the other
 // called "TOY2"; the only difference between the two boards is the #
 // of bits in the ADC values they send. These values are declared as
-// FragmentType enum's in lbne-artdaq's
-// lbne-raw-data/Overlays/FragmentType.hh header.
+// FragmentType enum's in artdaq-lbne's
+// artdaq-lbne/Overlays/FragmentType.hh header.
 
 // Some C++ conventions used:
 
@@ -22,8 +22,11 @@
 #include "fhiclcpp/fwd.h"
 #include "artdaq-core/Data/Fragment.hh" 
 #include "artdaq/Application/CommandableFragmentGenerator.hh"
-#include "lbne-raw-data/Overlays/ToyFragment.hh"
-#include "lbne-raw-data/Overlays/FragmentType.hh"
+#include "lbne-artdaq/Overlays/SSPFragment.hh"
+#include "lbne-artdaq/Overlays/FragmentType.hh"
+
+#include "lbne-artdaq/Generators/anlBoard/DeviceManager.h"
+#include "lbne-artdaq/Generators/anlBoard/DeviceInterface.h"
 
 #include <random>
 #include <vector>
@@ -31,9 +34,9 @@
 
 namespace lbne {    
 
-  class ToySimulator : public artdaq::CommandableFragmentGenerator {
+  class SSP : public artdaq::CommandableFragmentGenerator {
   public:
-    explicit ToySimulator(fhicl::ParameterSet const & ps);
+    explicit SSP(fhicl::ParameterSet const & ps);
 
   private:
 
@@ -43,19 +46,22 @@ namespace lbne {
 
     bool getNext_(artdaq::FragmentPtrs & output) override;
 
+    virtual void start();
+
+    virtual void stop();
+   
+    //    virtual void pause();
+
+    //    virtual void resume();
 
     // FHiCL-configurable variables. Note that the C++ variable names
     // are the FHiCL variable names with a "_" appended
 
-    std::size_t const nADCcounts_;     // ADC values per fragment per event
-    FragmentType const fragment_type_; // Type of fragment (see FragmentType.hh)
-    std::size_t const throttle_usecs_;
-    
-    // Members needed to generate the simulated data
-
-    std::mt19937 engine_;
-    std::unique_ptr<std::uniform_int_distribution<int>> uniform_distn_;
+    lbne::detail::FragmentType const fragment_type_; // Type of fragment (see FragmentType.hh)
+    unsigned int board_id_;
+    SSPDAQ::DeviceManager::Comm_t  interface_type_;
+    SSPDAQ::DeviceInterface* device_interface_;
   };
 }
 
-#endif /* lbne_artdaq_Generators_ToySimulator_hh */
+#endif /* artdaq_lbne_Generators_SSP_hh */

@@ -55,7 +55,7 @@ if [[ "${basePort}" == "" ]]; then
     if [[ "${LBNEARTDAQ_BASE_PORT}" != "" ]]; then
         basePort=${LBNEARTDAQ_BASE_PORT}
     else
-        basePort=5200
+        basePort=5300
     fi
 fi
 

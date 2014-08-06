@@ -1,0 +1,11 @@
+art_make(
+        LIB_LIBRARIES
+	${CMAKE_CURRENT_SOURCE_DIR}/lib/libftd2xx.so
+        ${ART_UTILITIES}
+        ${FHICLCPP}
+        ${CETLIB}
+        ${MF_MESSAGELOGGER}
+        ${MF_UTILITIES}
+        ${Boost_SYSTEM_LIBRARY}
+        -lpthread
+        )
