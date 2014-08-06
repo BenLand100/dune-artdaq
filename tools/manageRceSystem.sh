@@ -113,7 +113,7 @@ Examples: ${scriptName} -p 32768 init
 originalCommand="$0 $*"
 onmonEnable=off
 diskWriting=1
-dataDir="/data/lbnedaq/data"
+dataDir="/tmp"
 runNumber=""
 runEventCount=0
 runDuration=0
@@ -244,7 +244,11 @@ fi
 
 # build the logfile name
 TIMESTAMP=`date '+%Y%m%d%H%M%S'`
+<<<<<<< HEAD
 logFile="/data/lbnedaq/daqlogs/masterControl/dsMC-${TIMESTAMP}-${command}.log"
+=======
+logFile="/tmp/masterControl/dsMC-${TIMESTAMP}-${command}.log"
+>>>>>>> origin/develop
 echo "${originalCommand}" > $logFile
 echo ">>> ${originalCommand} (Disk writing is ${diskWriting})"
 

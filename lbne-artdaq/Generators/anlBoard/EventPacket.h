@@ -1,7 +1,7 @@
 #ifndef EVENTPACKET_H__
 #define EVENTPACKET_H__
 
-#include "anlTypes.h"
+#include "lbne-raw-data/Overlays/anlTypes.hh"
 #include <vector>
 
 namespace SSPDAQ{

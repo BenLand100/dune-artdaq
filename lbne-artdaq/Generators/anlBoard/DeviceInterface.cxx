@@ -1,5 +1,4 @@
 #include "DeviceInterface.h"
-#include "anlTypes.h"
 #include "anlExceptions.h"
 #include "Log.h"
 #include "RegMap.h"

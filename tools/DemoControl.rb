@@ -23,9 +23,9 @@ require File.join( File.dirname(__FILE__), 'demo_utilities' )
 # (BoardReaderMain, EventBuilderMain, AggregatorMain)
 
 require File.join( File.dirname(__FILE__), 'generateSSP' )
+require File.join( File.dirname(__FILE__), 'generateToy' )
 require File.join( File.dirname(__FILE__), 'generateTpc' )
 require File.join( File.dirname(__FILE__), 'generateWFViewer' )
-
 require File.join( File.dirname(__FILE__), 'generateBoardReaderMain' )
 require File.join( File.dirname(__FILE__), 'generateEventBuilderMain' )
 require File.join( File.dirname(__FILE__), 'generateAggregatorMain' )
@@ -471,6 +471,7 @@ class CommandLineParser
     # is running on which host.
     puts "Configuration Summary:"
     hostMap = {}
+
     (@options.eventBuilders + @options.toys + @options.tpcs + @options.ssps + @options.aggregators).each do |proc|
       if not hostMap.keys.include?(proc.host)
         hostMap[proc.host] = []
@@ -554,8 +555,7 @@ class SystemControl
     end
     
     totalTpcs = @options.tpcs.length
-    totalSSPs = @options.ssps.length
-	
+    totalSSPs = @options.ssps.length	
     totalBoards = @options.toys.length + @options.tpcs.length + @options.ssps.length
     totalFRs = @options.boardReaders.length
     totalEBs = @options.eventBuilders.length

@@ -1,7 +1,7 @@
 #ifndef __REGMAP_H__
 #define __REGMAP_H__
 
-#include "anlTypes.h"
+#include "lbne-raw-data/Overlays/anlTypes.hh"
 
 namespace SSPDAQ{
 

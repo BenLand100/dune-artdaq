@@ -2,7 +2,7 @@
 #define DEVICEMANAGER_H
 
 #include "ftd2xx.h"
-#include "anlTypes.h"
+#include "lbne-raw-data/Overlays/anlTypes.hh"
 #include "USBDevice.h"
 
 #include <vector>

@@ -3,7 +3,7 @@
 
 #include "DeviceManager.h"
 #include "Device.h"
-#include "anlTypes.h"
+#include "lbne-raw-data/Overlays/anlTypes.hh"
 
 namespace SSPDAQ{
 
