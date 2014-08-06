@@ -9,6 +9,9 @@
 
 require 'fileutils'
 
+puts "JCF, 7/25/14: now that packages have been split up, this script is deprecated until further notice"
+exit 0
+
 if ARGV.length != 2
   puts "Usage: " + __FILE__ + " <Fragment generator token> <Fragment token>" 
   exit 1

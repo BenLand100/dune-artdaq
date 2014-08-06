@@ -2,7 +2,7 @@
 #  about the FHiCL language, please look at
 #  cdcvs.fnal.gov/redmine/documents/327 , the "FHiCL Quick Start Guide"
 
-events_to_generate: 1
+events_to_generate: 10
 run_number: 101
 
 fragment_receiver: {
@@ -12,13 +12,14 @@ fragment_receiver: {
    generator: ToySimulator 
    fragment_type: TOY2        # Make sure downstream modules know about this fragment_type!
    nADCcounts: 100
-   random_seed: 6514
+   throttle_usecs: 5000000  # Wait this many usecs before creating the next event
+
 
    # Parameters configuring the fragment generator's parent class
    # artdaq::CommandableFragmentGenerator
 
-   fragment_id: 0
-   board_id: 0
+   fragment_ids: [0]  # In the case of just one fragment, "fragment_id: 0" would also work
+   board_id: 999 
 }  		  
 
 event_builder: {
@@ -38,6 +39,9 @@ physics:
 {
   analyzers:
   {
+  
+  # n.b. if you wish to generate more than one fragment per event, toyDump should be disabled
+
     toyDump:
     {
       module_type: ToyDump
@@ -45,11 +49,32 @@ physics:
       frag_type: @local::fragment_receiver.fragment_type
       num_adcs_to_show: 10   # Obviously this should be no more than ADC counts per fragment
     }
+
+    # A RootApplication module is needed for the WFViewer module's graphics capabilities
+
+    app: {
+    module_type: RootApplication
+    force_new: true
+    }
+
+
+   wf: {
+    module_type: WFViewer
+
+    # Make sure there are as many fragment type labels as there are fragment IDs!
+
+    fragment_ids: @local::fragment_receiver.fragment_ids
+     fragment_type_labels: [ @local::fragment_receiver.fragment_type ]
+    prescale: 1
+    digital_sum_only: false
+    }
+
   }
 
   a1: [ toyDump ]
+  a2: [ app, wf ]
 #  e1: [ out1 ]
-  end_paths: [ a1 ]
+  end_paths: [ a1, a2 ]
 }
 
 outputs:
@@ -66,7 +91,7 @@ source:
 module_type: RawInput
 waiting_time: 900
 resume_after_timeout: true
-fragment_type_map: [[2, "TOY1"], [3, "TOY2"] ]
+fragment_type_map: [[5, "TOY1"], [6, "TOY2"] ]
 }
 
 process_name: Driver

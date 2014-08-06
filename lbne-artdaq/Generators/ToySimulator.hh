@@ -13,17 +13,17 @@
 // called "TOY2"; the only difference between the two boards is the #
 // of bits in the ADC values they send. These values are declared as
 // FragmentType enum's in lbne-artdaq's
-// lbne-artdaq/Overlays/FragmentType.hh header.
+// lbne-raw-data/Overlays/FragmentType.hh header.
 
 // Some C++ conventions used:
 
 // -Append a "_" to every private member function and variable
 
 #include "fhiclcpp/fwd.h"
-#include "artdaq/DAQdata/Fragments.hh" 
+#include "artdaq-core/Data/Fragments.hh" 
 #include "artdaq/Application/CommandableFragmentGenerator.hh"
-#include "lbne-artdaq/Overlays/ToyFragment.hh"
-#include "lbne-artdaq/Overlays/FragmentType.hh"
+#include "lbne-raw-data/Overlays/ToyFragment.hh"
+#include "lbne-raw-data/Overlays/FragmentType.hh"
 
 #include <random>
 #include <vector>
@@ -43,15 +43,6 @@ namespace lbne {
 
     bool getNext_(artdaq::FragmentPtrs & output) override;
 
-    // Like "getNext_", "fragmentIDs_" is a mandatory override; it
-    // returns a vector of the fragment IDs an instance of this class
-    // is responsible for (in the case of ToySimulator, this is just
-    // the fragment_id_ variable declared in the parent
-    // CommandableFragmentGenerator class)
-    
-    std::vector<artdaq::Fragment::fragment_id_t> fragmentIDs_() override {
-      return fragment_ids_;
-    }
 
     // FHiCL-configurable variables. Note that the C++ variable names
     // are the FHiCL variable names with a "_" appended
@@ -60,8 +51,6 @@ namespace lbne {
     FragmentType const fragment_type_; // Type of fragment (see FragmentType.hh)
     std::size_t const throttle_usecs_;
     
-    std::vector<artdaq::Fragment::fragment_id_t> fragment_ids_; 
-
     // Members needed to generate the simulated data
 
     std::mt19937 engine_;

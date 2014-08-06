@@ -15,7 +15,7 @@
 
 # Here, we simply create a FHiCL script designed to run the new
 # "ToyDump" module so as to print ADC values from fragments of type
-# TOY1 or TOY2 to screen (see the lbne-artdaq/Overlays/ToyFragment.hh
+# TOY1 or TOY2 to screen (see the lbne-raw-data/Overlays/ToyFragment.hh
 # file for more)
 
 require File.join( File.dirname(__FILE__), 'generateToy' )

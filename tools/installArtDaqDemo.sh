@@ -10,7 +10,7 @@ example: `basename $0` products lbne-artdaq --run-demo
 Currently this script will clone (if not already cloned) artdaq
 along side of the lbne-artdaq dir.
 Also it will create, if not already created, build directories
-for artdaq and lbne-artdaq.
+for artdaq, lbne-artdaq, and lbne-raw-data.
 "
 # Process script arguments and options
 eval env_opts=\${$env_opts_var-} # can be args too
@@ -43,23 +43,22 @@ products_dir=`cd "$1" >/dev/null;pwd`
 lbne_artdaq_dir=`cd "$2" >/dev/null;pwd`
 demo_dir=`dirname "$lbne_artdaq_dir"`
 
-test -d "$demo_dir/build_artdaq"      || mkdir "$demo_dir/build_artdaq"  # This is where we will build artdaq
+test -d "$demo_dir/build_lbne-raw-data"      || mkdir "$demo_dir/build_lbne-raw-data"  # This is where we will build lbne-raw-data
 test -d "$demo_dir/build_lbne-artdaq" || mkdir "$demo_dir/build_lbne-artdaq"  # This is where we will build lbne-artdaq
 
-
-# Get artdaq from central git repository
-test -d artdaq || git clone http://cdcvs.fnal.gov/projects/artdaq
-cd artdaq
+test -d lbne-raw-data || git clone ssh://p-lbne-raw-data@cdcvs.fnal.gov/cvs/projects/lbne-raw-data
+cd lbne-raw-data
 git fetch origin
-git checkout v1_05_08
-cd ../build_artdaq
-echo IN $PWD: about to . ../artdaq/ups/setup_for_development
+git checkout master
+cd ../build_lbne-raw-data
+echo IN $PWD: about to . ../lbne-raw-data/ups/setup_for_development
 . $products_dir/setup
-. ../artdaq/ups/setup_for_development -p e4 eth
-echo FINISHED ../artdaq/ups/setup_for_development
+. ../lbne-raw-data/ups/setup_for_development -p e5 eth
+echo FINISHED ../lbne-raw-data/ups/setup_for_development
 export CETPKG_INSTALL=$products_dir
 export CETPKG_J=16
 buildtool -i
+
 
 cd $demo_dir >/dev/null
 if [[ ! -e ./setupLBNEARTDAQ ]]; then
@@ -81,7 +80,7 @@ if [[ ! -e ./setupLBNEARTDAQ ]]; then
 
 	echo changing directory to \$LBNEARTDAQ_BUILD
 	cd \$LBNEARTDAQ_BUILD  # note: next line adjusts PATH based one cwd
-	. \$LBNEARTDAQ_REPO/ups/setup_for_development -p e4 eth
+	. \$LBNEARTDAQ_REPO/ups/setup_for_development -p e5 eth
 
 	EOF
     #
