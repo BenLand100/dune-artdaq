@@ -1,0 +1,111 @@
+# FHiCL document used to run the "driver" executable. To learn more
+#  about the FHiCL language, please look at
+#  cdcvs.fnal.gov/redmine/documents/327 , the "FHiCL Quick Start Guide"
+
+events_to_generate: 1
+number_of_microslices_per_millislice: 100
+run_number: 101
+
+fragment_receiver: {
+
+   # Parameters defining and configuring the fragment generator to be used
+   		    
+   generator: TpcRceReceiver 
+   fragment_type: TPC        # Make sure downstream modules know about this fragment_type!
+   
+   # TODO - remove these simulation parameters
+   number_of_microslices_to_generate: 4
+   number_of_nanoslices_to_generate: 2
+   number_of_values_to_generate: 5
+   simulated_readout_time: 200000   # in usec
+
+   number_of_microslices_per_millislice: @local::number_of_microslices_per_millislice
+   
+   rce_client_host_addr: lbnedaq2 
+   rce_client_host_port: 9999
+   rce_client_timeout_usecs: 500000
+   
+   rce_data_dest_host: '10.0.0.2'
+   rce_data_dest_port: 8989  
+   rce_data_num_millislices: 0 # @local::events_to_generate
+   rce_data_num_microslices: @local::number_of_microslices_per_millislice
+   rce_data_frag_rate: 1000.0
+   rce_data_adc_mode: 4
+   rce_data_adc_mean: 1000.0
+   rce_data_adc_sigma: 100.0
+   
+   receive_port: 8989
+   
+   receiver_debug_level: 1
+   receiver_tick_period_usecs: 10000
+    
+   raw_buffer_size: 1000000
+   raw_buffer_precommit: 10 # @local::events_to_generate
+   use_fragments_as_raw_buffer: true
+   
+   # Parameters configuring the fragment generator's parent class
+   # artdaq::CommandableFragmentGenerator
+
+   fragment_id: 0
+   board_id: 0
+}  		  
+
+event_builder: {
+
+  expected_fragments_per_event: 1
+  use_art: true
+  print_event_store_stats: false
+  verbose: false
+  events_expected_in_SimpleQueueReader: @local::events_to_generate
+}
+
+######################################################################
+# The ART code
+######################################################################
+
+physics:
+{
+  analyzers:
+  {
+	milliSliceDump:
+        {
+	module_type: MilliSliceDump
+	raw_data_label: daq
+	frag_type: @local::fragment_receiver.fragment_type
+	}	
+	tpcMilliSliceDump:
+	{
+		module_type: TpcMilliSliceDump
+		raw_data_label: daq
+		frag_type: @local::fragment_receiver.fragment_type	
+	}
+	
+  }
+
+  #a1: [ milliSliceDump ]
+  a1: [ tpcMilliSliceDump ]
+  e1: [ out1 ]
+  end_paths: [ e1 , a1 ]
+}
+
+outputs:
+{
+  out1:
+  {
+    module_type: FileDumperOutput
+    wantProductFriendlyClassName: true
+  }
+}
+
+source:
+{
+module_type: RawInput
+waiting_time: 900
+resume_after_timeout: true
+fragment_type_map: [[2, "TPC"], [3, "PHOTON"], [4, "TRIGGER"] ]
+}
+
+process_name: Driver
+
+
+
