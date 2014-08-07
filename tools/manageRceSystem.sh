@@ -27,6 +27,7 @@ function launch() {
 
   DemoControl.rb ${enableSerial} -s -c $1 \
     --tpc `hostname`,${LBNEARTDAQ_BR_PORT[0]},0 \
+    --tpc `hostname`,${LBNEARTDAQ_BR_PORT[1]},1 \
     --eb `hostname`,${LBNEARTDAQ_EB_PORT[0]} \
     --eb `hostname`,${LBNEARTDAQ_EB_PORT[1]} \
     --ag `hostname`,${LBNEARTDAQ_AG_PORT[0]},1 \

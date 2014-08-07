@@ -5,12 +5,12 @@
    
  # RCE client connection parameters
  rce_client_host_addr: lbnedaq3 
- rce_client_host_port: 9999
+ rce_client_host_port: 9992
  rce_client_timeout_usecs: 500000
    
  # RCE emulator configuration parameters 
  rce_data_dest_host: '10.0.1.2'
- rce_data_dest_port: 8989  
+ rce_data_dest_port: 8992  
  rce_data_num_millislices: 0    # 0=Run until stopped
  rce_data_num_microslices: 100
  rce_data_frag_rate: 1000.0
@@ -19,7 +19,7 @@
  rce_data_adc_sigma: 100.0
  
  # Port to receive data from RCE on  
- receive_port: 8989
+ receive_port: 8992
  
  # Receiver parameters  
  receiver_debug_level: 1
