@@ -46,8 +46,8 @@ lbne::SSP::SSP(fhicl::ParameterSet const & ps)
   interface_type_(ps.get<unsigned int>("interface_type",0) ?
 		  SSPDAQ::DeviceManager::kUSB : SSPDAQ::DeviceManager::kEthernet)
 {
-
-  device_interface_=new SSPDAQ::DeviceInterface(interface_type_,board_id_);
+  //Awful hack to get two devices to work together for now
+  device_interface_=new SSPDAQ::DeviceInterface(interface_type_,0);//board_id_);
   device_interface_->Initialize();
 }
 
@@ -72,8 +72,9 @@ bool lbne::SSP::getNext_(artdaq::FragmentPtrs & frags) {
   metadata.daqHeader=eventPacket.header;
 
   std::cout<<"Header: "<<metadata.daqHeader.header<<std::endl;				// 0xAAAAAAAA
+  std::cout<<"Board Id: "<<board_id_<<std::endl;
   std::cout<<"triggerID: "<<metadata.daqHeader.triggerID<<std::endl;				// 0xAAAAAAAA
-  std::cout<<"timestamp: "<<metadata.daqHeader.timestamp[1]<<std::endl;				// 0xAAAAAAAA
+  std::cout<<"timestamp: "<<metadata.daqHeader.timestamp[0]<<metadata.daqHeader.timestamp[1]<<std::endl;				// 0xAAAAAAAA
   std::cout<<"length: "<<metadata.daqHeader.length<<std::endl;				// 0xAAAAAAAA
 
 
