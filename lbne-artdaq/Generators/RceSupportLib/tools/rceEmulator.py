@@ -184,7 +184,7 @@ class RceCommandParser(object):
         reply = ""
         print "Got PING command", args
 
-        return cmd_ok
+        return cmd_ok, reply
 
     def set_cmd(self, args):
 
