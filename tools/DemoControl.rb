@@ -543,7 +543,7 @@ class SystemControl
     totaltoy1s = 0
     totaltoy2s = 0
     totalTpcs = 0
-    TotalSSPs = 0
+    totalSSPs = 0
 	
     @options.toys.each do |proc|
       case proc.kind
@@ -631,6 +631,7 @@ class SystemControl
       currentTime = DateTime.now.strftime("%Y/%m/%d %H:%M:%S")
       puts "%s: Sending the INIT command to %s:%d." %
         [currentTime, proc.host, proc.port]
+      sleep(10)
       threads << Thread.new() do
         xmlrpcClient = XMLRPC::Client.new(proc.host, "/RPC2",
                                           proc.port)

@@ -81,9 +81,11 @@ void SSPDAQ::DeviceInterface::Configure(){
   const unsigned int baseline_delay	= 5;
   const unsigned int trigger_config	= 0x00000000;
 
-  const unsigned int	chan_config[nChannels] = 
+  /*  const unsigned int	chan_config[nChannels] = 
     {
-      0x00F0E061,		// configure channel #0 in a slow timestamp triggered mode
+      //      0x00F0E061,		// configure channel #0 in a slow timestamp triggered mode
+      0x00005001,               // put channel #0 into external trigger mode
+      //0x80F00801,               //put channel #0 into internal led trigger mode
       0x00000000,		// disable channel #1
       0x00000000,		// disable channel #2
       0x00000000,		// disable channel #3
@@ -95,7 +97,25 @@ void SSPDAQ::DeviceInterface::Configure(){
       0x00000000,		// disable channel #9
       0x00000000,		// disable channel #10
       0x00000000,		// disable channel #11
-    };
+      };*/
+
+  const unsigned int	chan_config[nChannels] = 
+    {
+      //      0x00F0E061,		// configure channel #0 in a slow timestamp triggered mode
+      0x00006001,               // put channel #0 into external trigger mode
+      //0x80F00801,               //put channel #0 into internal led trigger mode
+      0x00006001,               // put channel #0 into external trigger mode
+      0x00006001,               // put channel #0 into external trigger mode
+      0x00006001,               // put channel #0 into external trigger mode
+      0x00006001,               // put channel #0 into external trigger mode
+      0x00006001,               // put channel #0 into external trigger mode
+      0x00006001,               // put channel #0 into external trigger mode
+      0x00006001,               // put channel #0 into external trigger mode
+      0x00006001,               // put channel #0 into external trigger mode
+      0x00006001,               // put channel #0 into external trigger mode
+      0x00006001,               // put channel #0 into external trigger mode
+      0x00006001,               // put channel #0 into external trigger mode
+      };
 
   //	Channel Configuration Bit Descriptions
   //	31		cfd_enable
@@ -117,6 +137,12 @@ void SSPDAQ::DeviceInterface::Configure(){
 
   unsigned int i = 0;
   unsigned int data[nChannels];
+
+
+  //Set clock source to NOvA clock
+  fDevice->DeviceWrite(0x80000520,0x13);
+  //Set front panel to active low
+  fDevice->DeviceWrite(0x80000408,0x1101);
 
   fDevice->DeviceWrite(lbneReg.c2cControl, 0x00000007);
   fDevice->DeviceWrite(lbneReg.clockControl, 0x00000001);
@@ -197,7 +223,8 @@ void SSPDAQ::DeviceInterface::GetEvent(EventPacket& event){
   unsigned int skippedWords=0;
 
   //Find first word in event header (0xAAAAAAAA)
-  while(tEnd-tStart<2){
+  //Currently wait forever for event to show up
+  while(true){
     fDevice->DeviceReceive(data,1);
 
     if (data.size()!=0&&data[0]==0xAAAAAAAA){
