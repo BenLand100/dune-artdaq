@@ -23,3 +23,22 @@ simple_plugin(ToyDump "module")
 
 # Subdirectories.
 add_subdirectory(DQM)
+
+
+simple_plugin(LbneArtdaqBuildInfo "module"
+  artdaq_DAQdata
+  lbne-artdaq_Version
+  lbne-raw-data_Version
+  artdaq-core_Data
+  ${MF_MESSAGELOGGER}
+  ${FHICLCPP}
+  ${CETLIB}
+)
+
+simple_plugin(LbneArtdaqPrintVersionInfo "module"
+  artdaq_DAQdata
+  ${MF_MESSAGELOGGER}
+  ${FHICLCPP}
+  ${CETLIB}
+)
+

@@ -1,0 +1,14 @@
+#include "lbne-artdaq/Version/GetReleaseVersion.h"
+
+namespace lbne {
+
+  std::string const & getReleaseVersion() {
+    static std::string const releaseVersion("@version@");
+    return releaseVersion;
+  }
+
+  std::string const & getBuildDateTime() {
+    static std::string const buildDateTime("@utcDateTime@");
+    return buildDateTime;
+  }
+}

@@ -2,7 +2,7 @@
 #  about the FHiCL language, please look at
 #  cdcvs.fnal.gov/redmine/documents/327 , the "FHiCL Quick Start Guide"
 
-events_to_generate: 10
+events_to_generate: 2
 run_number: 101
 
 fragment_receiver: {
@@ -71,10 +71,28 @@ physics:
 
   }
 
+  producers:
+  {
+   artdaqBuildInfo:
+    {
+      module_type: ArtdaqBuildInfo
+    }
+
+    lbneArtdaqBuildInfo:
+    {
+     module_type: LbneArtdaqBuildInfo
+    }
+  }   
+
+
+  p: [ artdaqBuildInfo, lbneArtdaqBuildInfo ] 
+
   a1: [ toyDump ]
   a2: [ app, wf ]
-#  e1: [ out1 ]
-  end_paths: [ a1, a2 ]
+
+  e1: [ out1, rootout ]
+
+  end_paths: [ p, a1, e1 ]
 }
 
 outputs:
@@ -84,6 +102,14 @@ outputs:
     module_type: FileDumperOutput
     wantProductFriendlyClassName: true
   }
+
+  rootout:
+  {
+    module_type: RootOutput
+    fileName: "driver.root"
+    compressionLevel: 0
+  }
+
 }
 
 source:

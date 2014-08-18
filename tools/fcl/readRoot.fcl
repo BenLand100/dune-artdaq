@@ -1,0 +1,110 @@
+# FHiCL document used to run the "driver" executable. To learn more
+#  about the FHiCL language, please look at
+#  cdcvs.fnal.gov/redmine/documents/327 , the "FHiCL Quick Start Guide"
+
+
+######################################################################
+# The ART code
+######################################################################
+
+physics:
+{
+  analyzers:
+  {
+  
+   # # n.b. if you wish to generate more than one fragment per event, toyDump should be disabled
+
+   #   toyDump:
+   #   {
+   #     module_type: ToyDump
+   #     raw_data_label: daq
+   #     frag_type: @local::fragment_receiver.fragment_type
+   #     num_adcs_to_show: 10   # Obviously this should be no more than ADC counts per fragment
+   #   }
+
+   #   # A RootApplication module is needed for the WFViewer module's graphics capabilities
+
+   #   app: {
+   #   module_type: RootApplication
+   #   force_new: true
+   #   }
+
+
+   #  wf: {
+   #   module_type: WFViewer
+
+   #   # Make sure there are as many fragment type labels as there are fragment IDs!
+
+   #   fragment_ids: @local::fragment_receiver.fragment_ids
+   #    fragment_type_labels: [ @local::fragment_receiver.fragment_type ]
+   #   prescale: 1
+   #   digital_sum_only: false
+   #   }
+
+#    artdaqPrintVersionInfo: {
+#     billymadison: {
+     artdaqBuildInfo: {
+       module_type: PrintVersionInfo
+
+       artdaq_module_label: artdaqBuildInfo
+       artdaq_core_module_label: artdaqBuildInfo
+       artdaq_core_instance_label: buildinfoArtdaqCore
+       artdaq_instance_label: buildinfoArtdaq
+    }
+
+    lbneArtdaqBuildInfo: {
+       module_type: LbneArtdaqPrintVersionInfo
+
+       lbne_artdaq_module_label: lbneArtdaqBuildInfo
+       lbne_raw_data_module_label: lbneArtdaqBuildInfo
+
+       lbne_artdaq_instance_label: buildinfoLbneArtdaq
+       lbne_raw_data_instance_label: buildinfoLbneRawData
+
+    }
+
+  }
+
+  producers:
+  {
+#   artdaqBuildInfo:
+#    {
+#      module_type: ArtdaqBuildInfo
+#    }
+
+#    lbneartdaqBuildInfo:
+#    {
+#     module_type: lbneartdaqBuildInfo
+#    }
+  }   
+
+
+#  a1: [ toyDump ]
+#  a2: [ app, wf ]
+#  a3: [ artdaqPrintVersionInfo ]
+  a3: [ artdaqBuildInfo, lbneArtdaqBuildInfo ]
+  e1: [ out1 ]
+  end_paths: [ e1,a3 ]
+}
+
+outputs:
+{
+  out1:
+  {
+    module_type: FileDumperOutput
+    wantProductFriendlyClassName: true
+  }
+
+
+}
+
+source:
+{
+module_type: RootInput
+fileNames: [ "driver.root" ]
+}
+
+process_name: readRoot
+
+
+
