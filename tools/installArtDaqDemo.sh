@@ -39,12 +39,35 @@ eval "set -- $args \"\$@\""; unset args aa
 
 test -n "${do_help-}" -o $# -ne 2 && echo "$USAGE" && exit
 
+
 products_dir=`cd "$1" >/dev/null;pwd`
 lbne_artdaq_dir=`cd "$2" >/dev/null;pwd`
 demo_dir=`dirname "$lbne_artdaq_dir"`
 
+export CETPKG_INSTALL=$products_dir
+export CETPKG_J=16
+
+test -d "$demo_dir/build_artdaq"      || mkdir "$demo_dir/build_artdaq"  # This is where we will build artdaq
 test -d "$demo_dir/build_lbne-raw-data"      || mkdir "$demo_dir/build_lbne-raw-data"  # This is where we will build lbne-raw-data
 test -d "$demo_dir/build_lbne-artdaq" || mkdir "$demo_dir/build_lbne-artdaq"  # This is where we will build lbne-artdaq
+
+# Check out and build artdaq on its develop branch, and install it
+
+test -d artdaq || git clone ssh://p-artdaq@cdcvs.fnal.gov/cvs/projects/artdaq
+cd artdaq
+git fetch origin
+git checkout develop
+cd ../build_artdaq
+echo IN $PWD: about to . ../artdaq/ups/setup_for_development
+. $products_dir/setup
+. ../artdaq/ups/setup_for_development -p e5 eth
+echo FINISHED ../artdaq/ups/setup_for_development
+
+buildtool -i
+cd ..
+
+
+# Check out and build lbne-raw-data on its master branch, and install it
 
 test -d lbne-raw-data || git clone ssh://p-lbne-raw-data@cdcvs.fnal.gov/cvs/projects/lbne-raw-data
 cd lbne-raw-data
@@ -55,9 +78,10 @@ echo IN $PWD: about to . ../lbne-raw-data/ups/setup_for_development
 . $products_dir/setup
 . ../lbne-raw-data/ups/setup_for_development -p e5 eth
 echo FINISHED ../lbne-raw-data/ups/setup_for_development
-export CETPKG_INSTALL=$products_dir
-export CETPKG_J=16
+
 buildtool -i
+
+
 
 
 cd $demo_dir >/dev/null
