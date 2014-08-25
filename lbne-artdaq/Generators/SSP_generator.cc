@@ -3,9 +3,9 @@
 #include "art/Utilities/Exception.h"
 #include "artdaq/Application/GeneratorMacros.hh"
 #include "cetlib/exception.h"
-#include "lbne-artdaq/Overlays/SSPFragment.hh"
-#include "lbne-artdaq/Overlays/SSPFragmentWriter.hh"
-#include "lbne-artdaq/Overlays/FragmentType.hh"
+#include "lbne-raw-data/Overlays/SSPFragment.hh"
+#include "lbne-raw-data/Overlays/SSPFragmentWriter.hh"
+#include "lbne-raw-data/Overlays/FragmentType.hh"
 #include "fhiclcpp/ParameterSet.h"
 #include "artdaq/Utilities/SimpleLookupPolicy.h"
 

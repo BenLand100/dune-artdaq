@@ -12,7 +12,7 @@
 #include "art/Framework/Services/Optional/TFileService.h"
 
 #include "art/Utilities/Exception.h"
-#include "lbne-artdaq/Overlays/SSPFragment.hh"
+#include "lbne-raw-data/Overlays/SSPFragment.hh"
 #include "artdaq-core/Data/Fragments.hh"
 #include "lbne-artdaq/Generators/anlBoard/anlTypes.h"
 
