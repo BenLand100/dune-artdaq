@@ -7,6 +7,7 @@ example: `basename $0` products lbne-artdaq --run-demo
 <demo_products>    where products were installed (products/)
 <lbne-artdaq_root> directory where lbne-artdaq was cloned into.
 --run-demo   runs the demo
+--debug      perform debug builds
 Currently this script will clone (if not already cloned) artdaq
 along side of the lbne-artdaq dir.
 Also it will create, if not already created, build directories
@@ -29,6 +30,7 @@ while [ -n "${1-}" ];do
         v*)        eval $op1chr; opt_v=`expr $opt_v + 1`;;
         x*)        eval $op1chr; set -x;;
         -run-demo) opt_run_demo=--run-demo;;
+	-debug)    opt_debug=--debug;;
         *)         echo "Unknown option -$op"; do_help=1;;
         esac
     else
@@ -51,6 +53,12 @@ test -d "$demo_dir/build_artdaq"      || mkdir "$demo_dir/build_artdaq"  # This 
 test -d "$demo_dir/build_lbne-raw-data"      || mkdir "$demo_dir/build_lbne-raw-data"  # This is where we will build lbne-raw-data
 test -d "$demo_dir/build_lbne-artdaq" || mkdir "$demo_dir/build_lbne-artdaq"  # This is where we will build lbne-artdaq
 
+if [[ -n "${opt_debug-}" ]];then
+    build_arg="d"
+else
+    build_arg="p"
+fi
+
 # Check out and build artdaq on its develop branch, and install it
 
 test -d artdaq || git clone ssh://p-artdaq@cdcvs.fnal.gov/cvs/projects/artdaq
@@ -60,7 +68,7 @@ git checkout develop
 cd ../build_artdaq
 echo IN $PWD: about to . ../artdaq/ups/setup_for_development
 . $products_dir/setup
-. ../artdaq/ups/setup_for_development -p e5 eth
+. ../artdaq/ups/setup_for_development -${build_arg} e5 eth
 echo FINISHED ../artdaq/ups/setup_for_development
 
 buildtool -i
@@ -76,7 +84,7 @@ git checkout develop
 cd ../build_lbne-raw-data
 echo IN $PWD: about to . ../lbne-raw-data/ups/setup_for_development
 . $products_dir/setup
-. ../lbne-raw-data/ups/setup_for_development -p e5 
+. ../lbne-raw-data/ups/setup_for_development -${build_arg} e5 
 echo FINISHED ../lbne-raw-data/ups/setup_for_development
 
 buildtool -i
@@ -104,7 +112,7 @@ if [[ ! -e ./setupLBNEARTDAQ ]]; then
 
 	echo changing directory to \$LBNEARTDAQ_BUILD
 	cd \$LBNEARTDAQ_BUILD  # note: next line adjusts PATH based one cwd
-	. \$LBNEARTDAQ_REPO/ups/setup_for_development -p e5 eth
+	. \$LBNEARTDAQ_REPO/ups/setup_for_development -${build_arg} e5 eth
 
 	EOF
     #

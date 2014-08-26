@@ -13,6 +13,10 @@
 
 
 productdir=${1}
+basequal=${2}
+build_type=${3}  # "prof" or "debug"
+
+basequal2=`echo ${basequal} | sed -e s!:eth!!g`
 
 starttime=`date`
 
@@ -24,28 +28,28 @@ cd ${productdir}
 #artdaq v1_11_00 -f Linux64bit+2.6-2.12 -z ${productdir} -q e5:eth:prof
 
 prods="\
-artdaq_core v1_02_01 -f Linux64bit+2.6-2.12 -z ${productdir} -q e5:prof
-art v1_10_00b -f Linux64bit+2.6-2.12 -z ${productdir} -q e5:prof
-boost v1_55_0 -f Linux64bit+2.6-2.12 -z ${productdir} -q e5:prof
-cetlib v1_06_02 -f Linux64bit+2.6-2.12 -z ${productdir} -q e5:prof
+artdaq_core v1_02_01 -f Linux64bit+2.6-2.12 -z ${productdir} -q ${basequal2}:${build_type}
+art v1_10_00b -f Linux64bit+2.6-2.12 -z ${productdir} -q ${basequal2}:${build_type}
+boost v1_55_0 -f Linux64bit+2.6-2.12 -z ${productdir} -q ${basequal2}:${build_type}
+cetlib v1_06_02 -f Linux64bit+2.6-2.12 -z ${productdir} -q ${basequal2}:${build_type}
 cetpkgsupport v1_05_02 -f NULL -z ${productdir} -g current
-clhep v2_1_4_1 -f Linux64bit+2.6-2.12 -z ${productdir} -q e5:prof
+clhep v2_1_4_1 -f Linux64bit+2.6-2.12 -z ${productdir} -q ${basequal2}:${build_type}
 cmake v2_8_12_2 -f Linux64bit+2.6-2.12 -z ${productdir}
-cpp0x v1_04_05 -f Linux64bit+2.6-2.12 -z ${productdir} -q e5:prof
-cppunit v1_12_1 -f Linux64bit+2.6-2.12 -z ${productdir} -q e5:prof
-fftw v3_3_3 -f Linux64bit+2.6-2.12 -z ${productdir} -q prof
-fhiclcpp v2_19_05 -f Linux64bit+2.6-2.12 -z ${productdir} -q e5:prof
+cpp0x v1_04_05 -f Linux64bit+2.6-2.12 -z ${productdir} -q ${basequal2}:${build_type}
+cppunit v1_12_1 -f Linux64bit+2.6-2.12 -z ${productdir} -q ${basequal2}:${build_type}
+fftw v3_3_3 -f Linux64bit+2.6-2.12 -z ${productdir} -q ${build_type}
+fhiclcpp v2_19_05 -f Linux64bit+2.6-2.12 -z ${productdir} -q ${basequal2}:${build_type}
 gcc v4_8_2 -f Linux64bit+2.6-2.12 -z ${productdir}
 gccxml v0_9_20131217 -f Linux64bit+2.6-2.12 -z ${productdir}
-libxml2 v2_9_1 -f Linux64bit+2.6-2.12 -z ${productdir} -q prof
-messagefacility v1_11_10 -f Linux64bit+2.6-2.12 -z ${productdir} -q e5:prof
-mpich v3_1 -f Linux64bit+2.6-2.12 -z ${productdir} -q e5:prof
+libxml2 v2_9_1 -f Linux64bit+2.6-2.12 -z ${productdir} -q ${build_type}
+messagefacility v1_11_10 -f Linux64bit+2.6-2.12 -z ${productdir} -q ${basequal2}:${build_type}
+mpich v3_1 -f Linux64bit+2.6-2.12 -z ${productdir} -q ${basequal2}:${build_type}
 python v2_7_6 -f Linux64bit+2.6-2.12 -z ${productdir}
-root v5_34_18d -f Linux64bit+2.6-2.12 -z ${productdir} -q e5:prof
+root v5_34_18d -f Linux64bit+2.6-2.12 -z ${productdir} -q ${basequal2}:${build_type}
 sqlite v3_08_03_00 -f Linux64bit+2.6-2.12 -z ${productdir}
-tbb v4_2_3 -f Linux64bit+2.6-2.12 -z ${productdir} -q e5:prof
-xmlrpc_c v1_25_28 -f Linux64bit+2.6-2.12 -z ${productdir} -q e5:prof
-xrootd v3_3_4a -f Linux64bit+2.6-2.12 -z ${productdir} -q e5:prof "
+tbb v4_2_3 -f Linux64bit+2.6-2.12 -z ${productdir} -q ${basequal2}:${build_type}
+xmlrpc_c v1_25_28 -f Linux64bit+2.6-2.12 -z ${productdir} -q ${basequal2}:${build_type}
+xrootd v3_3_4a -f Linux64bit+2.6-2.12 -z ${productdir} -q ${basequal2}:${build_type} "
 
 # Some tarfiles have names that deviate from the standard "template",
 # so we can't use the download function's algorithm

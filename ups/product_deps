@@ -30,6 +30,7 @@ only_for_build	cetbuildtools	v3_13_00
 # a "-" here means the dependent product is not required by the parent and will not be setup
 qualifier		artdaq	 	 lbne_raw_data	 
 e5:eth:prof		e5:eth:prof	 e5:prof	 
+e5:eth:debug		e5:eth:debug	 e5:debug
 
 
 # Preserve tabs and formatting in emacs and vi / vim:

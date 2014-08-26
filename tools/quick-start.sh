@@ -32,6 +32,7 @@ prompted for this location.
 --run-demo    runs the demo
 -f            force download
 --skip-check  skip the free diskspace check
+--debug       use a debug build
 "
 
 # Process script arguments and options
@@ -54,6 +55,7 @@ while [ -n "${1-}" ];do
         t*|-tag)    eval $reqarg; tag=$1;    shift;;
         -skip-check)opt_skip_check=1;;
         -run-demo)  opt_run_demo=--run-demo;;
+	-debug)     opt_debug=--debug;;
         *)          echo "Unknown option -$op"; do_help=1;;
         esac
     else
@@ -118,6 +120,12 @@ if [ ! -x $git_working_path/tools/installArtDaqDemo.sh ];then
     exit 1
 fi
 
+if [[ -n "$opt_debug" ]] ; then
+    build_type="debug"
+else
+    build_type="prof"
+fi
+
 if [ ! -d products -o ! -d download ];then
     echo "Are you sure you want to download and install the artdaq demo dependent products in `pwd`? [y/n]"
     read response
@@ -129,16 +137,16 @@ if [ ! -d products -o ! -d download ];then
     test -d download || mkdir download
 
     cd download
-    $git_working_path/tools/downloadDeps.sh  ../products e5:eth prof
+    $git_working_path/tools/downloadDeps.sh  ../products e5:eth $build_type
     cd ..
 elif [ -n "${opt_force-}" ];then
     cd download
-    $git_working_path/tools/downloadDeps.sh  ../products e5:eth prof
+    $git_working_path/tools/downloadDeps.sh  ../products e5:eth $build_type
     cd ..
 fi
 
 
-$git_working_path/tools/installArtDaqDemo.sh products $git_working_path ${opt_run_demo-}
+$git_working_path/tools/installArtDaqDemo.sh products $git_working_path ${opt_run_demo-} ${opt_debug-}
 
 endtime=`date`
 
