@@ -50,8 +50,6 @@ find_ups_boost( v1_50_0 filesystem
                         unit_test_framework
  )
 
-cet_check_gcc()
-
 # have to make sure cmake doesn't select the system libraries
 # define libsigc
 cet_find_library( SIGC    NAMES sigc-2.0  PATHS ENV LIBSIGCPP_LIB NO_DEFAULT_PATH )
