@@ -72,11 +72,11 @@ cd ..
 test -d lbne-raw-data || git clone ssh://p-lbne-raw-data@cdcvs.fnal.gov/cvs/projects/lbne-raw-data
 cd lbne-raw-data
 git fetch origin
-git checkout master
+git checkout develop
 cd ../build_lbne-raw-data
 echo IN $PWD: about to . ../lbne-raw-data/ups/setup_for_development
 . $products_dir/setup
-. ../lbne-raw-data/ups/setup_for_development -p e5 eth
+. ../lbne-raw-data/ups/setup_for_development -p e5 
 echo FINISHED ../lbne-raw-data/ups/setup_for_development
 
 buildtool -i
