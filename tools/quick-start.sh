@@ -120,7 +120,7 @@ if [ ! -x $git_working_path/tools/installArtDaqDemo.sh ];then
     exit 1
 fi
 
-if [[ -n "$opt_debug" ]] ; then
+if [[ -n "${opt_debug:-}" ]] ; then
     build_type="debug"
 else
     build_type="prof"

@@ -53,7 +53,7 @@ test -d "$demo_dir/build_artdaq"      || mkdir "$demo_dir/build_artdaq"  # This 
 test -d "$demo_dir/build_lbne-raw-data"      || mkdir "$demo_dir/build_lbne-raw-data"  # This is where we will build lbne-raw-data
 test -d "$demo_dir/build_lbne-artdaq" || mkdir "$demo_dir/build_lbne-artdaq"  # This is where we will build lbne-artdaq
 
-if [[ -n "${opt_debug-}" ]];then
+if [[ -n "${opt_debug:-}" ]];then
     build_arg="d"
 else
     build_arg="p"
