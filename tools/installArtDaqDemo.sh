@@ -71,7 +71,7 @@ else
 fi
 cd artdaq
 git fetch origin
-git checkout develop
+git checkout v1_11_00
 cd ../build_artdaq
 echo IN $PWD: about to . ../artdaq/ups/setup_for_development
 . $products_dir/setup
