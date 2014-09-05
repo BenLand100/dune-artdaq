@@ -6,8 +6,10 @@ USAGE="\
 example: `basename $0` products lbne-artdaq --run-demo
 <demo_products>    where products were installed (products/)
 <lbne-artdaq_root> directory where lbne-artdaq was cloned into.
---run-demo   runs the demo
---debug      perform debug builds
+--run-demo                       runs the demo
+--debug                          perform debug builds
+--not-lbne-raw-data-developer    checkout lbne-raw-data using read-only http
+--not-artdaq-developer           checkout artdaq using read-only http
 Currently this script will clone (if not already cloned) artdaq
 along side of the lbne-artdaq dir.
 Also it will create, if not already created, build directories
@@ -31,6 +33,8 @@ while [ -n "${1-}" ];do
         x*)        eval $op1chr; set -x;;
         -run-demo) opt_run_demo=--run-demo;;
 	-debug)    opt_debug=--debug;;
+        -not-lbne-raw-data-developer)  opt_http_download_lbne_raw_data=--not-lbne-raw-data-developer;;
+        -not-artdaq-developer)         opt_http_download_artdaq=--not-artdaq-developer;;
         *)         echo "Unknown option -$op"; do_help=1;;
         esac
     else
@@ -60,8 +64,11 @@ else
 fi
 
 # Check out and build artdaq on its develop branch, and install it
-
-test -d artdaq || git clone ssh://p-artdaq@cdcvs.fnal.gov/cvs/projects/artdaq
+if [[ -n "${opt_http_download_artdaq:-}" ]];then
+    test -d artdaq || git clone http://cdcvs.fnal.gov/projects/artdaq
+else
+    test -d artdaq || git clone ssh://p-artdaq@cdcvs.fnal.gov/cvs/projects/artdaq
+fi
 cd artdaq
 git fetch origin
 git checkout develop
@@ -76,8 +83,11 @@ cd ..
 
 
 # Check out and build lbne-raw-data on its master branch, and install it
-
-test -d lbne-raw-data || git clone ssh://p-lbne-raw-data@cdcvs.fnal.gov/cvs/projects/lbne-raw-data
+if [[ -n "${opt_http_download_lbne_raw_data:-}" ]];then
+    test -d lbne-raw-data || git clone http://cdcvs.fnal.gov/projects/lbne-raw-data
+else
+    test -d lbne-raw-data || git clone ssh://p-lbne-raw-data@cdcvs.fnal.gov/cvs/projects/lbne-raw-data
+fi
 cd lbne-raw-data
 git fetch origin
 git checkout develop

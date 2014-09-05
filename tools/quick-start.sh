@@ -29,10 +29,12 @@ examples: `basename $0` .
           `basename $0` --run-demo
 If the \"demo_root\" optional parameter is not supplied, the user will be
 prompted for this location.
---run-demo    runs the demo
--f            force download
---skip-check  skip the free diskspace check
---debug       use a debug build
+--run-demo                       runs the demo
+-f                               force download
+--skip-check                     skip the free diskspace check
+--debug                          use a debug build
+--not-lbne-raw-data-developer    checkout lbne-raw-data using read-only http
+--not-artdaq-developer           checkout artdaq using read-only http
 "
 
 # Process script arguments and options
@@ -56,6 +58,8 @@ while [ -n "${1-}" ];do
         -skip-check)opt_skip_check=1;;
         -run-demo)  opt_run_demo=--run-demo;;
 	-debug)     opt_debug=--debug;;
+	-not-lbne-raw-data-developer)  opt_http_download_lbne_raw_data=--not-lbne-raw-data-developer;;
+	-not-artdaq-developer)         opt_http_download_artdaq=--not-artdaq-developer;;
         *)          echo "Unknown option -$op"; do_help=1;;
         esac
     else
@@ -146,7 +150,7 @@ elif [ -n "${opt_force-}" ];then
 fi
 
 
-$git_working_path/tools/installArtDaqDemo.sh products $git_working_path ${opt_run_demo-} ${opt_debug-}
+$git_working_path/tools/installArtDaqDemo.sh products $git_working_path ${opt_run_demo-} ${opt_debug-} ${opt_http_download_lbne_raw_data-} ${opt_http_download_artdaq-}
 
 endtime=`date`
 
