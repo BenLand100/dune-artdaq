@@ -23,13 +23,11 @@ namespace SSPDAQ{
     //Start a run :-)
     void Start();
 
+    void GetMillislice();
+
     //Stop a run. Also resets device state and purges buffers.
     //This is called automatically by Initialize().
     void Stop();
-
-    //Get an event off the hardware buffer.
-    //Need to change this to use threading and a software buffer.
-    void GetEvent(EventPacket& event);
 
     //Relinquish control of device, which must already be stopped.
     //Allows opening hardware in another interface object if needed.
@@ -78,6 +76,19 @@ namespace SSPDAQ{
     //Holds current device state. Hopefully this matches the state of the
     //hardware itself.
     State_t fState;
+
+    //Call at Start. Will read events from device and monitor for
+    //millislice boundaries
+    void ReadEvents();
+
+    //Called by ReadEvents
+    //Get an event off the hardware buffer.
+    //Timeout after some wait period
+    void ReadEventFromDevice(EventPacket& event);
+
+    //Called by ReadEvents
+    //Build millislice from events in buffer
+    void BuildMillislice();
 
   };
   

@@ -113,28 +113,7 @@ bool lbne::SSP::getNext_(artdaq::FragmentPtrs & frags) {
   
   newfrag.resize(dataLength);
 
-  std::cout<<"dataLength (uint) calculated as "<<dataLength<<std::endl;
-  std::cout<<"header size(bytes) is "<<sizeof(SSPDAQ::EventHeader)<<std::endl;
-
-  device_interface_->GetEvent(eventPacket);
   std::copy(eventPacket.data.begin(),eventPacket.data.end(),newfrag.dataBegin());
-
-  // And generate nADCcounts ADC values ranging from 0 to max with an
-  // equal probability over the full range (a specific and perhaps
-  // not-too-physical example of how one could generate simulated
-  // data)
-
-  /*std::generate_n(newfrag.dataBegin(), nADCcounts_,
-  		  [&]() {
-  		    return static_cast<SSPFragment::adc_t>
-  		      ((*uniform_distn_)( engine_ ));
-  		  }
-  		  );
-  */
-  // Check and make sure that no ADC values in this fragment are
-  // larger than the max allowed
-
-  //newfrag.fastVerify( metadata.num_adc_bits );
 
   ev_counter_inc();
 
