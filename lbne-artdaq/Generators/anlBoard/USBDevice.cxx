@@ -204,12 +204,13 @@ int SSPDAQ::USBDevice::DevicePurgeData (void)
 	return error;
 }
 
-int SSPDAQ::USBDevice::DeviceQueueStatus (unsigned int* numBytes)
+int SSPDAQ::USBDevice::DeviceQueueStatus (unsigned int* numWords)
 {
 	int error = 0;
 	FT_STATUS ftStatus;
-	
+	unsigned int* numBytes;
 	ftStatus = FT_GetQueueStatus(fDataChannel.ftHandle, numBytes);
+	(*numWords)=numBytes/sizeof(unsigned int);
 	if (ftStatus != FT_OK) {
 		// Error getting Queue Status
 		error = SSPDAQ::errorDataQueue;
@@ -232,111 +233,6 @@ void SSPDAQ::USBDevice::DeviceReceive(std::vector<unsigned int>& data, unsigned 
   }
   data.assign(buf,buf+(dataReturned/sizeof(unsigned int)));
   delete[] buf;
-}
-
-
-int SSPDAQ::USBDevice::DeviceReceiveEvent(EventPacket* data, unsigned int* dataReceived)
-{
-	int error = 0;
-	unsigned int value = 0;
-	void* dataBuff = (void*)data;
-	SSPDAQ::EventPacket* event = data;
-	FT_STATUS ftStatus;
-	
-	unsigned int dataSynced	= 0;
-	unsigned int dataExpected = 4;
-	unsigned int dataReturned;
-	*dataReceived = 0;
-
-	do {
-		// Synchronize with data stream by searching for 0xAAAAAAAA
-		// NOTE: This code assumes misalignments are a complete unsigned int (4 bytes)
-		// If the device somehow gets off by 1-3 bytes, it will get stuck here! 
-		ftStatus = FT_Read(fDataChannel.ftHandle, dataBuff, dataExpected, &dataReturned);
-		if (ftStatus != FT_OK) {
-			// Error during receive
-			error = SSPDAQ::errorDataReceive;
-			break;
-		} else if (dataReturned != dataExpected) {
-			// Timeout expired - may be only way to catch certain misalignments
-			error = SSPDAQ::errorDataTimeout;
-			fDataMissing += (dataExpected - dataReturned);
-			break;
-		} else {
-			// Check for start of event
-			value = *(unsigned int*)data;
-			if (value == 0xAAAAAAAA) {
-				dataSynced = 1;
-				*dataReceived += sizeof(unsigned int);
-			} else {
-				// Throw this data away and increment counter
-				fDataLost += sizeof(unsigned int);
-			}
-		}
-
-		
-	} while (dataSynced == 0);
-
-	
-	if (error == 0) {
-		// Data stream now synced
-		// First DWORD of event header (0xAAAAAAAA) has already been read
-		dataBuff = (void*)((int64_t)data + sizeof(unsigned int));	// Advance data pointer past 0xAAAAAAAA
-		dataExpected = sizeof(EventHeader) - sizeof(unsigned int);	// Size of remaining header
-	
-		// Fetch rest of Event Header
-		ftStatus = FT_Read(fDataChannel.ftHandle, dataBuff, dataExpected, &dataReturned);
-		*dataReceived += dataReturned;
-		if (ftStatus != FT_OK) {
-			// Error during receive
-			error = SSPDAQ::errorDataReceive;
-		} else if (dataReturned != dataExpected) {
-			// Timeout expired
-			error = SSPDAQ::errorDataTimeout;
-			fDataMissing += (dataExpected - dataReturned);
-		} else {
-			// Prepare to read Event Data
-			dataBuff = (void*)((int64_t)data + sizeof(EventHeader));// Location to store waveform
-			dataExpected = (event->header.length) * sizeof(unsigned int);	// Size of packet in bytes
-			if (dataExpected < sizeof(EventHeader)) {
-				error = SSPDAQ::errorDataLength;		// Reported size of packet is smaller than a header!
-			} else {
-				dataExpected = dataExpected - sizeof(EventHeader);	// Size of waveform in bytes
-				if (dataExpected > (MAX_EVENT_DATA * sizeof (unsigned short))) {
-					error = SSPDAQ::errorDataLength;	// Reported size of waveform is too large!
-				}
-			}
-		}
-		
-
-	}
-
-	
-	if (error == 0) {
-		// Fetch Event Data
-		ftStatus = FT_Read(fDataChannel.ftHandle, dataBuff, dataExpected, &dataReturned);
-		if (ftStatus != FT_OK) {
-			// Error during receive
-			error = SSPDAQ::errorDataReceive;
-		} else if (dataReturned != dataExpected) {
-			error = SSPDAQ::errorDataTimeout;
-		}
-
-		
-		*dataReceived += dataReturned;
-	}
-	
-	return error;
-}
-
-unsigned int SSPDAQ::USBDevice::DeviceLostData (void)
-{
-	return fDataLost;
-}
-
-unsigned int SSPDAQ::USBDevice::DeviceMissingData (void)
-{
-	return fDataMissing;
 }
 
 //==============================================================================

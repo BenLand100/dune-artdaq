@@ -44,17 +44,10 @@ class Device{
   virtual int DevicePurgeData() = 0;
 
   //Get number of bytes in data queue (put into numBytes)
-  virtual int DeviceQueueStatus(unsigned int* numBytes) = 0;
+  virtual int DeviceQueueStatus(unsigned int* numWords) = 0;
 
   //Read data 
   virtual void DeviceReceive(std::vector<unsigned int>& data, unsigned int size) = 0;
-
-  //Read data 
-  virtual int DeviceReceiveEvent(EventPacket* data, unsigned int* dataReceived) = 0;
-
-  virtual unsigned int DeviceLostData() = 0;
-
-  virtual unsigned int DeviceMissingData() = 0;
 
   virtual int DeviceRead(unsigned int address, unsigned int* value) = 0;
 

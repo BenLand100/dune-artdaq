@@ -206,7 +206,105 @@ void SSPDAQ::DeviceInterface::Start(){
   fState=SSPDAQ::DeviceInterface::kRunning;
 }
 
-void SSPDAQ::DeviceInterface::GetEvent(EventPacket& event){
+void SSPDAQ::DeviceInterface::ReadEvents(){
+
+  if(fState!=kRunning){
+    SSPDAQ::Log::Warning()<<"Attempt to get data from non-running device refused!"<<std::endl;
+    return;
+  }
+  
+  unsigned long runStartTime=0;
+  unsigned long millisliceStartTime=runStartTime;
+  unsigned long millisliceLengthInTicks=10000;
+  unsigned long millisliceOverlapInTicks=100;
+  unsigned int millisliceCount=0;
+
+  std::vector<SSPDAQ::EventPacket> events_thisSlice;
+  std::vector<SSPDAQ::EventPacket> events_nextSlice;
+
+  while(!shouldStop){
+    SSPDAQ::EventPacket event;
+    
+    this->ReadEventFromDevice(event);
+    if(events.back().header.header!=0xAAAAAAAA){
+      continue;
+    }
+
+    unsigned long eventTime=*(unsigned long*(&(event.header.timestamp)));
+
+    //Event fits into the current slice
+    //Add to current slice only
+    if(eventTime<millisliceStartTime+millisliceLengthInTicks){
+      events_thisSlice.push_back(std::move(event));
+    }
+    //Event is in next slice, but in the overlap window of the current slice
+    //Add to both slices
+    else if(eventTime<millisliceStartTime+millisliceLengthInTicks+millisliceOverlapInTicks){
+      events_thisSlice.push_back(std::move(event));
+      events_nextslice.push_back(events_thisSlice.back());
+    }
+    //Event is not in overlap window of current slice
+    else{
+
+      //Build a millislice based on the existing events
+      //and swap next-slice event list into current-slice list
+      this->BuildMillislice(events_thisSlice);
+      events_thisSlice.clear();
+      std::swap(events_thisSlice,events_nextSlice);
+      millisliceStartTime+=millisliceLengthInTicks;
+      ++millisliceCount;
+
+      //Maybe current event doesn't go into next slice either...
+      while(eventTime>millisliceStartTime+milisliceLengthInTicks+millisliceOverlapInTicks){
+	//Write next millislice if it is not empty (i.e. there were some events in overlap period)
+	if(events_thisSlice.size()){
+	  this->BuildMillislice(events_thisSlice);
+	  events_thisSlice.clear();
+	}
+	//Then just write empty millislices until we get to the slice which contains this event
+	else{
+	  this->BuildEmptyMillislice();
+	}
+	++millisliceCount;
+	millisliceStartTime+=millisliceLengthInTicks;
+      }
+
+      //Start collecting events into the next non-empty slice
+      events_thisSlice.push_back(std::move(event));
+      //If this event is in overlap period put it into both slices
+      if(eventTime>millisliceStartTime+millisliceLengthInTicks){
+	events_nextslice.push_back(events_thisSlice.back());
+      }
+    }
+  }
+}
+  
+void SSPDAQ::DeviceInterface::BuildMillislice(const std::vector<EventPacket>& events){
+  
+  unsigned int dataSizeInWords=0;
+
+  for(auto ev=events.begin();ev!=events.end();++ev){
+    dataSize+=ev->header.length;
+  }
+
+  std::vector<unsigned int> sliceData(dataSize);
+
+  static unsigned int headerSizeInWords=sizeof(SSPDAQ::EventHeader)/sizeof(unsigned int);
+
+  //Concatenate all events into slice data
+  auto sliceDataPtr=sliceData.begin();
+  for(auto ev=events.begin();ev!=events.end();++ev){
+    unsigned int* headerPtr=unsigned int*(&ev->header);
+    std::copy(headerPtr,headerPtr+headerSizeInWords,sliceDataPtr);
+    sliceDataPtr+=headerSizeInWords;
+    std::copy(ev->data.begin(),ev->data.end(),sliceDataPtr);
+    sliceDataPtr+=ev->header.length-headerSizeInWords;
+  }
+  
+  fQueue.push(std::move(sliceData));
+}
+
+void SSPDAQ::DeviceInterface::ReadEventFromDevice(EventPacket& event){
   
   if(fState!=kRunning){
     SSPDAQ::Log::Warning()<<"Attempt to get data from non-running device refused!"<<std::endl;

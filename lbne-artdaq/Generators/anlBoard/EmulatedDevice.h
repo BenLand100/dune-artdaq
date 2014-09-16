@@ -1,9 +1,8 @@
-#ifndef USBDEVICE_H__
-#define USBDEVICE_H__
+#ifndef EMULATEDDEVICE_H__
+#define EMULATEDDEVICE_H__
 
 #include "lbne-raw-data/Overlays/anlTypes.hh"
 #include "Device.h"
-#include "ftd2xx.h"
 
 #include <iostream>
 #include <iomanip>
@@ -15,15 +14,15 @@
 
 namespace SSPDAQ{
 
-class USBDevice : public Device{
+class EmulatedDevice : public Device{
 
   friend class DeviceManager;
 
  public:
 
-  USBDevice(FT_DEVICE_LIST_INFO_NODE* dataChannel, FT_DEVICE_LIST_INFO_NODE* commChannel);
+  EmulatedDevice(unsigned int deviceNumber=0);
 
-  virtual ~USBDevice(){};
+  virtual ~EmulatedDevice(){};
 
   //Implementation of base class interface
 
@@ -63,20 +62,17 @@ class USBDevice : public Device{
 
   virtual int DeviceFifoWrite(unsigned int address, unsigned int size, unsigned int* data);
 
-  //Internal functions - make public so debugging code can access them
-  int SendReceive(CtrlPacket& tx, CtrlPacket& rx, unsigned int txSize, unsigned int rxSizeExpected, unsigned int retry=retryOn);
-
-  int SendUSB(CtrlPacket& tx, unsigned int txSize);
-
-  int ReceiveUSB(CtrlPacket& rx, unsigned int rxSizeExpected);
-
-  void RxErrorPacket(CtrlPacket& rx, unsigned int status);
-
  private:
 
-  FT_DEVICE_LIST_INFO_NODE fDataChannel;
+  virtual void Open();
+  
+  void Start();
 
-  FT_DEVICE_LIST_INFO_NODE fCommChannel;
+  void Stop();
+
+  void EmulatorLoop();
+
+  unsigned int fDeviceNumber;
 
   bool isOpen;
 
@@ -84,7 +80,12 @@ class USBDevice : public Device{
 
   unsigned int fDataMissing;
 
-  virtual void Open();
+  std::unique_ptr<std::thread> fEmulatorThread;
+
+  SafeQueue<unsigned int> fEmulatedBuffer;
+
+  std::atomic<bool> fEmulatorShouldStop;
+
 };
 
 }//namespace
