@@ -27,16 +27,10 @@ add_subdirectory(DQM)
 
 simple_plugin(LbneArtdaqBuildInfo "module"
   artdaq_DAQdata
-  lbne-artdaq_Version
-  lbne-raw-data_Version
-  artdaq-core_Data
-  ${MF_MESSAGELOGGER}
-  ${FHICLCPP}
-  ${CETLIB}
-)
-
-simple_plugin(LbneArtdaqPrintVersionInfo "module"
-  artdaq_DAQdata
+  artdaq_BuildInfo
+  artdaq-core_BuildInfo
+  lbne-artdaq_BuildInfo
+  lbne-raw-data_BuildInfo
   ${MF_MESSAGELOGGER}
   ${FHICLCPP}
   ${CETLIB}

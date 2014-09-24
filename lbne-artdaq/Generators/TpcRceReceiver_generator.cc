@@ -10,7 +10,7 @@
 #include "lbne-raw-data/Overlays/MilliSliceFragmentWriter.hh"
 #include "lbne-raw-data/Overlays/FragmentType.hh"
 #include "fhiclcpp/ParameterSet.h"
-#include "artdaq/Utilities/SimpleLookupPolicy.h"
+#include "artdaq-core/Utilities/SimpleLookupPolicy.h"
 #include "messagefacility/MessageLogger/MessageLogger.h"
 
 #include <fstream>

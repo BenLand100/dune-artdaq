@@ -3,7 +3,7 @@ simple_plugin(SSP "generator"
   lbne-artdaq_Generators_anlBoard
   ${ARTDAQ_APPLICATION}
   ${ARTDAQ_DAQDATA}
-  ${ARTDAQ_UTILITIES}
+  ${ARTDAQ-CORE_UTILITIES}
   ${ART_UTILITIES}
   ${FHICLCPP} 
   ${CETLIB} 
@@ -13,7 +13,7 @@ simple_plugin(ToySimulator "generator"
   lbne-raw-data_Overlays
   ${ARTDAQ_APPLICATION}
   ${ARTDAQ_DAQDATA}
-  ${ARTDAQ_UTILITIES}
+  ${ARTDAQ-CORE_UTILITIES}
   ${ART_UTILITIES}
   ${FHICLCPP}
   ${CETLIB}
@@ -27,7 +27,7 @@ simple_plugin(TpcRceReceiver "generator"
   ${ARTDAQ-CORE_DATA}
   ${ARTDAQ_APPLICATION}
   ${ARTDAQ_DAQDATA}
-  ${ARTDAQ_UTILITIES}
+  ${ARTDAQ-CORE_UTILITIES}
   ${ART_UTILITIES}
   ${FHICLCPP}
   ${MF_MESSAGELOGGER}

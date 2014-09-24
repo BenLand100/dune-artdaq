@@ -69,7 +69,7 @@ sourcetext += <<-'EOS'
   lbne-artdaq_Overlays
   ${ARTDAQ_APPLICATION}
   ${ARTDAQ_DAQDATA}
-  ${ARTDAQ_UTILITIES}
+  ${ARTDAQ-CORE_UTILITIES}
   ${ART_UTILITIES}
   ${FHICLCPP} 
   ${CETLIB} 

@@ -97,6 +97,15 @@ if [ "$branch" != '(no branch)' ];then
     fi
 fi
 
+# JCF, 9/24/14
+
+# Now that we've checked out the lbne-artdaq version we want, make
+# sure we know what qualifier is meant to be passed to the
+# downloadDeps.sh and installArtDaqDemo.sh scripts below
+
+defaultqual=`grep defaultqual $git_working_path/ups/product_deps | awk '{print $2}' `
+
+
 vecho() { test $opt_v -gt 0 && echo "$@"; }
 starttime=`date`
 
@@ -141,11 +150,11 @@ if [ ! -d products -o ! -d download ];then
     test -d download || mkdir download
 
     cd download
-    $git_working_path/tools/downloadDeps.sh  ../products e5:eth $build_type
+    $git_working_path/tools/downloadDeps.sh  ../products $defaultqual $build_type
     cd ..
 elif [ -n "${opt_force-}" ];then
     cd download
-    $git_working_path/tools/downloadDeps.sh  ../products e5:eth $build_type
+    $git_working_path/tools/downloadDeps.sh  ../products $defaultqual $build_type
     cd ..
 fi
 

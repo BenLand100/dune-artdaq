@@ -1,0 +1,19 @@
+#include "lbne-artdaq/BuildInfo/GetPackageBuildInfo.hh"
+
+#include <string>
+
+namespace lbne {
+
+  artdaq::PackageBuildInfo GetPackageBuildInfo::getPackageBuildInfo() {
+
+    artdaq::PackageBuildInfo pkg;
+
+    pkg.setPackageName("lbne-artdaq");
+    pkg.setPackageVersion("@version@");
+    pkg.setBuildTimestamp("@utcDateTime@");
+
+    return pkg;
+  }
+
+}
+

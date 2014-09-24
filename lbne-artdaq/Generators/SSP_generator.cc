@@ -7,7 +7,7 @@
 #include "lbne-raw-data/Overlays/SSPFragmentWriter.hh"
 #include "lbne-raw-data/Overlays/FragmentType.hh"
 #include "fhiclcpp/ParameterSet.h"
-#include "artdaq/Utilities/SimpleLookupPolicy.h"
+#include "artdaq-core/Utilities/SimpleLookupPolicy.h"
 
 #include <fstream>
 #include <iomanip>

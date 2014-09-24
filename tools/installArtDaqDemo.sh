@@ -53,9 +53,10 @@ demo_dir=`dirname "$lbne_artdaq_dir"`
 export CETPKG_INSTALL=$products_dir
 export CETPKG_J=16
 
-test -d "$demo_dir/build_artdaq"      || mkdir "$demo_dir/build_artdaq"  # This is where we will build artdaq
-test -d "$demo_dir/build_lbne-raw-data"      || mkdir "$demo_dir/build_lbne-raw-data"  # This is where we will build lbne-raw-data
-test -d "$demo_dir/build_lbne-artdaq" || mkdir "$demo_dir/build_lbne-artdaq"  # This is where we will build lbne-artdaq
+test -d "$demo_dir/build_artdaq-core" || mkdir "$demo_dir/build_artdaq-core" 
+test -d "$demo_dir/build_lbne-raw-data"      || mkdir "$demo_dir/build_lbne-raw-data" 
+test -d "$demo_dir/build_artdaq"      || mkdir "$demo_dir/build_artdaq"  
+test -d "$demo_dir/build_lbne-artdaq" || mkdir "$demo_dir/build_lbne-artdaq" 
 
 if [[ -n "${opt_debug:-}" ]];then
     build_arg="d"
@@ -63,26 +64,25 @@ else
     build_arg="p"
 fi
 
-# Check out and build artdaq on its develop branch, and install it
-if [[ -n "${opt_http_download_artdaq:-}" ]];then
-    test -d artdaq || git clone http://cdcvs.fnal.gov/projects/artdaq
-else
-    test -d artdaq || git clone ssh://p-artdaq@cdcvs.fnal.gov/cvs/projects/artdaq
-fi
-cd artdaq
-git fetch origin
-git checkout v1_11_00
-cd ../build_artdaq
-echo IN $PWD: about to . ../artdaq/ups/setup_for_development
-. $products_dir/setup
-. ../artdaq/ups/setup_for_development -${build_arg} e5 eth
-echo FINISHED ../artdaq/ups/setup_for_development
+# Commit 52d6e7b4527dce8a86b7bcaf5970d45013373b89, from 9/15/14,
+# updates artdaq core v1_04_00 s.t. it includes the BuildInfo template
 
+test -d artdaq-core || git clone http://cdcvs.fnal.gov/projects/artdaq-core
+cd artdaq-core
+git fetch origin
+git checkout 52d6e7b4527dce8a86b7bcaf5970d45013373b89
+cd ../build_artdaq-core
+echo IN $PWD: about to . ../artdaq-core/ups/setup_for_development
+. $products_dir/setup
+. ../artdaq-core/ups/setup_for_development -${build_arg} e5 s3
+echo FINISHED ../artdaq-core/ups/setup_for_development
 buildtool -i
 cd ..
 
+# lbne-raw-data commit dd6081aa8b9db0b0b5b3bd879ef03871f00a5c8c, from
+# 9/16/14, compiles with the e5:s3 option (against artdaq-core
+# v1_04_00, etc.), and adds a traits class supplying build info
 
-# Check out and build lbne-raw-data on its master branch, and install it
 if [[ -n "${opt_http_download_lbne_raw_data:-}" ]];then
     test -d lbne-raw-data || git clone http://cdcvs.fnal.gov/projects/lbne-raw-data
 else
@@ -90,14 +90,32 @@ else
 fi
 cd lbne-raw-data
 git fetch origin
-git checkout develop
+git checkout dd6081aa8b9db0b0b5b3bd879ef03871f00a5c8c
 cd ../build_lbne-raw-data
 echo IN $PWD: about to . ../lbne-raw-data/ups/setup_for_development
 . $products_dir/setup
-. ../lbne-raw-data/ups/setup_for_development -${build_arg} e5 
+. ../lbne-raw-data/ups/setup_for_development -${build_arg} e5 s3
 echo FINISHED ../lbne-raw-data/ups/setup_for_development
-
 buildtool -i
+cd ..
+
+# artdaq commit f0f0c5eb950f5a53e06aee564975357c4bc5da7e, from
+# 9/16/14, includes both the merging of the buildinfo branch and the
+# timestamps branch
+
+test -d artdaq || git clone http://cdcvs.fnal.gov/projects/artdaq
+cd artdaq
+git fetch origin
+git checkout f0f0c5eb950f5a53e06aee564975357c4bc5da7e
+cd ../build_artdaq
+echo IN $PWD: about to . ../artdaq/ups/setup_for_development
+. $products_dir/setup
+. ../artdaq/ups/setup_for_development -${build_arg} e5 s3 eth
+echo FINISHED ../artdaq/ups/setup_for_development
+buildtool -i
+cd ..
+
+
 
 
 
@@ -122,7 +140,7 @@ if [[ ! -e ./setupLBNEARTDAQ ]]; then
 
 	echo changing directory to \$LBNEARTDAQ_BUILD
 	cd \$LBNEARTDAQ_BUILD  # note: next line adjusts PATH based one cwd
-	. \$LBNEARTDAQ_REPO/ups/setup_for_development -${build_arg} e5 eth
+	. \$LBNEARTDAQ_REPO/ups/setup_for_development -${build_arg} e5 s3 eth
 
 	EOF
     #

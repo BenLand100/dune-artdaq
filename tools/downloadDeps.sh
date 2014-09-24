@@ -16,25 +16,21 @@ productdir=${1}
 basequal=${2}
 build_type=${3}  # "prof" or "debug"
 
-basequal2=`echo ${basequal} | sed -e s!:eth!!g`
+basequal2=`echo ${basequal} | sed -r '/.*:.*:.*/s!:s3:eth!!' | sed -r 's!:eth!!'`
+basequal3=`echo ${basequal} | sed -e s!:eth!!g`
 
 starttime=`date`
 
 cd ${productdir}
 
-# Some packages (lbne_raw_data) aren't yet on oink; we'll need to
-# manually download them elsewhere 
-
-#artdaq v1_11_00 -f Linux64bit+2.6-2.12 -z ${productdir} -q e5:eth:prof
 
 prods="\
-artdaq_core v1_02_01 -f Linux64bit+2.6-2.12 -z ${productdir} -q ${basequal2}:${build_type}
 art v1_10_00b -f Linux64bit+2.6-2.12 -z ${productdir} -q ${basequal2}:${build_type}
 boost v1_55_0 -f Linux64bit+2.6-2.12 -z ${productdir} -q ${basequal2}:${build_type}
 cetlib v1_06_02 -f Linux64bit+2.6-2.12 -z ${productdir} -q ${basequal2}:${build_type}
 cetpkgsupport v1_05_02 -f NULL -z ${productdir} -g current
 clhep v2_1_4_1 -f Linux64bit+2.6-2.12 -z ${productdir} -q ${basequal2}:${build_type}
-cmake v2_8_12_2 -f Linux64bit+2.6-2.12 -z ${productdir}
+cmake v3_0_1 -f Linux64bit+2.6-2.12 -z ${productdir}
 cpp0x v1_04_05 -f Linux64bit+2.6-2.12 -z ${productdir} -q ${basequal2}:${build_type}
 cppunit v1_12_1 -f Linux64bit+2.6-2.12 -z ${productdir} -q ${basequal2}:${build_type}
 fftw v3_3_3 -f Linux64bit+2.6-2.12 -z ${productdir} -q ${build_type}
@@ -55,10 +51,10 @@ xrootd v3_3_4a -f Linux64bit+2.6-2.12 -z ${productdir} -q ${basequal2}:${build_t
 # so we can't use the download function's algorithm
 
 prods2="\
-cetbuildtools/cetbuildtools-3.13.00-noarch.tar.bz2
-smc_compiler/smc_compiler-6.1.0-noarch.tar.bz2
-TRACE/TRACE-3.03.03-slf6.tar.bz2
-ups/ups-upd-5.0.5-slf6-x86_64.tar.bz2"
+cetbuildtools/v4_01_04/cetbuildtools-4.01.04-noarch.tar.bz2
+smc_compiler/v6_1_0/smc_compiler-6.1.0-noarch.tar.bz2
+TRACE/v3_03_03/TRACE-3.03.03-slf6.tar.bz2
+ups/v5_0_5/ups-upd-5.0.5-slf6-x86_64.tar.bz2"
 
 # $1=prod_area $2="prod_lines"
 
@@ -77,9 +73,9 @@ download()
          NULL)                ff=noarch;;
          *)   echo ERROR: unknown flavor $ff; return;;
          esac
-         vv=`echo $vv | sed -e 's/^v//;s/_/./g'`
+         vvdot=`echo $vv | sed -e 's/^v//;s/_/./g'`
          qq=`echo $qq | sed -e 's/:/-/g'`
-         url=http://oink.fnal.gov/distro/packages/$pp/$pp-$vv-${ff}${qq:+-$qq}.tar.bz2
+         url=http://scisoft.fnal.gov/scisoft/packages/$pp/$vv/$pp-$vvdot-${ff}${qq:+-$qq}.tar.bz2
          echo url=$url
          wget -O- $url 2>/dev/null | tar xjf -
      done
@@ -88,7 +84,7 @@ download()
 cd ${productdir}
 
 for packagestring in `echo $prods2 | tr " " "\n"`; do
-    url=http://oink.fnal.gov/distro/packages/$packagestring
+    url=http://scisoft.fnal.gov/scisoft/packages/$packagestring
     echo url=$url
     wget -O- $url 2>/dev/null | tar xjf -
 done
