@@ -79,7 +79,7 @@ echo FINISHED ../artdaq-core/ups/setup_for_development
 buildtool -i
 cd ..
 
-# lbne-raw-data commit dd6081aa8b9db0b0b5b3bd879ef03871f00a5c8c, from
+# lbne-raw-data commit e9dbaa11d248033fbf75f22e162a3ab0eaa0dfb6, from
 # 9/16/14, compiles with the e5:s3 option (against artdaq-core
 # v1_04_00, etc.), and adds a traits class supplying build info
 
@@ -90,7 +90,7 @@ else
 fi
 cd lbne-raw-data
 git fetch origin
-git checkout dd6081aa8b9db0b0b5b3bd879ef03871f00a5c8c
+git checkout de9dbaa11d248033fbf75f22e162a3ab0eaa0dfb6
 cd ../build_lbne-raw-data
 echo IN $PWD: about to . ../lbne-raw-data/ups/setup_for_development
 . $products_dir/setup
