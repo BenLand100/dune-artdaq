@@ -1,7 +1,7 @@
 # The parent line must be the first non-comment line in the file
 # This line defines the product name and version
-parent lbne_artdaq	v0_04_00
-defaultqual	e5:s3:eth
+parent lbne_artdaq	v0_05_00
+defaultqual	e6:s5:eth
 
 # These optional lines define the installed directories where
 # headers, libraries, and executables will be found
@@ -17,17 +17,19 @@ bindir      fq_dir      bin
 
 #
 product		version		optional
-gcc		v4_8_2
-artdaq		v1_12_02
-lbne_raw_data 	v0_00_04
+gcc		v4_9_1
+artdaq		v1_12_03
+lbne_raw_data 	v0_00_05
 
-cetbuildtools		v4_01_04	-	only_for_build
+cetbuildtools		v4_02_02	-	only_for_build
 smc_compiler            v6_1_0          -       only_for_build
 
 # e2  - with gcc 4.7.1 and -std=c++11
 # -nq- here means there is no qualifier
 # a "-" here means the dependent product is not required by the parent and will not be setup
 qualifier			artdaq	 	 	lbne_raw_data	 
+e6:s5:eth:prof		e6:s5:eth:prof	 e6:s5:prof	 
+e6:s5:eth:debug		e6:s5:eth:debug	 e6:s5:debug
 e5:s3:eth:prof		e5:s3:eth:prof	 e5:s3:prof	 
 e5:s3:eth:debug		e5:s3:eth:debug	 e5:s3:debug
 e5:eth:prof		e5:eth:prof	 e5:prof

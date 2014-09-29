@@ -18,21 +18,28 @@
 
 namespace {
 
-  size_t typeToADC(lbne::detail::FragmentType type)
-  {
-    switch (type) {
-    case lbne::detail::FragmentType::PHOTON:
-      return 8*sizeof(unsigned int);
-      break;
-    default:
-      throw art::Exception(art::errors::Configuration)
-        << "Unknown board type "
-        << type
-        << " ("
-        << lbne::fragmentTypeToString(type)
-        << ").\n";
-    };
-  }
+  // JCF, 9/29/14
+
+  // gcc 4.9.1, as opposed to gcc 4.8.2, gives an error if a function
+  // is defined but not used; hence I've commented out typeToADC() for
+  // now
+
+
+  // size_t typeToADC(lbne::detail::FragmentType type)
+  // {
+  //   switch (type) {
+  //   case lbne::detail::FragmentType::PHOTON:
+  //     return 8*sizeof(unsigned int);
+  //     break;
+  //   default:
+  //     throw art::Exception(art::errors::Configuration)
+  //       << "Unknown board type "
+  //       << type
+  //       << " ("
+  //       << lbne::fragmentTypeToString(type)
+  //       << ").\n";
+  //   };
+  // }
 
 }
 
