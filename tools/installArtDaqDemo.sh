@@ -64,53 +64,58 @@ else
     build_arg="p"
 fi
 
+# Commit 52d6e7b4527dce8a86b7bcaf5970d45013373b89, from 9/15/14,
+# updates artdaq core v1_04_00 s.t. it includes the BuildInfo template
+
 test -d artdaq-core || git clone http://cdcvs.fnal.gov/projects/artdaq-core
 cd artdaq-core
 git fetch origin
-git checkout v1_04_05
+git checkout 52d6e7b4527dce8a86b7bcaf5970d45013373b89
 cd ../build_artdaq-core
 echo IN $PWD: about to . ../artdaq-core/ups/setup_for_development
 . $products_dir/setup
-. ../artdaq-core/ups/setup_for_development -${build_arg} e6 s5
+. ../artdaq-core/ups/setup_for_development -${build_arg} e5 s3
 echo FINISHED ../artdaq-core/ups/setup_for_development
 buildtool -i
 cd ..
 
-# # lbne-raw-data commit 65aeacaa49fd2858c048a78bacf5018e46770494, from
-# # 9/16/14, compiles with the e5:s3 option (against artdaq-core
-# # v1_04_00, etc.), and adds a traits class supplying build info
+# lbne-raw-data commit 65aeacaa49fd2858c048a78bacf5018e46770494, from
+# 9/16/14, compiles with the e5:s3 option (against artdaq-core
+# v1_04_00, etc.), and adds a traits class supplying build info
 
-# if [[ -n "${opt_http_download_lbne_raw_data:-}" ]];then
-#     test -d lbne-raw-data || git clone http://cdcvs.fnal.gov/projects/lbne-raw-data
-# else
-#     test -d lbne-raw-data || git clone ssh://p-lbne-raw-data@cdcvs.fnal.gov/cvs/projects/lbne-raw-data
-# fi
-# cd lbne-raw-data
-# git fetch origin
-# git checkout 65aeacaa49fd2858c048a78bacf5018e46770494
-# cd ../build_lbne-raw-data
-# echo IN $PWD: about to . ../lbne-raw-data/ups/setup_for_development
-# . $products_dir/setup
-# . ../lbne-raw-data/ups/setup_for_development -${build_arg} e5 s3
-# echo FINISHED ../lbne-raw-data/ups/setup_for_development
-# buildtool -i
-# cd ..
+if [[ -n "${opt_http_download_lbne_raw_data:-}" ]];then
+    test -d lbne-raw-data || git clone http://cdcvs.fnal.gov/projects/lbne-raw-data
+else
+    test -d lbne-raw-data || git clone ssh://p-lbne-raw-data@cdcvs.fnal.gov/cvs/projects/lbne-raw-data
+fi
+cd lbne-raw-data
+git fetch origin
+git checkout 65aeacaa49fd2858c048a78bacf5018e46770494
+cd ../build_lbne-raw-data
+echo IN $PWD: about to . ../lbne-raw-data/ups/setup_for_development
+. $products_dir/setup
+. ../lbne-raw-data/ups/setup_for_development -${build_arg} e5 s3
+echo FINISHED ../lbne-raw-data/ups/setup_for_development
+buildtool -i
+cd ..
 
+# artdaq commit f0f0c5eb950f5a53e06aee564975357c4bc5da7e, from
+# 9/16/14, includes both the merging of the buildinfo branch and the
+# timestamps branch
 
 test -d artdaq || git clone http://cdcvs.fnal.gov/projects/artdaq
 cd artdaq
 git fetch origin
-git checkout v1_12_03
+git checkout f0f0c5eb950f5a53e06aee564975357c4bc5da7e
 cd ../build_artdaq
 echo IN $PWD: about to . ../artdaq/ups/setup_for_development
 . $products_dir/setup
-. ../artdaq/ups/setup_for_development -${build_arg} e6 s5 eth
+. ../artdaq/ups/setup_for_development -${build_arg} e5 s3 eth
 echo FINISHED ../artdaq/ups/setup_for_development
 buildtool -i
 cd ..
 
-echo "Now, get lbne-raw-data and lbne-artdaq to work off of this"
-exit 0
+
 
 
 
