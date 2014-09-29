@@ -76,25 +76,25 @@ echo FINISHED ../artdaq-core/ups/setup_for_development
 buildtool -i
 cd ..
 
-# lbne-raw-data commit e4d3f1e35c8f7fa6220208e3423bf4a95af7b18e, from
-# 9/29/14, compiles with the e6:s5 option (against artdaq-core
-# v1_04_05)
+# # lbne-raw-data commit 65aeacaa49fd2858c048a78bacf5018e46770494, from
+# # 9/16/14, compiles with the e5:s3 option (against artdaq-core
+# # v1_04_00, etc.), and adds a traits class supplying build info
 
-if [[ -n "${opt_http_download_lbne_raw_data:-}" ]];then
-    test -d lbne-raw-data || git clone http://cdcvs.fnal.gov/projects/lbne-raw-data
-else
-    test -d lbne-raw-data || git clone ssh://p-lbne-raw-data@cdcvs.fnal.gov/cvs/projects/lbne-raw-data
-fi
-cd lbne-raw-data
-git fetch origin
-git checkout e4d3f1e35c8f7fa6220208e3423bf4a95af7b18e
-cd ../build_lbne-raw-data
-echo IN $PWD: about to . ../lbne-raw-data/ups/setup_for_development
-. $products_dir/setup
-. ../lbne-raw-data/ups/setup_for_development -${build_arg} e6 s5
-echo FINISHED ../lbne-raw-data/ups/setup_for_development
-buildtool -i
-cd ..
+# if [[ -n "${opt_http_download_lbne_raw_data:-}" ]];then
+#     test -d lbne-raw-data || git clone http://cdcvs.fnal.gov/projects/lbne-raw-data
+# else
+#     test -d lbne-raw-data || git clone ssh://p-lbne-raw-data@cdcvs.fnal.gov/cvs/projects/lbne-raw-data
+# fi
+# cd lbne-raw-data
+# git fetch origin
+# git checkout 65aeacaa49fd2858c048a78bacf5018e46770494
+# cd ../build_lbne-raw-data
+# echo IN $PWD: about to . ../lbne-raw-data/ups/setup_for_development
+# . $products_dir/setup
+# . ../lbne-raw-data/ups/setup_for_development -${build_arg} e5 s3
+# echo FINISHED ../lbne-raw-data/ups/setup_for_development
+# buildtool -i
+# cd ..
 
 
 test -d artdaq || git clone http://cdcvs.fnal.gov/projects/artdaq
@@ -108,6 +108,11 @@ echo IN $PWD: about to . ../artdaq/ups/setup_for_development
 echo FINISHED ../artdaq/ups/setup_for_development
 buildtool -i
 cd ..
+
+echo "Now, get lbne-raw-data and lbne-artdaq to work off of this"
+exit 0
+
+
 
 
 cd $demo_dir >/dev/null
@@ -130,7 +135,7 @@ if [[ ! -e ./setupLBNEARTDAQ ]]; then
 
 	echo changing directory to \$LBNEARTDAQ_BUILD
 	cd \$LBNEARTDAQ_BUILD  # note: next line adjusts PATH based one cwd
-	. \$LBNEARTDAQ_REPO/ups/setup_for_development -${build_arg} e6 s5 eth
+	. \$LBNEARTDAQ_REPO/ups/setup_for_development -${build_arg} e5 s3 eth
 
 	EOF
     #
