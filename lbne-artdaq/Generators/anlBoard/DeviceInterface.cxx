@@ -5,34 +5,31 @@
 #include <time.h>
 #include <utility>
 
-SSPDAQ::DeviceInterface::DeviceInterface(SSPDAQ::DeviceManager::Comm_t commType, unsigned int deviceId)
+SSPDAQ::DeviceInterface::DeviceInterface(SSPDAQ::Comm_t commType, unsigned int deviceId)
   : fCommType(commType), fDeviceId(deviceId), fState(SSPDAQ::DeviceInterface::kUninitialized){
+  fReadThread=0;
 }
 
 void SSPDAQ::DeviceInterface::Initialize(){
+
+  //Ask device manager for a pointer to the specified device
   SSPDAQ::DeviceManager& devman=SSPDAQ::DeviceManager::Get();
 
   SSPDAQ::Device* device=0;
 
-  SSPDAQ::Log::Info()<<"Initializing "<<((fCommType==SSPDAQ::DeviceManager::kUSB)?"USB":"Ethernet")
+  SSPDAQ::Log::Info()<<"Initializing "<<((fCommType==SSPDAQ::kUSB)?"USB":((fCommType==SSPDAQ::kEthernet)?"Ethernet":"Emulated"))
 		     <<" device #"<<fDeviceId<<"..."<<std::endl;
-
-  unsigned int tries=0;
-
-  while(!device&&tries<4){
-    if(tries){
-      SSPDAQ::Log::Warning()<<"Device initialization failed "<<tries<<" times.."<<std::endl;
-    }
   
-    device=devman.OpenDevice(fCommType,fDeviceId);
-  }
-
+  device=devman.OpenDevice(fCommType,fDeviceId);
+  
   if(!device){
     SSPDAQ::Log::Error()<<"Unable to get handle to device; giving up!"<<std::endl;
     throw(ENoSuchDevice());
   }
 
   fDevice=device;
+
+  //Put device into sensible state
   this->Stop();
   this->Configure();
 }
@@ -53,6 +50,13 @@ void SSPDAQ::DeviceInterface::Stop(){
   // Flush RX buffer in USB chip and driver
   fDevice->DevicePurgeData();
   fState=SSPDAQ::DeviceInterface::kStopped;
+  fShouldStop=true;
+
+  if(fReadThread){
+    fReadThread->join();
+    fReadThread.reset();
+  }  
+
 }
 
 void SSPDAQ::DeviceInterface::Configure(){
@@ -141,7 +145,7 @@ void SSPDAQ::DeviceInterface::Configure(){
 
   //Set clock source to NOvA clock
   fDevice->DeviceWrite(0x80000520,0x13);
-  //Set front panel to active low
+  //Set front panel trigger input to active low
   fDevice->DeviceWrite(0x80000408,0x1101);
 
   fDevice->DeviceWrite(lbneReg.c2cControl, 0x00000007);
@@ -174,6 +178,7 @@ void SSPDAQ::DeviceInterface::Configure(){
   fDevice->DeviceArrayWrite(lbneReg.disc_width[0], nChannels, data);
   for (i = 0; i < nChannels; i++) data[i] = baseline_start;
   fDevice->DeviceArrayWrite(lbneReg.baseline_start[0], nChannels, data);
+
   fDevice->DeviceWrite(lbneReg.gpio_output_width, 0x00001000);
   fDevice->DeviceWrite(lbneReg.led_config, 0x00000000);
   fDevice->DeviceWrite(lbneReg.baseline_delay, baseline_delay);
@@ -190,6 +195,7 @@ void SSPDAQ::DeviceInterface::Start(){
     return;
   }
 
+  std::cout<<"Device interface starting run"<<std::endl;
   SSPDAQ::RegMap& lbneReg=SSPDAQ::RegMap::Get();
   // This script enables all logic and FIFOs and starts data acquisition in the device
   // Operations MUST be performed in this order
@@ -197,13 +203,18 @@ void SSPDAQ::DeviceInterface::Start(){
   // Release the FIFO reset						
   fDevice->DeviceWrite(lbneReg.fifo_control, 0x00000000);
   // Registers in the Zynq FPGA (Comm)
-  // Reset the links and flags
+  // Reset the links and flags (note eventDataControl!=event_data_control)
   fDevice->DeviceWrite(lbneReg.eventDataControl, 0x00000000);
   // Registers in the Artix FPGA (DSP)
   // Release master logic reset & enable active channels
-  fDevice->DeviceSet(lbneReg.master_logic_status, 0x00000001);
+  fDevice->DeviceWrite(lbneReg.master_logic_status, 0x00000001);
 
+  fShouldStop=false;
   fState=SSPDAQ::DeviceInterface::kRunning;
+  std::cout<<"Device interface starting read thread...";
+
+  fReadThread=std::unique_ptr<std::thread>(new std::thread(&SSPDAQ::DeviceInterface::ReadEvents,this));
+    std::cout<<"Run started!"<<std::endl;
 }
 
 void SSPDAQ::DeviceInterface::ReadEvents(){
@@ -212,25 +223,39 @@ void SSPDAQ::DeviceInterface::ReadEvents(){
     SSPDAQ::Log::Warning()<<"Attempt to get data from non-running device refused!"<<std::endl;
     return;
   }
-  
+
+  //REALLY needs to be set up to know real run start time.
+  //Think the idea was to tell the fragment generators when to start
+  //taking data, so we would store this and throw away events occuring
+  //before the start time.
+  //Doesn't matter for emulated data since this does start at t=0.
   unsigned long runStartTime=0;
   unsigned long millisliceStartTime=runStartTime;
-  unsigned long millisliceLengthInTicks=10000;
-  unsigned long millisliceOverlapInTicks=100;
+  unsigned long millisliceLengthInTicks=100000000;//0.67s
+  unsigned long millisliceOverlapInTicks=10000000;//0.067s
   unsigned int millisliceCount=0;
 
+  //Need two lots of event packets, to manage overlap between slices.
   std::vector<SSPDAQ::EventPacket> events_thisSlice;
   std::vector<SSPDAQ::EventPacket> events_nextSlice;
 
-  while(!shouldStop){
+  //Check whether other thread has set the stop flag
+  while(!fShouldStop){
     SSPDAQ::EventPacket event;
-    
+    //Ask for event and check that one was returned.
+    //ReadEventFromDevice Will return an empty packet with header word set to 0xDEADBEEF
+    //if there was no event to read from the SSP.
     this->ReadEventFromDevice(event);
-    if(events.back().header.header!=0xAAAAAAAA){
+    if(event.header.header!=0xAAAAAAAA){
+      usleep(100);//0.1ms
       continue;
     }
 
-    unsigned long eventTime=*(unsigned long*(&(event.header.timestamp)));
+    //Convert 4*unsigned shorts into 1*unsigned long event timestamp
+    unsigned long eventTime=0;
+    for(unsigned int iWord=0;iWord<=3;++iWord){
+      eventTime+=((unsigned long)(event.header.timestamp[iWord]))<<16*(3-iWord);
+    }
 
     //Event fits into the current slice
     //Add to current slice only
@@ -241,29 +266,29 @@ void SSPDAQ::DeviceInterface::ReadEvents(){
     //Add to both slices
     else if(eventTime<millisliceStartTime+millisliceLengthInTicks+millisliceOverlapInTicks){
       events_thisSlice.push_back(std::move(event));
-      events_nextslice.push_back(events_thisSlice.back());
+      events_nextSlice.push_back(events_thisSlice.back());
     }
     //Event is not in overlap window of current slice
     else{
-
+      std::cout<<"Device interface building millislice with "<<events_thisSlice.size()<<" events"<<std::endl;
       //Build a millislice based on the existing events
       //and swap next-slice event list into current-slice list
-      this->BuildMillislice(events_thisSlice);
+      this->BuildMillislice(events_thisSlice,millisliceStartTime,millisliceStartTime+millisliceLengthInTicks+millisliceOverlapInTicks);
       events_thisSlice.clear();
       std::swap(events_thisSlice,events_nextSlice);
       millisliceStartTime+=millisliceLengthInTicks;
       ++millisliceCount;
 
       //Maybe current event doesn't go into next slice either...
-      while(eventTime>millisliceStartTime+milisliceLengthInTicks+millisliceOverlapInTicks){
+      while(eventTime>millisliceStartTime+millisliceLengthInTicks+millisliceOverlapInTicks){
 	//Write next millislice if it is not empty (i.e. there were some events in overlap period)
 	if(events_thisSlice.size()){
-	  this->BuildMillislice(events_thisSlice);
+	  this->BuildMillislice(events_thisSlice,millisliceStartTime,millisliceStartTime+millisliceLengthInTicks+millisliceOverlapInTicks);
 	  events_thisSlice.clear();
 	}
 	//Then just write empty millislices until we get to the slice which contains this event
 	else{
-	  this->BuildEmptyMillislice();
+	  this->BuildEmptyMillislice(millisliceStartTime,millisliceStartTime+millisliceLengthInTicks+millisliceOverlapInTicks);
 	}
 	++millisliceCount;
 	millisliceStartTime+=millisliceLengthInTicks;
@@ -273,63 +298,114 @@ void SSPDAQ::DeviceInterface::ReadEvents(){
       events_thisSlice.push_back(std::move(event));
       //If this event is in overlap period put it into both slices
       if(eventTime>millisliceStartTime+millisliceLengthInTicks){
-	events_nextslice.push_back(events_thisSlice.back());
+	events_nextSlice.push_back(events_thisSlice.back());
       }
     }
   }
 }
   
-void SSPDAQ::DeviceInterface::BuildMillislice(const std::vector<EventPacket>& events){
-  
+void SSPDAQ::DeviceInterface::BuildMillislice(const std::vector<EventPacket>& events,unsigned long startTime,unsigned long endTime){
+
+  //=====================================//
+  //Calculate required size of millislice//
+  //=====================================//
+
   unsigned int dataSizeInWords=0;
 
+  dataSizeInWords+=SSPDAQ::MillisliceHeader::sizeInUInts;
   for(auto ev=events.begin();ev!=events.end();++ev){
-    dataSize+=ev->header.length;
+    dataSizeInWords+=ev->header.length;
   }
 
-  std::vector<unsigned int> sliceData(dataSize);
+  //==================//
+  //Build slice header//
+  //==================//
 
-  static unsigned int headerSizeInWords=sizeof(SSPDAQ::EventHeader)/sizeof(unsigned int);
+  SSPDAQ::MillisliceHeader sliceHeader;
+  sliceHeader.length=dataSizeInWords;
+  sliceHeader.nTriggers=events.size();
+  sliceHeader.startTime=startTime;
+  sliceHeader.endTime=endTime;
 
-  //Concatenate all events into slice data
+  //=================================================//
+  //Allocate space for whole slice and fill with data//
+  //=================================================//
+
+  std::vector<unsigned int> sliceData(dataSizeInWords);
+
+  static unsigned int headerSizeInWords=
+    sizeof(SSPDAQ::EventHeader)/sizeof(unsigned int);   //Size of DAQ event header
+
+  //Put millislice header at front of vector
   auto sliceDataPtr=sliceData.begin();
+  unsigned int* millisliceHeaderPtr=(unsigned int*)((void*)(&sliceHeader));
+  std::copy(millisliceHeaderPtr,millisliceHeaderPtr+SSPDAQ::MillisliceHeader::sizeInUInts,sliceDataPtr);
+
+  //Fill rest of vector with event data
+  sliceDataPtr+=SSPDAQ::MillisliceHeader::sizeInUInts;
+
   for(auto ev=events.begin();ev!=events.end();++ev){
-    unsigned int* headerPtr=unsigned int*(&ev->header);
+
+    //DAQ event header
+    unsigned int* headerPtr=(unsigned int*)((void*)(&ev->header));
     std::copy(headerPtr,headerPtr+headerSizeInWords,sliceDataPtr);
+    
+    //DAQ event payload
     sliceDataPtr+=headerSizeInWords;
     std::copy(ev->data.begin(),ev->data.end(),sliceDataPtr);
     sliceDataPtr+=ev->header.length-headerSizeInWords;
   }
   
+  //=======================//
+  //Add millislice to queue//
+  //=======================//
+
+  std::cout<<"Pushing slice with "<<events.size()<<" triggers onto queue!"<<std::endl;
   fQueue.push(std::move(sliceData));
+}
+
+void SSPDAQ::DeviceInterface::BuildEmptyMillislice(unsigned long startTime, unsigned long endTime){
+  std::vector<SSPDAQ::EventPacket> emptySlice;
+  this->BuildMillislice(emptySlice,startTime,endTime);
+}
+
+void SSPDAQ::DeviceInterface::GetMillislice(std::vector<unsigned int>& sliceData){
+  fQueue.try_pop(sliceData,std::chrono::microseconds(100000)); //Try to pop from queue for 100ms
 }
 
 void SSPDAQ::DeviceInterface::ReadEventFromDevice(EventPacket& event){
   
   if(fState!=kRunning){
     SSPDAQ::Log::Warning()<<"Attempt to get data from non-running device refused!"<<std::endl;
+    event.SetEmpty();
     return;
   }
 
   std::vector<unsigned int> data;
-  unsigned int* headerBlock=(unsigned int*)&event.header;
 
-  //Needs fixing to time in ms
-  time_t tStart(0), tEnd(0);
-  time(&tStart); time(&tEnd);
-  bool headerFound=false;
   unsigned int skippedWords=0;
 
   //Find first word in event header (0xAAAAAAAA)
-  //Currently wait forever for event to show up
   while(true){
     fDevice->DeviceReceive(data,1);
 
-    if (data.size()!=0&&data[0]==0xAAAAAAAA){
-      headerFound=true;
+    //If no data is available in pipe then return
+    //without filling packet
+    if(data.size()==0){
+      if(skippedWords){
+	SSPDAQ::Log::Warning()<<"Warning: GetEvent skipped "<<skippedWords<<"words "
+			      <<"and has not seen header for next event!"<<std::endl;
+      }
+      event.SetEmpty();
+      return;
+    }
+
+    //Header found - continue reading rest of event
+    if (data[0]==0xAAAAAAAA){
       break;
     }
-    time(&tEnd);
+    //Unexpected non-header word found - continue to
+    //look for header word but need to issue warning
     if(data.size()>0){
       ++skippedWords;
     }
@@ -340,33 +416,81 @@ void SSPDAQ::DeviceInterface::ReadEventFromDevice(EventPacket& event){
 			<<"before finding next event header!"<<std::endl;
   }
   
-  //Load rest of header
-  if(!headerFound){
-    SSPDAQ::Log::Warning()<<"Warning: GetEvent timed out without finding a valid header."
-			  <<" Returning empty event."<<std::endl;
-    event.SetEmpty();
-    return;
-  }
-
+  
+  unsigned int* headerBlock=(unsigned int*)&event.header;
   headerBlock[0]=0xAAAAAAAA;
   
   static const unsigned int headerReadSize=(sizeof(SSPDAQ::EventHeader)/sizeof(unsigned int)-1);
 
+  //Wait for hardware queue to fill with full header data
+  unsigned int queueLengthInUInts=0;
+  unsigned int timeWaited=0;//in us
+
+  do{
+    fDevice->DeviceQueueStatus(&queueLengthInUInts);
+    if(queueLengthInUInts<headerReadSize){
+      usleep(10); //10us
+      timeWaited+=10;
+      if(timeWaited>1000000){ //1s
+	SSPDAQ::Log::Error()<<"SSP delayed 1s between issuing header word and full header; giving up"
+			    <<std::endl;
+	event.SetEmpty();
+	throw(EEventReadError());
+      }
+    }
+  }while(queueLengthInUInts<headerReadSize);
+
+  //Get header from device and check it is the right length
   fDevice->DeviceReceive(data,headerReadSize);
   if(data.size()!=headerReadSize){
-    SSPDAQ::Log::Warning()<<"Warning: GetEvent found truncated header!"<<std::endl;
-    //Should check queue size first and throw if data is not returned even for sufficient queue length
+    SSPDAQ::Log::Error()<<"SSP returned truncated header even though FIFO queue is of sufficient length!"
+			<<std::endl;
+    event.SetEmpty();
+    throw(EEventReadError());
   }
 
+  //Copy header into event packet
   std::copy(data.begin(),data.end(),&(headerBlock[1]));
 
+  SSPDAQ::EventHeader* hPtr=reinterpret_cast<SSPDAQ::EventHeader*>(headerBlock);
+
+  unsigned long eventTime=0;
+
+  for(unsigned int iWord=0;iWord<=3;++iWord){
+    eventTime+=((unsigned long)(hPtr->timestamp[iWord]))<<16*(3-iWord);
+  }
+  std::cout<<"Interface building an event with timestamp "<<eventTime<<std::endl;
+    
+  //Wait for hardware queue to fill with full event data
   unsigned int bodyReadSize=event.header.length-(sizeof(EventHeader)/sizeof(unsigned int));
+  queueLengthInUInts=0;
+  timeWaited=0;//in us
+
+  do{
+    fDevice->DeviceQueueStatus(&queueLengthInUInts);
+    if(queueLengthInUInts<bodyReadSize){
+      usleep(10); //10us
+      timeWaited+=10;
+      if(timeWaited>1000000){ //1s
+	SSPDAQ::Log::Error()<<"SSP delayed 1s between issuing header and full event; giving up"
+			    <<std::endl;
+	event.SetEmpty();
+	throw(EEventReadError());
+      }
+    }
+  }while(queueLengthInUInts<bodyReadSize);
+   
+  //Get event from SSP and check that it is the right length
   fDevice->DeviceReceive(data,bodyReadSize);
 
   if(data.size()!=bodyReadSize){
-    SSPDAQ::Log::Warning()<<"Warning: GetEvent found truncated event!"<<std::endl;
+    SSPDAQ::Log::Error()<<"SSP returned truncated event even though FIFO queue is of sufficient length!"
+			<<std::endl;
+    event.SetEmpty();
+    throw(EEventReadError());
   }
 
+  //Copy event data into event packet
   event.data=std::move(data);
 
   return;
@@ -388,12 +512,12 @@ void SSPDAQ::DeviceInterface::SetRegister(unsigned int address, unsigned int val
   }
 }
 
-void SSPDAQ::DeviceInterface::SetRegister(unsigned int address, std::vector<unsigned int> value){
+void SSPDAQ::DeviceInterface::SetRegisterArray(unsigned int address, std::vector<unsigned int> value){
 
-    this->SetRegister(address,&(value[0]),value.size());
+    this->SetRegisterArray(address,&(value[0]),value.size());
 }
 
-void SSPDAQ::DeviceInterface::SetRegister(unsigned int address, unsigned int* value, unsigned int size){
+void SSPDAQ::DeviceInterface::SetRegisterArray(unsigned int address, unsigned int* value, unsigned int size){
 
   fDevice->DeviceArrayWrite(address,size,value);
 }
@@ -409,13 +533,42 @@ void SSPDAQ::DeviceInterface::ReadRegister(unsigned int address, unsigned int& v
   }
 }
 
-void SSPDAQ::DeviceInterface::ReadRegister(unsigned int address, std::vector<unsigned int>& value, unsigned int size){
+void SSPDAQ::DeviceInterface::ReadRegisterArray(unsigned int address, std::vector<unsigned int>& value, unsigned int size){
 
   value.resize(size);
-  this->ReadRegister(address,&(value[0]),size);
+  this->ReadRegisterArray(address,&(value[0]),size);
 }
 
-void SSPDAQ::DeviceInterface::ReadRegister(unsigned int address, unsigned int* value, unsigned int size){
+void SSPDAQ::DeviceInterface::ReadRegisterArray(unsigned int address, unsigned int* value, unsigned int size){
 
   fDevice->DeviceArrayRead(address,size,value);
+}
+
+void SSPDAQ::DeviceInterface::SetRegisterByName(std::string name, unsigned int value){
+  SSPDAQ::RegMap::Register reg=(SSPDAQ::RegMap::Get())[name];
+  
+  this->SetRegister(reg,value,reg.WriteMask());
+}
+
+void SSPDAQ::DeviceInterface::SetRegisterElementByName(std::string name, unsigned int index, unsigned int value){
+  SSPDAQ::RegMap::Register reg=(SSPDAQ::RegMap::Get())[name][index];
+  
+  this->SetRegister(reg,value,reg.WriteMask());
+}
+
+void SSPDAQ::DeviceInterface::SetRegisterArrayByName(std::string name, unsigned int value){
+  unsigned int regSize=(SSPDAQ::RegMap::Get())[name].Size();
+  std::vector<unsigned int> arrayContents(regSize,value);
+
+  this->SetRegisterArrayByName(name,arrayContents);
+}
+
+void SSPDAQ::DeviceInterface::SetRegisterArrayByName(std::string name, std::vector<unsigned int> values){
+  SSPDAQ::RegMap::Register reg=(SSPDAQ::RegMap::Get())[name];
+  if(reg.Size()!=values.size()){
+    SSPDAQ::Log::Error()<<"Request to set named register array "<<name<<", length "<<reg.Size()
+			<<"with vector of "<<values.size()<<" values!"<<std::endl;
+    throw(std::invalid_argument(""));
+  }
+  this->SetRegisterArray(reg,values);
 }

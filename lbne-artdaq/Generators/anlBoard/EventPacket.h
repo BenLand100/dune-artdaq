@@ -6,6 +6,9 @@
 
 namespace SSPDAQ{
 
+
+//Simple bag of data but with implementation of move methods
+//to allow efficient shifting around of data between containers
   class EventPacket{
   public:
 
@@ -21,12 +24,27 @@ namespace SSPDAQ{
       header=rhs.header;
       return *this;
     }
+    
+    //Copy constructor
+    EventPacket(const EventPacket& rhs){
+      data=rhs.data;
+      header=rhs.header;
+    }
 
-    // Event Processing Functions
-    //    Event* Unpack();
+    //Copy assignment operator
+    EventPacket& operator=(const EventPacket& rhs){
+      data=rhs.data;
+      header=rhs.header;
+      return *this;
+    }
+
+    EventPacket(){}
+
+    //Clear data vector and set header word to 0xDEADBEEF
     void SetEmpty();
 
     EventHeader header;
+
     std::vector<unsigned int> data;
   };
   

@@ -2,13 +2,115 @@
 #define __REGMAP_H__
 
 #include "lbne-raw-data/Overlays/anlTypes.hh"
+#include <iostream>
+#include "Log.h"
+#include <map>
+#include "anlExceptions.h"
 
 namespace SSPDAQ{
 
+//Singleton containing human-readable names for SSP registers.
+//Note that Zynq registers are in camelCase, and Artix registers
+//are spaced_with_underscores.  
 class RegMap{
  public:
 
+  //Get a reference to the instance of RegMap
   static RegMap& Get();
+
+  class Register{
+  public:
+    Register(unsigned int address, unsigned int readMask, unsigned int writeMask,
+	     unsigned int size=1, unsigned int offset=0, unsigned int bits=32):
+    fAddress(address),
+      fReadMask(readMask),
+      fWriteMask(writeMask),
+      fSize(size),
+      fOffset(offset),
+      fBits(bits){}
+
+  Register():
+    fAddress(0x00000000),
+      fReadMask(0xFFFFFFFF),
+      fWriteMask(0xFFFFFFFF),
+      fSize(1),
+      fOffset(0),
+      fBits(32){}
+
+
+    //Allow implicit conversion to unsigned int for scalar registers
+    operator unsigned int(){
+      if(fSize>1){
+	SSPDAQ::Log::Error()<<"Attempt to access SSP register array at "
+			    <<std::hex<<fAddress<<std::dec<<" as scalar!"<<std::endl;
+	throw(std::invalid_argument(""));
+      }
+      return fAddress;
+    }
+
+    //Indexing returns another register with correct address offset and size 1
+    Register operator[](unsigned int i) const{
+      if(i>=fSize){
+	SSPDAQ::Log::Error()<<"Attempt to access SSP register at "
+			    <<std::hex<<fAddress<<std::dec<<" index "<<i
+			    <<", beyond end of array (size is "<<fSize<<")"<<std::endl;
+      }
+      return Register(fAddress+0x4*i,fReadMask,fWriteMask,fOffset,1);
+    }
+
+    //Getters and setters
+
+    inline unsigned int ReadMask() const{
+      return fReadMask;
+    }
+
+    inline unsigned int WriteMask() const{
+      return fWriteMask;
+    }
+
+    inline unsigned int Offset() const{
+      return fOffset;
+    }
+
+    inline unsigned int Bits() const{
+      return fBits;
+    }
+
+    inline unsigned int Size() const{
+      return fSize;
+    }
+
+  private:
+
+    //Address of register in SSP space
+    unsigned int fAddress;
+
+    //Readable/writable bits in this register for calling code to check
+    //that read/write requests make sense
+    unsigned int fReadMask;
+    unsigned int fWriteMask;
+
+    unsigned int fSize;
+
+    //Bit offset of relevant quantity relative to start of addressed word.
+    //Not currently used but we could use this to "virtually" address logical quantities
+    //which are assigned only part of a 32-bit word
+    unsigned int fOffset;
+
+    //Number of bits assigned to relevant quantity. Not currently used (see above)
+    unsigned int fBits;
+  };
+
+  //Get registers using variable names...
+  const Register& operator[](std::string name){
+    if(fNamed.find(name)==fNamed.end()){
+      SSPDAQ::Log::Error()<<"Attempt to access named SSP register "<<name
+			  <<", which does not exist!"<<std::endl;
+      throw(std::invalid_argument(""));
+    }
+    return fNamed[name];
+  }
+
   // Registers in the ARM Processor
   unsigned int armStatus;
   unsigned int armError;
@@ -118,6 +220,7 @@ class RegMap{
   RegMap(){};
   RegMap(RegMap const&); //Don't implement
   void operator=(RegMap const&); //Don't implement
+  std::map<std::string, Register> fNamed;
 };
 
 }//namespace

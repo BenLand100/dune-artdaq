@@ -5,6 +5,10 @@
 
 namespace SSPDAQ{
 
+  //================================//
+  //Bad requests from Device Manager//
+  //================================//
+
   class ENoSuchDevice: public std::runtime_error{
   public:
     explicit ENoSuchDevice(const std::string &s):
@@ -34,6 +38,10 @@ namespace SSPDAQ{
 
   };
 
+  //=======================================//
+  //Error reported by USB interface library//
+  //=======================================//
+
   class EFTDIError: public std::runtime_error{
   public:
     explicit EFTDIError(const std::string &s):
@@ -41,9 +49,20 @@ namespace SSPDAQ{
 
     explicit EFTDIError():
       std::runtime_error("") {}
-
   };
 
+  //===============================================//
+  //Error receiving expected event data from device//
+  //===============================================//
+
+  class EEventReadError: public std::runtime_error{
+  public:
+    explicit EEventReadError(const std::string &s):
+      std::runtime_error(s) {}
+
+    explicit EEventReadError():
+      std::runtime_error("") {}
+  };
 
 }//namespace
 #endif
