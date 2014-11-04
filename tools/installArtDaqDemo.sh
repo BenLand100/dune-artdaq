@@ -1,5 +1,5 @@
 #!/bin/bash
-
+echo Invoked: $0 "$@"
 env_opts_var=`basename $0 | sed 's/\.sh$//' | tr 'a-z-' 'A-Z_'`_OPTS
 USAGE="\
   usage: `basename $0` [options] <demo_products_dir/> <lbne-artdaq/>
@@ -45,7 +45,7 @@ eval "set -- $args \"\$@\""; unset args aa
 
 test -n "${do_help-}" -o $# -ne 2 && echo "$USAGE" && exit
 
-
+test -d $1 || { echo "products directory ($1) not found"; exit 1; }
 products_dir=`cd "$1" >/dev/null;pwd`
 lbne_artdaq_dir=`cd "$2" >/dev/null;pwd`
 demo_dir=`dirname "$lbne_artdaq_dir"`
@@ -53,9 +53,6 @@ demo_dir=`dirname "$lbne_artdaq_dir"`
 export CETPKG_INSTALL=$products_dir
 export CETPKG_J=16
 
-test -d "$demo_dir/build_artdaq-core" || mkdir "$demo_dir/build_artdaq-core" 
-test -d "$demo_dir/build_lbne-raw-data"      || mkdir "$demo_dir/build_lbne-raw-data" 
-test -d "$demo_dir/build_artdaq"      || mkdir "$demo_dir/build_artdaq"  
 test -d "$demo_dir/build_lbne-artdaq" || mkdir "$demo_dir/build_lbne-artdaq" 
 
 if [[ -n "${opt_debug:-}" ]];then
@@ -64,60 +61,40 @@ else
     build_arg="p"
 fi
 
-# Commit 52d6e7b4527dce8a86b7bcaf5970d45013373b89, from 9/15/14,
-# updates artdaq core v1_04_00 s.t. it includes the BuildInfo template
 
-test -d artdaq-core || git clone http://cdcvs.fnal.gov/projects/artdaq-core
-cd artdaq-core
-git fetch origin
-git checkout 52d6e7b4527dce8a86b7bcaf5970d45013373b89
-cd ../build_artdaq-core
-echo IN $PWD: about to . ../artdaq-core/ups/setup_for_development
+REPO_PREFIX=http://cdcvs.fnal.gov/projects
+#REPO_PREFIX=ssh://p-artdaq@cdcvs.fnal.gov/cvs/projects # p-artdaq can be used to access artdaq-demo
+
+function install_package {
+    local packagename=$1
+    local commit_tag=$2
+
+    # Get rid of the first two positional arguments now that they're stored in named variables
+    shift;
+    shift;
+
+    test -d "$demo_dir/build_$packagename" || mkdir "$demo_dir/build_$packagename"    
+
+    test -d ${packagename} || git clone $REPO_PREFIX/$packagename
+    cd $packagename
+    git fetch origin
+    git checkout $commit_tag
+    cd ../build_$packagename
+
+    echo IN $PWD: about to . ../$packagename/ups/setup_for_development
+    . ../$packagename/ups/setup_for_development -${build_arg} $@
+    echo FINISHED ../$packagename/ups/setup_for_development
+    buildtool ${opt_clean+-c} -i
+    cd ..
+}
+
 . $products_dir/setup
-. ../artdaq-core/ups/setup_for_development -${build_arg} e5 s3
-echo FINISHED ../artdaq-core/ups/setup_for_development
-buildtool -i
-cd ..
 
-# lbne-raw-data commit 65aeacaa49fd2858c048a78bacf5018e46770494, from
-# 9/16/14, compiles with the e5:s3 option (against artdaq-core
-# v1_04_00, etc.), and adds a traits class supplying build info
+install_package artdaq-core v1_04_06 e6 s5
+install_package lbne-raw-data v0_00_06 e6 s5
+install_package artdaq v1_12_04 e6 s5 eth
 
-if [[ -n "${opt_http_download_lbne_raw_data:-}" ]];then
-    test -d lbne-raw-data || git clone http://cdcvs.fnal.gov/projects/lbne-raw-data
-else
-    test -d lbne-raw-data || git clone ssh://p-lbne-raw-data@cdcvs.fnal.gov/cvs/projects/lbne-raw-data
-fi
-cd lbne-raw-data
-git fetch origin
-git checkout 65aeacaa49fd2858c048a78bacf5018e46770494
-cd ../build_lbne-raw-data
-echo IN $PWD: about to . ../lbne-raw-data/ups/setup_for_development
-. $products_dir/setup
-. ../lbne-raw-data/ups/setup_for_development -${build_arg} e5 s3
-echo FINISHED ../lbne-raw-data/ups/setup_for_development
-buildtool -i
-cd ..
-
-# artdaq commit f0f0c5eb950f5a53e06aee564975357c4bc5da7e, from
-# 9/16/14, includes both the merging of the buildinfo branch and the
-# timestamps branch
-
-test -d artdaq || git clone http://cdcvs.fnal.gov/projects/artdaq
-cd artdaq
-git fetch origin
-git checkout f0f0c5eb950f5a53e06aee564975357c4bc5da7e
-cd ../build_artdaq
-echo IN $PWD: about to . ../artdaq/ups/setup_for_development
-. $products_dir/setup
-. ../artdaq/ups/setup_for_development -${build_arg} e5 s3 eth
-echo FINISHED ../artdaq/ups/setup_for_development
-buildtool -i
-cd ..
-
-
-
-
+setup_qualifier="e6 eth"
 
 
 cd $demo_dir >/dev/null
@@ -140,7 +117,7 @@ if [[ ! -e ./setupLBNEARTDAQ ]]; then
 
 	echo changing directory to \$LBNEARTDAQ_BUILD
 	cd \$LBNEARTDAQ_BUILD  # note: next line adjusts PATH based one cwd
-	. \$LBNEARTDAQ_REPO/ups/setup_for_development -${build_arg} e5 s3 eth
+	. \$LBNEARTDAQ_REPO/ups/setup_for_development -${build_arg} $setup_qualifier
 
 	EOF
     #
@@ -157,7 +134,7 @@ echo "Installation and build complete; please see https://cdcvs.fnal.gov/redmine
 if [ -n "${opt_run_demo-}" ];then
     echo doing the demo
 
-    $lbne_artdaq_dir/tools/xt_cmd.sh $demo_dir --geom 132x33 \
+    $lbne_artdaq_dir/tools/xt_cmd.sh $demo_dir --geom '132x33 -sl 2500' \
         -c '. ./setupLBNEARTDAQ' \
         -c start2x2x2System.sh
     sleep 2
