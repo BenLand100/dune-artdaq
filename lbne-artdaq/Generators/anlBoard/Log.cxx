@@ -1,5 +1,6 @@
 #include "Log.h"
 
+//Setup default streams for different log levels
 std::ostream* SSPDAQ::Log::fErrorStream=&std::cerr;
 std::ostream* SSPDAQ::Log::fWarningStream=&std::cerr;
 std::ostream* SSPDAQ::Log::fInfoStream=&std::cout;

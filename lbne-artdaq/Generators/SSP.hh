@@ -25,7 +25,6 @@
 #include "lbne-raw-data/Overlays/SSPFragment.hh"
 #include "lbne-raw-data/Overlays/FragmentType.hh"
 
-#include "lbne-artdaq/Generators/anlBoard/DeviceManager.h"
 #include "lbne-artdaq/Generators/anlBoard/DeviceInterface.h"
 
 #include <random>
@@ -49,7 +48,9 @@ namespace lbne {
     virtual void start();
 
     virtual void stop();
-   
+
+    void ConfigureDevice(fhicl::ParameterSet const & ps);
+
     //    virtual void pause();
 
     //    virtual void resume();
@@ -57,9 +58,12 @@ namespace lbne {
     // FHiCL-configurable variables. Note that the C++ variable names
     // are the FHiCL variable names with a "_" appended
 
+    //FHiCL parameters
     lbne::detail::FragmentType const fragment_type_; // Type of fragment (see FragmentType.hh)
     unsigned int board_id_;
-    SSPDAQ::DeviceManager::Comm_t  interface_type_;
+    SSPDAQ::Comm_t  interface_type_;
+
+    //Pointer to device interface defined in anlBoard library
     SSPDAQ::DeviceInterface* device_interface_;
   };
 }

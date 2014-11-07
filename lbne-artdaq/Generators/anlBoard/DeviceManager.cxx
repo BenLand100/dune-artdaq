@@ -26,56 +26,53 @@ std::pair<unsigned int, unsigned int> SSPDAQ::DeviceManager::GetNDevices(){
   return std::make_pair(fUSBDevices.size(),fEthernetDevices.size());
 }
 
-int SSPDAQ::DeviceManager::RefreshDevices (bool force)
+void SSPDAQ::DeviceManager::RefreshDevices()
 {
 
-  if(!force){
-    for(auto device=fUSBDevices.begin();device!=fUSBDevices.end();++device){
-      if(device->IsOpen()){
-	SSPDAQ::Log::Warning()<<"Device manager refused request to refresh device list"
-			      <<"due to USB devices still open"<<std::endl;
-	return 1;
-      }
-    }
-    for(auto device=fEthernetDevices.begin();device!=fEthernetDevices.end();++device){
-      if(device->IsOpen()){
-	SSPDAQ::Log::Warning()<<"Device manager refused request to refresh device list"
-			      <<"due to ethernet devices still open"<<std::endl;
-	return 1;
-      } 
+  for(auto device=fUSBDevices.begin();device!=fUSBDevices.end();++device){
+    if(device->IsOpen()){
+      SSPDAQ::Log::Warning()<<"Device manager refused request to refresh device list"
+			    <<"due to USB devices still open"<<std::endl;
     }
   }
-  else{
-    SSPDAQ::Log::Warning()<<"Device manager forcibly refreshing devices - will invalidate"
-			  <<"pointers to open devices"<<std::endl;
+  for(auto device=fEthernetDevices.begin();device!=fEthernetDevices.end();++device){
+    if(device->IsOpen()){
+      SSPDAQ::Log::Warning()<<"Device manager refused request to refresh device list"
+			    <<"due to ethernet devices still open"<<std::endl;
+    } 
+  }
+  for(auto device=fEmulatedDevices.begin();device!=fEmulatedDevices.end();++device){
+    if((*device)->IsOpen()){
+      SSPDAQ::Log::Warning()<<"Device manager refused request to refresh device list"
+			    <<"due to emulated devices still open"<<std::endl;
+    } 
   }
 
   // Clear Device List
   fUSBDevices.clear();
   fEthernetDevices.clear();
+  fEmulatedDevices.clear();
 
   //===========================//
   //==Find USB devices=========//
   //===========================//
 
-  FT_STATUS ftStatus;
   unsigned int ftNumDevs;
 
   std::map<std::string,FT_DEVICE_LIST_INFO_NODE*> dataChannels;
   std::map<std::string,FT_DEVICE_LIST_INFO_NODE*> commChannels;
 
   // This code uses FTDI's D2XX driver to determine the available devices
-  //===TODO: Change to exception===
-  ftStatus = FT_CreateDeviceInfoList(&ftNumDevs);
-  if (ftStatus != FT_OK) {
+  if(FT_CreateDeviceInfoList(&ftNumDevs)!=FT_OK){
+    SSPDAQ::Log::Error()<<"Failed to create FTDI device info list"<<std::endl;
     throw(EFTDIError("Error in FT_CreateDeviceInfoList"));
   }
 
   FT_DEVICE_LIST_INFO_NODE* deviceInfoNodes=new FT_DEVICE_LIST_INFO_NODE[ftNumDevs];
 
-  ftStatus = FT_GetDeviceInfoList(deviceInfoNodes,&ftNumDevs);
-  if (ftStatus != FT_OK) {
+  if(FT_GetDeviceInfoList(deviceInfoNodes,&ftNumDevs)!=FT_OK){
     delete deviceInfoNodes;
+    SSPDAQ::Log::Error()<<"Failed to get FTDI device info list"<<std::endl;
     throw(EFTDIError("Error in FT_GetDeviceInfoList"));
   }
   
@@ -121,8 +118,9 @@ int SSPDAQ::DeviceManager::RefreshDevices (bool force)
       }
   }
 
+  //Check that device list is as expected, then construct USB device objects for each board
   if(dataChannels.size()!=commChannels.size()){
-    SSPDAQ::Log::Error()<<"Different number of data and comm channels!"<<std::endl;
+    SSPDAQ::Log::Error()<<"Different number of data and comm channels on FTDI!"<<std::endl;
     delete deviceInfoNodes;
     throw(EBadDeviceList());
   }
@@ -131,7 +129,7 @@ int SSPDAQ::DeviceManager::RefreshDevices (bool force)
  
   for(;dIter!=dataChannels.end();++dIter,++cIter){
     if(dIter->first!=cIter->first){
-      SSPDAQ::Log::Error()<<"Non-matching serial numbers for data and comm channels!"<<std::endl;
+      SSPDAQ::Log::Error()<<"Non-matching serial numbers for data and comm channels on FTDI!"<<std::endl;
       delete deviceInfoNodes;
       throw(EBadDeviceList());
     }
@@ -140,19 +138,18 @@ int SSPDAQ::DeviceManager::RefreshDevices (bool force)
   }
 
   delete[] deviceInfoNodes;
-
-  return 0;
 }
 
-SSPDAQ::Device* SSPDAQ::DeviceManager::OpenDevice(DeviceManager::Comm_t commType, unsigned int deviceNum)
+SSPDAQ::Device* SSPDAQ::DeviceManager::OpenDevice(SSPDAQ::Comm_t commType, unsigned int deviceNum)
 {
-  if(!fHaveLookedForDevices){
+  //Check for devices if this hasn't yet been done
+  if(!fHaveLookedForDevices&&commType!=SSPDAQ::kEmulated){
     this->RefreshDevices();
   }
 
   Device* device=0;
   switch(commType){
-  case SSPDAQ::DeviceManager::kUSB:
+  case SSPDAQ::kUSB:
     device=&fUSBDevices[deviceNum];
     if(device->IsOpen()){
       SSPDAQ::Log::Error()<<"Attempt to open already open device!"<<std::endl;
@@ -162,9 +159,23 @@ SSPDAQ::Device* SSPDAQ::DeviceManager::OpenDevice(DeviceManager::Comm_t commType
       device->Open();
     }
     break;
-  case SSPDAQ::DeviceManager::kEthernet:
+  case SSPDAQ::kEthernet:
     SSPDAQ::Log::Error()<<"Ethernet interface not implemented yet!"<<std::endl;
     throw(std::invalid_argument(""));
+    break;
+  case SSPDAQ::kEmulated:
+    while(fEmulatedDevices.size()<=deviceNum){
+      fEmulatedDevices.push_back(std::move(std::unique_ptr<SSPDAQ::EmulatedDevice>(new SSPDAQ::EmulatedDevice(fEmulatedDevices.size()))));
+    }
+    device=fEmulatedDevices[deviceNum].get();
+    if(device->IsOpen()){
+      SSPDAQ::Log::Error()<<"Attempt to open already open device!"<<std::endl;
+      throw(EDeviceAlreadyOpen());
+    }
+    else{
+      device->Open();
+    }
+    break;
   default:
     SSPDAQ::Log::Error()<<"Unrecognised interface type!"<<std::endl;
     throw(std::invalid_argument(""));

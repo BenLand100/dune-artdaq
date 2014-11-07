@@ -298,17 +298,18 @@ class CommandLineParser
         @options.tpcs << tpcConfig
       end
 
-      opts.on("--ssp [host.port,board_id]", Array,
+      opts.on("--ssp [host.port,board_id,interface_type]", Array,
               "Add an SSP fragment receiver that runs on the specified host, port, ",
               "and board ID.") do |ssp|
-        if ssp.length != 3
-          puts "You must specify a host, port, and board ID."
+        if ssp.length != 4
+          puts "You must specify a host, port, board ID and interface type."
           exit
         end
         sspConfig = OpenStruct.new
         sspConfig.host = ssp[0]
         sspConfig.port = Integer(ssp[1])
         sspConfig.board_id = Integer(ssp[2])
+        sspConfig.interface_type = Integer(ssp[3])
         sspConfig.kind = "SSP"
         sspConfig.index = (@options.ssps).length
         sspConfig.board_reader_index = addToBoardReaderList(sspConfig.host, sspConfig.port,
@@ -500,11 +501,12 @@ class CommandLineParser
              item.index,
              item.board_id]
         when "SSP"
-          puts "    SSPReceiver, %s, port %d, rank %d, board_id %d" %
+          puts "    SSPReceiver, %s, port %d, rank %d, board_id %d, interface_type %d" %
             [item.kind.upcase,
              item.port,
              item.index,
-             item.board_id]
+             item.board_id,
+             item.interface_type]
         when "TOY1", "TOY2"
           puts "    FragmentReceiver, Simulated %s, port %d, rank %d, board_id %d" % 
             [item.kind.upcase,
@@ -595,7 +597,9 @@ class SystemControl
 
           if kind == "SSP" 
             generatorCode = generateSSP(boardreaderOptions.index,
-                                        boardreaderOptions.board_id, kind)
+                                        boardreaderOptions.board_id,
+                                        boardreaderOptions.interface_type,
+                                        kind)
           end
 	      
           cfg = generateBoardReaderMain(totalEBs, totalFRs,

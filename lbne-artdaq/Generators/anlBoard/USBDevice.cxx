@@ -1,5 +1,6 @@
 #include "USBDevice.h"
 #include <cstdlib>
+#include <algorithm>
 #include "Log.h"
 #include "anlExceptions.h"
 
@@ -11,342 +12,140 @@ SSPDAQ::USBDevice::USBDevice(FT_DEVICE_LIST_INFO_NODE* dataChannel, FT_DEVICE_LI
 
 void SSPDAQ::USBDevice::Open(){
 
-  FT_STATUS ftStatus;
-  int error=0;
+  if(FT_OpenEx(fCommChannel.SerialNumber,FT_OPEN_BY_SERIAL_NUMBER, &(fCommChannel.ftHandle)) != FT_OK){
+    SSPDAQ::Log::Error()<<"Error opening USB comm path"<<std::endl;
+    throw(SSPDAQ::EFTDIError("Failed to open USB comm channel"));
+  }
 
-  const unsigned int ftReadTimeout = 1000;	// in ms
-  const unsigned int ftWriteTimeout = 1000;	// in ms
-  const unsigned int ftLatency = 2;	// in ms
+  // Setup parameters for control path
+  // Parameter values mostly hardcoded in USBDevice header
+  bool hasFailed=false;
 
-  const unsigned int dataBufferSize = 0x10000;	// 65536 bytes  - USB Buffer Size on PC
-  const unsigned int dataLatency = 2;		// in ms
-  const unsigned int dataTimeout	= 1000;		// in ms
-
-  ftStatus=FT_OpenEx(fCommChannel.SerialNumber,FT_OPEN_BY_SERIAL_NUMBER, &(fCommChannel.ftHandle));
   FT_HANDLE commHandle=fCommChannel.ftHandle;
-    
-  // Setup UART parameters for control path
   if (FT_SetBaudRate(commHandle, FT_BAUD_921600) != FT_OK) {
-    error = SSPDAQ::errorCommConnect;
+    hasFailed=true;
   }
   if (FT_SetDataCharacteristics(commHandle, FT_BITS_8, FT_STOP_BITS_1, FT_PARITY_NONE) != FT_OK) {
-    error = SSPDAQ::errorCommConnect;
+    hasFailed=true;
   }
   if (FT_SetTimeouts(commHandle, ftReadTimeout, ftWriteTimeout) != FT_OK) {
-    error = SSPDAQ::errorCommConnect;
+    hasFailed=true;
   }
   if (FT_SetFlowControl(commHandle, FT_FLOW_NONE, 0, 0) != FT_OK) {
-    error = SSPDAQ::errorCommConnect;
+    hasFailed=true;
   }   
   if (FT_SetLatencyTimer(commHandle, ftLatency) != FT_OK) {
-    error = SSPDAQ::errorCommConnect;
+    hasFailed=true;
   }   
-  if (error) {								 
-    // Error during control path setup, close already open device and break
-    SSPDAQ::Log::Error()<<"Error configuring device! Exiting..."<<std::endl;
+  if (hasFailed) {								 
+    // Error during control path setup, close already open device and throw
+    SSPDAQ::Log::Error()<<"Error configuring USB comm channel parameters!"<<std::endl;
     FT_Close(commHandle);
-    exit(1);
+    throw(SSPDAQ::EFTDIError("Failed to configure USB comm channel"));
   }
-
-  ftStatus=FT_OpenEx(fDataChannel.SerialNumber,FT_OPEN_BY_SERIAL_NUMBER, &(fDataChannel.ftHandle));
-  FT_HANDLE dataHandle=fDataChannel.ftHandle;
 
   // Open the Data Path
-  if (ftStatus != FT_OK) {
-    error = SSPDAQ::errorDataConnect;
-    SSPDAQ::Log::Error()<<"Error opening data path"<<std::endl;
-    // Since Control Path is already open, close it now
+  if (FT_OpenEx(fDataChannel.SerialNumber,FT_OPEN_BY_SERIAL_NUMBER, &(fDataChannel.ftHandle)) != FT_OK) {
+    //Error opening data path; close already-open comm path and throw 
+    SSPDAQ::Log::Error()<<"Error opening USB data path"<<std::endl;
     FT_Close(commHandle);
+    throw(SSPDAQ::EFTDIError("Failed to open USB data channel"));
   }
-  SSPDAQ::Log::Error()<<"Opened data path"<<std::endl;
-    // Setup parameters for data path
+
+  FT_HANDLE dataHandle=fDataChannel.ftHandle;
+  SSPDAQ::Log::Info()<<"Opened data path"<<std::endl;
+  
+  // Setup parameters for data path
     if (FT_SetLatencyTimer(dataHandle, dataLatency) != FT_OK) {
-      error = SSPDAQ::errorDataConnect;
+      hasFailed=true;
     }
     if (FT_SetUSBParameters(dataHandle, dataBufferSize, dataBufferSize) != FT_OK) {
-      error = SSPDAQ::errorDataConnect;
+      hasFailed=true;
     }
     if (FT_SetTimeouts(dataHandle, dataTimeout, 0) != FT_OK) {
-      error = SSPDAQ::errorDataConnect;
+      hasFailed=true;
     }
     if (FT_SetFlowControl(dataHandle, FT_FLOW_RTS_CTS, 0, 0) != FT_OK) {
-      error = SSPDAQ::errorDataConnect;
+      hasFailed=true;
     }
-    SSPDAQ::Log::Error()<<"Written to data path"<<std::endl;
-    if (error) {
+    if (hasFailed) {
       // Error during data path setup, close already open devices
       FT_Close(dataHandle);
       FT_Close(commHandle);
-      SSPDAQ::Log::Error()<<"Error writing to data path"<<std::endl;
+      SSPDAQ::Log::Error()<<"Error configuring USB data channel parameters"<<std::endl;
+      throw(SSPDAQ::EFTDIError("Failed to configure USB data channel"));
     }
     else{
-      SSPDAQ::Log::Error()<<"Device open"<<std::endl;
+      SSPDAQ::Log::Info()<<"Device open!"<<std::endl;
       isOpen=true;
     }
 }
 
 void SSPDAQ::USBDevice::Close(){
-  int error = 0;
-  FT_STATUS ftStatus;
+
   // This code uses FTDI's D2XX driver for the control and data paths
   // It seems to be necessary to manually flush the data path RX buffer
   // to avoid crashing LBNEWare when Disconnect is pressed
-  error = this->DevicePurgeData();
-  error = this->DevicePurgeComm();
+  this->DevicePurgeData();
+  this->DevicePurgeComm();
   
-  ftStatus = FT_Close(fCommChannel.ftHandle);
-  if (ftStatus != FT_OK) {
-    error = SSPDAQ::errorCommDisconnect;
-  }
-  ftStatus = FT_Close(fDataChannel.ftHandle);
-  if (ftStatus != FT_OK) {
-    error = SSPDAQ::errorCommDisconnect;
+  if(FT_Close(fCommChannel.ftHandle)!=FT_OK){
+    SSPDAQ::Log::Error()<<"Failed to close USB comm channel"<<std::endl;
+    throw(SSPDAQ::EFTDIError("Failed to close comm channel"));
   }
 
-  if(!error){
-    isOpen=false;
-    SSPDAQ::Log::Error()<<"Device closed"<<std::endl;
+  if(FT_Close(fDataChannel.ftHandle)!=FT_OK){
+    SSPDAQ::Log::Error()<<"Failed to close USB data channel"<<std::endl;
+    throw(SSPDAQ::EFTDIError("Failed to close data channel"));
+  }  
+
+  isOpen=false;
+  SSPDAQ::Log::Info()<<"Device closed"<<std::endl;
+} 
+
+void SSPDAQ::USBDevice::DevicePurgeComm (void)
+{
+  DevicePurge(fCommChannel);
+}
+
+void SSPDAQ::USBDevice::DevicePurgeData (void)
+{
+  DevicePurge(fDataChannel);
+}
+
+void SSPDAQ::USBDevice::DeviceQueueStatus(unsigned int* numWords)
+{
+  unsigned int numBytes;
+  if(FT_GetQueueStatus(fDataChannel.ftHandle, &numBytes)!=FT_OK){
+    SSPDAQ::Log::Error()<<"Error getting queue length from USB device"<<std::endl;
+    throw(EFTDIError("Error getting queue length from USB device"));
   }
-}
-
-int SSPDAQ::USBDevice::DeviceTimeout (unsigned int timeout)
-{
-	int error = 0;
-	FT_STATUS ftStatus;
-
-	ftStatus = FT_SetTimeouts(fDataChannel.ftHandle, timeout, 0);
-	if (ftStatus != FT_OK) {
-		error = SSPDAQ::errorDataConnect;
-	}
-
-	return error;
-}
-
-int SSPDAQ::USBDevice::DevicePurgeComm (void)
-{
-	int		error = 0;
-	int		done = 0;
-	char	bytes[256];
-	unsigned int	bytesQueued = 0;
-	unsigned int	bytesReturned = 0;
-	FT_STATUS ftStatus;
-	
-	
-	do {
-		ftStatus = FT_GetQueueStatus(fCommChannel.ftHandle, &bytesQueued);
-		if (ftStatus != FT_OK) {
-			error = SSPDAQ::errorCommPurge;
-		} else if (bytesQueued > 256) {
-			ftStatus = FT_Read(fCommChannel.ftHandle, (void*)&bytes, 256, &bytesReturned);
-			if (ftStatus != FT_OK) {
-				error = SSPDAQ::errorCommPurge;
-			}
-		} else if (bytesQueued > 0) {
-			ftStatus = FT_Read(fCommChannel.ftHandle, (void*)&bytes, bytesQueued, &bytesReturned);
-			if (ftStatus != FT_OK) {
-				error = SSPDAQ::errorCommPurge;
-			}
-		}
-		
-		if (error) {
-			done = 1;
-		} else if (bytesQueued == 0) {
-		 	usleep(10000);	// 10ms
-			ftStatus = FT_GetQueueStatus(fCommChannel.ftHandle, &bytesQueued);
-			if (bytesQueued == 0) {
-				done = 1;
-			}
-		}
-	} while (!done);
-
-	
-	return error;
-}
-
-int SSPDAQ::USBDevice::DevicePurgeData (void)
-{
-	int		error = 0;
-	int		done = 0;
-	char	bytes[256];
-	unsigned int	bytesQueued = 0;
-	unsigned int	bytesReturned = 0;
-	FT_STATUS ftStatus;
-	
-	
-	do {
-	  ftStatus = FT_GetQueueStatus(fDataChannel.ftHandle, &bytesQueued);
-	  if (ftStatus != FT_OK) {
-	    error = SSPDAQ::errorDataPurge;
-	  } else if (bytesQueued > 256) {
-	    ftStatus = FT_Read(fDataChannel.ftHandle, (void*)&bytes, 256, &bytesReturned);
-	    if (ftStatus != FT_OK) {
-	      error = SSPDAQ::errorDataPurge;
-	    }
-	  } else if (bytesQueued > 0) {
-	    ftStatus = FT_Read(fDataChannel.ftHandle, (LPVOID*)&bytes, bytesQueued, &bytesReturned);
-	    if (ftStatus != FT_OK) {
-	      error = SSPDAQ::errorDataPurge;
-	    }
-	  }
-	  
-	  if (error) {
-	    done = 1;
-	  } else if (bytesQueued == 0) {
-	    usleep(10000);	// 10ms
-	    ftStatus = FT_GetQueueStatus(fDataChannel.ftHandle, &bytesQueued);
-	    if (bytesQueued == 0) {
-	      done = 1;
-	    }
-	  }
-	} while (!done);
-	
-	
-	return error;
-}
-
-int SSPDAQ::USBDevice::DeviceQueueStatus (unsigned int* numBytes)
-{
-	int error = 0;
-	FT_STATUS ftStatus;
-	
-	ftStatus = FT_GetQueueStatus(fDataChannel.ftHandle, numBytes);
-	if (ftStatus != FT_OK) {
-		// Error getting Queue Status
-		error = SSPDAQ::errorDataQueue;
-	}
-	
-	return error;
+  (*numWords)=numBytes/sizeof(unsigned int);
+  
 }
 
 void SSPDAQ::USBDevice::DeviceReceive(std::vector<unsigned int>& data, unsigned int size){
 
-  FT_STATUS ftStatus;
-
   unsigned int* buf = new unsigned int[size];
   unsigned int dataReturned;
 
-  ftStatus = FT_Read(fDataChannel.ftHandle, (void*)buf, size*sizeof(unsigned int), &dataReturned);
-  if(ftStatus!=FT_OK){
+  if(FT_Read(fDataChannel.ftHandle, (void*)buf, size*sizeof(unsigned int), &dataReturned)!=FT_OK){
     delete[] buf;
+    SSPDAQ::Log::Error()<<"FTDI fault on data receive"<<std::endl;
     throw(EFTDIError("FTDI fault on data receive"));
   }
+
   data.assign(buf,buf+(dataReturned/sizeof(unsigned int)));
   delete[] buf;
-}
-
-
-int SSPDAQ::USBDevice::DeviceReceiveEvent(EventPacket* data, unsigned int* dataReceived)
-{
-	int error = 0;
-	unsigned int value = 0;
-	void* dataBuff = (void*)data;
-	SSPDAQ::EventPacket* event = data;
-	FT_STATUS ftStatus;
-	
-	unsigned int dataSynced	= 0;
-	unsigned int dataExpected = 4;
-	unsigned int dataReturned;
-	*dataReceived = 0;
-
-	do {
-		// Synchronize with data stream by searching for 0xAAAAAAAA
-		// NOTE: This code assumes misalignments are a complete unsigned int (4 bytes)
-		// If the device somehow gets off by 1-3 bytes, it will get stuck here! 
-		ftStatus = FT_Read(fDataChannel.ftHandle, dataBuff, dataExpected, &dataReturned);
-		if (ftStatus != FT_OK) {
-			// Error during receive
-			error = SSPDAQ::errorDataReceive;
-			break;
-		} else if (dataReturned != dataExpected) {
-			// Timeout expired - may be only way to catch certain misalignments
-			error = SSPDAQ::errorDataTimeout;
-			fDataMissing += (dataExpected - dataReturned);
-			break;
-		} else {
-			// Check for start of event
-			value = *(unsigned int*)data;
-			if (value == 0xAAAAAAAA) {
-				dataSynced = 1;
-				*dataReceived += sizeof(unsigned int);
-			} else {
-				// Throw this data away and increment counter
-				fDataLost += sizeof(unsigned int);
-			}
-		}
-
-		
-	} while (dataSynced == 0);
-
-	
-	if (error == 0) {
-		// Data stream now synced
-		// First DWORD of event header (0xAAAAAAAA) has already been read
-		dataBuff = (void*)((int64_t)data + sizeof(unsigned int));	// Advance data pointer past 0xAAAAAAAA
-		dataExpected = sizeof(EventHeader) - sizeof(unsigned int);	// Size of remaining header
-	
-		// Fetch rest of Event Header
-		ftStatus = FT_Read(fDataChannel.ftHandle, dataBuff, dataExpected, &dataReturned);
-		*dataReceived += dataReturned;
-		if (ftStatus != FT_OK) {
-			// Error during receive
-			error = SSPDAQ::errorDataReceive;
-		} else if (dataReturned != dataExpected) {
-			// Timeout expired
-			error = SSPDAQ::errorDataTimeout;
-			fDataMissing += (dataExpected - dataReturned);
-		} else {
-			// Prepare to read Event Data
-			dataBuff = (void*)((int64_t)data + sizeof(EventHeader));// Location to store waveform
-			dataExpected = (event->header.length) * sizeof(unsigned int);	// Size of packet in bytes
-			if (dataExpected < sizeof(EventHeader)) {
-				error = SSPDAQ::errorDataLength;		// Reported size of packet is smaller than a header!
-			} else {
-				dataExpected = dataExpected - sizeof(EventHeader);	// Size of waveform in bytes
-				if (dataExpected > (MAX_EVENT_DATA * sizeof (unsigned short))) {
-					error = SSPDAQ::errorDataLength;	// Reported size of waveform is too large!
-				}
-			}
-		}
-		
-
-	}
-
-	
-	if (error == 0) {
-		// Fetch Event Data
-		ftStatus = FT_Read(fDataChannel.ftHandle, dataBuff, dataExpected, &dataReturned);
-		if (ftStatus != FT_OK) {
-			// Error during receive
-			error = SSPDAQ::errorDataReceive;
-		} else if (dataReturned != dataExpected) {
-			error = SSPDAQ::errorDataTimeout;
-		}
-
-		
-		*dataReceived += dataReturned;
-	}
-	
-	return error;
-}
-
-unsigned int SSPDAQ::USBDevice::DeviceLostData (void)
-{
-	return fDataLost;
-}
-
-unsigned int SSPDAQ::USBDevice::DeviceMissingData (void)
-{
-	return fDataMissing;
 }
 
 //==============================================================================
 // Command Functions
 //==============================================================================
 
-int SSPDAQ::USBDevice::DeviceRead (unsigned int address, unsigned int* value)
+void SSPDAQ::USBDevice::DeviceRead (unsigned int address, unsigned int* value)
 {
- 	int error = 0;
-	SSPDAQ::CtrlPacket tx;
+ 	SSPDAQ::CtrlPacket tx;
 	SSPDAQ::CtrlPacket rx;
 	unsigned int txSize;
 	unsigned int rxSizeExpected;
@@ -358,22 +157,12 @@ int SSPDAQ::USBDevice::DeviceRead (unsigned int address, unsigned int* value)
 	txSize			= sizeof(SSPDAQ::CtrlHeader);
 	rxSizeExpected		= sizeof(SSPDAQ::CtrlHeader) + sizeof(unsigned int);
 	
-	error = SendReceive(tx, rx, txSize, rxSizeExpected, retryOn);
-	if (error == 0) {
-		// No Error, return data
-		*value = rx.data[0];
-	} else {
-		// Error, return zero
-		*value = 0;
-		SSPDAQ::Log::Error() << "DeviceRead Error = " << error << " at " << std::hex << address << std::endl;
-	}
-	
-	return error;
+	SendReceive(tx, rx, txSize, rxSizeExpected, 3);
+	*value = rx.data[0];
 }
 
-int SSPDAQ::USBDevice::DeviceReadMask (unsigned int address, unsigned int mask, unsigned int* value)
+void SSPDAQ::USBDevice::DeviceReadMask (unsigned int address, unsigned int mask, unsigned int* value)
 {
- 	int error = 0;
 	SSPDAQ::CtrlPacket tx;
 	SSPDAQ::CtrlPacket rx;
 	unsigned int txSize;
@@ -387,22 +176,12 @@ int SSPDAQ::USBDevice::DeviceReadMask (unsigned int address, unsigned int mask, 
 	txSize			= sizeof(SSPDAQ::CtrlHeader) + sizeof(unsigned int);
 	rxSizeExpected		= sizeof(SSPDAQ::CtrlHeader) + sizeof(unsigned int);
 	
-	error = SendReceive(tx, rx, txSize, rxSizeExpected, retryOn);
-	if (error == 0) {
-		// No Error, return data
-		*value = rx.data[0];
-	} else {
-		// Error, return zero
-		*value = 0;
-		SSPDAQ::Log::Error() << "DeviceReadMask Error = " << error << " at " << std::hex  << address << std::endl;
-	}
-	
-	return error;
+	SendReceive(tx, rx, txSize, rxSizeExpected, 3);
+	*value = rx.data[0];
 }
 
-int SSPDAQ::USBDevice::DeviceWrite (unsigned int address, unsigned int value)
+void SSPDAQ::USBDevice::DeviceWrite (unsigned int address, unsigned int value)
 {
-	int error = 0;
 	SSPDAQ::CtrlPacket tx;
 	SSPDAQ::CtrlPacket rx;
 	unsigned int txSize;
@@ -416,17 +195,11 @@ int SSPDAQ::USBDevice::DeviceWrite (unsigned int address, unsigned int value)
 	txSize			= sizeof(SSPDAQ::CtrlHeader) + sizeof(unsigned int);
 	rxSizeExpected		= sizeof(SSPDAQ::CtrlHeader);
 
-		error = SendReceive(tx, rx, txSize, rxSizeExpected, retryOff);
-	if (error != 0) {
-		SSPDAQ::Log::Error() << "DeviceWrite Error = " << error << " at " << std::hex  << address << std::endl;
-	}
-
-	return error;
+	SendReceive(tx, rx, txSize, rxSizeExpected, 3);
 }
 
-int SSPDAQ::USBDevice::DeviceWriteMask (unsigned int address, unsigned int mask, unsigned int value)
+void SSPDAQ::USBDevice::DeviceWriteMask (unsigned int address, unsigned int mask, unsigned int value)
 {
-	int error = 0;
 	SSPDAQ::CtrlPacket tx;
 	SSPDAQ::CtrlPacket rx;
 	unsigned int txSize;
@@ -441,28 +214,22 @@ int SSPDAQ::USBDevice::DeviceWriteMask (unsigned int address, unsigned int mask,
 	txSize			= sizeof(SSPDAQ::CtrlHeader) + (sizeof(unsigned int) * 2);
 	rxSizeExpected		= sizeof(SSPDAQ::CtrlHeader) + sizeof(unsigned int); 
 	
-		error = SendReceive(tx, rx, txSize, rxSizeExpected, retryOff);
-	if (error != 0) {
-		SSPDAQ::Log::Error() << "DeviceWriteMask Error = " << error << " at " << std::hex  << address << std::endl;
-	}
-
-	return error;
+	SendReceive(tx, rx, txSize, rxSizeExpected, 3);
 }
 
-int SSPDAQ::USBDevice::DeviceSet (unsigned int address, unsigned int mask)
+void SSPDAQ::USBDevice::DeviceSet (unsigned int address, unsigned int mask)
 {
-	return DeviceWriteMask(address, mask, 0xFFFFFFFF);
+	DeviceWriteMask(address, mask, 0xFFFFFFFF);
 }
 
-int SSPDAQ::USBDevice::DeviceClear (unsigned int address, unsigned int mask)
+void SSPDAQ::USBDevice::DeviceClear (unsigned int address, unsigned int mask)
 {
-	return DeviceWriteMask(address, mask, 0x00000000);
+	DeviceWriteMask(address, mask, 0x00000000);
 }
 
-int SSPDAQ::USBDevice::DeviceArrayRead (unsigned int address, unsigned int size, unsigned int* data)
+void SSPDAQ::USBDevice::DeviceArrayRead (unsigned int address, unsigned int size, unsigned int* data)
 {
 	unsigned int i = 0;
- 	int error = 0;
 	SSPDAQ::CtrlPacket tx;
 	SSPDAQ::CtrlPacket rx;
 	unsigned int txSize;
@@ -475,28 +242,16 @@ int SSPDAQ::USBDevice::DeviceArrayRead (unsigned int address, unsigned int size,
 	txSize				= sizeof(SSPDAQ::CtrlHeader);
 	rxSizeExpected		= sizeof(SSPDAQ::CtrlHeader) + (sizeof(unsigned int) * size);
 
-	error = SendReceive(tx, rx, txSize, rxSizeExpected, SSPDAQ::retryOff);
-	if (error == 0) {
-		// No Error, return data
-		for (i = 0; i < rx.header.size; i++) {
-			data[i] = rx.data[i];
-		}
-	} else {
-		// Error, return zeros
-		for (i = 0; i < rx.header.size; i++) {
-			data[i] = 0;
-		}
-		SSPDAQ::Log::Error() << "DeviceArrayRead Error = " << error << " at " << std::hex  << address << std::endl;
-	}
-	
-	return error;
+	SendReceive(tx, rx, txSize, rxSizeExpected, 3);
+	for (i = 0; i < rx.header.size; i++) {
+	  data[i] = rx.data[i];
+	}	
 }
 
-int SSPDAQ::USBDevice::DeviceArrayWrite (unsigned int address, unsigned int size, unsigned int* data)
+void SSPDAQ::USBDevice::DeviceArrayWrite (unsigned int address, unsigned int size, unsigned int* data)
 {
 	unsigned int i = 0;
- 	int error = 0;
-	SSPDAQ::CtrlPacket tx;
+ 	SSPDAQ::CtrlPacket tx;
 	SSPDAQ::CtrlPacket rx;
 	unsigned int txSize;
 	unsigned int rxSizeExpected;
@@ -512,179 +267,104 @@ int SSPDAQ::USBDevice::DeviceArrayWrite (unsigned int address, unsigned int size
 		tx.data[i] = data[i];
 	}
 
-	error = SendReceive(tx, rx, txSize, rxSizeExpected, retryOff);
-	if (error != 0) {
-		SSPDAQ::Log::Error() << "DeviceArrayWrite Error = " << error << " at " << std::hex  << address << std::endl;
-	}
-	
-	return error;
-}
-
-int SSPDAQ::USBDevice::DeviceFifoRead (unsigned int address, unsigned int size, unsigned int* data)
-{
-	unsigned int i = 0;
- 	int error = 0;
-	SSPDAQ::CtrlPacket tx;
-	SSPDAQ::CtrlPacket rx;
-	unsigned int txSize;
-	unsigned int rxSizeExpected;
-
-	tx.header.address	= address;
-	tx.header.command	= SSPDAQ::cmdFifoRead;
-	tx.header.size		= size;
-	tx.header.status	= SSPDAQ::statusNoError;
-	txSize				= sizeof(SSPDAQ::CtrlHeader);
-	rxSizeExpected		= sizeof(SSPDAQ::CtrlHeader) + (sizeof(unsigned int) * size);
-
-	error = SendReceive(tx, rx, txSize, rxSizeExpected, retryOff);
-	if (error == 0) {
-		// No Error, return data
-		for (i = 0; i < rx.header.size; i++) {
-			data[i] = rx.data[i];
-		}
-	} else {
-		// Error, return zeros
-		for (i = 0; i < rx.header.size; i++) {
-			data[i] = 0;
-		}
-		SSPDAQ::Log::Error() << "DeviceFifoRead Error = " << error << " at " << std::hex  << address << std::endl;
-	}
-
-	return error;
-}
-
-int SSPDAQ::USBDevice::DeviceFifoWrite(unsigned int address, unsigned int size, unsigned int* data)
-{
-	unsigned int i = 0;
-	int error = 0;
-	SSPDAQ::CtrlPacket tx;
-	SSPDAQ::CtrlPacket rx;
-	unsigned int txSize;
-	unsigned int rxSizeExpected;
-
-	tx.header.address	= address;
-	tx.header.command	= SSPDAQ::cmdFifoWrite;
-	tx.header.size		= size;
-	tx.header.status	= SSPDAQ::statusNoError;
-	txSize			= sizeof(SSPDAQ::CtrlHeader) + (sizeof(unsigned int) * size);
-	rxSizeExpected		= sizeof(SSPDAQ::CtrlHeader); 
-	
-	for (i = 0; i < size; i++) {
-		tx.data[i] = data[i];
-	}
-
-	error = SendReceive(tx, rx, txSize, rxSizeExpected, SSPDAQ::retryOff);
-	if (error != 0) {
-		SSPDAQ::Log::Error() << "DeviceFifoWrite Error = " << error << " at " << std::hex  << address << std::endl;
-	}
-	
-	return error;
+	SendReceive(tx, rx, txSize, rxSizeExpected, 3);
 }
 
 //==============================================================================
 // Support Functions
 //==============================================================================
 
-int SSPDAQ::USBDevice::SendReceive(SSPDAQ::CtrlPacket& tx, SSPDAQ::CtrlPacket& rx,
-				   unsigned int txSize, unsigned int rxSizeExpected, unsigned int retry)
+void SSPDAQ::USBDevice::SendReceive(SSPDAQ::CtrlPacket& tx, SSPDAQ::CtrlPacket& rx,
+				   unsigned int txSize, unsigned int rxSizeExpected, unsigned int retryCount)
 {
-	int error = 0;
-	
-	if (error == 0) {
-	  error = SendUSB(tx,txSize);
-		// Insert small delay between send and receive on Linux
-	  		usleep(100);
-	}
+  unsigned int timesTried=0;
+  bool success=false;
 
-	if (error == 0) {
-	  error = ReceiveUSB(rx,rxSizeExpected);
-		// Insert small delay between transactions on Linux
-	  	usleep(2000);
-	}
-	else{
-	  RxErrorPacket(rx, statusSendError);
-	}
-	
-	if ((error == SSPDAQ::errorCommReceiveZero) || (error == SSPDAQ::errorCommReceiveTimeout)) {
-	  if (retry == SSPDAQ::retryOn) {
-
-	    error = SendUSB(tx,txSize);
-	    // Insert small delay between send and receive on Linux
-	    usleep(100);
-	    
-	    if (error == 0) {
-	      error = ReceiveUSB(rx,rxSizeExpected);
-	      // Insert small delay between transactions of Linux
-	        usleep(2000);
-	    }
-	    else{      
-	      RxErrorPacket(rx, SSPDAQ::statusSendError);
-	    }
-	    
-	  }
-	}
-		
-	return error;
+  while(!success){
+    try{
+      SendUSB(tx,txSize);
+      // Insert small delay between send and receive on Linux
+      usleep(100);
+      ReceiveUSB(rx,rxSizeExpected);
+      usleep(2000);
+      success=true;
+    }
+    catch(EFTDIError){
+      if(timesTried<retryCount){
+	DevicePurgeComm();
+	++timesTried;
+	SSPDAQ::Log::Warning()<<"Send/receive failed "<<timesTried<<" times on USB link, retrying..."<<std::endl;
+      }
+      else{
+	SSPDAQ::Log::Error()<<"Send/receive failed on USB link, giving up."<<std::endl;
+	throw;
+      }
+    }
+  }   
 }
 	
-int SSPDAQ::USBDevice::SendUSB (SSPDAQ::CtrlPacket& tx, unsigned int txSize)
+void SSPDAQ::USBDevice::SendUSB (SSPDAQ::CtrlPacket& tx, unsigned int txSize)
 {
-	int error = 0;
-	FT_STATUS ftStatus;
 	unsigned int txSizeWritten;
 	// Send TX data over FTDI control path
-	ftStatus = FT_Write(fCommChannel.ftHandle, (char*)&tx, txSize, &txSizeWritten);
-	if (ftStatus != FT_OK) {
-		// Error during send, return error packet
-		error = SSPDAQ::errorCommSend;
-		
-	} else if (txSizeWritten == 0) {
-		// Timeout after sending nothing, return error packet
-		// BUGBUG: In this case, we could probably retry the send
-		error = SSPDAQ::errorCommSendZero;
-	} else if (txSizeWritten != txSize) {
-		// Timeout after sending less than expected
-		// BUGBUG: In this case, the if the device received enough of the packet
-		// it would still respond.  So long as the call to FT_Purge works, we
-		// shouldn't get out of sync.
-		error = SSPDAQ::errorCommSendTimeout;
+	if(FT_Write(fCommChannel.ftHandle, (char*)&tx, txSize, &txSizeWritten)!=FT_OK
+	   ||txSizeWritten!=txSize){
+	  throw(EFTDIError("Failed to send data on USB comm channel"));
 	}
-	
-	return error;
 }
 
-int SSPDAQ::USBDevice::ReceiveUSB (SSPDAQ::CtrlPacket& rx, unsigned int rxSizeExpected)
+void SSPDAQ::USBDevice::ReceiveUSB (SSPDAQ::CtrlPacket& rx, unsigned int rxSizeExpected)
 {
-	int error = 0;
-	FT_STATUS ftStatus;
 	unsigned int rxSizeReturned;
 
 	// Request RX data over FTDI control path
-	ftStatus = FT_Read(fCommChannel.ftHandle, (void*)&rx, rxSizeExpected, &rxSizeReturned);
-	if (ftStatus != FT_OK) {
-		// Error during receive, return error packet
-		error = SSPDAQ::errorCommReceive;
-		RxErrorPacket(rx, SSPDAQ::statusReceiveError);
-	} else if (rxSizeReturned == 0) {
-		// Timeout after receiving nothing, return error packet
-		error = SSPDAQ::errorCommReceiveZero;
-		RxErrorPacket(rx, SSPDAQ::statusTimeoutError);
-	} else if (rxSizeReturned != rxSizeExpected) {
-		// Timeout after receiving less than expected
-		// Most likely, device returned an error packet (just a header)
-		error = SSPDAQ::errorCommReceiveTimeout;
+	if(FT_Read(fCommChannel.ftHandle, (void*)&rx, rxSizeExpected, &rxSizeReturned)!=FT_OK
+	   ||rxSizeReturned!=rxSizeExpected){
+	  throw(EFTDIError("Failed to receive data on USB comm channel"));
 	}
-	return error;
 }
 
-void SSPDAQ::USBDevice::RxErrorPacket (SSPDAQ::CtrlPacket& rx, unsigned int status) {
-	unsigned int i = 0;
+void SSPDAQ::USBDevice::DevicePurge(FT_DEVICE_LIST_INFO_NODE& channel){
+  bool hasFailed = false;
+  bool done = false;
+  char buf[256];
+  unsigned int bytesQueued = 0;
+  unsigned int bytesReturned = 0;
+    
+  //Keep getting data from channel until queue is empty
+  do {
 
-	rx.header.address	= 0;
-	rx.header.command	= SSPDAQ::cmdNone;
-	rx.header.size		= 0;
-	rx.header.status	= status;
-	for (i = 0; i < MAX_CTRL_DATA; i++) {
-		rx.data[i] = 0;
-	}
+    //Interrogate device for queue length
+    if(FT_GetQueueStatus(channel.ftHandle, &bytesQueued)!=FT_OK){
+      hasFailed = true;
+      break;
+    }
+
+    //Read data from device, up to 256 bytes
+    if(bytesQueued!=0){
+      unsigned int bytesToGet=std::min((unsigned int)256,bytesQueued);
+      
+      if(FT_Read(channel.ftHandle, (void*)&buf, bytesToGet, &bytesReturned)!=FT_OK){
+	hasFailed=true;
+	break;
+      }
+    }
+    //If queue is empty, wait a bit and check that it hasn't filled up again, then return 
+    else{
+      usleep(10000);	// 10ms
+      if(FT_GetQueueStatus(channel.ftHandle, &bytesQueued)!=FT_OK){
+	hasFailed=true;
+	break;
+      }
+      if (bytesQueued == 0) {
+	done = 1;
+      }
+    }
+  } while (!done);
+
+  if(hasFailed){
+    SSPDAQ::Log::Error()<<"Error purging USB device queue"<<std::endl;
+    throw(EFTDIError("Error purging USB device queue"));
+  }
+	
 }
