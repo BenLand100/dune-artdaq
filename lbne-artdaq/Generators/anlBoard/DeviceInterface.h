@@ -36,9 +36,9 @@ namespace SSPDAQ{
     //Allows opening hardware in another interface object if needed.
     void Shutdown();
 
-    //Just enable a default configuration for now.
-    //Need to get some info from ANL guys about what
-    //we might actually want to change...
+    //Build a sensible default configuration (What I got from Michael
+    //along with Ethernet interface code). Artdaq should do everything
+    //in fhicl - this method is for convenience when running test code.
     void Configure();
 
     //Obtain current state of device

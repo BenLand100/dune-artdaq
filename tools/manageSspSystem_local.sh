@@ -2,8 +2,8 @@
 
 source `which setupDemoEnvironment.sh` ""
 
-AGGREGATOR_NODE=lbnedaq3
 THIS_NODE=`hostname -s`
+AGGREGATOR_NODE=${THIS_NODE}
 
 # this function expects a number of arguments:
 #  1) the DAQ command to be sent
@@ -26,11 +26,11 @@ function launch() {
   fi
 
   DemoControl.rb ${enableSerial} -s -c $1 \
-    --ssp lbnedaq1,${LBNEARTDAQ_BR_PORT[0]},0,0 \
-    --eb lbnedaq2,${LBNEARTDAQ_EB_PORT[0]} \
-    --eb lbnedaq2,${LBNEARTDAQ_EB_PORT[1]} \
-    --ag lbnedaq3,${LBNEARTDAQ_AG_PORT[0]},1 \
-    --ag lbnedaq3,${LBNEARTDAQ_AG_PORT[1]},1 \
+    --ssp ${THIS_NODE},${LBNEARTDAQ_BR_PORT[0]},0,0 \
+    --eb ${THIS_NODE},${LBNEARTDAQ_EB_PORT[0]} \
+    --eb ${THIS_NODE},${LBNEARTDAQ_EB_PORT[1]} \
+    --ag ${THIS_NODE},${LBNEARTDAQ_AG_PORT[0]},1 \
+    --ag ${THIS_NODE},${LBNEARTDAQ_AG_PORT[1]},1 \
     --data-dir ${4} --online-monitoring $3 \
     --write-data ${6} --run-event-count ${7} \
     --run-duration ${8} --file-size ${9} \

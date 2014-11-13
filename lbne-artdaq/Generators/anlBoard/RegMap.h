@@ -37,7 +37,6 @@ class RegMap{
       fOffset(0),
       fBits(32){}
 
-
     //Allow implicit conversion to unsigned int for scalar registers
     operator unsigned int(){
       if(fSize>1){
@@ -102,7 +101,7 @@ class RegMap{
   };
 
   //Get registers using variable names...
-  const Register& operator[](std::string name){
+  Register operator[](std::string name){
     if(fNamed.find(name)==fNamed.end()){
       SSPDAQ::Log::Error()<<"Attempt to access named SSP register "<<name
 			  <<", which does not exist!"<<std::endl;
@@ -141,56 +140,78 @@ class RegMap{
   unsigned int timestamp[2];
   unsigned int codeErrCounts[5];
   unsigned int dispErrCounts[5];
-  unsigned int linkStatus;
+  unsigned int link_rx_status;
   unsigned int eventDataControl;
   unsigned int eventDataPhaseControl;
   unsigned int eventDataPhaseStatus;
-  unsigned int c2cStatus;
-  unsigned int c2cControl;
-  unsigned int c2cIntrControl;
+  unsigned int c2c_master_status;
+  unsigned int c2c_control;
+  unsigned int c2c_master_intr_control;
   unsigned int dspStatus;
-  unsigned int clockStatus;
-  unsigned int clockControl;
-  unsigned int ledConfig;
-  unsigned int ledInput;
+  unsigned int comm_clock_status;
+  unsigned int comm_clock_control;
+  unsigned int comm_led_config;
+  unsigned int comm_led_input;
   unsigned int eventDataStatus;
+  unsigned int qi_dac_control;			
+  unsigned int qi_dac_config;			
+  
+  unsigned int bias_control;			
+  unsigned int bias_status;			
+  unsigned int bias_config[12];	
+  unsigned int bias_readback[12];	
+  
+  unsigned int mon_config;			
+  unsigned int mon_select;			
+  unsigned int mon_gpio;			
+  unsigned int mon_config_readback;		
+  unsigned int mon_select_readback;		
+  unsigned int mon_gpio_readback;		
+  unsigned int mon_id_readback;			
+  unsigned int mon_control;			
+  unsigned int mon_status;			
+  unsigned int mon_bias[12];		
+  unsigned int mon_value[9];			
 
   // Registers in the Artix FPGA
   unsigned int board_id;
   unsigned int fifo_control;
-  unsigned int mmcm_status;
+  unsigned int dsp_clock_status;
   unsigned int module_id;
-  unsigned int win_comp_min;
-  unsigned int win_comp_max;
-  unsigned int c2c_status;
-  unsigned int c2c_intr_control;
+  unsigned int c2c_slave_status;
+  unsigned int c2c_slave_intr_control;
 
-  unsigned int control_status[12];
+  unsigned int channel_control[12];
   unsigned int led_threshold[12];
   unsigned int cfd_parameters[12];
   unsigned int readout_pretrigger[12];
   unsigned int readout_window[12];
 
   unsigned int p_window[12];
-  unsigned int k_window[12];
+  unsigned int i2_window[12];
   unsigned int m1_window[12];
   unsigned int m2_window[12];
   unsigned int d_window[12];
-  unsigned int i_window[12];
+  unsigned int i1_window[12];
   unsigned int disc_width[12];
   unsigned int baseline_start[12];
 
   unsigned int trigger_input_delay;
   unsigned int gpio_output_width;
-  unsigned int misc_config;
+  unsigned int front_panel_config;
   unsigned int channel_pulsed_control;
-  unsigned int led_config;
-  unsigned int led_input;
+  unsigned int dsp_led_config;
+  unsigned int dsp_led_input;
   unsigned int baseline_delay;
   unsigned int diag_channel_input;
   unsigned int event_data_control;
   unsigned int adc_config;
   unsigned int adc_config_load;
+  unsigned int qi_config;
+  unsigned int qi_delay;
+  unsigned int qi_pulse_width;
+  unsigned int qi_pulsed;
+  unsigned int external_gate_width;
   unsigned int lat_timestamp_lsb;
   unsigned int lat_timestamp_msb;
   unsigned int live_timestamp_lsb;
@@ -199,12 +220,14 @@ class RegMap{
   unsigned int sync_delay;
   unsigned int sync_count;
 	
-  unsigned int master_logic_status;
+  unsigned int master_logic_control;
   unsigned int trigger_config;
   unsigned int overflow_status;
   unsigned int phase_value;
-  unsigned int link_status;
-
+  unsigned int link_tx_status;
+  unsigned int dsp_clock_control;
+  unsigned int dsp_clock_phase_control;
+	
   unsigned int code_revision;
   unsigned int code_date;
 

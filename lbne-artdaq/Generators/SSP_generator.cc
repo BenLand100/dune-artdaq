@@ -72,15 +72,15 @@ void lbne::SSP::ConfigureDevice(fhicl::ParameterSet const& ps){
       }
     }//End Processing of Literals
 
-    else if(!hcIter->substr(0,4).compare("Ele_")){ //Single array element
+    else if(!hcIter->substr(0,4).compare("ELE_")){ //Single array element
       std::vector<unsigned int> vals=hardwareConfig.get<std::vector<unsigned int> >(*hcIter);
       device_interface_->SetRegisterElementByName(hcIter->substr(4,std::string::npos),vals[0],vals[1]);
     }
-    else if(!hcIter->substr(0,4).compare("All_")){ //All array elements set to same value
+    else if(!hcIter->substr(0,4).compare("ALL_")){ //All array elements set to same value
       unsigned int val=hardwareConfig.get<unsigned int>(*hcIter);
       device_interface_->SetRegisterArrayByName(hcIter->substr(4,std::string::npos),val);
     }
-    else if(!hcIter->substr(0,4).compare("Arr_")){ //All array elements individually
+    else if(!hcIter->substr(0,4).compare("ARR_")){ //All array elements individually
       std::vector<unsigned int> vals=hardwareConfig.get<std::vector<unsigned int> >(*hcIter);
       device_interface_->SetRegisterArrayByName(hcIter->substr(4,std::string::npos),vals);
     }
@@ -90,7 +90,7 @@ void lbne::SSP::ConfigureDevice(fhicl::ParameterSet const& ps){
     }
   }
 }
-
+  
 void lbne::SSP::start(){
   try{
   device_interface_->Start();

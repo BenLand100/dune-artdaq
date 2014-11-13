@@ -43,6 +43,7 @@ void SSPDAQ::USBDevice::Open(){
     FT_Close(commHandle);
     throw(SSPDAQ::EFTDIError("Failed to configure USB comm channel"));
   }
+  SSPDAQ::Log::Info()<<"Opened control path"<<std::endl;
 
   // Open the Data Path
   if (FT_OpenEx(fDataChannel.SerialNumber,FT_OPEN_BY_SERIAL_NUMBER, &(fDataChannel.ftHandle)) != FT_OK) {
@@ -150,13 +151,14 @@ void SSPDAQ::USBDevice::DeviceRead (unsigned int address, unsigned int* value)
 	unsigned int txSize;
 	unsigned int rxSizeExpected;
 
+	tx.header.length	= sizeof(CtrlHeader);
 	tx.header.address	= address;
 	tx.header.command	= SSPDAQ::cmdRead;
 	tx.header.size		= 1;
 	tx.header.status	= SSPDAQ::statusNoError;
 	txSize			= sizeof(SSPDAQ::CtrlHeader);
 	rxSizeExpected		= sizeof(SSPDAQ::CtrlHeader) + sizeof(unsigned int);
-	
+
 	SendReceive(tx, rx, txSize, rxSizeExpected, 3);
 	*value = rx.data[0];
 }
@@ -168,6 +170,7 @@ void SSPDAQ::USBDevice::DeviceReadMask (unsigned int address, unsigned int mask,
 	unsigned int txSize;
 	unsigned int rxSizeExpected;
 
+	tx.header.length	= sizeof(CtrlHeader) + sizeof(uint);
 	tx.header.address	= address;
 	tx.header.command	= SSPDAQ::cmdReadMask;
 	tx.header.size		= 1;
@@ -187,6 +190,7 @@ void SSPDAQ::USBDevice::DeviceWrite (unsigned int address, unsigned int value)
 	unsigned int txSize;
 	unsigned int rxSizeExpected;
 
+	tx.header.length	= sizeof(CtrlHeader) + sizeof(uint);
 	tx.header.address	= address;
 	tx.header.command	= SSPDAQ::cmdWrite;
 	tx.header.size		= 1;
@@ -205,6 +209,7 @@ void SSPDAQ::USBDevice::DeviceWriteMask (unsigned int address, unsigned int mask
 	unsigned int txSize;
 	unsigned int rxSizeExpected;
 
+	tx.header.length	= sizeof(CtrlHeader) + (sizeof(uint) * 2);
 	tx.header.address	= address;
 	tx.header.command	= SSPDAQ::cmdWriteMask;
 	tx.header.size		= 1;
@@ -235,6 +240,7 @@ void SSPDAQ::USBDevice::DeviceArrayRead (unsigned int address, unsigned int size
 	unsigned int txSize;
 	unsigned int rxSizeExpected;
 
+	tx.header.length	= sizeof(CtrlHeader);
 	tx.header.address	= address;
 	tx.header.command	= SSPDAQ::cmdArrayRead;
 	tx.header.size		= size;
@@ -256,6 +262,7 @@ void SSPDAQ::USBDevice::DeviceArrayWrite (unsigned int address, unsigned int siz
 	unsigned int txSize;
 	unsigned int rxSizeExpected;
 
+	tx.header.length	= sizeof(CtrlHeader) + (sizeof(uint) * size);
 	tx.header.address	= address;
 	tx.header.command	= SSPDAQ::cmdArrayWrite;
 	tx.header.size		= size;
@@ -309,6 +316,7 @@ void SSPDAQ::USBDevice::SendUSB (SSPDAQ::CtrlPacket& tx, unsigned int txSize)
 	// Send TX data over FTDI control path
 	if(FT_Write(fCommChannel.ftHandle, (char*)&tx, txSize, &txSizeWritten)!=FT_OK
 	   ||txSizeWritten!=txSize){
+	  SSPDAQ::Log::Error()<<"Failed to send data on USB comm channel!"<<std::endl;
 	  throw(EFTDIError("Failed to send data on USB comm channel"));
 	}
 }
@@ -316,10 +324,11 @@ void SSPDAQ::USBDevice::SendUSB (SSPDAQ::CtrlPacket& tx, unsigned int txSize)
 void SSPDAQ::USBDevice::ReceiveUSB (SSPDAQ::CtrlPacket& rx, unsigned int rxSizeExpected)
 {
 	unsigned int rxSizeReturned;
-
+	auto errorCode=FT_Read(fCommChannel.ftHandle, (void*)&rx, rxSizeExpected, &rxSizeReturned);
 	// Request RX data over FTDI control path
-	if(FT_Read(fCommChannel.ftHandle, (void*)&rx, rxSizeExpected, &rxSizeReturned)!=FT_OK
+	if(errorCode!=FT_OK
 	   ||rxSizeReturned!=rxSizeExpected){
+	  SSPDAQ::Log::Error()<<"Failed to receive data on USB comm channel!"<<std::endl;
 	  throw(EFTDIError("Failed to receive data on USB comm channel"));
 	}
 }

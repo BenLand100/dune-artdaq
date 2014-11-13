@@ -186,7 +186,7 @@ void lbne::SSPDump::analyze(art::Event const & evt)
 	    << "Baseline:                           " << daqHeader->baseline << std::endl
 	    << "CFD Timestamp interpolation points: " << daqHeader->cfdPoint[0] << " " << daqHeader->cfdPoint[1] << " " << daqHeader->cfdPoint[2] << " " << daqHeader->cfdPoint[3] << std::endl
 	    << "Internal interpolation point:       " << daqHeader->intTimestamp[0] << std::endl
-	    << "Internal timestamp:                 " << ((uint64_t)((uint64_t)daqHeader->intTimestamp[3] << 32)) + ((uint64_t)((uint64_t)daqHeader->intTimestamp[2] << 16)) + ((uint64_t)((uint64_t)daqHeader->intTimestamp[1] << 0)) << std::endl
+	    << "Internal timestamp:                 " << ((uint64_t)((uint64_t)daqHeader->intTimestamp[3] << 32)) + ((uint64_t)((uint64_t)daqHeader->intTimestamp[2]) << 16) + ((uint64_t)((uint64_t)daqHeader->intTimestamp[1])) << std::endl
 	    << std::endl;
 	}
 	dataPointer+=sizeof(SSPDAQ::EventHeader)/sizeof(unsigned int);
@@ -194,25 +194,23 @@ void lbne::SSPDump::analyze(art::Event const & evt)
 	
 	//get the information from the data
 	bool verb_values = true;
-	unsigned int nADC=(daqHeader->length-sizeof(SSPDAQ::EventHeader)/sizeof(unsigned int));
+	unsigned int nADC=(daqHeader->length-sizeof(SSPDAQ::EventHeader)/sizeof(unsigned int))*2;
+	const unsigned short* adcPointer=reinterpret_cast<const unsigned short*>(dataPointer);
 	for(size_t idata = 0; idata < nADC; idata++) {
 	  if(idata >= verb_adcs_)
 	    verb_values = false;
-	  else if(idata == 0)
+	  else if(idata == 0&&verb_adcs_>0)
 	    std::cout << "Data values: ";
 	  
-	  //const uint16_t * adc = (const uint16_t*)dataPointer + idata;
-	  const unsigned int* adc = dataPointer + idata;
+	  const unsigned short* adc = adcPointer + idata;
 	  adc_values_->Fill(*adc);
 	  n_adc_counter_++;
-	  adc_cumulative_ += (uint64_t)adc;
-	  
-	  //std::cout << n_adc_counter_ << "\t" << adc_cumulative_ << std::endl;
+	  adc_cumulative_ += (uint64_t)(*adc);
 	  
 	  if(verb_values)
 	    std::cout << *adc << " ";
 	}
-	dataPointer+=nADC;
+	dataPointer+=nADC/2;
 	++triggersProcessed;
 	std::cout<<"Triggers processed: "<<triggersProcessed<<std::endl<<std::endl;
       }

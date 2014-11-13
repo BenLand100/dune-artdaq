@@ -76,8 +76,7 @@ void SSPDAQ::EmulatedDevice::DeviceReadMask (unsigned int address, unsigned int 
 void SSPDAQ::EmulatedDevice::DeviceWrite (unsigned int address, unsigned int value)
 {
   SSPDAQ::RegMap& lbneReg=SSPDAQ::RegMap::Get();
-  std::cout<<"Setting address "<<std::hex<<address<<" to "<<value<<std::endl<<std::dec;
-  if(address==lbneReg.master_logic_status&&value==0x00000001){
+  if(address==lbneReg.master_logic_control&&value==0x00000001){
     this->Start();
   }
   else if(address==lbneReg.event_data_control&&value==0x00020001){
@@ -121,7 +120,7 @@ void SSPDAQ::EmulatedDevice::DeviceArrayWrite (unsigned int address, unsigned in
 //==============================================================
 
 void SSPDAQ::EmulatedDevice::Start(){
-  std::cout<<"Creating emulator thread..."<<std::endl;
+  SSPDAQ::Log::Debug()<<"Creating emulator thread..."<<std::endl;
   fEmulatorShouldStop=false;
   fEmulatorThread=std::unique_ptr<std::thread>(new std::thread(&SSPDAQ::EmulatedDevice::EmulatorLoop,this));
 }
@@ -136,7 +135,7 @@ void SSPDAQ::EmulatedDevice::Stop(){
 
 void SSPDAQ::EmulatedDevice::EmulatorLoop(){
 
-  std::cout<<"Starting emulator loop..."<<std::endl;
+  SSPDAQ::Log::Debug()<<"Starting emulator loop..."<<std::endl;
   static unsigned int headerSizeInWords=sizeof(SSPDAQ::EventHeader)/sizeof(unsigned int);
 
   //We want to generate events on random channels at random times
@@ -167,11 +166,11 @@ void SSPDAQ::EmulatedDevice::EmulatorLoop(){
     header.group2=channel;
     
     //Set timestamps correctly? Need to figure out better how these are defined
-    for(int iWord=0;iWord<=3;++iWord){
-      header.timestamp[iWord]=(eventTimestamp>>(3-iWord)*16)%65536;
+    for(int iWord=1;iWord<=3;++iWord){
+      header.timestamp[iWord]=(eventTimestamp>>(iWord)*16)%65536;
     }
     for(int iWord=0;iWord<=2;++iWord){
-      header.intTimestamp[iWord+1]=(eventTimestamp>>(2-iWord)*16)%65536;//First word of intTimestamp is reserved
+      header.intTimestamp[iWord+1]=(eventTimestamp>>(iWord)*16)%65536;//First word of intTimestamp is reserved
     }
 
     //Don't bother with any other fields for now

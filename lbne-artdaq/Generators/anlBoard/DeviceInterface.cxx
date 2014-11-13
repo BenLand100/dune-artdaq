@@ -31,7 +31,6 @@ void SSPDAQ::DeviceInterface::Initialize(){
 
   //Put device into sensible state
   this->Stop();
-  this->Configure();
 }
 
 void SSPDAQ::DeviceInterface::Stop(){
@@ -42,7 +41,7 @@ void SSPDAQ::DeviceInterface::Stop(){
   SSPDAQ::RegMap& lbneReg=SSPDAQ::RegMap::Get();
       
   fDevice->DeviceWrite(lbneReg.eventDataControl, 0x0013001F);
-  fDevice->DeviceClear(lbneReg.master_logic_status, 0x00000001);
+  fDevice->DeviceClear(lbneReg.master_logic_control, 0x00000001);
   // Clear the FIFOs
   fDevice->DeviceWrite(lbneReg.fifo_control, 0x08000000);
   // Reset the links and flags				
@@ -59,134 +58,6 @@ void SSPDAQ::DeviceInterface::Stop(){
 
 }
 
-void SSPDAQ::DeviceInterface::Configure(){
-
-  if(fState!=kStopped){
-    SSPDAQ::Log::Warning()<<"Attempt to reconfigure non-stopped device refused!"<<std::endl;
-    return;
-  }
-
-  SSPDAQ::RegMap& lbneReg = SSPDAQ::RegMap::Get();
-  // Setting up some constants to use during initialization
-  const unsigned int nChannels          = 12;
-  const unsigned int module_id          = 0xABC;	// This value is reported in the event header
-  const unsigned int led_threshold	= 25;	
-  const unsigned int cfd_fraction	= 0x1800;
-  const unsigned int readout_pretrigger	= 100;	
-  const unsigned int event_packet_length= 2046;	
-  const unsigned int p_window		= 0;	
-  const unsigned int k_window		= 20;
-  const unsigned int m1_window		= 10;	
-  const unsigned int m2_window		= 5;	
-  const unsigned int d_window		= 20;
-  const unsigned int i_window		= 300;
-  const unsigned int disc_width		= 10;
-  const unsigned int baseline_start	= 0x0000;
-  const unsigned int baseline_delay	= 5;
-  const unsigned int trigger_config	= 0x00000000;
-
-  /*  const unsigned int	chan_config[nChannels] = 
-    {
-      //      0x00F0E061,		// configure channel #0 in a slow timestamp triggered mode
-      0x00005001,               // put channel #0 into external trigger mode
-      //0x80F00801,               //put channel #0 into internal led trigger mode
-      0x00000000,		// disable channel #1
-      0x00000000,		// disable channel #2
-      0x00000000,		// disable channel #3
-      0x00000000,		// disable channel #4
-      0x00000000,		// disable channel #5
-      0x00000000,		// disable channel #6
-      0x00000000,		// disable channel #7
-      0x00000000,		// disable channel #8
-      0x00000000,		// disable channel #9
-      0x00000000,		// disable channel #10
-      0x00000000,		// disable channel #11
-      };*/
-
-  const unsigned int	chan_config[nChannels] = 
-    {
-      //      0x00F0E061,		// configure channel #0 in a slow timestamp triggered mode
-      0x00006001,               // put channel #0 into external trigger mode
-      //0x80F00801,               //put channel #0 into internal led trigger mode
-      0x00006001,               // put channel #0 into external trigger mode
-      0x00006001,               // put channel #0 into external trigger mode
-      0x00006001,               // put channel #0 into external trigger mode
-      0x00006001,               // put channel #0 into external trigger mode
-      0x00006001,               // put channel #0 into external trigger mode
-      0x00006001,               // put channel #0 into external trigger mode
-      0x00006001,               // put channel #0 into external trigger mode
-      0x00006001,               // put channel #0 into external trigger mode
-      0x00006001,               // put channel #0 into external trigger mode
-      0x00006001,               // put channel #0 into external trigger mode
-      0x00006001,               // put channel #0 into external trigger mode
-      };
-
-  //	Channel Configuration Bit Descriptions
-  //	31		cfd_enable
-  //	30		pileup_waveform_only
-  //	26		pileup_extend_enable
-  //	25:24	event_extend_mode
-  //	23		disc_counter_mode
-  //	22		ahit_counter_mode 
-  //	21		ACCEPTED_EVENT_COUNTER_MODE
-  //	20		dropped_event_counter_mode
-  //	15:14	external_disc_flag_sel
-  //	13:12	external_disc_mode
-  //	11		negative edge trigger enable
-  //	10		positive edge trigger enable
-  //	6:4		This sets the timestamp trigger rate (source of external_disc_flag_in(3) into channel logic)
-  //	2		Not pileup_disable
-  //	0		channel enable
-  //
-
-  unsigned int i = 0;
-  unsigned int data[nChannels];
-
-
-  //Set clock source to NOvA clock
-  fDevice->DeviceWrite(0x80000520,0x13);
-  //Set front panel trigger input to active low
-  fDevice->DeviceWrite(0x80000408,0x1101);
-
-  fDevice->DeviceWrite(lbneReg.c2cControl, 0x00000007);
-  fDevice->DeviceWrite(lbneReg.clockControl, 0x00000001);
-  fDevice->DeviceWrite(lbneReg.module_id, module_id);
-  fDevice->DeviceWrite(lbneReg.c2c_intr_control, 0x00000000);
-  for (i = 0; i < nChannels; i++) data[i] = chan_config[i];
-  fDevice->DeviceArrayWrite(lbneReg.control_status[0], nChannels, data);
-  for (i = 0; i < nChannels; i++) data[i] = led_threshold;
-  fDevice->DeviceArrayWrite(lbneReg.led_threshold[0], nChannels, data);
-  for (i = 0; i < nChannels; i++) data[i] = cfd_fraction;
-  fDevice->DeviceArrayWrite(lbneReg.cfd_parameters[0], nChannels, data);
-  for (i = 0; i < nChannels; i++) data[i] = readout_pretrigger;
-  fDevice->DeviceArrayWrite(lbneReg.readout_pretrigger[0], nChannels, data);
-  for (i = 0; i < nChannels; i++) data[i] = event_packet_length;
-  fDevice->DeviceArrayWrite(lbneReg.readout_window[0], nChannels, data);
-  for (i = 0; i < nChannels; i++) data[i] = p_window;
-  fDevice->DeviceArrayWrite(lbneReg.p_window[0], nChannels, data);
-  for (i = 0; i < nChannels; i++) data[i] = k_window;
-  fDevice->DeviceArrayWrite(lbneReg.k_window[0], nChannels, data);
-  for (i = 0; i < nChannels; i++) data[i] = m1_window;
-  fDevice->DeviceArrayWrite(lbneReg.m1_window[0], nChannels, data);
-  for (i = 0; i < nChannels; i++) data[i] = m2_window;
-  fDevice->DeviceArrayWrite(lbneReg.m2_window[0], nChannels, data);
-  for (i = 0; i < nChannels; i++) data[i] = d_window;
-  fDevice->DeviceArrayWrite(lbneReg.d_window[0], nChannels, data);
-  for (i = 0; i < nChannels; i++) data[i] = i_window;
-  fDevice->DeviceArrayWrite(lbneReg.i_window[0], nChannels, data);
-  for (i = 0; i < nChannels; i++) data[i] = disc_width;
-  fDevice->DeviceArrayWrite(lbneReg.disc_width[0], nChannels, data);
-  for (i = 0; i < nChannels; i++) data[i] = baseline_start;
-  fDevice->DeviceArrayWrite(lbneReg.baseline_start[0], nChannels, data);
-
-  fDevice->DeviceWrite(lbneReg.gpio_output_width, 0x00001000);
-  fDevice->DeviceWrite(lbneReg.led_config, 0x00000000);
-  fDevice->DeviceWrite(lbneReg.baseline_delay, baseline_delay);
-  fDevice->DeviceWrite(lbneReg.diag_channel_input, 0x00000000);
-  fDevice->DeviceWrite(lbneReg.trigger_config, trigger_config);
-  // Load the window settings - This MUST be the last operation
-  fDevice->DeviceWrite(lbneReg.channel_pulsed_control, 0x1);
-}
 
 void SSPDAQ::DeviceInterface::Start(){
 
@@ -195,10 +66,14 @@ void SSPDAQ::DeviceInterface::Start(){
     return;
   }
 
-  std::cout<<"Device interface starting run"<<std::endl;
+  SSPDAQ::Log::Info()<<"Device interface starting run"<<std::endl;
   SSPDAQ::RegMap& lbneReg=SSPDAQ::RegMap::Get();
   // This script enables all logic and FIFOs and starts data acquisition in the device
   // Operations MUST be performed in this order
+  
+  //Load window settings into channels
+  fDevice->DeviceWrite(lbneReg.channel_pulsed_control, 0x1);
+
   fDevice->DeviceWrite(lbneReg.event_data_control, 0x00000000);
   // Release the FIFO reset						
   fDevice->DeviceWrite(lbneReg.fifo_control, 0x00000000);
@@ -207,14 +82,14 @@ void SSPDAQ::DeviceInterface::Start(){
   fDevice->DeviceWrite(lbneReg.eventDataControl, 0x00000000);
   // Registers in the Artix FPGA (DSP)
   // Release master logic reset & enable active channels
-  fDevice->DeviceWrite(lbneReg.master_logic_status, 0x00000001);
+  fDevice->DeviceWrite(lbneReg.master_logic_control, 0x00000001);
 
   fShouldStop=false;
   fState=SSPDAQ::DeviceInterface::kRunning;
-  std::cout<<"Device interface starting read thread...";
+  SSPDAQ::Log::Debug()<<"Device interface starting read thread...";
 
   fReadThread=std::unique_ptr<std::thread>(new std::thread(&SSPDAQ::DeviceInterface::ReadEvents,this));
-    std::cout<<"Run started!"<<std::endl;
+  SSPDAQ::Log::Info()<<"Run started!"<<std::endl;
 }
 
 void SSPDAQ::DeviceInterface::ReadEvents(){
@@ -230,9 +105,9 @@ void SSPDAQ::DeviceInterface::ReadEvents(){
   //before the start time.
   //Doesn't matter for emulated data since this does start at t=0.
   unsigned long runStartTime=0;
-  unsigned long millisliceStartTime=runStartTime;
-  unsigned long millisliceLengthInTicks=100000000;//0.67s
-  unsigned long millisliceOverlapInTicks=10000000;//0.067s
+  unsigned long millisliceStartTime=0;
+  unsigned long millisliceLengthInTicks=1E8;//0.67s
+  unsigned long millisliceOverlapInTicks=1E7;//0.067s
   unsigned int millisliceCount=0;
 
   //Need two lots of event packets, to manage overlap between slices.
@@ -251,12 +126,17 @@ void SSPDAQ::DeviceInterface::ReadEvents(){
       continue;
     }
 
-    //Convert 4*unsigned shorts into 1*unsigned long event timestamp
+    //Convert 3*unsigned shorts into 1*unsigned long event timestamp
     unsigned long eventTime=0;
-    for(unsigned int iWord=0;iWord<=3;++iWord){
-      eventTime+=((unsigned long)(event.header.timestamp[iWord]))<<16*(3-iWord);
+    for(unsigned int iWord=1;iWord<=3;++iWord){
+      eventTime+=((unsigned long)(event.header.intTimestamp[iWord]))<<16*(iWord-1);
+    }
+    if(runStartTime==0){
+      runStartTime=eventTime;
+      millisliceStartTime=runStartTime;
     }
 
+    SSPDAQ::Log::Debug()<<"Interface got event with timestamp "<<eventTime<<"("<<(eventTime-runStartTime)/150E6<<"s from run start)"<<std::endl;
     //Event fits into the current slice
     //Add to current slice only
     if(eventTime<millisliceStartTime+millisliceLengthInTicks){
@@ -270,7 +150,7 @@ void SSPDAQ::DeviceInterface::ReadEvents(){
     }
     //Event is not in overlap window of current slice
     else{
-      std::cout<<"Device interface building millislice with "<<events_thisSlice.size()<<" events"<<std::endl;
+      SSPDAQ::Log::Debug()<<"Device interface building millislice with "<<events_thisSlice.size()<<" events"<<std::endl;
       //Build a millislice based on the existing events
       //and swap next-slice event list into current-slice list
       this->BuildMillislice(events_thisSlice,millisliceStartTime,millisliceStartTime+millisliceLengthInTicks+millisliceOverlapInTicks);
@@ -360,7 +240,7 @@ void SSPDAQ::DeviceInterface::BuildMillislice(const std::vector<EventPacket>& ev
   //Add millislice to queue//
   //=======================//
 
-  std::cout<<"Pushing slice with "<<events.size()<<" triggers onto queue!"<<std::endl;
+  SSPDAQ::Log::Debug()<<"Pushing slice with "<<events.size()<<" triggers onto queue!"<<std::endl;
   fQueue.push(std::move(sliceData));
 }
 
@@ -456,10 +336,9 @@ void SSPDAQ::DeviceInterface::ReadEventFromDevice(EventPacket& event){
 
   unsigned long eventTime=0;
 
-  for(unsigned int iWord=0;iWord<=3;++iWord){
-    eventTime+=((unsigned long)(hPtr->timestamp[iWord]))<<16*(3-iWord);
+  for(unsigned int iWord=2;iWord<=3;++iWord){
+    eventTime+=((unsigned long)(hPtr->intTimestamp[iWord]))<<16*(iWord-2);
   }
-  std::cout<<"Interface building an event with timestamp "<<eventTime<<std::endl;
     
   //Wait for hardware queue to fill with full event data
   unsigned int bodyReadSize=event.header.length-(sizeof(EventHeader)/sizeof(unsigned int));
@@ -567,8 +446,296 @@ void SSPDAQ::DeviceInterface::SetRegisterArrayByName(std::string name, std::vect
   SSPDAQ::RegMap::Register reg=(SSPDAQ::RegMap::Get())[name];
   if(reg.Size()!=values.size()){
     SSPDAQ::Log::Error()<<"Request to set named register array "<<name<<", length "<<reg.Size()
-			<<"with vector of "<<values.size()<<" values!"<<std::endl;
+  			<<"with vector of "<<values.size()<<" values!"<<std::endl;
     throw(std::invalid_argument(""));
   }
-  this->SetRegisterArray(reg,values);
+  this->SetRegisterArray(reg[0],values);
 }
+
+void SSPDAQ::DeviceInterface::Configure(){
+
+  if(fState!=kStopped){
+    SSPDAQ::Log::Warning()<<"Attempt to reconfigure non-stopped device refused!"<<std::endl;
+    return;
+  }
+
+  SSPDAQ::RegMap& lbneReg = SSPDAQ::RegMap::Get();
+
+  	// Setting up some constants to use during initialization
+	const uint	module_id		= 0xABC;	// This value is reported in the event header
+	const uint	channel_control[12] = 
+	//	Channel Control Bit Descriptions
+	//	31		cfd_enable
+	//	30		pileup_waveform_only
+	//	26		pileup_extend_enable
+	//	25:24	event_extend_mode
+	//	23		disc_counter_mode
+	//	22		ahit_counter_mode 
+	//	21		ACCEPTED_EVENT_COUNTER_MODE
+	//	20		dropped_event_counter_mode
+	//	15:14	external_disc_flag_sel
+	//	13:12	external_disc_mode
+	//	11		negative edge trigger enable
+	//	10		positive edge trigger enable
+	//	6:4		This sets the timestamp trigger rate (source of external_disc_flag_in(3) into channel logic)
+	//	2		Not pileup_disable
+	//	1		Trigger Mode
+	//	0		channel enable
+	//
+	//	Channel Control Examples
+	//	0x00000000,		// disable channel #
+	//	0x80F00001,		// enable channel # but do not enable any triggers (CFD Enabled)
+	//	0x80F00401,		// configure channel # in positive self-trigger mode (CFD Enabled)
+	//	0x80F00801,		// configure channel # in negative self-trigger mode (CFD Enabled)
+	//	0x80F00C01,		// configure channel # in positive and negative self-trigger mode (CFD Enabled)
+	//	0x00F06001,		// configure channel # in external trigger mode.
+	//	0x00F0E051,		// configure channel # in a slow timestamp triggered mode (8.941Hz)
+	//	0x00F0E061,		// configure channel # in a very slow timestamp triggered mode (1.118Hz)
+	{
+		0x00F0E0C1,		// configure channel #0 in a slow timestamp triggered mode
+		0x00000000,		// disable channel #1
+		0x00000000,		// disable channel #2
+		0x00000000,		// disable channel #3
+		0x00000000,		// disable channel #4
+		0x00000000,		// disable channel #5
+		0x00000000,		// disable channel #6
+		0x00000000,		// disable channel #7
+		0x00000000,		// disable channel #8
+		0x00000000,		// disable channel #9
+		0x00000000,		// disable channel #10
+		0x00000000,		// disable channel #11
+	};
+	const uint	led_threshold		= 25;	
+	const uint	cfd_fraction		= 0x1800;
+	const uint	readout_pretrigger	= 100;	
+	const uint	event_packet_length	= 2046;	
+	const uint	p_window			= 0;	
+	const uint	i2_window			= 500;
+	const uint	m1_window			= 10;	
+	const uint	m2_window			= 10;	
+	const uint	d_window			= 20;
+	const uint  i1_window			= 500;
+	const uint	disc_width			= 10;
+	const uint	baseline_start		= 0x0000;
+	const uint	baseline_delay		= 5;
+
+	int i = 0;
+	uint data[12];
+
+	// This script of register writes sets up the digitizer for basic real event operation
+	// Comments next to each register are excerpts from the VHDL or C code
+	// ALL existing registers are shown here however many are commented out because they are
+	// status registers or simply don't need to be modified
+	// The script runs through the registers numerically (increasing addresses)
+	// Therefore, it is assumed DeviceStopReset() has been called so these changes will not
+	// cause crazy things to happen along the way
+
+	fDevice->DeviceWrite(lbneReg.c2c_control,0x00000007);
+	fDevice->DeviceWrite(lbneReg.c2c_master_intr_control,0x00000000);
+	fDevice->DeviceWrite(lbneReg.comm_clock_control,0x00000001);
+	fDevice->DeviceWrite(lbneReg.comm_led_config, 0x00000000);
+	fDevice->DeviceWrite(lbneReg.comm_led_input, 0x00000000);
+	fDevice->DeviceWrite(lbneReg.qi_dac_config,0x00000000);
+	fDevice->DeviceWrite(lbneReg.qi_dac_control,0x00000001);
+
+	fDevice->DeviceWrite(lbneReg.bias_config[0],0x00000000);
+	fDevice->DeviceWrite(lbneReg.bias_config[1],0x00000000);
+	fDevice->DeviceWrite(lbneReg.bias_config[2],0x00000000);
+	fDevice->DeviceWrite(lbneReg.bias_config[3],0x00000000);
+	fDevice->DeviceWrite(lbneReg.bias_config[4],0x00000000);
+	fDevice->DeviceWrite(lbneReg.bias_config[5],0x00000000);
+	fDevice->DeviceWrite(lbneReg.bias_config[6],0x00000000);
+	fDevice->DeviceWrite(lbneReg.bias_config[7],0x00000000);
+	fDevice->DeviceWrite(lbneReg.bias_config[8],0x00000000);
+	fDevice->DeviceWrite(lbneReg.bias_config[9],0x00000000);
+	fDevice->DeviceWrite(lbneReg.bias_config[10],0x00000000);
+	fDevice->DeviceWrite(lbneReg.bias_config[11],0x00000000);
+	fDevice->DeviceWrite(lbneReg.bias_control,0x00000001);
+
+	fDevice->DeviceWrite(lbneReg.mon_config,0x0012F000);
+	fDevice->DeviceWrite(lbneReg.mon_select,0x00FFFF00);
+	fDevice->DeviceWrite(lbneReg.mon_gpio,0x00000000);
+	fDevice->DeviceWrite(lbneReg.mon_control,0x00010001);
+
+	//Registers in the Artix FPGA (DSP)//AddressDefault ValueRead MaskWrite MaskCode Name
+	fDevice->DeviceWrite(lbneReg.module_id,module_id);
+	fDevice->DeviceWrite(lbneReg.c2c_slave_intr_control,0x00000000);
+
+	for (i = 0; i < 12; i++) data[i] = channel_control[i];
+	fDevice->DeviceArrayWrite(lbneReg.channel_control[0], 12, data);
+
+	for (i = 0; i < 12; i++) data[i] = led_threshold;
+	fDevice->DeviceArrayWrite(lbneReg.led_threshold[0], 12, data);
+
+	for (i = 0; i < 12; i++) data[i] = cfd_fraction;
+	fDevice->DeviceArrayWrite(lbneReg.cfd_parameters[0], 12, data);
+
+	for (i = 0; i < 12; i++) data[i] = readout_pretrigger;
+	fDevice->DeviceArrayWrite(lbneReg.readout_pretrigger[0], 12, data);
+
+	for (i = 0; i < 12; i++) data[i] = event_packet_length;
+	fDevice->DeviceArrayWrite(lbneReg.readout_window[0], 12, data);
+
+	for (i = 0; i < 12; i++) data[i] = p_window;
+	fDevice->DeviceArrayWrite(lbneReg.p_window[0], 12, data);
+
+	for (i = 0; i < 12; i++) data[i] = i2_window;
+	fDevice->DeviceArrayWrite(lbneReg.i2_window[0], 12, data);
+
+	for (i = 0; i < 12; i++) data[i] = m1_window;
+	fDevice->DeviceArrayWrite(lbneReg.m1_window[0], 12, data);
+
+	for (i = 0; i < 12; i++) data[i] = m2_window;
+	fDevice->DeviceArrayWrite(lbneReg.m2_window[0], 12, data);
+
+	for (i = 0; i < 12; i++) data[i] = d_window;
+	fDevice->DeviceArrayWrite(lbneReg.d_window[0], 12, data);
+
+	for (i = 0; i < 12; i++) data[i] = i1_window;
+	fDevice->DeviceArrayWrite(lbneReg.i1_window[0], 12, data);
+
+	for (i = 0; i < 12; i++) data[i] = disc_width;
+	fDevice->DeviceArrayWrite(lbneReg.disc_width[0], 12, data);
+
+	for (i = 0; i < 12; i++) data[i] = baseline_start;
+	fDevice->DeviceArrayWrite(lbneReg.baseline_start[0], 12, data);
+
+	fDevice->DeviceWrite(lbneReg.trigger_input_delay,0x00000001);
+	fDevice->DeviceWrite(lbneReg.gpio_output_width,0x00001000);
+	fDevice->DeviceWrite(lbneReg.front_panel_config, 0x00001111);
+	fDevice->DeviceWrite(lbneReg.dsp_led_config,0x00000000);
+	fDevice->DeviceWrite(lbneReg.dsp_led_input, 0x00000000);
+	fDevice->DeviceWrite(lbneReg.baseline_delay,baseline_delay);
+	fDevice->DeviceWrite(lbneReg.diag_channel_input,0x00000000);
+	fDevice->DeviceWrite(lbneReg.qi_config,0x0FFF1F00);
+	fDevice->DeviceWrite(lbneReg.qi_delay,0x00000000);
+	fDevice->DeviceWrite(lbneReg.qi_pulse_width,0x00000000);
+	fDevice->DeviceWrite(lbneReg.external_gate_width,0x00008000);
+	fDevice->DeviceWrite(lbneReg.dsp_clock_control,0x00000000);
+
+	// Load the window settings - This MUST be the last operation
+
+}
+
+//Old settings used in first DAQ workshop (basically copied from Denver)
+#if 0
+  // Setting up some constants to use during initialization
+  const unsigned int nChannels          = 12;
+  const unsigned int module_id          = 0xABC;	// This value is reported in the event header
+  const unsigned int led_threshold	= 5;	
+  const unsigned int cfd_fraction	= 0x1800;
+  const unsigned int readout_pretrigger	= 100;	
+  const unsigned int event_packet_length= 2046;	
+  const unsigned int p_window		= 0;	
+  const unsigned int k_window		= 20;
+  const unsigned int m1_window		= 10;	
+  const unsigned int m2_window		= 5;	
+  const unsigned int d_window		= 20;
+  const unsigned int i_window		= 300;
+  const unsigned int disc_width		= 10;
+  const unsigned int baseline_start	= 0x0000;
+  const unsigned int baseline_delay	= 5;
+  const unsigned int trigger_config	= 0x00000000;
+
+    const unsigned int	chan_config[nChannels] = 
+    {
+            0x00F0E061,		// configure channel #0 in a slow timestamp triggered mode
+      //0x00005001,               // put channel #0 into external trigger mode
+      //0x80F00801,               //put channel #0 into internal led trigger mode
+      0x00000000,		// disable channel #1
+      0x00000000,		// disable channel #2
+      0x00000000,		// disable channel #3
+      0x00000000,		// disable channel #4
+      0x00000000,		// disable channel #5
+      0x00000000,		// disable channel #6
+      0x00000000,		// disable channel #7
+      0x00000000,		// disable channel #8
+      0x00000000,		// disable channel #9
+      0x00000000,		// disable channel #10
+      0x00000000,		// disable channel #11
+      };
+    /*
+  const unsigned int	chan_config[nChannels] = 
+    {
+      //      0x00F0E061,		// configure channel #0 in a slow timestamp triggered mode
+      0x00006001,               // put channel #0 into external trigger mode
+      //0x80F00801,               //put channel #0 into internal led trigger mode
+      0x00006001,               // put channel #0 into external trigger mode
+      0x00006001,               // put channel #0 into external trigger mode
+      0x00006001,               // put channel #0 into external trigger mode
+      0x00006001,               // put channel #0 into external trigger mode
+      0x00006001,               // put channel #0 into external trigger mode
+      0x00006001,               // put channel #0 into external trigger mode
+      0x00006001,               // put channel #0 into external trigger mode
+      0x00006001,               // put channel #0 into external trigger mode
+      0x00006001,               // put channel #0 into external trigger mode
+      0x00006001,               // put channel #0 into external trigger mode
+      0x00006001,               // put channel #0 into external trigger mode
+      };
+  */
+  //	Channel Configuration Bit Descriptions
+  //	31		cfd_enable
+  //	30		pileup_waveform_only
+  //	26		pileup_extend_enable
+  //	25:24	event_extend_mode
+  //	23		disc_counter_mode
+  //	22		ahit_counter_mode 
+  //	21		ACCEPTED_EVENT_COUNTER_MODE
+  //	20		dropped_event_counter_mode
+  //	15:14	external_disc_flag_sel
+  //	13:12	external_disc_mode
+  //	11		negative edge trigger enable
+  //	10		positive edge trigger enable
+  //	6:4		This sets the timestamp trigger rate (source of external_disc_flag_in(3) into channel logic)
+  //	2		Not pileup_disable
+  //	0		channel enable
+  //
+
+  unsigned int i = 0;
+  unsigned int data[nChannels];
+
+
+  //Set clock source to NOvA clock
+  //fDevice->DeviceWrite(0x80000520,0x13);
+  //Set front panel trigger input to active low
+  //fDevice->DeviceWrite(0x80000408,0x1101);
+
+  fDevice->DeviceWrite(lbneReg.c2cControl, 0x00000007);
+  fDevice->DeviceWrite(lbneReg.clockControl, 0x00000001);
+  fDevice->DeviceWrite(lbneReg.module_id, module_id);
+  fDevice->DeviceWrite(lbneReg.c2c_intr_control, 0x00000000);
+  for (i = 0; i < nChannels; i++) data[i] = chan_config[i];
+  fDevice->DeviceArrayWrite(lbneReg.control_status[0], nChannels, data);
+  for (i = 0; i < nChannels; i++) data[i] = led_threshold;
+  fDevice->DeviceArrayWrite(lbneReg.led_threshold[0], nChannels, data);
+  for (i = 0; i < nChannels; i++) data[i] = cfd_fraction;
+  fDevice->DeviceArrayWrite(lbneReg.cfd_parameters[0], nChannels, data);
+  for (i = 0; i < nChannels; i++) data[i] = readout_pretrigger;
+  fDevice->DeviceArrayWrite(lbneReg.readout_pretrigger[0], nChannels, data);
+  for (i = 0; i < nChannels; i++) data[i] = event_packet_length;
+  fDevice->DeviceArrayWrite(lbneReg.readout_window[0], nChannels, data);
+  for (i = 0; i < nChannels; i++) data[i] = p_window;
+  fDevice->DeviceArrayWrite(lbneReg.p_window[0], nChannels, data);
+  for (i = 0; i < nChannels; i++) data[i] = k_window;
+  fDevice->DeviceArrayWrite(lbneReg.k_window[0], nChannels, data);
+  for (i = 0; i < nChannels; i++) data[i] = m1_window;
+  fDevice->DeviceArrayWrite(lbneReg.m1_window[0], nChannels, data);
+  for (i = 0; i < nChannels; i++) data[i] = m2_window;
+  fDevice->DeviceArrayWrite(lbneReg.m2_window[0], nChannels, data);
+  for (i = 0; i < nChannels; i++) data[i] = d_window;
+  fDevice->DeviceArrayWrite(lbneReg.d_window[0], nChannels, data);
+  for (i = 0; i < nChannels; i++) data[i] = i_window;
+  fDevice->DeviceArrayWrite(lbneReg.i_window[0], nChannels, data);
+  for (i = 0; i < nChannels; i++) data[i] = disc_width;
+  fDevice->DeviceArrayWrite(lbneReg.disc_width[0], nChannels, data);
+  for (i = 0; i < nChannels; i++) data[i] = baseline_start;
+  fDevice->DeviceArrayWrite(lbneReg.baseline_start[0], nChannels, data);
+
+  fDevice->DeviceWrite(lbneReg.gpio_output_width, 0x00001000);
+  fDevice->DeviceWrite(lbneReg.led_config, 0x00000000);
+  fDevice->DeviceWrite(lbneReg.baseline_delay, baseline_delay);
+  fDevice->DeviceWrite(lbneReg.diag_channel_input, 0x00000000);
+  fDevice->DeviceWrite(lbneReg.trigger_config, trigger_config);
+  // Load the window settings - This MUST be the last operation
+  fDevice->DeviceWrite(lbneReg.channel_pulsed_control, 0x1);
+#endif
