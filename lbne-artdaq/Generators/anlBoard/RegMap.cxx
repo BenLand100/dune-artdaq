@@ -485,7 +485,7 @@ SSPDAQ::RegMap& SSPDAQ::RegMap::Get(void)
     instance->fNamed["qi_dac_config"]           =Register(  0x40000204, 0x0003FFFF, 0x0003FFFF, 1 );    
     instance->fNamed["bias_control"]            =Register(  0x40000300, 0x00000000, 0x00000001, 1 );    
     instance->fNamed["bias_status"]             =Register(  0x40000304, 0x00000FFF, 0x00000000, 1 );    
-    instance->fNamed["bias_config"]             =Register(  0x40000340, 0xFFFFFFFF, 0xFFFFFFFF, 12);    
+    instance->fNamed["bias_config"]             =Register(  0x40000340, 0xFFFFFFFF, 0x00440FFF, 12);    
     instance->fNamed["bias_readback"]           =Register(  0x40000380, 0xFFFFFFFF, 0x00000000, 12);    
     instance->fNamed["mon_config"]              =Register(  0x40000400, 0x00FFFFFF, 0x00FFFFFF, 1 );    
     instance->fNamed["mon_select"]              =Register(  0x40000404, 0xFFFFFFFF, 0xFFFFFFFF, 1 );    

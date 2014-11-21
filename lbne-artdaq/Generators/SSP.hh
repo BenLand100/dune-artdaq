@@ -51,6 +51,8 @@ namespace lbne {
 
     void ConfigureDevice(fhicl::ParameterSet const & ps);
 
+    void ConfigureDAQ(fhicl::ParameterSet const & ps);
+
     //    virtual void pause();
 
     //    virtual void resume();

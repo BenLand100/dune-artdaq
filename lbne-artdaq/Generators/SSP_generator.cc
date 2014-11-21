@@ -1,4 +1,6 @@
 #include "lbne-artdaq/Generators/SSP.hh"
+#include "lbne-artdaq/Generators/anlBoard/Log.h"
+#include "lbne-artdaq/Generators/anlBoard/anlExceptions.h"
 
 #include "art/Utilities/Exception.h"
 #include "artdaq/Application/GeneratorMacros.hh"
@@ -47,6 +49,7 @@ lbne::SSP::SSP(fhicl::ParameterSet const & ps)
   device_interface_=new SSPDAQ::DeviceInterface(interface_type_,0);//board_id_);
   device_interface_->Initialize();
   this->ConfigureDevice(ps);
+  this->ConfigureDAQ(ps);
 }
 
 void lbne::SSP::ConfigureDevice(fhicl::ParameterSet const& ps){
@@ -90,15 +93,40 @@ void lbne::SSP::ConfigureDevice(fhicl::ParameterSet const& ps){
     }
   }
 }
+
+void lbne::SSP::ConfigureDAQ(fhicl::ParameterSet const& ps){
+  fhicl::ParameterSet daqConfig( ps.get<fhicl::ParameterSet>("DAQConfig") );
+
+  unsigned int millisliceLength=daqConfig.get<unsigned int>("MillisliceLength",0);
+
+  if(millisliceLength==0){
+    SSPDAQ::Log::Error()<<"Error: Millislice length not defined in SSP DAQ configuration!"<<std::endl;
+    throw SSPDAQ::EDAQConfigError("");
+  }
+
+  unsigned int millisliceOverlap=daqConfig.get<unsigned int>("MillisliceOverlap",0);
+
+  if(millisliceOverlap==0){
+    SSPDAQ::Log::Error()<<"Error: Millislice overlap not defined in SSP DAQ configuration!"<<std::endl;
+    throw SSPDAQ::EDAQConfigError("");
+  }
+
+  unsigned int useExternalTimestamp=daqConfig.get<unsigned int>("UseExternalTimestamp",2);
+
+  if(useExternalTimestamp>1){
+    SSPDAQ::Log::Error()<<"Error: Timestamp source not defined, or invalidly defined, in SSP DAQ configuration!"<<std::endl;
+    throw SSPDAQ::EDAQConfigError("");
+  }
+
+  device_interface_->SetMillisliceLength(millisliceLength);
+  device_interface_->SetMillisliceOverlap(millisliceOverlap);
+  device_interface_->SetUseExternalTimestamp(useExternalTimestamp);
+}
+
+
   
 void lbne::SSP::start(){
-  try{
   device_interface_->Start();
-  }
-  catch(std::exception& except){
-    std::cout<<except.what()<<std::endl;
-    throw except;
-  }
 }
 
 void lbne::SSP::stop(){

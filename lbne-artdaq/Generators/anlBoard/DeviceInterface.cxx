@@ -6,7 +6,8 @@
 #include <utility>
 
 SSPDAQ::DeviceInterface::DeviceInterface(SSPDAQ::Comm_t commType, unsigned int deviceId)
-  : fCommType(commType), fDeviceId(deviceId), fState(SSPDAQ::DeviceInterface::kUninitialized){
+  : fCommType(commType), fDeviceId(deviceId), fState(SSPDAQ::DeviceInterface::kUninitialized),
+    fMillisliceLength(1E8), fMillisliceOverlap(1E7), fUseExternalTimestamp(false){
   fReadThread=0;
 }
 
@@ -71,8 +72,9 @@ void SSPDAQ::DeviceInterface::Start(){
   // This script enables all logic and FIFOs and starts data acquisition in the device
   // Operations MUST be performed in this order
   
-  //Load window settings into channels
+  //Load window settings and bias voltage into channels
   fDevice->DeviceWrite(lbneReg.channel_pulsed_control, 0x1);
+  fDevice->DeviceWrite(lbneReg.bias_control, 0x1);
 
   fDevice->DeviceWrite(lbneReg.event_data_control, 0x00000000);
   // Release the FIFO reset						
@@ -99,15 +101,18 @@ void SSPDAQ::DeviceInterface::ReadEvents(){
     return;
   }
 
+  bool useExternalTimestamp=fUseExternalTimestamp;
+  bool hasSeenEvent=false;
+  unsigned int discardedEvents=0;
   //REALLY needs to be set up to know real run start time.
   //Think the idea was to tell the fragment generators when to start
   //taking data, so we would store this and throw away events occuring
   //before the start time.
   //Doesn't matter for emulated data since this does start at t=0.
   unsigned long runStartTime=0;
-  unsigned long millisliceStartTime=0;
-  unsigned long millisliceLengthInTicks=1E8;//0.67s
-  unsigned long millisliceOverlapInTicks=1E7;//0.067s
+  unsigned long millisliceStartTime=runStartTime;
+  unsigned long millisliceLengthInTicks=fMillisliceLength;//0.67s
+  unsigned long millisliceOverlapInTicks=fMillisliceOverlap;//0.067s
   unsigned int millisliceCount=0;
 
   //Need two lots of event packets, to manage overlap between slices.
@@ -126,14 +131,45 @@ void SSPDAQ::DeviceInterface::ReadEvents(){
       continue;
     }
 
-    //Convert 3*unsigned shorts into 1*unsigned long event timestamp
+    //Convert unsigned shorts into 1*unsigned long event timestamp
     unsigned long eventTime=0;
-    for(unsigned int iWord=1;iWord<=3;++iWord){
-      eventTime+=((unsigned long)(event.header.intTimestamp[iWord]))<<16*(iWord-1);
+    if(useExternalTimestamp){
+      for(unsigned int iWord=0;iWord<=3;++iWord){
+	std::cout<<event.header.timestamp[iWord]<<std::endl;
+	eventTime+=((unsigned long)(event.header.timestamp[iWord]))<<16*iWord;
+      }
     }
-    if(runStartTime==0){
-      runStartTime=eventTime;
-      millisliceStartTime=runStartTime;
+    else{
+      for(unsigned int iWord=1;iWord<=3;++iWord){
+	eventTime+=((unsigned long)(event.header.intTimestamp[iWord]))<<16*(iWord-1);
+      }
+    }
+    
+
+    //Deal with stuff for first event
+    if(!hasSeenEvent){
+      //If there is no run start time set, just start at time of first event
+      if(runStartTime==0){
+	runStartTime=eventTime;
+	millisliceStartTime=runStartTime;
+	hasSeenEvent=true;
+      }
+      //Otherwise discard events which happen before run start time
+      else{
+	if(eventTime<runStartTime){
+	  ++discardedEvents;
+	  continue;
+	}
+	else{
+	  //It's bad if we didn't discard any events since this might mean the
+	  //hardware was not ready at the defined start time
+	  if(discardedEvents==0){
+	    SSPDAQ::Log::Warning()<<"Warning: SSP daq did not see any events before start time"
+				  <<" - may have missed first valid events!"<<std::endl;
+	  }
+	  hasSeenEvent=true;
+	}
+      }
     }
 
     SSPDAQ::Log::Debug()<<"Interface got event with timestamp "<<eventTime<<"("<<(eventTime-runStartTime)/150E6<<"s from run start)"<<std::endl;
@@ -332,14 +368,6 @@ void SSPDAQ::DeviceInterface::ReadEventFromDevice(EventPacket& event){
   //Copy header into event packet
   std::copy(data.begin(),data.end(),&(headerBlock[1]));
 
-  SSPDAQ::EventHeader* hPtr=reinterpret_cast<SSPDAQ::EventHeader*>(headerBlock);
-
-  unsigned long eventTime=0;
-
-  for(unsigned int iWord=2;iWord<=3;++iWord){
-    eventTime+=((unsigned long)(hPtr->intTimestamp[iWord]))<<16*(iWord-2);
-  }
-    
   //Wait for hardware queue to fill with full event data
   unsigned int bodyReadSize=event.header.length-(sizeof(EventHeader)/sizeof(unsigned int));
   queueLengthInUInts=0;

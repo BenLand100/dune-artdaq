@@ -64,5 +64,14 @@ namespace SSPDAQ{
       std::runtime_error("") {}
   };
 
+  class EDAQConfigError: public std::runtime_error{
+  public:
+    explicit EDAQConfigError(const std::string &s):
+      std::runtime_error(s) {}
+
+    explicit EDAQConfigError():
+      std::runtime_error("") {}
+  };
+
 }//namespace
 #endif

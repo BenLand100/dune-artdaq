@@ -22,9 +22,6 @@ def generateSSP(startingFragmentId, boardId, interfaceType, fragmentType)
 	qi_dac_config:           0x00000000
 	qi_dac_control:          0x00000001
 
-	ALL_bias_config:         0x00000000
-	bias_control:            0x00000001
-
 	mon_config:              0x0012F000
 	mon_select:              0x00FFFF00
 	mon_gpio:                0x00000000
@@ -33,24 +30,27 @@ def generateSSP(startingFragmentId, boardId, interfaceType, fragmentType)
 	module_id:               0x00000001
 	c2c_slave_intr_control:  0x00000000
 
-	ARR_channel_control:    [0x00F0E0C1,
-                                 0x00000000,
-                                 0x00000000,
-                                 0x00000000,
-                                 0x00000000,
-                                 0x00000000,
-                                 0x00000000,
-                                 0x00000000,
-                                 0x00000000,
-                                 0x00000000,
-                                 0x00000000,
-                                 0x00000000]
-                              
-	ALL_led_threshold:         25
+	# ARR_channel_control:    [0x00F0E0C1,
+        #                         0x00000000,
+        #                         0x00000000,
+        #                         0x00000000,
+        #                         0x00000000,
+        #                         0x00000000,
+        #                         0x00000000,
+        #                         0x00000000,
+        #                         0x00000000,
+        #                         0x00000000,
+        #                         0x00000000,
+        #                         0x00000000]
+
+        # ALL_channel_control:      0x80F00401
+        ALL_channel_control:      0x00006001
+                     
+	ALL_led_threshold:         150
 	ALL_cfd_parameters:        0x1800
 	ALL_readout_pretrigger:    100
 	ALL_readout_window:        2046
-	ALL_p_window:              0
+	ALL_p_window:              0x20
 	ALL_i2_window:             500
 	ALL_m1_window:             10
 	ALL_m2_window:             10
@@ -59,9 +59,9 @@ def generateSSP(startingFragmentId, boardId, interfaceType, fragmentType)
 	ALL_disc_width:            10
 	ALL_baseline_start:        0x0000
 
-        trigger_input_delay:       0x00000001
+        trigger_input_delay:       0x00000020
         gpio_output_width:         0x00001000
-        front_panel_config:        0x00001111
+        front_panel_config:        0x00001101 # standard config?
         dsp_led_config:            0x00000000
         dsp_led_input:             0x00000000
         baseline_delay:            5
@@ -70,8 +70,24 @@ def generateSSP(startingFragmentId, boardId, interfaceType, fragmentType)
         qi_delay:                  0x00000000
         qi_pulse_width:            0x00000000
         external_gate_width:       0x00008000
-        dsp_clock_control:         0x00000000
+        # dsp_clock_control:         0x00000013 # 0x1  - use ext clock to drive ADCs
+                                              # 0x2  - use NOvA clock (0 value uses front panel input)
+                                              # 0x10 - Enable clock jitter correction
 
+        dsp_clock_control:         0x00000000 # Use internal clock to drive ADCs, front panel
+                                                # clock for sync
+
+
+        ALL_bias_config:           0x00040E21 # 26.5V - bit 0x4000 enables bias, bits 0xFFF set value
+                                              # in range 0-30V
+
+      }
+
+      DAQConfig:{
+        
+        MillisliceLength:          1E7
+        MillisliceOverlap:         1E6
+        UseExternalTimestamp:      0
       }
     " )
 

@@ -17,7 +17,7 @@
 #include "artdaq-core/Data/Fragments.hh"
 
 #include "TH1.h"
-
+#include "TFile.h"
 #include <algorithm>
 #include <cassert>
 #include <cmath>
@@ -66,7 +66,7 @@ lbne::SSPDump::SSPDump(fhicl::ParameterSet const & pset)
       frag_type_(pset.get<std::string>("frag_type")),
       //verb_microslice_ids_(pset.get<std::vector<int>>("verbose_microslice_ids", std::vector<int>(1,0))),
       //verb_nanoslice_ids_ (pset.get<std::vector<int>>("verbose_nanoslice_ids",  std::vector<int>(1,0))),
-      verb_adcs_(pset.get<uint32_t>        ("verbose_adcs", 15)),
+      verb_adcs_(pset.get<uint32_t>        ("verbose_adcs", 10000)),
       verb_meta_(pset.get<bool>            ("verbose_metadata", true)),
       adc_values_(nullptr),
       n_adc_counter_(0),
@@ -110,6 +110,7 @@ void lbne::SSPDump::analyze(art::Event const & evt)
   art::EventNumber_t eventNumber = evt.event();
   beginEvent(eventNumber);
   
+  //  TFile f("hists.root","RECREATE");
   // ***********************
   // *** SSP Fragments ***
   // ***********************
@@ -177,8 +178,11 @@ void lbne::SSPDump::analyze(art::Event const & evt)
 	    << "Trigger ID:                         " << daqHeader->triggerID << std::endl
 	    << "Module ID:                          " << ((daqHeader->group2 & 0xFFF0) >> 4) << std::endl
 	    << "Channel ID:                         " << ((daqHeader->group2 & 0x000F) >> 0) << std::endl
-	    << "Sync delay:                         " << ((unsigned int)(daqHeader->timestamp[1]) << 16) + (unsigned int)(daqHeader->timestamp[0]) << std::endl
-	    << "Sync count:                         " << ((unsigned int)(daqHeader->timestamp[3]) << 16) + (unsigned int)(daqHeader->timestamp[2]) << std::endl
+	    << "External timestamp (FP mode):       " << std::endl
+	    << "  Sync delay:                       " << ((unsigned int)(daqHeader->timestamp[1]) << 16) + (unsigned int)(daqHeader->timestamp[0]) << std::endl
+	    << "  Sync count:                       " << ((unsigned int)(daqHeader->timestamp[3]) << 16) + (unsigned int)(daqHeader->timestamp[2]) << std::endl
+	    << "External timestamp (NOvA mode):     " << (unsigned long)daqHeader->timestamp[3] << 48 + (unsigned long)daqHeader->timestamp[2] << 32
+	                                               + (unsigned long)daqHeader->timestamp[1] << 16 + (unsigned long)daqHeader->timestamp[0] <<std::endl
 	    << "Peak sum:                           " << peaksum << std::endl
 	    << "Peak time:                          " << ((daqHeader->group3 & 0xFF00) >> 8) << std::endl
 	    << "Prerise:                            " << ((daqHeader->group4 & 0x00FF) << 16) + daqHeader->preriseLow << std::endl
@@ -196,6 +200,10 @@ void lbne::SSPDump::analyze(art::Event const & evt)
 	bool verb_values = true;
 	unsigned int nADC=(daqHeader->length-sizeof(SSPDAQ::EventHeader)/sizeof(unsigned int))*2;
 	const unsigned short* adcPointer=reinterpret_cast<const unsigned short*>(dataPointer);
+	char histName[100];
+	sprintf(histName,"event%d",triggersProcessed);
+	//TH1F* hist=new TH1F(histName,histName,nADC,0,nADC*1./150.);
+	//	hist->SetDirectory(&f);
 	for(size_t idata = 0; idata < nADC; idata++) {
 	  if(idata >= verb_adcs_)
 	    verb_values = false;
@@ -206,13 +214,14 @@ void lbne::SSPDump::analyze(art::Event const & evt)
 	  adc_values_->Fill(*adc);
 	  n_adc_counter_++;
 	  adc_cumulative_ += (uint64_t)(*adc);
-	  
+	  //	  hist->SetBinContent(idata+1,*adc);
+
 	  if(verb_values)
 	    std::cout << *adc << " ";
 	}
 	dataPointer+=nADC/2;
 	++triggersProcessed;
-	std::cout<<"Triggers processed: "<<triggersProcessed<<std::endl<<std::endl;
+	std::cout<<std::endl<<"Triggers processed: "<<triggersProcessed<<std::endl<<std::endl;
       }
     }	
     std::cout << std::endl
@@ -227,7 +236,7 @@ void lbne::SSPDump::analyze(art::Event const & evt)
               << " SSP fragments." << std::endl;
   }
   std::cout << std::endl;
-  
+  //  f.Write();
   beginEvent(eventNumber);
 }
 

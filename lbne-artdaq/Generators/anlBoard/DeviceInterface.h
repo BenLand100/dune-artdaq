@@ -78,6 +78,12 @@ namespace SSPDAQ{
     //Set all elements of an array using values vector
     void SetRegisterArrayByName(std::string name, std::vector<unsigned int> values);
 
+    void SetMillisliceLength(unsigned int length){fMillisliceLength=length;}
+
+    void SetMillisliceOverlap(unsigned int length){fMillisliceOverlap=length;}
+
+    void SetUseExternalTimestamp(bool val){fUseExternalTimestamp=val;}
+
   private:
     
     //Internal device object used for hardware operations.
@@ -116,6 +122,12 @@ namespace SSPDAQ{
     SafeQueue<std::vector<unsigned int> > fQueue;
 
     std::unique_ptr<std::thread> fReadThread;
+
+    unsigned int fMillisliceLength;
+
+    unsigned int fMillisliceOverlap;
+
+    unsigned int fUseExternalTimestamp;
 
   };
   
