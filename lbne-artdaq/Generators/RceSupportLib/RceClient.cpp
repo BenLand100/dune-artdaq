@@ -9,6 +9,8 @@
 #include <iostream>
 #include <sstream>
 #include <boost/algorithm/string.hpp>
+#include <libxml/parser.h>
+#include <libxml/tree.h>
 
 lbne::RceClient::RceClient(const std::string& host_name, const std::string& port_or_service, const unsigned int timeout_usecs) :
 	socket_(io_service_),
@@ -72,6 +74,18 @@ lbne::RceClient::RceClient(const std::string& host_name, const std::string& port
 		if (socket_.is_open() == false)
 		{
 			std::cerr << "Failed to open connection to RCE" << std::endl;
+		} else {
+			// Send RCE a bell character to suppress async updates
+			this->send("\a\n");
+			// Flush the socket of any stale aysnc update data from RCE
+			size_t bytesFlushed = 0;
+			std::string data;
+			do {
+			  data = this->receive();
+			  bytesFlushed += data.length();
+			} while (data.length() > 0);
+			std::cout << "Flushed " << bytesFlushed << " bytes of stale data from client socket" << std::endl;
+		  
 		}
 	}
 	catch (boost::system::system_error& e)
@@ -92,25 +106,95 @@ lbne::RceClient::~RceClient()
 	}
 }
 
+void lbne::RceClient::send_command(std::string const & command, std::string const & param)
+{
+
+	std::cout << "Sending command: " << command << " with param: " << param << std::endl;
+	
+	// Build XML fragment containing command enclosing the parameter
+	std::ostringstream xml_frag;
+	xml_frag << "<command><" << command << ">";
+	xml_frag << param;
+	xml_frag << "</" << command << "></command>";
+
+	// Send it
+	this->send_xml(xml_frag.str());
+}
+
 void lbne::RceClient::send_command(std::string const & command)
 {
-	std::cout << "Sending command: " << command << " ... ";
+	std::cout << "Sending command: " << command << std::endl;
 
-	// Send the command
-	this->send(command);
+	// Build the XML fragment with command as empty closed tag
+	std::ostringstream xml_frag;
+	xml_frag << "<command><" << command << "/></command>";
+
+	// Send it
+	this->send_xml(xml_frag.str());
+}
+
+void lbne::RceClient::send_config(std::string const & config)
+{
+	std::cout << "Sending config: " << config << std::endl;
+	std::ostringstream config_frag;
+	config_frag << "<config>" << config << "</config>";
+
+	this->send_xml(config_frag.str());
+}
+
+void lbne::RceClient::send_xml(std::string const & xml_frag)
+{
+
+	// Wrap the XML fragment for this request in the root system tags
+	std::ostringstream xml_cmd;
+	xml_cmd << "<system>";
+	xml_cmd << xml_frag ;
+	xml_cmd << "</system>\n\f";
+
+	// Send the XML request to the RCEcomman
+	this->send(xml_cmd.str());
 
 	// Get the response
 	std::string response = this->receive();
 
+	// Traverse the DOM of the XML response and determine if any of the child elements are error.
+	xmlDocPtr doc = xmlReadMemory(response.c_str(), response.length()-1, "noname.xml", NULL, 0);
+	if (doc == NULL) {
+	  std::cout << "Failed to parse XML response:" << std::endl;
+	  std::cout << response << std::endl;
+	  std::cout << "Response had length " << response.length() << std::endl;
+	}
+	else {
+	  /*Get the root element node */
+	  xmlNode* root_element = xmlDocGetRootElement(doc);
+	  xmlNode *cur_node = NULL;
+	  for (cur_node = root_element->children; cur_node; cur_node = cur_node->next) {
+	    if (cur_node->type == XML_ELEMENT_NODE) {
+	      if (std::string((const char*)(cur_node->name)) == "error") 
+	      {
+		//xmlNode* error_node = cur_node->children;
+		xmlChar* errorContent = xmlNodeGetContent(cur_node);
+		if (errorContent) {
+		  std::cout << "Got error response from RCE: " << errorContent << std::endl;
+		} else {
+		  std::cout << "Got error resposne from RCE but cannot parse content" << std::endl;
+		}
+		xmlFree(errorContent);
+	      }
+	    }
+	  }
+	}
+	xmlFreeDoc(doc);
+
 	// Parse the response to ensure the command was acknowledged
-	if (this->response_is_ack(response, command))
-	{
-		std::cout << "Acknowledged OK: " << response << std::endl;
-	}
-	else
-	{
-		std::cout << "Failed: " << response <<std::endl;
-	}
+	// if (this->response_is_ack(response, command))
+	// {
+	// 	std::cout << "Acknowledged OK: " << response << std::endl;
+	// }
+	// else
+	// {
+	// 	std::cout << "Failed: " << response <<std::endl;
+	// }
 }
 // ------------ Private methods ---------------
 
@@ -204,26 +288,48 @@ std::size_t lbne::RceClient::send(std::string const & send_str)
 	return send_len;
 }
 
+// std::string lbne::RceClient::receive(void)
+// {
+
+// 	this->set_deadline();
+
+// 	std::size_t receive_length = 0;
+// 	boost::system::error_code error = boost::asio::error::would_block;
+
+// 	boost::array<char, 128> raw_buffer;
+
+// 	socket_.async_read_some(boost::asio::buffer(raw_buffer),
+// 			boost::bind(&lbne::RceClient::async_completion_handler, _1, _2, &error, &receive_length));
+
+// 	do
+// 	{
+// 		io_service_.run_one();
+// 	}
+// 	while (error == boost::asio::error::would_block);
+
+// 	return std::string(raw_buffer.data(), receive_length);
+// }
+
 std::string lbne::RceClient::receive(void)
 {
+  this->set_deadline();
+  std::size_t receive_length = 0;
+  boost::system::error_code error = boost::asio::error::would_block;
 
-	this->set_deadline();
+  boost::asio::streambuf response;
+  
+  boost::asio::async_read_until(socket_, response, "\f",
+		boost::bind(&lbne::RceClient::async_completion_handler, _1, _2, &error, &receive_length));
 
-	std::size_t receive_length = 0;
-	boost::system::error_code error = boost::asio::error::would_block;
+  do
+  {
+    io_service_.run_one();
+  }
+  while (error == boost::asio::error::would_block);
 
-	boost::array<char, 128> raw_buffer;
+  boost::asio::streambuf::const_buffers_type bufs = response.data();
+  return std::string(boost::asio::buffers_begin(bufs), boost::asio::buffers_begin(bufs) + response.size());
 
-	socket_.async_read_some(boost::asio::buffer(raw_buffer),
-			boost::bind(&lbne::RceClient::async_completion_handler, _1, _2, &error, &receive_length));
-
-	do
-	{
-		io_service_.run_one();
-	}
-	while (error == boost::asio::error::would_block);
-
-	return std::string(raw_buffer.data(), receive_length);
 }
 
 void lbne::RceClient::set_param_(std::string const & name, std::string const & encoded_value, std::string const & type)

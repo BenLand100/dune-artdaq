@@ -22,6 +22,7 @@
 
 #include <unistd.h>
 
+//#define NO_RCE_CLIENT 1
 
 lbne::TpcRceReceiver::TpcRceReceiver(fhicl::ParameterSet const & ps)
   :
@@ -42,12 +43,26 @@ lbne::TpcRceReceiver::TpcRceReceiver(fhicl::ParameterSet const & ps)
   simulated_readout_time_usec_ =
 	ps.get<uint32_t>("simulated_readout_time", 100000);
 
-  rce_client_host_addr_ =
+  dpm_client_host_addr_ =
 	ps.get<std::string>("rce_client_host_addr", "localhost");
-  rce_client_host_port_ =
+  dpm_client_host_port_ =
 	ps.get<std::string>("rce_client_host_port", "9999");
-  rce_client_timeout_usecs_ =
+  dpm_client_timeout_usecs_ =
 	ps.get<uint32_t>("rce_client_timeout_usecs", 0);
+
+  dtm_client_enable_ = 
+        ps.get<bool>("dtm_client_enable", "false");
+  dtm_client_host_addr_ =
+	ps.get<std::string>("dtm_client_host_addr", "localhost");
+  dtm_client_host_port_ =
+	ps.get<std::string>("dtm_client_host_port", "9999");
+  dtm_client_timeout_usecs_ =
+	ps.get<uint32_t>("dtm_client_timeout_usecs", 0);
+
+  rce_xml_config_file_ = 
+	ps.get<std::string>("rce_xml_config_file", "config.xml");
+  rce_daq_mode_ =
+	ps.get<std::string>("rce_daq_mode", "Trigger");
 
   rce_data_dest_host_ =
 	ps.get<std::string>("rce_data_dest_host", "127.0.0.1");
@@ -89,8 +104,28 @@ lbne::TpcRceReceiver::TpcRceReceiver(fhicl::ParameterSet const & ps)
     ps.get<uint32_t>("reporting_interval_fragments", 100);
 
   // Create an RCE client instance
-  rce_client_ = std::unique_ptr<lbne::RceClient>(new lbne::RceClient(
-		  rce_client_host_addr_, rce_client_host_port_, rce_client_timeout_usecs_));
+#ifndef NO_RCE_CLIENT
+  dpm_client_ = std::unique_ptr<lbne::RceClient>(new lbne::RceClient(
+		  dpm_client_host_addr_, dpm_client_host_port_, dpm_client_timeout_usecs_));
+
+  dpm_client_->send_command("HardReset");
+  sleep(1);
+  dpm_client_->send_command("ReadXmlFile", rce_xml_config_file_);
+  std::ostringstream config_frag;
+  config_frag << "<DataDpm><DaqMode>" << rce_daq_mode_ << "</DaqMode></DataDpm>";
+  dpm_client_->send_config(config_frag.str());
+
+  // If the DTM client is enabled (for standalone testing of the RCE), open
+  // the connection, reset the DTM and enable timing emulation mode
+  if (dtm_client_enable_) {
+    dtm_client_ = std::unique_ptr<lbne::RceClient>(new lbne::RceClient(
+	       dtm_client_host_addr_, dtm_client_host_port_, dtm_client_timeout_usecs_));
+    dtm_client_->send_command("HardReset");
+    std::ostringstream config_frag;
+    config_frag << "<TimingDtm><TimingRtm><EmulationEnable>False</EmulationEnable></TimingRtm></TimingDtm>";
+    dtm_client_->send_config(config_frag.str());
+  }
+#endif
 
   // Create a RceDataReceiver instance
   data_receiver_ = std::unique_ptr<lbne::RceDataReceiver>(new lbne::RceDataReceiver(
@@ -138,18 +173,30 @@ void lbne::TpcRceReceiver::start(void)
 	// Start the data receiver
 	data_receiver_->start();
 
+#ifndef NO_RCE_CLIENT
 	// Set up parameters in RCE
-	rce_client_->set_param("host",  rce_data_dest_host_, "str");
-	rce_client_->set_param("port",  rce_data_dest_port_, "int");
-	rce_client_->set_param("millislices", rce_data_num_millislices_, "int");
-	rce_client_->set_param("microslices", rce_data_num_microslices_, "int");
-	rce_client_->set_param("rate",  rce_data_frag_rate_, "float");
-	rce_client_->set_param("adcmode", rce_data_adc_mode_, "int");
-	rce_client_->set_param("adcmean", rce_data_adc_mean_, "float");
-	rce_client_->set_param("adcsigma", rce_data_adc_sigma_, "float");
+	// dpm_client_->set_param("host",  rce_data_dest_host_, "str");
+	// dpm_client_->set_param("port",  rce_data_dest_port_, "int");
+	// dpm_client_->set_param("millislices", rce_data_num_millislices_, "int");
+	// dpm_client_->set_param("microslices", rce_data_num_microslices_, "int");
+	// dpm_client_->set_param("rate",  rce_data_frag_rate_, "float");
+	// dpm_client_->set_param("adcmode", rce_data_adc_mode_, "int");
+	// dpm_client_->set_param("adcmean", rce_data_adc_mean_, "float");
+	// dpm_client_->set_param("adcsigma", rce_data_adc_sigma_, "float");
 
-	// Send start command to RCE
-	rce_client_->send_command("START");
+	// // Send start command to RCE
+	// dpm_client_->send_command("START");
+
+	if (dtm_client_enable_) 
+        {
+	  //dtm_client_->send_command("SoftReset");
+	  dtm_client_->send_command("SetRunState", "Enable");
+	}
+
+	dpm_client_->send_command("SoftReset");
+	dpm_client_->send_command("SetRunState", "Enable");
+
+#endif
 
 }
 
@@ -158,7 +205,15 @@ void lbne::TpcRceReceiver::stop(void)
 	mf::LogInfo("TpcRceReceiver") << "stop() called";
 
 	// Instruct the RCE to stop
-	rce_client_->send_command("STOP");
+#ifndef NO_RCE_CLIENT
+	if (dtm_client_enable_)
+	{
+	  dtm_client_->send_command("SetRunState", "Stopped");
+	}
+	dpm_client_->send_command("SetRunState", "Stopped");
+
+	//dpm_client_->send_command("STOP");
+#endif
 
 	// Stop the data receiver.
 	data_receiver_->stop();
