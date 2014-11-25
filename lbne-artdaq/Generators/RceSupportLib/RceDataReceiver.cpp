@@ -10,16 +10,9 @@
 #include <iostream>
 #include <unistd.h>
 
-#define TEMP_RCE_HEADER_FORMAT 1
-
 struct RceMicrosliceHeader
 {
-#ifdef TEMP_RCE_HEADER_FORMAT
-  uint32_t microslice_size;
-  uint32_t sequence_id;
-#else
-  uint32_t raw_header_words[6];
-#endif
+	uint32_t raw_header_words[6];
 };
 
 #define RECV_DEBUG(level) if (level <= debug_level_) std::cout
@@ -130,7 +123,6 @@ void lbne::RceDataReceiver::stop(void)
 	double elapsed_secs = ((double)elapsed_msecs) / 1000;
 	double rate = ((double)millislices_recvd_) / elapsed_secs;
 
-	RECV_DEBUG(0) << "lbne::RceDataRecevier::stop : last sequence id was " << last_sequence_id_ << std::endl;
 	RECV_DEBUG(0) << "lbne::RceDataReceiver::stop : received " << millislices_recvd_ << " millislices in "
 			      << elapsed_secs << " seconds, rate "
 			      << rate << " Hz" << std::endl;
@@ -294,7 +286,7 @@ void lbne::RceDataReceiver::do_read(void)
 
 	}
 
-	RECV_DEBUG(3) << "RECV: state " << (unsigned int)next_receive_state_
+	RECV_DEBUG(2) << "RECV: state " << (unsigned int)next_receive_state_
 			  	  << " mslice state " << (unsigned int)millislice_state_
 			  	  << " uslice " << microslices_recvd_
 			  	  << " uslice size " << microslice_size_recvd_
@@ -351,13 +343,8 @@ void lbne::RceDataReceiver::handle_received_data(std::size_t length)
 
 		// Capture the microslice length and sequence ID from the header
 		header = reinterpret_cast<RceMicrosliceHeader*>(current_write_ptr_);
-#ifdef TEMP_RCE_HEADER_FORMAT
-		microslice_size_ = header->microslice_size;
-		sequence_id = header->sequence_id;
-#else
 		microslice_size_ = (header->raw_header_words[0] & 0xFFFFF) * sizeof(uint32_t);
 		sequence_id = (header->raw_header_words[5]);
-#endif
 		RECV_DEBUG(2) << "Got header for microslice with size " << microslice_size_ << " sequence ID " << sequence_id << std::endl;
 
 		// Validate the sequence ID - should be incrementing monotonically
@@ -416,7 +403,7 @@ void lbne::RceDataReceiver::handle_received_data(std::size_t length)
 	// If correct number of microslices have been received, flag millislice as complete
 	if (microslices_recvd_ == number_of_microslices_per_millislice_)
 	{
-		RECV_DEBUG(1) << "Millislice " << millislices_recvd_
+		RECV_DEBUG(2) << "Millislice " << millislices_recvd_
 					  << " complete with " << microslices_recvd_
 					  << " microslices, total size " << millislice_size_recvd_ << " bytes" << std::endl;
 		millislices_recvd_++;
