@@ -119,6 +119,11 @@ if [[ ! -e ./setupLBNEARTDAQ ]]; then
 	cd \$LBNEARTDAQ_BUILD  # note: next line adjusts PATH based one cwd
 	. \$LBNEARTDAQ_REPO/ups/setup_for_development -${build_arg} $setup_qualifier
 
+        # JCF, 11/25/14
+        # Make it easy for users to take a quick look at their output file via "rawEventDump"
+
+        alias rawEventDump="art -c \$LBNEARTDAQ_REPO/tools/fcl/rawEventDump.fcl "
+
 	EOF
     #
 fi

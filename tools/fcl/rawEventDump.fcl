@@ -1,0 +1,45 @@
+# JCF, 11/24/14
+
+# A simple script which will dump basic info about the objects in an
+# Art *.root file produced by lbne-artdaq to screen
+
+# Usage:
+# art -c <this file's name> -s <input root file> -n <max events>
+
+# ...where the "max events" argument is optional
+
+physics:
+{
+
+analyzers:
+{
+    printBuildInfo: {
+        module_type: PrintBuildInfo
+
+    	buildinfo_module_label: BuildInfo
+	buildinfo_instance_label: LbneArtdaq
+	#        buildinfo_instance_label: myInstanceName
+     }	
+}
+
+
+  a1: [ printBuildInfo ]
+  e1: [ out1 ]
+  end_paths: [ e1, a1]
+}
+
+
+
+outputs:
+{
+  out1:
+  {
+    module_type: FileDumperOutput
+    wantProductFriendlyClassName: true
+  }
+}
+
+process_name: rawEventDump
+
+
+
