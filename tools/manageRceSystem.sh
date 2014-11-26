@@ -25,9 +25,21 @@ function launch() {
       enableSerial="-e"
   fi
 
+  # DemoControl.rb ${enableSerial} -s -c $1 \
+  #   --tpc `hostname`,${LBNEARTDAQ_BR_PORT[0]},0 \
+  #   --tpc `hostname`,${LBNEARTDAQ_BR_PORT[1]},1 \
+  #   --eb `hostname`,${LBNEARTDAQ_EB_PORT[0]} \
+  #   --eb `hostname`,${LBNEARTDAQ_EB_PORT[1]} \
+  #   --ag `hostname`,${LBNEARTDAQ_AG_PORT[0]},1 \
+  #   --ag `hostname`,${LBNEARTDAQ_AG_PORT[1]},1 \
+  #   --data-dir ${4} --online-monitoring $3 \
+  #   --write-data ${6} --run-event-count ${7} \
+  #   --run-duration ${8} --file-size ${9} \
+  #   --file-event-count ${10} --file-duration ${11} \
+  #   --run-number $2  2>&1 | tee -a ${5}
+
   DemoControl.rb ${enableSerial} -s -c $1 \
     --tpc `hostname`,${LBNEARTDAQ_BR_PORT[0]},0 \
-    --tpc `hostname`,${LBNEARTDAQ_BR_PORT[1]},1 \
     --eb `hostname`,${LBNEARTDAQ_EB_PORT[0]} \
     --eb `hostname`,${LBNEARTDAQ_EB_PORT[1]} \
     --ag `hostname`,${LBNEARTDAQ_AG_PORT[0]},1 \
@@ -114,7 +126,7 @@ Examples: ${scriptName} -p 32768 init
 originalCommand="$0 $*"
 onmonEnable=off
 diskWriting=1
-dataDir="/tmp"
+dataDir="/data/lbnedaq/data"
 runNumber=""
 runEventCount=0
 runDuration=0
@@ -245,11 +257,7 @@ fi
 
 # build the logfile name
 TIMESTAMP=`date '+%Y%m%d%H%M%S'`
-<<<<<<< HEAD
 logFile="/data/lbnedaq/daqlogs/masterControl/dsMC-${TIMESTAMP}-${command}.log"
-=======
-logFile="/tmp/masterControl/dsMC-${TIMESTAMP}-${command}.log"
->>>>>>> origin/develop
 echo "${originalCommand}" > $logFile
 echo ">>> ${originalCommand} (Disk writing is ${diskWriting})"
 
