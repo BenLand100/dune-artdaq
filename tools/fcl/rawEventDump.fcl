@@ -36,6 +36,7 @@ outputs:
   {
     module_type: FileDumperOutput
     wantProductFriendlyClassName: true
+    onlyIfPresent: true
   }
 }
 
