@@ -139,7 +139,7 @@ else
     build_type="prof"
 fi
 
-if [ ! -d products -o ! -d download ];then
+if [[ ! -d products || ! -d download ]] && [[ "$HOSTNAME" != "lbne35t-gateway01.fnal.gov" ]] ;then
     echo "Are you sure you want to download and install the artdaq demo dependent products in `pwd`? [y/n]"
     read response
     if [[ "$response" != "y" ]]; then
@@ -153,9 +153,25 @@ if [ ! -d products -o ! -d download ];then
     $git_working_path/tools/downloadDeps.sh  ../products $defaultqual $build_type
     cd ..
 elif [ -n "${opt_force-}" ];then
+
+    test -d products || mkdir products
+    test -d download || mkdir download
+
     cd download
     $git_working_path/tools/downloadDeps.sh  ../products $defaultqual $build_type
     cd ..
+else 
+    echo "I see you're on $HOSTNAME ; skipping download of dependent products as"\
+	"they are expected to be located in $PRODUCTS"
+
+    # JCF, 12/5/14
+
+    # Will still want local installs of lbne-raw-data, etc., so set up
+    # a local products directory
+
+    test -d products || mkdir products
+    cp -p /data/lbnedaq/products/setup products/
+    cp -rp /data/lbnedaq/products/.upsfiles products/
 fi
 
 
