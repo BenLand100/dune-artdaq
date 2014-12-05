@@ -84,7 +84,7 @@ function install_package {
     echo IN $PWD: about to . ../$packagename/ups/setup_for_development
     . ../$packagename/ups/setup_for_development -${build_arg} $@
     echo FINISHED ../$packagename/ups/setup_for_development
-    buildtool ${opt_clean+-c} -i
+    buildtool ${opt_clean+-c} -i -t
     cd ..
 }
 
@@ -132,7 +132,7 @@ fi
 echo "Building lbne-artdaq..."
 cd $LBNEARTDAQ_BUILD
 . $demo_dir/setupLBNEARTDAQ
-buildtool
+buildtool -t
 
 echo "Installation and build complete; please see https://cdcvs.fnal.gov/redmine/projects/lbne-artdaq/wiki/Running_a_sample_lbne-artdaq_system for instructions on how to run"
 
