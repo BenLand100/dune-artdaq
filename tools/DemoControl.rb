@@ -236,6 +236,7 @@ class CommandLineParser
     @options.runNumber = "0101"
     @options.serialize = false
     @options.runOnmon = 0
+    @options.runTrigger = 0
     @options.writeData = 1
     @options.runDurationSeconds = -1
     @options.eventsInRun = -1
@@ -364,6 +365,11 @@ class CommandLineParser
       opts.on("-m", "--online-monitoring [enable flag (0 or 1)]", 
               "Whether to run the online monitoring modules.") do |runOnmon|
         @options.runOnmon = runOnmon
+      end
+
+      opts.on("-t", "--trigger [enable flag (0 or 1)]", 
+              "Whether to run the trigger modules.") do |runTrigger|
+        @options.runTrigger = runTrigger
       end
 
       opts.on("-w", "--write-data [enable flag (0 or 1)]", 
@@ -676,7 +682,7 @@ class SystemControl
                                        )
 
         cfg = generateEventBuilderMain(ebIndex, totalFRs, totalEBs, totalAGs,
-                                   @options.dataDir, @options.runOnmon,
+                                   @options.dataDir, @options.runOnmon, @options.runTrigger,
                                    @options.writeData, inputBuffSizeWords,
                                    totalBoards, 
                                    fclWFViewer

@@ -3,10 +3,11 @@
 # artdaq::EventBuilderCore object
 
 require File.join( File.dirname(__FILE__), 'generateEventBuilder' )
+require File.join( File.dirname(__FILE__), 'generateTrigger' )
 
 
 def generateEventBuilderMain(ebIndex, totalFRs, totalEBs, totalAGs, 
-                         dataDir, onmonEnable,
+                         dataDir, onmonEnable, triggerEnable,
                          diskWritingEnable, fragSizeWords, totalFragments,
                          fclWFViewer )
   # Do the substitutions in the event builder configuration given the options
@@ -49,10 +50,9 @@ physics: {
   analyzers: {
 %{phys_anal_onmon_cfg}
   }
-
-  producers: {
-  }
-
+  
+  %{trigger_code}
+  
   %{enable_onmon}a1: [ app, wf ]
 
   %{netmon_output}my_output_modules: [ netMonOutput ]
@@ -76,6 +76,13 @@ end
 event_builder_code = generateEventBuilder( fragSizeWords, totalFRs, totalAGs, totalFragments, verbose)
 
 ebConfig.gsub!(/\%\{event_builder_code\}/, event_builder_code)
+
+if Integer(triggerEnable) != 0
+  trigger_code =  generateTrigger()
+else
+  trigger_code = ""
+end
+ebConfig.gsub!(/\%\{trigger_code\}/, trigger_code)
 
 ebConfig.gsub!(/\%\{ag_rank\}/, String(totalFRs + totalEBs))
 ebConfig.gsub!(/\%\{ag_count\}/, String(totalAGs))
