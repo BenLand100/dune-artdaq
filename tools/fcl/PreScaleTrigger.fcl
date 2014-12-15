@@ -1,0 +1,10 @@
+BEGIN_PROLOG
+
+prescale_trigger:
+{
+  module_type: "PreScaleTrigger"
+  PreScale: 10
+  UseRndmPreScale: true
+}
+
+END_PROLOG

@@ -1,0 +1,10 @@
+BEGIN_PROLOG
+
+example_trigger:
+{
+  module_type: "ExampleTrigger"
+  HitModuleLabel: "AHitModuleLabel"
+  HitInstanceLabel: "AHitInstanceLabel"
+}
+
+END_PROLOG
