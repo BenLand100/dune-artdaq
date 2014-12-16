@@ -367,7 +367,7 @@ class CommandLineParser
         @options.runOnmon = runOnmon
       end
 
-      opts.on("-t", "--trigger [enable flag (0 or 1)]", 
+      opts.on("-T", "--trigger [enable flag (0 or 1)]", 
               "Whether to run the trigger modules.") do |runTrigger|
         @options.runTrigger = runTrigger
       end
