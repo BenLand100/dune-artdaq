@@ -44,6 +44,11 @@ outputs: {
   %{root_output}  fileName: \"%{output_file}\"
   %{root_output}  compressionLevel: 0
   %{root_output}}
+  %{trigger_output}triggerOutput: {
+  %{trigger_output}  module_type: RootOutput
+  %{trigger_output}  fileName: \"%{output_file}\"
+  %{trigger_output}  compressionLevel: 0
+  %{trigger_output}}
 }
 
 physics: {
