@@ -1,24 +1,40 @@
 
-def generateTrigger( ebIndex, dataDir )
+def generateTrigger( )
 
-  triggerOutput = String.new( "\
-  # sspOutput : {
-  #   module_type: RootOutput
-  #   fileName: \"%{output_file}\"
-  #   compressionLevel: 0
-  #   SelectEvents: { SelectEvents: [ ssppath ] }
-  # }
-  SelectEvents: { SelectEvents: [ ssppath ] }
-  ")
+  triggerOutput = String.new( "SelectEvents: { SelectEvents: [ ssploose,ssptight,random ] }")
 
   triggerConfig = String.new( "\
   filters: {
-    ssptrigger:{
+    ssploosehypo:{
+      module_type: SSPTrigger
+      SspModuleLabel: daq
+      CutOnNTriggers: true
+      MinNTriggers: 1
+      Verbose: false
+    }
+    ssplooseprescale:{
+      module_type: PreScaleTrigger
+      PreScale: 10
+      UseRndmPreScale: false
+    }
+
+    ssptighthypo:{
       module_type: SSPTrigger
       SspModuleLabel: daq
       CutOnNTriggers: true
       MinNTriggers: 2
-      Verbose: true
+      Verbose: false
+    }
+    ssptightprescale:{
+      module_type: PreScaleTrigger
+      PreScale: 1
+      UseRndmPreScale: false
+    }
+
+    prescale100:{
+      module_type: PreScaleTrigger
+      PreScale: 100
+      UseRndmPreScale: true
     }
   }
 
@@ -28,15 +44,10 @@ def generateTrigger( ebIndex, dataDir )
   ")
 
   triggerPath = String.new( "\
-  ssppath:   [ssptrigger]
-  # sspoutput: [sspOutput]
+  ssploose:   [ssploosehypo,ssplooseprescale]
+  ssptight:   [ssptighthypo,ssptightprescale]
+  random:     [prescale100]
   ")
-
-  sspFileName = "lbne_ssp_eb%02d_" % ebIndex
-  sspFileName += "r%06r_sr%02s_%to"
-  sspFileName += ".root"
-  sspOutputFile = File.join(dataDir, sspFileName)
-  triggerOutput.gsub!(/\%\{output_file\}/, sspOutputFile)
 
   return triggerOutput, triggerConfig, triggerPath
 

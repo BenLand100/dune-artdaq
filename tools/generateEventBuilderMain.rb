@@ -81,7 +81,7 @@ event_builder_code = generateEventBuilder( fragSizeWords, totalFRs, totalAGs, to
 ebConfig.gsub!(/\%\{event_builder_code\}/, event_builder_code)
 
 if Integer(triggerEnable) != 0
-  trigger_output,trigger_code,trigger_path =  generateTrigger(ebIndex,dataDir)
+  trigger_output,trigger_code,trigger_path =  generateTrigger()
 else
   trigger_output = ""
   trigger_code   = ""
