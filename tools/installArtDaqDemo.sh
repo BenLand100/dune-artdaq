@@ -97,6 +97,12 @@ install_package artdaq v1_12_04 e6 s5 eth
 setup_qualifier="e6 eth"
 
 
+if [[ "$HOSTNAME" != "lbne35t-gateway01.fnal.gov" ]] ; then
+    setup_cmd="source $products_dir/setup"
+else
+    setup_cmd="source /data/lbnedaq/products/setup; source $products_dir/setup"
+fi
+
 cd $demo_dir >/dev/null
 if [[ ! -e ./setupLBNEARTDAQ ]]; then
     cat >setupLBNEARTDAQ <<-EOF
@@ -104,7 +110,7 @@ if [[ ! -e ./setupLBNEARTDAQ ]]; then
 
 	sh -c "[ \`ps \$\$ | grep bash | wc -l\` -gt 0 ] || { echo 'Please switch to the bash shell before running the lbne-artdaq.'; exit; }" || exit
 
-	source $products_dir/setup
+	$setup_cmd
 
 	export CETPKG_INSTALL=$products_dir
 	export CETPKG_J=16
