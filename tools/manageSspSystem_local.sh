@@ -26,7 +26,7 @@ function launch() {
   fi
 
   DemoControl.rb ${enableSerial} -s -c $1 \
-    --ssp ${THIS_NODE},${LBNEARTDAQ_BR_PORT[0]},0,0 \
+    --ssp ${THIS_NODE},${LBNEARTDAQ_BR_PORT[0]},0,1 \
     --eb ${THIS_NODE},${LBNEARTDAQ_EB_PORT[0]} \
     --eb ${THIS_NODE},${LBNEARTDAQ_EB_PORT[1]} \
     --ag ${THIS_NODE},${LBNEARTDAQ_AG_PORT[0]},1 \

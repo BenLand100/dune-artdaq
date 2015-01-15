@@ -51,6 +51,20 @@ namespace SSPDAQ{
       std::runtime_error("") {}
   };
 
+  //=======================================//
+  //Error reported by TCP interface library//
+  //=======================================//
+
+  class ETCPError: public std::runtime_error{
+  public:
+    explicit ETCPError(const std::string &s):
+      std::runtime_error(s) {}
+
+    explicit ETCPError():
+      std::runtime_error("") {}
+  };
+
+
   //===============================================//
   //Error receiving expected event data from device//
   //===============================================//

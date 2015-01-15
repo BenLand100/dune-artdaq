@@ -5,7 +5,7 @@
 #include <time.h>
 #include <utility>
 
-SSPDAQ::DeviceInterface::DeviceInterface(SSPDAQ::Comm_t commType, unsigned int deviceId)
+SSPDAQ::DeviceInterface::DeviceInterface(SSPDAQ::Comm_t commType, unsigned long deviceId)
   : fCommType(commType), fDeviceId(deviceId), fState(SSPDAQ::DeviceInterface::kUninitialized),
     fMillisliceLength(1E8), fMillisliceOverlap(1E7), fUseExternalTimestamp(false){
   fReadThread=0;
@@ -41,15 +41,6 @@ void SSPDAQ::DeviceInterface::Stop(){
   }
   SSPDAQ::RegMap& lbneReg=SSPDAQ::RegMap::Get();
       
-  fDevice->DeviceWrite(lbneReg.eventDataControl, 0x0013001F);
-  fDevice->DeviceClear(lbneReg.master_logic_control, 0x00000001);
-  // Clear the FIFOs
-  fDevice->DeviceWrite(lbneReg.fifo_control, 0x08000000);
-  // Reset the links and flags				
-  fDevice->DeviceWrite(lbneReg.event_data_control, 0x00020001);
-  // Flush RX buffer in USB chip and driver
-  fDevice->DevicePurgeData();
-  fState=SSPDAQ::DeviceInterface::kStopped;
   fShouldStop=true;
 
   if(fReadThread){
@@ -57,6 +48,17 @@ void SSPDAQ::DeviceInterface::Stop(){
     fReadThread.reset();
   }  
 
+  fDevice->DeviceWrite(lbneReg.eventDataControl, 0x0013001F);
+  fDevice->DeviceClear(lbneReg.master_logic_control, 0x00000001);
+  // Clear the FIFOs
+  fDevice->DeviceWrite(lbneReg.fifo_control, 0x08000000);
+  fDevice->DeviceWrite(lbneReg.PurgeDDR, 0x00000001);
+  // Reset the links and flags				
+  fDevice->DeviceWrite(lbneReg.event_data_control, 0x00020001);
+  // Flush RX buffer
+  fDevice->DevicePurgeData();
+
+  fState=SSPDAQ::DeviceInterface::kStopped;
 }
 
 
@@ -75,6 +77,7 @@ void SSPDAQ::DeviceInterface::Start(){
   //Load window settings and bias voltage into channels
   fDevice->DeviceWrite(lbneReg.channel_pulsed_control, 0x1);
   fDevice->DeviceWrite(lbneReg.bias_control, 0x1);
+  fDevice->DeviceWriteMask(lbneReg.mon_control, 0x1, 0x1);
 
   fDevice->DeviceWrite(lbneReg.event_data_control, 0x00000000);
   // Release the FIFO reset						
@@ -120,6 +123,8 @@ void SSPDAQ::DeviceInterface::ReadEvents(){
   std::vector<SSPDAQ::EventPacket> events_nextSlice;
 
   //Check whether other thread has set the stop flag
+  //Really need to know the timestamp at which to stop so we build the
+  //same total number of slices as the other generators
   while(!fShouldStop){
     SSPDAQ::EventPacket event;
     //Ask for event and check that one was returned.
@@ -127,7 +132,7 @@ void SSPDAQ::DeviceInterface::ReadEvents(){
     //if there was no event to read from the SSP.
     this->ReadEventFromDevice(event);
     if(event.header.header!=0xAAAAAAAA){
-      usleep(100);//0.1ms
+      usleep(1000);//1ms
       continue;
     }
 
@@ -135,7 +140,6 @@ void SSPDAQ::DeviceInterface::ReadEvents(){
     unsigned long eventTime=0;
     if(useExternalTimestamp){
       for(unsigned int iWord=0;iWord<=3;++iWord){
-	std::cout<<event.header.timestamp[iWord]<<std::endl;
 	eventTime+=((unsigned long)(event.header.timestamp[iWord]))<<16*iWord;
       }
     }
@@ -303,6 +307,11 @@ void SSPDAQ::DeviceInterface::ReadEventFromDevice(EventPacket& event){
 
   //Find first word in event header (0xAAAAAAAA)
   while(true){
+    //unsigned int queueLength=0;
+
+    //fDevice->DeviceQueueStatus(&queueLength);
+    //if(!queueLength)continue;
+
     fDevice->DeviceReceive(data,1);
 
     //If no data is available in pipe then return

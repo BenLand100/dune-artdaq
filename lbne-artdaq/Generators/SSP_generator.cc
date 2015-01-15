@@ -45,9 +45,16 @@ lbne::SSP::SSP(fhicl::ParameterSet const & ps)
       <<interfaceTypeCode
       <<".\n";
   }
+
   //Awful hack to get two devices to work together for now
-  device_interface_=new SSPDAQ::DeviceInterface(interface_type_,0);//board_id_);
-  device_interface_->Initialize();
+  if(interface_type_!=1){
+    board_id_=0;//std::stol(board_id_str);
+  }
+  else{
+    board_id_=inet_network(ps.get<std::string>("board_ip").c_str());
+  }
+  device_interface_=new SSPDAQ::DeviceInterface(interface_type_,board_id_);//board_id_);
+      device_interface_->Initialize();
   this->ConfigureDevice(ps);
   this->ConfigureDAQ(ps);
 }

@@ -21,11 +21,11 @@ SSPDAQ::DeviceManager& SSPDAQ::DeviceManager::Get(){
 SSPDAQ::DeviceManager::DeviceManager(){
 }
 
-std::pair<unsigned int, unsigned int> SSPDAQ::DeviceManager::GetNDevices(){
+unsigned int SSPDAQ::DeviceManager::GetNUSBDevices(){
   if(!fHaveLookedForDevices){
     this->RefreshDevices();
   }
-  return std::make_pair(fUSBDevices.size(),fEthernetDevices.size());
+  return fUSBDevices.size();
 }
 
 void SSPDAQ::DeviceManager::RefreshDevices()
@@ -38,7 +38,7 @@ void SSPDAQ::DeviceManager::RefreshDevices()
     }
   }
   for(auto device=fEthernetDevices.begin();device!=fEthernetDevices.end();++device){
-    if(device->IsOpen()){
+    if((device->second)->IsOpen()){
       SSPDAQ::Log::Warning()<<"Device manager refused request to refresh device list"
 			    <<"due to ethernet devices still open"<<std::endl;
     } 
@@ -224,8 +224,17 @@ SSPDAQ::Device* SSPDAQ::DeviceManager::OpenDevice(SSPDAQ::Comm_t commType, unsig
     }
     break;
   case SSPDAQ::kEthernet:
-    SSPDAQ::Log::Error()<<"Ethernet interface not implemented yet!"<<std::endl;
-    throw(std::invalid_argument(""));
+    if(fEthernetDevices.find(deviceNum)==fEthernetDevices.end()){
+      fEthernetDevices[deviceNum]=(std::move(std::unique_ptr<SSPDAQ::EthernetDevice>(new SSPDAQ::EthernetDevice(deviceNum))));
+    }
+    if(fEthernetDevices[deviceNum]->IsOpen()){
+      SSPDAQ::Log::Error()<<"Attempt to open already open device!"<<std::endl;
+      throw(EDeviceAlreadyOpen());
+    }
+    else{
+      device=fEthernetDevices[deviceNum].get();
+      device->Open();
+    }
     break;
   case SSPDAQ::kEmulated:
     while(fEmulatedDevices.size()<=deviceNum){

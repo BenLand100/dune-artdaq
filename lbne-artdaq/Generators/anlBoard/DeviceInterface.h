@@ -17,7 +17,7 @@ namespace SSPDAQ{
 
     //Just sets the fields needed to request the device.
     //Real work is done in Initialize which is called manually.
-    DeviceInterface(SSPDAQ::Comm_t commType, unsigned int deviceId);
+    DeviceInterface(SSPDAQ::Comm_t commType, unsigned long deviceId);
 
     //Does all the real work in connecting to and setting up the device
     void Initialize();
@@ -94,7 +94,7 @@ namespace SSPDAQ{
     SSPDAQ::Comm_t fCommType;
 
     //Index of the device in the hardware-returned list
-    unsigned int fDeviceId;
+    unsigned long fDeviceId;
 
     //Holds current device state. Hopefully this matches the state of the
     //hardware itself.
