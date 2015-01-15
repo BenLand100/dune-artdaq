@@ -69,9 +69,17 @@ namespace lbne {
     uint32_t number_of_values_to_generate_;
     uint32_t simulated_readout_time_usec_;
 
-    std::string rce_client_host_addr_;
-    std::string rce_client_host_port_;
-    uint32_t	rce_client_timeout_usecs_;
+    std::string dpm_client_host_addr_;
+    std::string dpm_client_host_port_;
+    uint32_t	dpm_client_timeout_usecs_;
+
+    bool        dtm_client_enable_;
+    std::string dtm_client_host_addr_;
+    std::string dtm_client_host_port_;
+    uint32_t	dtm_client_timeout_usecs_;
+    
+    std::string rce_xml_config_file_;
+    std::string rce_daq_mode_;
 
     std::string rce_data_dest_host_;
     uint16_t    rce_data_dest_port_;
@@ -79,8 +87,8 @@ namespace lbne {
     uint32_t    rce_data_num_microslices_;
     float       rce_data_frag_rate_;
     uint16_t    rce_data_adc_mode_;
-    float		rce_data_adc_mean_;
-    float		rce_data_adc_sigma_;
+    float	rce_data_adc_mean_;
+    float	rce_data_adc_sigma_;
 
     uint16_t receive_port_;
     size_t raw_buffer_size_;
@@ -93,7 +101,8 @@ namespace lbne {
     std::map<uint8_t*, std::unique_ptr<artdaq::Fragment>> raw_to_frag_map_;
     uint16_t number_of_microslices_per_millislice_;
 
-    std::unique_ptr<lbne::RceClient> rce_client_;
+    std::unique_ptr<lbne::RceClient> dpm_client_;
+    std::unique_ptr<lbne::RceClient> dtm_client_;
 
     bool run_receiver_;
     std::unique_ptr<lbne::RceDataReceiver> data_receiver_;

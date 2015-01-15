@@ -1,3 +1,15 @@
+simple_plugin(TPCMilliSliceSimulatorWithCopy "generator"
+  lbne-raw-data_Overlays
+  ${ARTDAQ_APPLICATION}
+  ${ARTDAQ_DAQDATA}
+  ${ARTDAQ-CORE_DATA}
+  ${ARTDAQ-CORE_UTILITIES}
+  ${ART_UTILITIES}
+  ${FHICLCPP}
+  ${MF_MESSAGELOGGER}
+  ${CETLIB}
+  )
+
 simple_plugin(SSP "generator"
   lbne-raw-data_Overlays
   lbne-artdaq_Generators_anlBoard

@@ -84,18 +84,24 @@ function install_package {
     echo IN $PWD: about to . ../$packagename/ups/setup_for_development
     . ../$packagename/ups/setup_for_development -${build_arg} $@
     echo FINISHED ../$packagename/ups/setup_for_development
-    buildtool ${opt_clean+-c} -i
+    buildtool ${opt_clean+-c} -i -t
     cd ..
 }
 
 . $products_dir/setup
 
 install_package artdaq-core v1_04_06 e6 s5
-install_package lbne-raw-data v0_00_07 e6 s5
+install_package lbne-raw-data v0_00_09 e6 s5
 install_package artdaq v1_12_04 e6 s5 eth
 
 setup_qualifier="e6 eth"
 
+
+if [[ "$HOSTNAME" != "lbne35t-gateway01.fnal.gov" ]] ; then
+    setup_cmd="source $products_dir/setup"
+else
+    setup_cmd="source /data/lbnedaq/products/setup; source $products_dir/setup"
+fi
 
 cd $demo_dir >/dev/null
 if [[ ! -e ./setupLBNEARTDAQ ]]; then
@@ -104,7 +110,7 @@ if [[ ! -e ./setupLBNEARTDAQ ]]; then
 
 	sh -c "[ \`ps \$\$ | grep bash | wc -l\` -gt 0 ] || { echo 'Please switch to the bash shell before running the lbne-artdaq.'; exit; }" || exit
 
-	source $products_dir/setup
+	$setup_cmd
 
 	export CETPKG_INSTALL=$products_dir
 	export CETPKG_J=16
@@ -119,10 +125,10 @@ if [[ ! -e ./setupLBNEARTDAQ ]]; then
 	cd \$LBNEARTDAQ_BUILD  # note: next line adjusts PATH based one cwd
 	. \$LBNEARTDAQ_REPO/ups/setup_for_development -${build_arg} $setup_qualifier
 
-        # JCF, 11/25/14
-        # Make it easy for users to take a quick look at their output file via "rawEventDump"
+# JCF, 11/25/14
+# Make it easy for users to take a quick look at their output file via "rawEventDump"
 
-        alias rawEventDump="art -c \$LBNEARTDAQ_REPO/tools/fcl/rawEventDump.fcl "
+alias rawEventDump="art -c \$LBNEARTDAQ_REPO/tools/fcl/rawEventDump.fcl "
 
 	EOF
     #
@@ -132,7 +138,7 @@ fi
 echo "Building lbne-artdaq..."
 cd $LBNEARTDAQ_BUILD
 . $demo_dir/setupLBNEARTDAQ
-buildtool
+buildtool -t
 
 echo "Installation and build complete; please see https://cdcvs.fnal.gov/redmine/projects/lbne-artdaq/wiki/Running_a_sample_lbne-artdaq_system for instructions on how to run"
 

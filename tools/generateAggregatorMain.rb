@@ -22,7 +22,6 @@ services: {
     }
   }
   Timing: { summaryOnly: true }
-  #SimpleMemoryCheck: { }
 }
 
 %{aggregator_code}
@@ -31,7 +30,7 @@ source: {
   module_type: NetMonInput
 }
 outputs: {
-  %{root_output}normalOutput: {
+  %{root_output}rootOutput: {
   %{root_output}  module_type: RootOutput
   %{root_output}  fileName: \"%{output_file}\"
   %{root_output}}
@@ -42,11 +41,17 @@ physics: {
   }
 
   producers: {
+
+    lbneArtdaqBuildInfo: {
+    module_type: LbneArtdaqBuildInfo
+    }
   }
+
+  p: [ lbneArtdaqBuildInfo ]
 
   %{enable_onmon}a1: %{onmon_modules}
 
-  %{root_output}my_output_modules: [ normalOutput ]
+  %{root_output}my_output_modules: [ rootOutput ]
 }
 process_name: DAQAG"
 )

@@ -73,11 +73,6 @@ physics:
 
   producers:
   {
-   artdaqBuildInfo:
-    {
-      module_type: ArtdaqBuildInfo
-    }
-
     lbneArtdaqBuildInfo:
     {
      module_type: LbneArtdaqBuildInfo
@@ -85,7 +80,7 @@ physics:
   }   
 
 
-  p: [ artdaqBuildInfo, lbneArtdaqBuildInfo ] 
+  p: [ lbneArtdaqBuildInfo ] 
 
   a1: [ toyDump ]
   a2: [ app, wf ]

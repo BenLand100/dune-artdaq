@@ -1,0 +1,51 @@
+#This is the default configuration file
+#include "PreScaleTrigger.fcl"
+
+ physics:
+{
+ 
+    
+ filters:
+  {
+
+    prescaletrigger: @local::prescale_trigger
+
+  }
+
+
+  filter: [  prescaletrigger ]
+
+  output: [ stream1 , stream2 ]
+
+  end_paths: [ output ]
+}
+
+services : {
+  user:         @local::lbne35t_simulation_services
+  Timing:       {}
+  RandomNumberGenerator: {} 
+  message:      @local::standard_info
+
+}
+
+outputs:
+{
+  stream1:
+  {
+    module_type: RootOutput
+    fileName: "PreScaleTrigger_pass.root"
+    SelectedEvents: { SelectEvents: [ "filter" ] }
+  }
+  stream2:
+  {
+    module_type: RootOutput
+    fileName: "PreScaleTrigger_fail.root"
+    SelectedEvents: { SelectEvents: [ "!filter" ] }
+  }
+
+}
+
+
+
+process_name: runPreScaleTrigger
+ 
