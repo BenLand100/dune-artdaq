@@ -12,8 +12,11 @@ def generateSSP(startingFragmentId, boardId, interfaceType, fragmentType)
     fragment_id: %{starting_fragment_id}
     board_id: %{board_id}
     interface_type: %{interface_type}
+    board_ip: \"192.168.1.123\"
 
     HardwareConfig:{
+
+        eventDataInterfaceSelect: 0x00000001
       	c2c_control:             0x00000007
 	c2c_master_intr_control: 0x00000000
 	comm_clock_control:      0x00000001
@@ -44,8 +47,9 @@ def generateSSP(startingFragmentId, boardId, interfaceType, fragmentType)
         #                         0x00000000]
 
         # ALL_channel_control:      0x80F00401
-        ALL_channel_control:      0x00006001
-                     
+        # ALL_channel_control:      0x00006001
+        ALL_channel_control:      0x00F0E081
+           
 	ALL_led_threshold:         150
 	ALL_cfd_parameters:        0x1800
 	ALL_readout_pretrigger:    100
@@ -74,12 +78,12 @@ def generateSSP(startingFragmentId, boardId, interfaceType, fragmentType)
                                               # 0x2  - use NOvA clock (0 value uses front panel input)
                                               # 0x10 - Enable clock jitter correction
 
-        dsp_clock_control:         0x00000000 # Use internal clock to drive ADCs, front panel
-                                                # clock for sync
+        # dsp_clock_control:         0x00000000 # Use internal clock to drive ADCs, front panel
+        #                                        # clock for sync
 
 
-        ALL_bias_config:           0x00040E21 # 26.5V - bit 0x4000 enables bias, bits 0xFFF set value
-                                              # in range 0-30V
+        #ALL_bias_config:           0x00040E21 # 26.5V - bit 0x4000 enables bias, bits 0xFFF set value
+        #                                      # in range 0-30V
 
       }
 

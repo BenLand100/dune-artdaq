@@ -2,6 +2,11 @@
 #  about the FHiCL language, please look at
 #  cdcvs.fnal.gov/redmine/documents/327 , the "FHiCL Quick Start Guide"
 
+# n.b. This is of developer interest, for testing new modules. If
+#  you're an end user, there's unnecessary complexity here, and you can
+#  safely ignore this file.
+
+process_name: readRoot
 
 ######################################################################
 # The ART code
@@ -11,6 +16,13 @@ physics:
 {
   analyzers:
   {
+    printBuildInfo: {
+       module_type: PrintBuildInfo
+
+       buildinfo_module_label: lbneArtdaqBuildInfo
+       buildinfo_instance_label: LbneArtdaqBuildInfo
+    }
+
   
    # # n.b. if you wish to generate more than one fragment per event, toyDump should be disabled
 
@@ -41,48 +53,12 @@ physics:
    #   digital_sum_only: false
    #   }
 
-#    artdaqPrintVersionInfo: {
-#     billymadison: {
-     artdaqBuildInfo: {
-       module_type: PrintVersionInfo
-
-       artdaq_module_label: artdaqBuildInfo
-       artdaq_core_module_label: artdaqBuildInfo
-       artdaq_core_instance_label: buildinfoArtdaqCore
-       artdaq_instance_label: buildinfoArtdaq
-    }
-
-    lbneArtdaqBuildInfo: {
-       module_type: LbneArtdaqPrintVersionInfo
-
-       lbne_artdaq_module_label: lbneArtdaqBuildInfo
-       lbne_raw_data_module_label: lbneArtdaqBuildInfo
-
-       lbne_artdaq_instance_label: buildinfoLbneArtdaq
-       lbne_raw_data_instance_label: buildinfoLbneRawData
-
-    }
 
   }
 
-  producers:
-  {
-#   artdaqBuildInfo:
-#    {
-#      module_type: ArtdaqBuildInfo
-#    }
-
-#    lbneartdaqBuildInfo:
-#    {
-#     module_type: lbneartdaqBuildInfo
-#    }
-  }   
-
-
 #  a1: [ toyDump ]
 #  a2: [ app, wf ]
-#  a3: [ artdaqPrintVersionInfo ]
-  a3: [ artdaqBuildInfo, lbneArtdaqBuildInfo ]
+  a3: [ printBuildInfo ]
   e1: [ out1 ]
   end_paths: [ e1,a3 ]
 }
@@ -93,6 +69,7 @@ outputs:
   {
     module_type: FileDumperOutput
     wantProductFriendlyClassName: true
+    onlyIfPresent: true
   }
 
 
@@ -104,7 +81,7 @@ module_type: RootInput
 fileNames: [ "driver.root" ]
 }
 
-process_name: readRoot
+
 
 
 

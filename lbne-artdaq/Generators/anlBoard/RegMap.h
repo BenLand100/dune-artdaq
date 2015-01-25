@@ -128,10 +128,11 @@ class RegMap{
   unsigned int armOperMode;	// 0x00000044
   unsigned int armOptions;	// 0x00000048
   unsigned int armModemStatus;// 0x0000004C
+  unsigned int PurgeDDR;        // 0x00000300
 
   // Registers in the Zynq FPGA
   unsigned int zynqTest[6];
-  unsigned int fakeControl;
+  unsigned int eventDataInterfaceSelect;
   unsigned int fakeNumEvents;
   unsigned int fakeEventSize;
   unsigned int fakeBaseline;
