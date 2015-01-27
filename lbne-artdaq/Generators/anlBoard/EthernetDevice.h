@@ -82,7 +82,7 @@ class EthernetDevice : public Device{
   boost::asio::ip::address fIP;
 
   //Can only be opened by DeviceManager, not by user
-  virtual void Open();
+  virtual void Open(bool slowControlOnly=false);
 
 };
 

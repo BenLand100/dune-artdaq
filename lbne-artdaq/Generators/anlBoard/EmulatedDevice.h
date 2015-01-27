@@ -61,7 +61,7 @@ class EmulatedDevice : public Device{
 
  private:
 
-  virtual void Open();
+  virtual void Open(bool slowControlOnly=false);
 
   //Start generation of events by emulator thread
   //Called when appropriate register is set via DeviceWrite

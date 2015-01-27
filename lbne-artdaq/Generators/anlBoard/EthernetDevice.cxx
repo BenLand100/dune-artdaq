@@ -12,14 +12,21 @@ SSPDAQ::EthernetDevice::EthernetDevice(unsigned long ipAddress):
   fIP(boost::asio::ip::address_v4(ipAddress))
   {}
 
-void SSPDAQ::EthernetDevice::Open(){
+void SSPDAQ::EthernetDevice::Open(bool slowControlOnly){
+
+  fSlowControlOnly=slowControlOnly;
 
   SSPDAQ::Log::Info()<<"Looking for SSP Ethernet device at "<<fIP.to_string()<<std::endl;
   boost::asio::ip::tcp::resolver resolver(fIo_service);
-  boost::asio::ip::tcp::resolver::query commQuery(fIP.to_string(), "55001");
+  boost::asio::ip::tcp::resolver::query commQuery(fIP.to_string(), slowControlOnly?"55002":"55001");
   boost::asio::ip::tcp::resolver::iterator commEndpointIterator = resolver.resolve(commQuery);
   boost::asio::connect(fCommSocket, commEndpointIterator);
   
+  if(slowControlOnly){
+    SSPDAQ::Log::Info()<<"Connected to SSP Ethernet device at "<<fIP.to_string()<<std::endl;
+    return;
+  }
+
   boost::asio::ip::tcp::resolver::query dataQuery(fIP.to_string(), "55010");
   boost::asio::ip::tcp::resolver::iterator dataEndpointIterator = resolver.resolve(dataQuery);
   

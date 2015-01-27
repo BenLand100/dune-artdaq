@@ -7,8 +7,29 @@
 
 SSPDAQ::DeviceInterface::DeviceInterface(SSPDAQ::Comm_t commType, unsigned long deviceId)
   : fCommType(commType), fDeviceId(deviceId), fState(SSPDAQ::DeviceInterface::kUninitialized),
-    fMillisliceLength(1E8), fMillisliceOverlap(1E7), fUseExternalTimestamp(false){
+    fMillisliceLength(1E8), fMillisliceOverlap(1E7), fUseExternalTimestamp(false),
+    fHardwareClockRateInMHz(128), fEmptyWriteDelayInus(1000000), fSlowControlOnly(false){
   fReadThread=0;
+}
+
+void SSPDAQ::DeviceInterface::OpenSlowControl(){
+  //Ask device manager for a pointer to the specified device
+  SSPDAQ::DeviceManager& devman=SSPDAQ::DeviceManager::Get();
+
+  SSPDAQ::Device* device=0;
+
+  SSPDAQ::Log::Info()<<"Opening "<<((fCommType==SSPDAQ::kUSB)?"USB":((fCommType==SSPDAQ::kEthernet)?"Ethernet":"Emulated"))
+		     <<" device #"<<fDeviceId<<" for slow control only..."<<std::endl;
+  
+  device=devman.OpenDevice(fCommType,fDeviceId,true);
+  
+  if(!device){
+    SSPDAQ::Log::Error()<<"Unable to get handle to device; giving up!"<<std::endl;
+    throw(ENoSuchDevice());
+  }
+
+  fDevice=device;
+  fSlowControlOnly=true;
 }
 
 void SSPDAQ::DeviceInterface::Initialize(){
@@ -39,6 +60,11 @@ void SSPDAQ::DeviceInterface::Stop(){
      fState!=SSPDAQ::DeviceInterface::kUninitialized){
     SSPDAQ::Log::Warning()<<"Running stop command for non-running device!"<<std::endl;
   }
+
+  if(fState==SSPDAQ::DeviceInterface::kRunning){
+    SSPDAQ::Log::Info()<<"Device interface stopping run"<<std::endl;
+  }
+
   SSPDAQ::RegMap& lbneReg=SSPDAQ::RegMap::Get();
       
   fShouldStop=true;
@@ -46,6 +72,7 @@ void SSPDAQ::DeviceInterface::Stop(){
   if(fReadThread){
     fReadThread->join();
     fReadThread.reset();
+    SSPDAQ::Log::Info()<<"Read thread terminated"<<std::endl;
   }  
 
   fDevice->DeviceWrite(lbneReg.eventDataControl, 0x0013001F);
@@ -57,8 +84,12 @@ void SSPDAQ::DeviceInterface::Stop(){
   fDevice->DeviceWrite(lbneReg.event_data_control, 0x00020001);
   // Flush RX buffer
   fDevice->DevicePurgeData();
-
+  SSPDAQ::Log::Info()<<"Hardware set to stopped state"<<std::endl;
   fState=SSPDAQ::DeviceInterface::kStopped;
+
+  if(fState==SSPDAQ::DeviceInterface::kRunning){
+    SSPDAQ::Log::Info()<<"DeviceInterface stop transition complete!"<<std::endl;
+  }
 }
 
 
@@ -66,6 +97,11 @@ void SSPDAQ::DeviceInterface::Start(){
 
   if(fState!=kStopped){
     SSPDAQ::Log::Warning()<<"Attempt to start acquisition on non-stopped device refused!"<<std::endl;
+    return;
+  }
+ 
+  if(fSlowControlOnly){
+    SSPDAQ::Log::Error()<<"Naughty Zoot! Attempt to start run on slow control interface refused!"<<std::endl;
     return;
   }
 
@@ -116,7 +152,10 @@ void SSPDAQ::DeviceInterface::ReadEvents(){
   unsigned long millisliceStartTime=runStartTime;
   unsigned long millisliceLengthInTicks=fMillisliceLength;//0.67s
   unsigned long millisliceOverlapInTicks=fMillisliceOverlap;//0.067s
+  unsigned int sleepTime=0;
   unsigned int millisliceCount=0;
+
+  bool haveWarnedNoEvents=false;
 
   //Need two lots of event packets, to manage overlap between slices.
   std::vector<SSPDAQ::EventPacket> events_thisSlice;
@@ -131,10 +170,36 @@ void SSPDAQ::DeviceInterface::ReadEvents(){
     //ReadEventFromDevice Will return an empty packet with header word set to 0xDEADBEEF
     //if there was no event to read from the SSP.
     this->ReadEventFromDevice(event);
+
+    //If there is no event, sleep for a bit and try again
     if(event.header.header!=0xAAAAAAAA){
       usleep(1000);//1ms
+      sleepTime+=1000;
+
+      //If we are waiting a long time, assume that there are no events in this period,
+      //and fill a millislice anyway.
+      //This stops the aggregator waiting indefinitely for a fragment.
+      if(sleepTime>fEmptyWriteDelayInus&&hasSeenEvent){	
+	if(!haveWarnedNoEvents){
+	  SSPDAQ::Log::Warning()<<"Warning: DeviceInterface is seeing no events, starting to write empty slices"<<std::endl;
+	  haveWarnedNoEvents=true;
+	}
+	//Write a full or empty millislice
+	if(events_thisSlice.size()){
+	  this->BuildMillislice(events_thisSlice,millisliceStartTime,millisliceStartTime+millisliceLengthInTicks+millisliceOverlapInTicks);
+	  events_thisSlice.clear();
+	}
+	else{
+	  this->BuildEmptyMillislice(millisliceStartTime,millisliceStartTime+millisliceLengthInTicks+millisliceOverlapInTicks);
+	}
+	++millisliceCount;
+	millisliceStartTime+=millisliceLengthInTicks;
+	sleepTime-=1./fHardwareClockRateInMHz*fMillisliceLength;
+      }
       continue;
     }
+    sleepTime=0;
+    haveWarnedNoEvents=false;
 
     //Convert unsigned shorts into 1*unsigned long event timestamp
     unsigned long eventTime=0;
@@ -177,6 +242,10 @@ void SSPDAQ::DeviceInterface::ReadEvents(){
     }
 
     SSPDAQ::Log::Debug()<<"Interface got event with timestamp "<<eventTime<<"("<<(eventTime-runStartTime)/150E6<<"s from run start)"<<std::endl;
+    if(eventTime<millisliceStartTime){
+      SSPDAQ::Log::Error()<<"Error: Event seen with timestamp less than start of current slice!"<<std::endl;
+      throw(EEventReadError("Bad timestamp"));
+    }
     //Event fits into the current slice
     //Add to current slice only
     if(eventTime<millisliceStartTime+millisliceLengthInTicks){
@@ -305,14 +374,16 @@ void SSPDAQ::DeviceInterface::ReadEventFromDevice(EventPacket& event){
 
   unsigned int skippedWords=0;
 
+  unsigned int queueLengthInUInts=0;
+
   //Find first word in event header (0xAAAAAAAA)
   while(true){
-    //unsigned int queueLength=0;
 
-    //fDevice->DeviceQueueStatus(&queueLength);
-    //if(!queueLength)continue;
-
-    fDevice->DeviceReceive(data,1);
+    fDevice->DeviceQueueStatus(&queueLengthInUInts);
+    
+    if(queueLengthInUInts){
+      fDevice->DeviceReceive(data,1);
+    }
 
     //If no data is available in pipe then return
     //without filling packet
@@ -340,15 +411,13 @@ void SSPDAQ::DeviceInterface::ReadEventFromDevice(EventPacket& event){
     SSPDAQ::Log::Warning()<<"Warning: GetEvent skipped "<<skippedWords<<"words "
 			<<"before finding next event header!"<<std::endl;
   }
-  
-  
+    
   unsigned int* headerBlock=(unsigned int*)&event.header;
   headerBlock[0]=0xAAAAAAAA;
   
   static const unsigned int headerReadSize=(sizeof(SSPDAQ::EventHeader)/sizeof(unsigned int)-1);
 
   //Wait for hardware queue to fill with full header data
-  unsigned int queueLengthInUInts=0;
   unsigned int timeWaited=0;//in us
 
   do{
@@ -653,126 +722,3 @@ void SSPDAQ::DeviceInterface::Configure(){
 	// Load the window settings - This MUST be the last operation
 
 }
-
-//Old settings used in first DAQ workshop (basically copied from Denver)
-#if 0
-  // Setting up some constants to use during initialization
-  const unsigned int nChannels          = 12;
-  const unsigned int module_id          = 0xABC;	// This value is reported in the event header
-  const unsigned int led_threshold	= 5;	
-  const unsigned int cfd_fraction	= 0x1800;
-  const unsigned int readout_pretrigger	= 100;	
-  const unsigned int event_packet_length= 2046;	
-  const unsigned int p_window		= 0;	
-  const unsigned int k_window		= 20;
-  const unsigned int m1_window		= 10;	
-  const unsigned int m2_window		= 5;	
-  const unsigned int d_window		= 20;
-  const unsigned int i_window		= 300;
-  const unsigned int disc_width		= 10;
-  const unsigned int baseline_start	= 0x0000;
-  const unsigned int baseline_delay	= 5;
-  const unsigned int trigger_config	= 0x00000000;
-
-    const unsigned int	chan_config[nChannels] = 
-    {
-            0x00F0E061,		// configure channel #0 in a slow timestamp triggered mode
-      //0x00005001,               // put channel #0 into external trigger mode
-      //0x80F00801,               //put channel #0 into internal led trigger mode
-      0x00000000,		// disable channel #1
-      0x00000000,		// disable channel #2
-      0x00000000,		// disable channel #3
-      0x00000000,		// disable channel #4
-      0x00000000,		// disable channel #5
-      0x00000000,		// disable channel #6
-      0x00000000,		// disable channel #7
-      0x00000000,		// disable channel #8
-      0x00000000,		// disable channel #9
-      0x00000000,		// disable channel #10
-      0x00000000,		// disable channel #11
-      };
-    /*
-  const unsigned int	chan_config[nChannels] = 
-    {
-      //      0x00F0E061,		// configure channel #0 in a slow timestamp triggered mode
-      0x00006001,               // put channel #0 into external trigger mode
-      //0x80F00801,               //put channel #0 into internal led trigger mode
-      0x00006001,               // put channel #0 into external trigger mode
-      0x00006001,               // put channel #0 into external trigger mode
-      0x00006001,               // put channel #0 into external trigger mode
-      0x00006001,               // put channel #0 into external trigger mode
-      0x00006001,               // put channel #0 into external trigger mode
-      0x00006001,               // put channel #0 into external trigger mode
-      0x00006001,               // put channel #0 into external trigger mode
-      0x00006001,               // put channel #0 into external trigger mode
-      0x00006001,               // put channel #0 into external trigger mode
-      0x00006001,               // put channel #0 into external trigger mode
-      0x00006001,               // put channel #0 into external trigger mode
-      };
-  */
-  //	Channel Configuration Bit Descriptions
-  //	31		cfd_enable
-  //	30		pileup_waveform_only
-  //	26		pileup_extend_enable
-  //	25:24	event_extend_mode
-  //	23		disc_counter_mode
-  //	22		ahit_counter_mode 
-  //	21		ACCEPTED_EVENT_COUNTER_MODE
-  //	20		dropped_event_counter_mode
-  //	15:14	external_disc_flag_sel
-  //	13:12	external_disc_mode
-  //	11		negative edge trigger enable
-  //	10		positive edge trigger enable
-  //	6:4		This sets the timestamp trigger rate (source of external_disc_flag_in(3) into channel logic)
-  //	2		Not pileup_disable
-  //	0		channel enable
-  //
-
-  unsigned int i = 0;
-  unsigned int data[nChannels];
-
-
-  //Set clock source to NOvA clock
-  //fDevice->DeviceWrite(0x80000520,0x13);
-  //Set front panel trigger input to active low
-  //fDevice->DeviceWrite(0x80000408,0x1101);
-
-  fDevice->DeviceWrite(lbneReg.c2cControl, 0x00000007);
-  fDevice->DeviceWrite(lbneReg.clockControl, 0x00000001);
-  fDevice->DeviceWrite(lbneReg.module_id, module_id);
-  fDevice->DeviceWrite(lbneReg.c2c_intr_control, 0x00000000);
-  for (i = 0; i < nChannels; i++) data[i] = chan_config[i];
-  fDevice->DeviceArrayWrite(lbneReg.control_status[0], nChannels, data);
-  for (i = 0; i < nChannels; i++) data[i] = led_threshold;
-  fDevice->DeviceArrayWrite(lbneReg.led_threshold[0], nChannels, data);
-  for (i = 0; i < nChannels; i++) data[i] = cfd_fraction;
-  fDevice->DeviceArrayWrite(lbneReg.cfd_parameters[0], nChannels, data);
-  for (i = 0; i < nChannels; i++) data[i] = readout_pretrigger;
-  fDevice->DeviceArrayWrite(lbneReg.readout_pretrigger[0], nChannels, data);
-  for (i = 0; i < nChannels; i++) data[i] = event_packet_length;
-  fDevice->DeviceArrayWrite(lbneReg.readout_window[0], nChannels, data);
-  for (i = 0; i < nChannels; i++) data[i] = p_window;
-  fDevice->DeviceArrayWrite(lbneReg.p_window[0], nChannels, data);
-  for (i = 0; i < nChannels; i++) data[i] = k_window;
-  fDevice->DeviceArrayWrite(lbneReg.k_window[0], nChannels, data);
-  for (i = 0; i < nChannels; i++) data[i] = m1_window;
-  fDevice->DeviceArrayWrite(lbneReg.m1_window[0], nChannels, data);
-  for (i = 0; i < nChannels; i++) data[i] = m2_window;
-  fDevice->DeviceArrayWrite(lbneReg.m2_window[0], nChannels, data);
-  for (i = 0; i < nChannels; i++) data[i] = d_window;
-  fDevice->DeviceArrayWrite(lbneReg.d_window[0], nChannels, data);
-  for (i = 0; i < nChannels; i++) data[i] = i_window;
-  fDevice->DeviceArrayWrite(lbneReg.i_window[0], nChannels, data);
-  for (i = 0; i < nChannels; i++) data[i] = disc_width;
-  fDevice->DeviceArrayWrite(lbneReg.disc_width[0], nChannels, data);
-  for (i = 0; i < nChannels; i++) data[i] = baseline_start;
-  fDevice->DeviceArrayWrite(lbneReg.baseline_start[0], nChannels, data);
-
-  fDevice->DeviceWrite(lbneReg.gpio_output_width, 0x00001000);
-  fDevice->DeviceWrite(lbneReg.led_config, 0x00000000);
-  fDevice->DeviceWrite(lbneReg.baseline_delay, baseline_delay);
-  fDevice->DeviceWrite(lbneReg.diag_channel_input, 0x00000000);
-  fDevice->DeviceWrite(lbneReg.trigger_config, trigger_config);
-  // Load the window settings - This MUST be the last operation
-  fDevice->DeviceWrite(lbneReg.channel_pulsed_control, 0x1);
-#endif

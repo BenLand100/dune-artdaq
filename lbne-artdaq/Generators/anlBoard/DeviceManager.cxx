@@ -141,70 +141,9 @@ void SSPDAQ::DeviceManager::RefreshDevices()
 
   delete[] deviceInfoNodes;
 
-  //Test code for boost ethernet library
-  /*  std::cout<<"1"<<std::endl;
-  boost::asio::io_service io_service;
-  std::cout<<"2"<<std::endl;
-  //boost::asio::ip::address boardAddress(boost::asio::ip::address_v4::from_string("192.168.1.123"));
-  boost::asio::ip::tcp::resolver resolver(io_service);
-  boost::asio::ip::tcp::resolver::query query("192.168.1.123", "55001");
-  boost::asio::ip::tcp::resolver::iterator endpoint_iterator = resolver.resolve(query);
-  boost::asio::ip::tcp::socket boardSocket(io_service);
-  boost::asio::connect(boardSocket, endpoint_iterator);
-
-  
-  //boost::asio::ip::address boardAddress(boost::asio::ip::address_v4::from_string("127.0.0.1"));
-  std::cout<<"3"<<std::endl;
-  //  boost::asio::ip::tcp::endpoint boardEndpoint(boardAddress,55001);
-  //boost::asio::ip::tcp::endpoint boardEndpoint(boardAddress,22);
-  std::cout<<boardEndpoint.address().to_string()<<std::endl;
-  std::cout<<boardEndpoint.port()<<std::endl;
-  std::cout<<"4"<<std::endl;
-  try{
-    //boost::asio::ip::tcp::socket boardSocket(io_service,boardEndpoint);
-  }
-  catch(boost::system::system_error except){
-  std::cout<<except.what()<<std::endl;
-  }
-  SSPDAQ::CtrlPacket tx;
-  //  SSPDAQ::CtrlPacket rx;
-  unsigned int txSize;
-  unsigned int rxSizeExpected;
-  
-  tx.header.length	= sizeof(CtrlHeader);
-  tx.header.address	= 0x40000014; //ARM status, should be 0xABCDEF01 ?
-  tx.header.command	= SSPDAQ::cmdRead;
-  tx.header.size		= 1;
-  tx.header.status	= SSPDAQ::statusNoError;
-  txSize			= sizeof(SSPDAQ::CtrlHeader);
-  rxSizeExpected		= sizeof(SSPDAQ::CtrlHeader) + sizeof(unsigned int);
-  
-  usleep(1000);
-  std::vector<unsigned int> readBuf(6);
-  std::cout<<"5"<<std::endl;
-  boardSocket.write_some(boost::asio::buffer((void*)(&tx),txSize));
-  std::cout<<"6"<<std::endl;
-  usleep(1000);
-  boardSocket.read_some(boost::asio::buffer(readBuf,rxSizeExpected));
-  std::cout<<"7"<<std::endl;
-  for(auto iter=readBuf.begin();iter!=readBuf.end();++iter){
-    std::cout<<std::hex<<*iter<<std::dec<<std::endl;
-  }
-  // Open the event data connection.
-  //error = ConnectToTCPServer(&tcpDataHandle, DataPort, DeviceIP, tcpDataCallbackFunction, &tcpDataCallbackData, tcpDataTimeout);
-  //if (error) {
-  //  error = errorCommConnect;
-  //  break;
-  //}
-  //else
-  //{
-      // Set the event data interface to Ethernet
-  //  DeviceWrite(lbneReg.eventDataInterfaceSelect, 	0x00000001);
-  //}    	
-  */
 }
 
-SSPDAQ::Device* SSPDAQ::DeviceManager::OpenDevice(SSPDAQ::Comm_t commType, unsigned int deviceNum)
+SSPDAQ::Device* SSPDAQ::DeviceManager::OpenDevice(SSPDAQ::Comm_t commType, unsigned int deviceNum, bool slowControlOnly)
 {
   //Check for devices if this hasn't yet been done
   if(!fHaveLookedForDevices&&commType!=SSPDAQ::kEmulated){
@@ -220,7 +159,7 @@ SSPDAQ::Device* SSPDAQ::DeviceManager::OpenDevice(SSPDAQ::Comm_t commType, unsig
       throw(EDeviceAlreadyOpen());
     }
     else{
-      device->Open();
+      device->Open(slowControlOnly);
     }
     break;
   case SSPDAQ::kEthernet:
@@ -233,7 +172,7 @@ SSPDAQ::Device* SSPDAQ::DeviceManager::OpenDevice(SSPDAQ::Comm_t commType, unsig
     }
     else{
       device=fEthernetDevices[deviceNum].get();
-      device->Open();
+      device->Open(slowControlOnly);
     }
     break;
   case SSPDAQ::kEmulated:
@@ -246,7 +185,7 @@ SSPDAQ::Device* SSPDAQ::DeviceManager::OpenDevice(SSPDAQ::Comm_t commType, unsig
       throw(EDeviceAlreadyOpen());
     }
     else{
-      device->Open();
+      device->Open(slowControlOnly);
     }
     break;
   default:

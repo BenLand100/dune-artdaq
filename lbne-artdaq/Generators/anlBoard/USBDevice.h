@@ -89,7 +89,7 @@ class USBDevice : public Device{
   bool isOpen;
 
   //Can only be opened by DeviceManager, not by user
-  virtual void Open();
+  virtual void Open(bool slowControlOnly=false);
 
   //Function called by DevicePurgeComm and DevicePurgeData
   void DevicePurge(FT_DEVICE_LIST_INFO_NODE& channel);

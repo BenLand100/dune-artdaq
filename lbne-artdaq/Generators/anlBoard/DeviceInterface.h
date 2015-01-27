@@ -19,6 +19,8 @@ namespace SSPDAQ{
     //Real work is done in Initialize which is called manually.
     DeviceInterface(SSPDAQ::Comm_t commType, unsigned long deviceId);
 
+    void OpenSlowControl();
+
     //Does all the real work in connecting to and setting up the device
     void Initialize();
 
@@ -82,6 +84,10 @@ namespace SSPDAQ{
 
     void SetMillisliceOverlap(unsigned int length){fMillisliceOverlap=length;}
 
+    void SetEmptyWriteDelayInus(unsigned int time){fEmptyWriteDelayInus=time;}
+
+    void SetHardwareClockRateInMHz(unsigned int rate){fHardwareClockRateInMHz=rate;}
+
     void SetUseExternalTimestamp(bool val){fUseExternalTimestamp=val;}
 
   private:
@@ -128,6 +134,12 @@ namespace SSPDAQ{
     unsigned int fMillisliceOverlap;
 
     unsigned int fUseExternalTimestamp;
+    
+    unsigned int fHardwareClockRateInMHz;
+
+    unsigned int fEmptyWriteDelayInus;
+
+    bool fSlowControlOnly;
 
   };
   
