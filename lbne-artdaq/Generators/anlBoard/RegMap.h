@@ -220,9 +220,10 @@ class RegMap{
   unsigned int sync_period;
   unsigned int sync_delay;
   unsigned int sync_count;
-	
+  unsigned int sync_stamp_low;
+  unsigned int sync_stamp_high;
   unsigned int master_logic_control;
-  unsigned int trigger_config;
+  unsigned int master_logic_status;
   unsigned int overflow_status;
   unsigned int phase_value;
   unsigned int link_tx_status;

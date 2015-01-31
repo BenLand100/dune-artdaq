@@ -6,6 +6,7 @@
 #include "lbne-raw-data/Overlays/anlTypes.hh"
 #include "SafeQueue.h"
 #include "EventPacket.h"
+#include <string>
 
 namespace SSPDAQ{
 
@@ -25,7 +26,10 @@ namespace SSPDAQ{
     void Initialize();
 
     //Start a run :-)
-    void Start();
+    //If you want to read events manually using ReadEventFromDevice, disable
+    //the read thread and the DeviceInterface will not read events or build
+    //millislices.
+    void Start(bool startReadThread=true);
 
     //Pop a millislice from fQueue and place into sliceData
     void GetMillislice(std::vector<unsigned int>& sliceData);
@@ -42,6 +46,11 @@ namespace SSPDAQ{
     //along with Ethernet interface code). Artdaq should do everything
     //in fhicl - this method is for convenience when running test code.
     void Configure();
+
+    //Called by ReadEvents
+    //Get an event off the hardware buffer.
+    //Timeout after some wait period
+    void ReadEventFromDevice(EventPacket& event);
 
     //Obtain current state of device
     inline State_t State(){return fState;}
@@ -80,6 +89,15 @@ namespace SSPDAQ{
     //Set all elements of an array using values vector
     void SetRegisterArrayByName(std::string name, std::vector<unsigned int> values);
 
+    //Read single named register
+    void ReadRegisterByName(std::string name, unsigned int& value);
+
+    //Read single element of an array of registers
+    void ReadRegisterElementByName(std::string name, unsigned int index, unsigned int& value);
+      
+    //Read all elements of an array into values vector
+    void ReadRegisterArrayByName(std::string name, std::vector<unsigned int>& values);
+
     void SetMillisliceLength(unsigned int length){fMillisliceLength=length;}
 
     void SetMillisliceOverlap(unsigned int length){fMillisliceOverlap=length;}
@@ -89,6 +107,10 @@ namespace SSPDAQ{
     void SetHardwareClockRateInMHz(unsigned int rate){fHardwareClockRateInMHz=rate;}
 
     void SetUseExternalTimestamp(bool val){fUseExternalTimestamp=val;}
+
+    void SetStartOnNOvASync(bool val){fStartOnNOvASync=val;}
+
+    std::string GetIdentifier();
 
   private:
     
@@ -111,12 +133,7 @@ namespace SSPDAQ{
 
     //Call at Start. Will read events from device and monitor for
     //millislice boundaries
-    void ReadEvents();
-
-    //Called by ReadEvents
-    //Get an event off the hardware buffer.
-    //Timeout after some wait period
-    void ReadEventFromDevice(EventPacket& event);
+    void ReadEvents(unsigned long runStartTime=0);
 
     //Called by ReadEvents
     //Build millislice from events in buffer and place in fQueue
@@ -129,6 +146,10 @@ namespace SSPDAQ{
 
     std::unique_ptr<std::thread> fReadThread;
 
+    unsigned long fMillislicesSent;
+
+    unsigned long fMillislicesBuilt;
+
     unsigned int fMillisliceLength;
 
     unsigned int fMillisliceOverlap;
@@ -140,6 +161,8 @@ namespace SSPDAQ{
     unsigned int fEmptyWriteDelayInus;
 
     bool fSlowControlOnly;
+
+    bool fStartOnNOvASync;
 
   };
   

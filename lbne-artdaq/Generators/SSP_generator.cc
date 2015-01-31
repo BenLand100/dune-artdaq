@@ -1,6 +1,7 @@
 #include "lbne-artdaq/Generators/SSP.hh"
 #include "lbne-artdaq/Generators/anlBoard/Log.h"
 #include "lbne-artdaq/Generators/anlBoard/anlExceptions.h"
+#include "lbne-artdaq/Generators/anlBoard/Log.h"
 
 #include "art/Utilities/Exception.h"
 #include "artdaq/Application/GeneratorMacros.hh"
@@ -24,6 +25,22 @@ lbne::SSP::SSP(fhicl::ParameterSet const & ps)
   fragment_type_(lbne::detail::PHOTON),
   board_id_(ps.get<unsigned int>("board_id",0))
 {
+  
+  unsigned int verbosity(ps.get<unsigned int>("verbosity",5));
+
+  switch(verbosity){
+  case 0:
+    SSPDAQ::Log::SetErrorStream(*SSPDAQ::Log::junk);
+  case 1:
+    SSPDAQ::Log::SetWarningStream(*SSPDAQ::Log::junk);
+  case 2:
+    SSPDAQ::Log::SetInfoStream(*SSPDAQ::Log::junk);
+  case 3:
+    SSPDAQ::Log::SetDebugStream(*SSPDAQ::Log::junk);
+  case 4:
+    SSPDAQ::Log::SetTraceStream(*SSPDAQ::Log::junk);
+  }
+
   unsigned int interfaceTypeCode(ps.get<unsigned int>("interface_type",999));
 
   switch(interfaceTypeCode){
@@ -125,15 +142,42 @@ void lbne::SSP::ConfigureDAQ(fhicl::ParameterSet const& ps){
     throw SSPDAQ::EDAQConfigError("");
   }
 
+  unsigned int emptyWriteDelay=daqConfig.get<unsigned int>("EmptyWriteDelay",0);
+
+  if(emptyWriteDelay==0){
+    SSPDAQ::Log::Error()<<"EmptyWriteDelay not defined in SSP DAQ configuration!"<<std::endl;
+    throw SSPDAQ::EDAQConfigError("");
+  }
+
+  unsigned int hardwareClockRate=daqConfig.get<unsigned int>("HardwareClockRate",0);
+
+  if(hardwareClockRate==1){
+    SSPDAQ::Log::Error()<<"Error: Hardware clock rate not defined in SSP DAQ configuration!"<<std::endl;
+    throw SSPDAQ::EDAQConfigError("");
+  }
+
+  unsigned int startOnNOvASync=daqConfig.get<unsigned int>("StartOnNOvASync",2);
+
+  if(startOnNOvASync>1){
+    SSPDAQ::Log::Error()<<"Error: StartOnNOvASync not defined, or invalidly defined, in SSP DAQ configuration!"<<std::endl;
+    throw SSPDAQ::EDAQConfigError("");
+  }
+
+
   device_interface_->SetMillisliceLength(millisliceLength);
   device_interface_->SetMillisliceOverlap(millisliceOverlap);
   device_interface_->SetUseExternalTimestamp(useExternalTimestamp);
+  device_interface_->SetEmptyWriteDelayInus(emptyWriteDelay);
+  device_interface_->SetHardwareClockRateInMHz(hardwareClockRate);
+  device_interface_->SetStartOnNOvASync(startOnNOvASync);
 }
 
 
   
 void lbne::SSP::start(){
   device_interface_->Start();
+  fNMissingFragments=0;
+  fNFullFragments=0;
 }
 
 void lbne::SSP::stop(){
@@ -150,7 +194,14 @@ bool lbne::SSP::getNext_(artdaq::FragmentPtrs & frags) {
   device_interface_->GetMillislice(millislice);
 
   if(millislice.size()==0){
+    ++fNMissingFragments;
     return true;
+  }
+  ++fNFullFragments;
+  if(!(fNFullFragments%1000)){
+    SSPDAQ::Log::Info()<<device_interface_->GetIdentifier()
+		       <<"Generator sending fragment "<<fNFullFragments
+		       <<", total refused event requests "<<fNMissingFragments<<std::endl;
   }
 
   SSPFragment::Metadata metadata;
@@ -174,7 +225,7 @@ bool lbne::SSP::getNext_(artdaq::FragmentPtrs & frags) {
   // artdaq::Fragment constructor itself was not altered so as to
   // maintain backward compatibility.
 
-  std::cout<<"SSP generator appending event to fragment holder"<<std::endl;
+  SSPDAQ::Log::Debug()<<"SSP generator appending event to fragment holder"<<std::endl;
 
   std::size_t dataLength = (millislice.size()-SSPDAQ::MillisliceHeader::sizeInUInts)*sizeof(unsigned int);
 

@@ -1,20 +1,30 @@
+# FHiCL document used to run the "driver" executable. To learn more
+#  about the FHiCL language, please look at
+#  cdcvs.fnal.gov/redmine/documents/327 , the "FHiCL Quick Start Guide"
 
-# Generate the FHiCL document which configures the lbne::TpcRceReceiver class
+events_to_generate: 5000
+run_number: 999
 
+fragment_receiver: {
 
-require File.join( File.dirname(__FILE__), 'demo_utilities' )
-  
-def generateSSP(startingFragmentId, boardId, interfaceType, fragmentType)
+   # Parameters defining and configuring the fragment generator to be used
+   		    
+# JCF, 1/30/15
 
-  sspConfig = String.new( "\
+# Following is a cut-and-paste of ssp01_hw_cfg.fcl's SSP configuration
+#  from the "6xssp_ext_100HzMSlice" configuration
+
+######################################################################
+
     generator: SSP
-    fragment_type: %{fragment_type}
-    fragment_id: %{starting_fragment_id}
-    board_id: %{board_id}
-    interface_type: %{interface_type}
-    board_ip: \"192.168.1.106\"
+      fragment_type: SSP
+      fragment_id: 0
+      board_id: 0
+      interface_type: 1
+      board_ip: "192.168.1.108"	
+      verbosity: 3
 
-    HardwareConfig:{
+      HardwareConfig:{
 
         eventDataInterfaceSelect: 0x00000001
       	c2c_control:             0x00000007
@@ -48,12 +58,12 @@ def generateSSP(startingFragmentId, boardId, interfaceType, fragmentType)
 
         #ALL_channel_control:      0x80F00401 #rising edge
         ALL_channel_control:      0x00006001 #front panel
-        #ALL_channel_control:      0x00F0E081 #timestamp
+	#ALL_channel_control:      0x00F0E081 #timestamp
            
-	ALL_led_threshold:         500
+	ALL_led_threshold:         150
 	ALL_cfd_parameters:        0x1800
 	ALL_readout_pretrigger:    100
-	ALL_readout_window:        500
+	ALL_readout_window:        2046
 	ALL_p_window:              0x20
 	ALL_i2_window:             500
 	ALL_m1_window:             10
@@ -81,26 +91,94 @@ def generateSSP(startingFragmentId, boardId, interfaceType, fragmentType)
         # dsp_clock_control:         0x00000000 # Use internal clock to drive ADCs, front panel
         #                                        # clock for sync
 
-        ALL_bias_config:           0x00040FFF # 30V
-        #ALL_bias_config:           0x00040E21 # 26.5V - bit 0x40000 enables bias, bits 0xFFF set value
+
+        ALL_bias_config:           0x00040E21 # 26.5V - bit 0x40000 enables bias, bits 0xFFF set value
         #                                      # in range 0-30V
 
       }
 
       DAQConfig:{
         
-        MillisliceLength:          1E7
-        MillisliceOverlap:         1E6
+        MillisliceLength:          5E5
+        MillisliceOverlap:         1E5
         UseExternalTimestamp:      1
+	StartOnNOvASync:	   1
+	EmptyWriteDelay:	   5000000
+	HardwareClockRate:	   64
       }
-    " )
 
-  
-  sspConfig.gsub!(/\%\{starting_fragment_id\}/, String(startingFragmentId))
-  sspConfig.gsub!(/\%\{board_id\}/, String(boardId))
-  sspConfig.gsub!(/\%\{fragment_type\}/, String(fragmentType)) 
-  sspConfig.gsub!(/\%\{interface_type\}/, String(interfaceType)) 
+# JCF, 1/30/15, END OF CUT-AND_PASTE
+######################################################################
 
-  return sspConfig
+}
 
-end
+
+event_builder: {
+
+  expected_fragments_per_event: 1
+  use_art: true
+  print_event_store_stats: false
+  verbose: false
+  events_expected_in_SimpleQueueReader: @local::events_to_generate
+}
+
+######################################################################
+# The ART code
+######################################################################
+
+physics:
+{
+  analyzers:
+  {
+
+  }
+
+  producers:
+  {
+    lbneArtdaqBuildInfo:
+    {
+     module_type: LbneArtdaqBuildInfo
+    }
+  }   
+
+
+  # p: [ lbneArtdaqBuildInfo ] 
+
+  # a1: [ toyDump ]
+  # a2: [ app, wf ]
+
+   e1: [ rootout ]
+
+  # end_paths: [ p, a1, e1 ]
+end_paths: [ e1 ]
+}
+
+outputs:
+{
+  out1:
+  {
+    module_type: FileDumperOutput
+    wantProductFriendlyClassName: true
+  }
+
+  rootout:
+  {
+    module_type: RootOutput
+    fileName: "driver.root"
+    compressionLevel: 0
+  }
+
+}
+
+source:
+{
+module_type: RawInput
+waiting_time: 900
+resume_after_timeout: true
+fragment_type_map: [[3, "SSP"] ]
+}
+
+process_name: Driver
+
+
+
