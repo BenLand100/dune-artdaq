@@ -1,8 +1,8 @@
 /*
  * PennClient.hh
  *
- *  Created on: Jun 26, 2014
- *      Author: tcn45
+ *  Created on: Dec 15, 2014
+ *      Author: tdealtry (based on tcn45 rce code)
  */
 
 #ifndef PENNCLIENT_HH_

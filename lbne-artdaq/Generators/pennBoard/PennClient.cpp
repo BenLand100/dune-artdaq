@@ -1,8 +1,8 @@
 /*
  * PennClient.cpp
  *
- *  Created on: Jun 26, 2014
- *      Author: tcn45
+ *  Created on: Dec 15, 2014
+ *      Author: tdealtry (based on tcn45 rce code)
  */
 
 #include "PennClient.hh"
@@ -350,7 +350,7 @@ void lbne::PennClient::set_param_(std::string const & name, std::string const & 
 	// Parse the response to ensure the command was acknowledged
 	if (!response_is_ack(response, "SET"))
 	{
-		std::cout << "SET command failed: " << response;
+	  std::cout << "SET command failed: " << response << std::endl;
 	}
 
 }

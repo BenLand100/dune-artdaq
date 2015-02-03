@@ -1,8 +1,8 @@
 /*
  * PennDataReceiver.hh
  *
- *  Created on: May 16, 2014
- *      Author: tcn45
+ *  Created on: Dec 15, 2014
+ *      Author: tdealtry (based on tcn45 rce code)
  */
 
 #ifndef PENNDATARECEIVER_HH_
@@ -59,8 +59,8 @@ private:
 
 	boost::asio::io_service io_service_;
 	tcp::acceptor           acceptor_;
-	tcp::socket				accept_socket_;
-	tcp::socket				data_socket_;
+	tcp::socket	        accept_socket_;
+	tcp::socket		data_socket_;
 
 	boost::asio::deadline_timer deadline_;
 	DeadlineIoObject deadline_io_object_;
@@ -80,9 +80,9 @@ private:
 	SafeQueue<lbne::PennRawBufferPtr> empty_buffer_queue_;
 	SafeQueue<lbne::PennRawBufferPtr> filled_buffer_queue_;
 	PennRawBufferPtr current_raw_buffer_;
-	void*           current_write_ptr_;
+	void*            current_write_ptr_;
 
-	enum NextReceiveState { ReceiveMicrosliceHeader, ReceiveMicroslicePayload };
+        enum NextReceiveState { ReceiveMicrosliceHeader, ReceiveMicroslicePayloadHeader, ReceiveMicroslicePayloadCounter, ReceiveMicroslicePayloadTrigger, ReceiveMicroslicePayloadTimestamp };
 	NextReceiveState next_receive_state_;
 	size_t           next_receive_size_;
 
@@ -94,8 +94,13 @@ private:
 	size_t           microslice_size_recvd_;
 	uint32_t         millislices_recvd_;
 
+  uint16_t microslices_recvd_timestamp_; //counts the number of microslices received that contain a timestamp word
+  bool microslice_seen_timestamp_word_;
+
+  uint8_t microslice_version_;
+
 	bool     sequence_id_initialised_;
-	uint32_t last_sequence_id_;
+	uint8_t last_sequence_id_;
 
 	std::chrono::high_resolution_clock::time_point start_time_;
 
