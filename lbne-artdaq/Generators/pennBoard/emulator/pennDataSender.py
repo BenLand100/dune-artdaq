@@ -10,14 +10,13 @@ class PennDataSender(object):
 
     def __init__(self, use_tcp=False):
 
-        self.dest_host = '127.0.0.1'
+        self.dest_host = '127.0.0.1' #localhost
         self.dest_port = 8989
         self.send_rate = 10.0
         self.num_millislices = 10
         self.num_microslices = 10
-        self.num_nanoslices = 32
         self.adc_mode = 0
-        self.nticks_per_nanoslice = 10
+        self.nticks_per_microslice = 10
         
         self.use_tcp = use_tcp
         self.do_send = False
@@ -37,14 +36,11 @@ class PennDataSender(object):
     def set_microslices(self, microslices):
         self.num_microslices = int(microslices)
 
-    def set_nanoslices(self, nanoslices):
-        self.num_nanoslices = int(nanoslices)
-
     def set_mode(self, mode):
         self.adc_mode = int(mode)
         
-    def set_nticks_per_nanoslice(self, nticks_per_nanoslice):
-        self.nticks_per_nanoslice = int(nticks_per_nanoslice)
+    def set_nticks_per_microslice(self, nticks_per_microslice):
+        self.nticks_per_microslice = int(nticks_per_microslice)
         
     def run(self):
 
@@ -84,7 +80,6 @@ class PennDataSender(object):
         send_interval = 1.0 / self.send_rate
 
         uslice = PennMicroslice(0)
-        uslice.generate_nanoslices(self.num_nanoslices, self.mode, self.nticks_per_nanoslice,)
         
         start_time = time.time()
 

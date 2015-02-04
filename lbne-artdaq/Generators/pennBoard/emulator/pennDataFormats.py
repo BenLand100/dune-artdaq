@@ -60,7 +60,7 @@ class NovaTimestamp(object):
         self.timestamp_high    = (self.ticks_since_epoch >> 32) & 0xFFFFFF
         self.timestamp_short   = self.ticks_since_epoch & 0xFFFFFFF
         
-class PennNanoslice(object):
+class PennMicroslice(object):
 
     #ASSUME little-endian
     format_header            = '<4c'   #32 bit header = 8 bit version + 8 bit sequence + 16 bit block size(bytes)
@@ -76,28 +76,28 @@ class PennNanoslice(object):
     #ASSUME 8 bit data
     num_values_trigger = 8
 
-    version            = 0x3
+    version            = 0x0
 
     @classmethod
     def length_header(cls):
-        return struct.calcsize(PennNanoslice.format_header) / struct.calcsize("<c")
+        return struct.calcsize(PennMicroslice.format_header) / struct.calcsize("<c")
 
     @classmethod
     def length_payload_counter(cls):
-        return (struct.calcsize(PennNanoslice.format_payload_header) + struct.calcsize(PennNanoslice.format_payload_counter  )) / struct.calcsize("<c")
+        return (struct.calcsize(PennMicroslice.format_payload_header) + struct.calcsize(PennMicroslice.format_payload_counter  )) / struct.calcsize("<c")
 
     @classmethod
     def length_payload_trigger(cls):
-        return (struct.calcsize(PennNanoslice.format_payload_header) + struct.calcsize(PennNanoslice.format_payload_trigger  )) / struct.calcsize("<c")
+        return (struct.calcsize(PennMicroslice.format_payload_header) + struct.calcsize(PennMicroslice.format_payload_trigger  )) / struct.calcsize("<c")
 
     @classmethod
     def length_payload_timestamp(cls):
-        return (struct.calcsize(PennNanoslice.format_payload_header) + struct.calcsize(PennNanoslice.format_payload_timestamp)) / struct.calcsize("<c")
+        return (struct.calcsize(PennMicroslice.format_payload_header) + struct.calcsize(PennMicroslice.format_payload_timestamp)) / struct.calcsize("<c")
 
 
-    def __init__(self, mode = 0, nticks_per_nanoslice = 10, sequence = 0):
+    def __init__(self, mode = 0, nticks_per_microslice = 10, sequence = 0):
         self.mode = mode
-        self.nticks_per_nanoslice = nticks_per_nanoslice
+        self.nticks_per_microslice = nticks_per_microslice
         self.sequence = sequence
         self.packed = False
 
@@ -105,17 +105,17 @@ class PennNanoslice(object):
         #This is just a long list of bit values
 
         if self.mode == 0:    # All off
-            payload = "0"  * PennNanoslice.num_values_counter
+            payload = "0"  * PennMicroslice.num_values_counter
             
         elif self.mode == 1:  # All on
-            payload = "1"  * PennNanoslice.num_values_counter
+            payload = "1"  * PennMicroslice.num_values_counter
             
         elif self.mode == 2:  # Alternating on/off
-            payload = "01" * (PennNanoslice.num_values_counter / 2)
+            payload = "01" * (PennMicroslice.num_values_counter / 2)
             
         elif self.mode == 3:  # Random values across full bit-range interval  
             maxVal = 1
-            payload = ''.join(str(random.randint(0, maxVal)) for i in xrange(PennNanoslice.num_values_counter))
+            payload = ''.join(str(random.randint(0, maxVal)) for i in xrange(PennMicroslice.num_values_counter))
             
         else:
             print 'Unknown mode:', self.mode
@@ -127,16 +127,16 @@ class PennNanoslice(object):
         #This is just a long list of bit values
 
         if self.mode == 0:    # No triggers
-            payload = "0" * PennNanoslice.num_values_trigger
+            payload = "0" * PennMicroslice.num_values_trigger
 
         elif self.mode == 1:  # All on
-            payload = "1"  * PennNanoslice.num_values_trigger
+            payload = "1"  * PennMicroslice.num_values_trigger
             
         elif self.mode == 2:  # Alternating on/off
-            payload = "01" * (PennNanoslice.num_values_trigger / 2)
+            payload = "01" * (PennMicroslice.num_values_trigger / 2)
             
         elif self.mode == 3:  # A single random trigger
-            payload = "0" * PennNanoslice.num_values_trigger
+            payload = "0" * PennMicroslice.num_values_trigger
             l = list(payload)
             l[random.randint(0, len(l) - 1)] = "1"
             payload = ''.join(l)
@@ -177,7 +177,7 @@ class PennNanoslice(object):
         return bin_to_char(value + time)
 
     def create_header(self, nbytes):
-        version  = simple_twos_complement(bin(PennNanoslice.version)[2:].zfill(4)) + bin(PennNanoslice.version)[2:].zfill(4)
+        version  = simple_twos_complement(bin(PennMicroslice.version)[2:].zfill(4)) + bin(PennMicroslice.version)[2:].zfill(4)
 
         sequence = bin(self.sequence)[2:].zfill(8)
 
@@ -191,27 +191,29 @@ class PennNanoslice(object):
 
     def pack(self):
 
+        #TODO handle 'large' microslices where they don't end with a timestamp word
+
         data  = ''
         nchar = 0
         self.time = 0
 
         #get the data words
-        for i in xrange(self.nticks_per_nanoslice):
+        for i in xrange(self.nticks_per_microslice):
             self.time = NovaTimestamp(None)
             data  += self.create_payload_counter()
-            nchar += int(PennNanoslice.format_payload_counter[1:-1]) + int(PennNanoslice.format_payload_header[1:-1])
+            nchar += int(PennMicroslice.format_payload_counter[1:-1]) + int(PennMicroslice.format_payload_header[1:-1])
             if random.randint(0,1):
                 data += self.create_payload_trigger()
-                nchar += int(PennNanoslice.format_payload_trigger[1:-1]) + int(PennNanoslice.format_payload_header[1:-1])
+                nchar += int(PennMicroslice.format_payload_trigger[1:-1]) + int(PennMicroslice.format_payload_header[1:-1])
 
         #finish with the timestamp
         if not self.time:
             self.time = NovaTimestamp(None)
         data += self.create_payload_timestamp()
-        nchar += int(PennNanoslice.format_payload_timestamp[1:-1]) + int(PennNanoslice.format_payload_header[1:-1])
+        nchar += int(PennMicroslice.format_payload_timestamp[1:-1]) + int(PennMicroslice.format_payload_header[1:-1])
 
         #and prepend the header (need to know block size before making header)
-        nchar += int(PennNanoslice.format_header[1:-1])
+        nchar += int(PennMicroslice.format_header[1:-1])
         data   = self.create_header(nchar) + data
         self.format = '<'+str(nchar)+'c'
 
@@ -228,7 +230,7 @@ class PennNanoslice(object):
             sys.exit(1)
         return struct.calcsize(self.format) / struct.calcsize('<c')
 
-    def print_nanoslice(self):
+    def print_microslice(self, only_header = False):
         if not self.packed:
             print 'Require pack() to be run before it can be unpacked & printed'
             sys.exit(1)
@@ -241,17 +243,20 @@ class PennNanoslice(object):
         print_string_as_bin(data[1])
         print 'block size',
         print_string_as_bin(data[2:4])
+
+        if only_header:
+            return
         
         i = 4
         while True:
             mode = print_payload_header(data[i:i+4])
             i += 4
             if mode == '0001':
-                print_payload(data[i:i+PennNanoslice.num_values_counter/8])
-                i += PennNanoslice.num_values_counter/8
+                print_payload(data[i:i+PennMicroslice.num_values_counter/8])
+                i += PennMicroslice.num_values_counter/8
             elif mode == '0010':
-                print_payload(data[i:i+PennNanoslice.num_values_trigger/8])
-                i += PennNanoslice.num_values_trigger/8
+                print_payload(data[i:i+PennMicroslice.num_values_trigger/8])
+                i += PennMicroslice.num_values_trigger/8
             elif mode == '1000':
                 print_payload(data[i:i+8])
                 break
@@ -259,101 +264,24 @@ class PennNanoslice(object):
         #print_string_as_bin(data)
 
 
-class PennMicroslice(object):
-
-    #ASSUME 8 bit(1c) version + 16 bit(2c) sequence + 16 bit(2c) run mode + 64 bit(8c) full timestamp + padding to get to 16c
-    header_format = '<16c'
-
-    @classmethod
-    def header_length_words(cls):
-        return struct.calcsize(PennMicroslice.header_format) / struct.calcsize("<c")
-
-    def __init__(self, sequence_id = 0):
-
-        self.record_length = PennMicroslice.header_length_words()
-
-        self.version     = 0x01
-        self.run_mode    = 0x0010
-        self.sequence_id = sequence_id
-        self.time        = NovaTimestamp(None)
-        self.timestamp   = (self.time.timestamp_high << 32) |  self.time.timestamp_low
-        
-        self.num_nanoslices = 0;       
-        self.nanoslices = []
-        self.packed_nanoslices = ''
-        
-    def generate_nanoslices(self, num_nanoslices, mode = 0, nticks_per_nanoslice = 10):
-        if (num_nanoslices % 4) != 0:
-            print "Illegal number of nanoslices requested"
-            sys.exit(1)
-        else:
-            for ins in xrange(num_nanoslices):
-                if nticks_per_nanoslice >= 0:
-                    nslice = PennNanoslice(mode, nticks_per_nanoslice, ins)
-                else:
-                    nslice = PennNanoslice(mode, random.randint(0, -nticks_per_nanoslice), ins)
-                self.nanoslices.append(nslice)
-            
-            self.num_nanoslices = num_nanoslices
-            
-            for nslice in self.nanoslices:
-                self.packed_nanoslices += nslice.pack()
-                self.record_length     += nslice.size()
-
-    def set_sequence_id(self, sequence_id=0):
-        self.sequence_id = sequence_id
-
-    def set_timestamp(self, posix_time = None):
-        self.timestamp = NovaTimestamp(posix_time).timestamp_low
-
-    def pack(self):
-
-        #ASSUME 8 bit(1c) version + 16 bit(2c) sequence + 16 bit(2c) run mode + 64 bit(8c) full timestamp + padding to get to 16c
-
-        version     = bin(~self.version)[3:].zfill(4) + bin(self.version)[2:].zfill(4)
-        sequence_id = bin(self.sequence_id)[2:].zfill(16)
-        run_mode    = bin(self.run_mode)[2:].zfill(16)
-        timestamp   = bin(self.timestamp)[2:].zfill(64)
-
-        header_word = version + sequence_id + run_mode + timestamp
-
-        padding     = '0' * ((int(PennMicroslice.header_format[1:-1]) * 8) - len(header_word))
-        header_word += padding
-
-        header_word = bin_to_char(header_word)
-
-        packed_header = struct.pack(PennMicroslice.header_format, *header_word)
-        
-        return packed_header + self.packed_nanoslices
-
-        
 if __name__ == '__main__':
 
     import binascii
     import math
+    import random
 
-    print "PENN nanoslice header has a length of", PennNanoslice.length_header(), "chars"
-    nslice = PennNanoslice(mode = 2, nticks_per_nanoslice = 10, sequence = 0)
-    packed_nslice = nslice.pack()
-    print "Packed nanoslice has length", len(packed_nslice), "bytes, contents:", binascii.hexlify(packed_nslice)
-    
-    nslice.print_nanoslice()
+    #create a single microslice and print all information
+    print "PENN microslice header has a length of", PennMicroslice.length_header(), "chars"
+    muslice = PennMicroslice(mode = 2, nticks_per_microslice = 10, sequence = 0)
+    packed_muslice = muslice.pack()
+    print "Packed microslice has length", len(packed_muslice), "bytes, contents:", binascii.hexlify(packed_muslice)
+    muslice.print_microslice()
 
     print ""
     
-    """
-    print "PENN microslice header has a length of", PennMicroslice.header_length_words(), "chars"   
-    mslice = PennMicroslice(123)
-    packed_mslice = mslice.pack()
-    print "Packed microslice header has length", len(packed_mslice) , "bytes, contents:", binascii.hexlify(packed_mslice)
-   
-    num_nano = 32
-    mslice.generate_nanoslices(num_nano, mode = 0, nticks_per_nanoslice = 5)
-    
-    print "Microslice filled with", num_nano, "nanoslices reports a record length of", mslice.record_length, "words"
-
-    packed_mslice = mslice.pack()
- 
-    print "Packed microslice has length", len(packed_mslice), "bytes"#, "contents:", binascii.hexlify(packed_mslice)
-    """
-
+    #create lots of microslices, printing only the header
+    for i in xrange(10):
+        print "Microslice", i
+        muslice = PennMicroslice(mode = 2, nticks_per_microslice = random.randint(1,20), sequence = i)
+        packed_muslice = muslice.pack()
+        muslice.print_microslice(only_header = True)
