@@ -17,6 +17,7 @@ lbne::PennClient::PennClient(const std::string& host_name, const std::string& po
 	deadline_(io_service_),
 	timeout_usecs_(timeout_usecs)
 {
+  std::cout << "PennClient constructor" << std::endl;
 
 	// Initialise deadline timer to positive infinity so that no action will be taken until a
 	// deadline is set

@@ -20,7 +20,7 @@
 
 #include <unistd.h>
 
-#define NO_PENN_CLIENT 1 //comment out when running on real hardware
+//#define NO_PENN_CLIENT 1
 
 lbne::PennReceiver::PennReceiver(fhicl::ParameterSet const & ps)
   :

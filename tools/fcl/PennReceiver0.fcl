@@ -1,0 +1,38 @@
+ # FHiCL parameters for configuring PennReceiver generator
+ 
+ # Number of microslice to concatenate into a millislice
+ number_of_microslices_per_millislice: 20
+   
+ # PENN client connection parameters
+ penn_client_host_addr: '127.0.0.1' # this is localhost
+ penn_client_host_port: 9999
+ penn_client_timeout_usecs: 500000
+   
+ # Real PENN configuration parameters
+ penn_xml_config_file: 'config/defaults.xml'  # Configuration file
+ penn_daq_mode: 'Trigger' # Can be one of Burst, Scope, Trigger
+
+ # PENN emulator configuration parameters 
+ penn_data_dest_host: localhost #'10.0.1.2'
+ penn_data_dest_port: 8991  
+ penn_data_num_millislices: 0    # 0=Run until stopped
+ penn_data_num_microslices: 100
+ penn_data_frag_rate: 1000.0
+ penn_data_adc_mode: 4
+ penn_data_adc_mean: 1000.0
+ penn_data_adc_sigma: 100.0
+ 
+ # Port to receive data from PENN on  
+ receive_port: 8991
+ 
+ # Receiver parameters  
+ receiver_debug_level: 5
+ receiver_tick_period_usecs: 10000
+ 
+ # Stats reporting
+ reporting_interval_fragments: 10
+ 
+ # Buffer parameters  
+ raw_buffer_size: 4000000
+ raw_buffer_precommit: 50 
+ use_fragments_as_raw_buffer: true
