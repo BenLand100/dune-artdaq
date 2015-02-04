@@ -21,6 +21,7 @@
 #include <unistd.h>
 
 //#define NO_PENN_CLIENT 1
+#define PENN_EMULATOR 1
 
 lbne::PennReceiver::PennReceiver(fhicl::ParameterSet const & ps)
   :
@@ -46,15 +47,6 @@ lbne::PennReceiver::PennReceiver(fhicl::ParameterSet const & ps)
   dpm_client_timeout_usecs_ =
 	ps.get<uint32_t>("penn_client_timeout_usecs", 0);
 
-  dtm_client_enable_ = 
-        ps.get<bool>("dtm_client_enable", "false");
-  dtm_client_host_addr_ =
-	ps.get<std::string>("dtm_client_host_addr", "localhost");
-  dtm_client_host_port_ =
-	ps.get<std::string>("dtm_client_host_port", "9999");
-  dtm_client_timeout_usecs_ =
-	ps.get<uint32_t>("dtm_client_timeout_usecs", 0);
-
   penn_xml_config_file_ = 
 	ps.get<std::string>("penn_xml_config_file", "config.xml");
   penn_daq_mode_ =
@@ -70,12 +62,10 @@ lbne::PennReceiver::PennReceiver(fhicl::ParameterSet const & ps)
 	ps.get<uint32_t>("penn_data_num_microslices", 10);
   penn_data_frag_rate_ =
 	ps.get<float>("penn_data_frag_rate", 10.0);
-  penn_data_adc_mode_ =
-	ps.get<uint16_t>("penn_data_adc_mode", 0);
-  penn_data_adc_mean_ =
-	ps.get<float>("penn_data_adc_mean", 1000.0);
-  penn_data_adc_sigma_ =
-	ps.get<float>("penn_data_adc_sigma", 100.0);
+  penn_data_mode_ =
+	ps.get<uint16_t>("penn_data_mode", 0);
+  penn_data_nticks_per_microslice_ =
+        ps.get<float>("penn_data_nticks_per_microslice", 10);
 
   receive_port_ =
 	ps.get<uint16_t>("receive_port", 9999);
@@ -104,24 +94,16 @@ lbne::PennReceiver::PennReceiver(fhicl::ParameterSet const & ps)
   dpm_client_ = std::unique_ptr<lbne::PennClient>(new lbne::PennClient(
 		  dpm_client_host_addr_, dpm_client_host_port_, dpm_client_timeout_usecs_));
 
+#ifndef PENN_EMULATOR
   dpm_client_->send_command("HardReset");
   sleep(1);
   dpm_client_->send_command("ReadXmlFile", penn_xml_config_file_);
   std::ostringstream config_frag;
   config_frag << "<DataDpm><DaqMode>" << penn_daq_mode_ << "</DaqMode></DataDpm>";
   dpm_client_->send_config(config_frag.str());
+#endif //!PENN_EMULATOR
 
-  // If the DTM client is enabled (for standalone testing of the PENN), open
-  // the connection, reset the DTM and enable timing emulation mode
-  if (dtm_client_enable_) {
-    dtm_client_ = std::unique_ptr<lbne::PennClient>(new lbne::PennClient(
-	       dtm_client_host_addr_, dtm_client_host_port_, dtm_client_timeout_usecs_));
-    dtm_client_->send_command("HardReset");
-    std::ostringstream config_frag;
-    config_frag << "<TimingDtm><TimingRtm><EmulationEnable>False</EmulationEnable></TimingRtm></TimingDtm>";
-    dtm_client_->send_config(config_frag.str());
-  }
-#endif
+#endif //!NO_PENN_CLIENT
 
   // Create a PennDataReceiver instance
   data_receiver_ = std::unique_ptr<lbne::PennDataReceiver>(new lbne::PennDataReceiver(
@@ -170,29 +152,26 @@ void lbne::PennReceiver::start(void)
 	data_receiver_->start();
 
 #ifndef NO_PENN_CLIENT
-	// Set up parameters in PENN
-	// dpm_client_->set_param("host",  penn_data_dest_host_, "str");
-	// dpm_client_->set_param("port",  penn_data_dest_port_, "int");
-	// dpm_client_->set_param("millislices", penn_data_num_millislices_, "int");
-	// dpm_client_->set_param("microslices", penn_data_num_microslices_, "int");
-	// dpm_client_->set_param("rate",  penn_data_frag_rate_, "float");
-	// dpm_client_->set_param("adcmode", penn_data_adc_mode_, "int");
-	// dpm_client_->set_param("adcmean", penn_data_adc_mean_, "float");
-	// dpm_client_->set_param("adcsigma", penn_data_adc_sigma_, "float");
 
-	// // Send start command to PENN
-	// dpm_client_->send_command("START");
+#ifdef PENN_EMULATOR
+	// Set up parameters in PENN emulator
+	dpm_client_->set_param("host",  penn_data_dest_host_, "str");
+	dpm_client_->set_param("port",  penn_data_dest_port_, "int");
+	dpm_client_->set_param("millislices", penn_data_num_millislices_, "int");
+	dpm_client_->set_param("microslices", penn_data_num_microslices_, "int");
+	dpm_client_->set_param("rate",  penn_data_frag_rate_, "float");
+	dpm_client_->set_param("mode", penn_data_mode_, "int");
+	dpm_client_->set_param("nticks_per_microslice", penn_data_nticks_per_microslice_, "int");
 
-	if (dtm_client_enable_) 
-        {
-	  //dtm_client_->send_command("SoftReset");
-	  dtm_client_->send_command("SetRunState", "Enable");
-	}
+	// Send start command to PENN
+	dpm_client_->send_command("START");
+#else
 
 	dpm_client_->send_command("SoftReset");
 	dpm_client_->send_command("SetRunState", "Enable");
+#endif //PENN_EMULATOR
 
-#endif
+#endif //!NO_PENN_CLIENT
 
 }
 
@@ -202,14 +181,14 @@ void lbne::PennReceiver::stop(void)
 
 	// Instruct the PENN to stop
 #ifndef NO_PENN_CLIENT
-	if (dtm_client_enable_)
-	{
-	  dtm_client_->send_command("SetRunState", "Stopped");
-	}
-	dpm_client_->send_command("SetRunState", "Stopped");
 
-	//dpm_client_->send_command("STOP");
-#endif
+#ifdef PENN_EMULATOR
+	dpm_client_->send_command("STOP");
+#else
+	dpm_client_->send_command("SetRunState", "Stopped");
+#endif //PENN_EMULATOR
+
+#endif //!NO_PENN_CLIENT
 
 	// Stop the data receiver.
 	data_receiver_->stop();

@@ -18,9 +18,8 @@
  penn_data_num_millislices: 0    # 0=Run until stopped
  penn_data_num_microslices: 100
  penn_data_frag_rate: 1000.0
- penn_data_adc_mode: 4
- penn_data_adc_mean: 1000.0
- penn_data_adc_sigma: 100.0
+ penn_data_mode: 2
+ penn_data_nticks_per_microslice: 20
  
  # Port to receive data from PENN on  
  receive_port: 8991

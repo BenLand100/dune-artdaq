@@ -73,11 +73,6 @@ namespace lbne {
     std::string dpm_client_host_port_;
     uint32_t	dpm_client_timeout_usecs_;
 
-    bool        dtm_client_enable_;
-    std::string dtm_client_host_addr_;
-    std::string dtm_client_host_port_;
-    uint32_t	dtm_client_timeout_usecs_;
-    
     std::string penn_xml_config_file_;
     std::string penn_daq_mode_;
 
@@ -86,9 +81,8 @@ namespace lbne {
     uint32_t    penn_data_num_millislices_;
     uint32_t    penn_data_num_microslices_;
     float       penn_data_frag_rate_;
-    uint16_t    penn_data_adc_mode_;
-    float	penn_data_adc_mean_;
-    float	penn_data_adc_sigma_;
+    uint16_t    penn_data_mode_;
+    float	penn_data_nticks_per_microslice_;
 
     uint16_t receive_port_;
     size_t raw_buffer_size_;
@@ -102,7 +96,6 @@ namespace lbne {
     uint16_t number_of_microslices_per_millislice_;
 
     std::unique_ptr<lbne::PennClient> dpm_client_;
-    std::unique_ptr<lbne::PennClient> dtm_client_;
 
     bool run_receiver_;
     std::unique_ptr<lbne::PennDataReceiver> data_receiver_;

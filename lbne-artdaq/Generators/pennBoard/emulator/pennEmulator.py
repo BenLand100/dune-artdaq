@@ -106,6 +106,13 @@ class PennCommandParser(object):
         # Split data into space separated list
         cmd_words = string.split(cmd_data)
 
+        # Commands are wrapped in this xml string
+        headers_to_test = ['<SYSTEM><COMMAND><', '<system><command><']
+        for header_to_test in headers_to_test:
+            if cmd_words[0].startswith(header_to_test):
+                cmd_words[0] = cmd_words[0][len(header_to_test):]
+                cmd_words[0] = cmd_words[0].split('/')[0]
+
         #print ">>>", cmd_words
 
         req_command = cmd_words[0].upper()
@@ -151,7 +158,7 @@ class PennCommandParser(object):
         # Trap any exceptions raised by the set_ methods trying to convert
         # an argument value to the approriate type
         try:
-            for param in ['host', 'port', 'rate', 'millislices', 'microslices', 'adcmode', 'adcmean', 'adcsigma']:
+            for param in ['host', 'port', 'rate', 'millislices', 'microslices', 'mode', 'ntickspermicroslice']:
                 if param in self.params:
                     getattr(self.sender, 'set_' + param)(self.params[param])
 

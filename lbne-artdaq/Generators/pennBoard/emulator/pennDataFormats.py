@@ -71,10 +71,8 @@ class PennMicroslice(object):
     format_payload_trigger   = '<1c'   #8 bit data
     format_payload_timestamp = '<8c'   #64 bit data
 
-    #ASSUME 128 bit data
-    num_values_counter = 128
-    #ASSUME 8 bit data
-    num_values_trigger = 8
+    num_values_counter = 8 * int(format_payload_counter[1:-1])
+    num_values_trigger = 8 * int(format_payload_trigger[1:-1])
 
     version            = 0x0
 
@@ -100,6 +98,9 @@ class PennMicroslice(object):
         self.nticks_per_microslice = nticks_per_microslice
         self.sequence = sequence
         self.packed = False
+
+    def set_sequence_id(self, sequence):
+        self.sequence = sequence % 256
 
     def create_payload_counter(self):
         #This is just a long list of bit values
@@ -202,7 +203,7 @@ class PennMicroslice(object):
             self.time = NovaTimestamp(None)
             data  += self.create_payload_counter()
             nchar += int(PennMicroslice.format_payload_counter[1:-1]) + int(PennMicroslice.format_payload_header[1:-1])
-            if random.randint(0,1):
+            if random.randint(0,1) or self.mode == 0:
                 data += self.create_payload_trigger()
                 nchar += int(PennMicroslice.format_payload_trigger[1:-1]) + int(PennMicroslice.format_payload_header[1:-1])
 
@@ -272,16 +273,19 @@ if __name__ == '__main__':
 
     #create a single microslice and print all information
     print "PENN microslice header has a length of", PennMicroslice.length_header(), "chars"
-    muslice = PennMicroslice(mode = 2, nticks_per_microslice = 10, sequence = 0)
-    packed_muslice = muslice.pack()
-    print "Packed microslice has length", len(packed_muslice), "bytes, contents:", binascii.hexlify(packed_muslice)
-    muslice.print_microslice()
+    uslice = PennMicroslice(mode = 2, nticks_per_microslice = 10, sequence = 0)
+    packed_uslice = uslice.pack()
+    print "Packed microslice has length", len(packed_uslice), "bytes, contents:", binascii.hexlify(packed_uslice)
+    uslice.print_microslice()
 
     print ""
     
     #create lots of microslices, printing only the header
-    for i in xrange(10):
+    i = 0
+    while i < 10:
+    #while True:
         print "Microslice", i
-        muslice = PennMicroslice(mode = 2, nticks_per_microslice = random.randint(1,20), sequence = i)
-        packed_muslice = muslice.pack()
-        muslice.print_microslice(only_header = True)
+        uslice = PennMicroslice(mode = 2, nticks_per_microslice = random.randint(1,20), sequence = i % 256)
+        packed_uslice = uslice.pack()
+        uslice.print_microslice(only_header = True)
+        i += 1

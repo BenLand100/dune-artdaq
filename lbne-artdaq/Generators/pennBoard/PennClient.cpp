@@ -12,12 +12,14 @@
 #include <libxml/parser.h>
 #include <libxml/tree.h>
 
+#define PENN_EMULATOR 1
+
 lbne::PennClient::PennClient(const std::string& host_name, const std::string& port_or_service, const unsigned int timeout_usecs) :
 	socket_(io_service_),
 	deadline_(io_service_),
 	timeout_usecs_(timeout_usecs)
 {
-  std::cout << "PennClient constructor" << std::endl;
+  std::cout << "lbne::PennClient constructor" << std::endl;
 
 	// Initialise deadline timer to positive infinity so that no action will be taken until a
 	// deadline is set
@@ -76,8 +78,10 @@ lbne::PennClient::PennClient(const std::string& host_name, const std::string& po
 		{
 			std::cerr << "Failed to open connection to PENN" << std::endl;
 		} else {
+#ifndef PENN_EMULATOR
 			// Send PENN a bell character to suppress async updates
 			this->send("\a\n");
+#endif
 			// Flush the socket of any stale aysnc update data from PENN
 			size_t bytesFlushed = 0;
 			std::string data;
