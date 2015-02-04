@@ -1,14 +1,12 @@
 #include "lbne-artdaq/Generators/PennReceiver.hh"
-#include "lbne-raw-data/Overlays/MilliSliceWriter.hh"
-#include "lbne-raw-data/Overlays/TpcMilliSliceWriter.hh"
+
+#include "lbne-raw-data/Overlays/PennMilliSliceWriter.hh"
+#include "lbne-raw-data/Overlays/PennMilliSliceFragment.hh"
+#include "lbne-raw-data/Overlays/FragmentType.hh"
 
 #include "art/Utilities/Exception.h"
 #include "artdaq/Application/GeneratorMacros.hh"
 #include "cetlib/exception.h"
-#include "lbne-raw-data/Overlays/MilliSliceFragment.hh"
-#include "lbne-raw-data/Overlays/TpcMilliSliceFragment.hh"
-#include "lbne-raw-data/Overlays/MilliSliceFragmentWriter.hh"
-#include "lbne-raw-data/Overlays/FragmentType.hh"
 #include "fhiclcpp/ParameterSet.h"
 #include "artdaq-core/Utilities/SimpleLookupPolicy.h"
 #include "messagefacility/MessageLogger/MessageLogger.h"
@@ -22,7 +20,7 @@
 
 #include <unistd.h>
 
-//#define NO_PENN_CLIENT 1
+#define NO_PENN_CLIENT 1 //comment out when running on real hardware
 
 lbne::PennReceiver::PennReceiver(fhicl::ParameterSet const & ps)
   :
@@ -36,8 +34,6 @@ lbne::PennReceiver::PennReceiver(fhicl::ParameterSet const & ps)
   // the following parameters are part of faking the hardware readout
   number_of_microslices_to_generate_ =
 	ps.get<uint32_t>("number_of_microslices_to_generate", 1);
-  number_of_nanoslices_to_generate_ =
-	ps.get<uint32_t>("number_of_nanoslices_to_generate", 1);
   number_of_values_to_generate_ =
 	ps.get<uint32_t>("number_of_values_to_generate", 3);
   simulated_readout_time_usec_ =
@@ -160,7 +156,7 @@ void lbne::PennReceiver::start(void)
 		{
 			raw_buffer = lbne::PennRawBufferPtr(new PennRawBuffer(raw_buffer_size_));
 		}
-		// mf::LogDebug("PennReceiver") << "Pre-commiting raw buffer " << i << " at address " << (void*)(raw_buffer->dataPtr());
+		mf::LogDebug("PennReceiver") << "Pre-commiting raw buffer " << i << " at address " << (void*)(raw_buffer->dataPtr());
 		data_receiver_->commit_empty_buffer(raw_buffer);
 		empty_buffer_low_mark_++;
 	}
@@ -227,7 +223,7 @@ void lbne::PennReceiver::stop(void)
 
 	mf::LogInfo("PennReceiver") << "Received " << millislices_received_ << " millislices in "
 			      << elapsed_secs << " seconds, rate "
-			      << rate << " Hz, total data " << total_bytes_received_ << " bytes, rate " << data_rate_mbs << " MB/s" << std::endl;
+			      << rate << " Hz, total data " << total_bytes_received_ << " bytes, rate " << data_rate_mbs << " MB/s";
 
 }
 
@@ -291,7 +287,7 @@ bool lbne::PennReceiver::getNext_(artdaq::FragmentPtrs & frags) {
 
 		  // Create a new raw buffer pointing at a new fragment and replace the received buffer
 		  // pointer with it - this will be recycled onto the empty queue later
-		  recvd_buffer =create_new_buffer_from_fragment();
+		  recvd_buffer = create_new_buffer_from_fragment();
 
 	  }
 	  else
@@ -304,7 +300,7 @@ bool lbne::PennReceiver::getNext_(artdaq::FragmentPtrs & frags) {
   {
 	  // Create an artdaq::Fragment to format the raw data into. As a crude heuristic,
 	  // reserve 10 times the raw data space in the fragment for formatting overhead.
-	  // This needs to be done more intelligently!
+	  // TODO This needs to be done more intelligently!
 	  size_t fragDataSize = recvd_buffer->size() * 10;
 	  frag = artdaq::Fragment::FragmentBytes(fragDataSize);
 
@@ -342,7 +338,7 @@ bool lbne::PennReceiver::getNext_(artdaq::FragmentPtrs & frags) {
   // Set fragment fields appropriately
   frag->setSequenceID(ev_counter());
   frag->setFragmentID(fragmentIDs()[0]);
-  frag->setUserType(lbne::detail::TPC);
+  frag->setUserType(lbne::detail::TRIGGER);
 
   // Resize fragment to final millislice size
   frag->resizeBytes(millislice_size);
@@ -361,8 +357,8 @@ lbne::PennRawBufferPtr lbne::PennReceiver::create_new_buffer_from_fragment(void)
 {
 	PennRawBufferPtr raw_buffer;
 
-	std::unique_ptr<artdaq::Fragment> frag = artdaq::Fragment::FragmentBytes(raw_buffer_size_ + sizeof(TpcMilliSlice::Header));
-	uint8_t* data_ptr = frag->dataBeginBytes() + sizeof(TpcMilliSlice::Header);
+	std::unique_ptr<artdaq::Fragment> frag = artdaq::Fragment::FragmentBytes(raw_buffer_size_ + sizeof(PennMilliSlice::Header));
+	uint8_t* data_ptr = frag->dataBeginBytes() + sizeof(PennMilliSlice::Header);
 	raw_buffer = lbne::PennRawBufferPtr(new PennRawBuffer(data_ptr, raw_buffer_size_));
 
 	raw_to_frag_map_.insert(std::pair<uint8_t*, std::unique_ptr<artdaq::Fragment> >(raw_buffer->dataPtr(), std::move(frag)));
@@ -374,18 +370,13 @@ lbne::PennRawBufferPtr lbne::PennReceiver::create_new_buffer_from_fragment(void)
 uint32_t lbne::PennReceiver::format_millislice_from_raw_buffer(uint16_t* src_addr, size_t src_size,
 		                                                         uint8_t* dest_addr, size_t dest_size)
 {
-  const uint16_t CHANNEL_NUMBER = 128;
   const uint32_t MICROSLICE_BUFFER_SIZE = 512;
-  const uint32_t NANOSLICE_BUFFER_SIZE = 128;
 
-  std::shared_ptr<lbne::MicroSliceWriter> microslice_writer_ptr;
-  std::shared_ptr<lbne::NanoSliceWriter> nanoslice_writer_ptr;
-
-  uint16_t channel_number = CHANNEL_NUMBER;
+  std::shared_ptr<lbne::PennMicroSliceWriter> microslice_writer_ptr;
 
   uint16_t* sample_addr = src_addr;
 
-  lbne::MilliSliceWriter millislice_writer(dest_addr, dest_size);
+  lbne::PennMilliSliceWriter millislice_writer(dest_addr, dest_size);
   for (uint32_t udx = 0; udx < number_of_microslices_to_generate_; ++udx) {
     microslice_writer_ptr = millislice_writer.reserveMicroSlice(MICROSLICE_BUFFER_SIZE);
     if (microslice_writer_ptr.get() == 0) {
@@ -393,20 +384,14 @@ uint32_t lbne::PennReceiver::format_millislice_from_raw_buffer(uint16_t* src_add
         << "Unable to create microslice number " << udx;
     }
     else {
-      for (uint32_t ndx = 0; ndx < number_of_nanoslices_to_generate_; ++ndx) {
-        nanoslice_writer_ptr = microslice_writer_ptr->reserveNanoSlice(NANOSLICE_BUFFER_SIZE);
-        if (nanoslice_writer_ptr.get() == 0) {
-          mf::LogError("PennReceiver")
-            << "Unable to create nanoslice number " << ndx;
-        }
-        else {
-          nanoslice_writer_ptr->setChannelNumber(channel_number++);
-          for (uint32_t sdx = 0; sdx < number_of_values_to_generate_; ++sdx) {
-            nanoslice_writer_ptr->addSample(*sample_addr);
-            sample_addr++;
-          }
-        }
-      }
+      //get the size of the microslice from the header 
+      // and divide by 2 (unit in header is bytes, but working with uint16_t)
+      uint16_t microslice_size = sample_addr[1] / 2;
+      //add the microslice to the microslice writer
+      microslice_writer_ptr->addData(sample_addr, microslice_size);
+      microslice_writer_ptr->finalize();
+      //move to the next microslice
+      sample_addr += microslice_size;
     }
   }
 
@@ -423,10 +408,9 @@ uint32_t lbne::PennReceiver::format_millislice_from_raw_buffer(uint16_t* src_add
 
 uint32_t lbne::PennReceiver::validate_millislice_from_fragment_buffer(uint8_t* data_addr, size_t data_size, uint32_t count)
 {
+	lbne::PennMilliSliceWriter millislice_writer(data_addr, data_size+sizeof(PennMilliSlice::Header));
 
-	lbne::TpcMilliSliceWriter millislice_writer(data_addr, data_size+sizeof(TpcMilliSlice::Header));
-
-	millislice_writer.finalize(data_size, count);
+	millislice_writer.finalize(true, data_size, count);
 	return millislice_writer.size();
 }
 
