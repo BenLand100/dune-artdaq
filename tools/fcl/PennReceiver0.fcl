@@ -6,7 +6,7 @@
  # PENN client connection parameters
  penn_client_host_addr: '127.0.0.1' # this is localhost
  penn_client_host_port: 9999
- penn_client_timeout_usecs: 500000
+ penn_client_timeout_usecs: 1000000#1second
    
  # Real PENN configuration parameters
  penn_xml_config_file: 'config/defaults.xml'  # Configuration file
@@ -15,18 +15,19 @@
  # PENN emulator configuration parameters 
  penn_data_dest_host: localhost #'10.0.1.2'
  penn_data_dest_port: 8991  
- penn_data_num_millislices: 0    # 0=Run until stopped
- penn_data_num_microslices: 100
- penn_data_frag_rate: 1000.0
- penn_data_mode: 2
- penn_data_nticks_per_microslice: 20
+ penn_data_num_millislices: 1    # 0=Run until stopped
+ penn_data_num_microslices: 5
+ penn_data_frag_rate: 0.9 #Hz
+ penn_data_payload_mode: 0 #counter&trigger payload contents 0=all off, 1=all on, 2=alternating on/off, 3=random
+ penn_data_trigger_mode: 1 #0=no trigger words sent. 1=trigger word sent every tick. 2=trigger word sent randomly
+ penn_data_nticks_per_microslice: 10
  
  # Port to receive data from PENN on  
  receive_port: 8991
  
  # Receiver parameters  
- receiver_debug_level: 5
- receiver_tick_period_usecs: 10000
+ receiver_debug_level: 6
+ receiver_tick_period_usecs: 1000000 #1second
  
  # Stats reporting
  reporting_interval_fragments: 10

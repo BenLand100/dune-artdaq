@@ -81,7 +81,8 @@ namespace lbne {
     uint32_t    penn_data_num_millislices_;
     uint32_t    penn_data_num_microslices_;
     float       penn_data_frag_rate_;
-    uint16_t    penn_data_mode_;
+    uint16_t    penn_data_payload_mode_;
+    uint16_t    penn_data_trigger_mode_;
     float	penn_data_nticks_per_microslice_;
 
     uint16_t receive_port_;

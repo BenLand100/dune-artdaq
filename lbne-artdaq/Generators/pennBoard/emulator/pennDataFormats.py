@@ -4,6 +4,7 @@ import math
 import datetime
 import time
 import sys
+import binascii
 
 
 def bin_to_char(b):
@@ -23,13 +24,17 @@ def print_string_as_bin(s):
         h = binascii.hexlify(c)
         print h, int(h,16), bin(int(h,16))[2:].zfill(8)
 
-def print_payload_header(s):
+def string_to_bin(s):
     b = ''
     for c in s:
         h = binascii.hexlify(c)
-        b +=  bin(int(h,16))[2:].zfill(8)
+        b += bin(int(h,16))[2:].zfill(8)
+    return b
+
+def print_payload_header(s):
+    b = string_to_bin(s)
     print "mode", b[:4]
-    print "28-bit timestamp", int(b[4:], 28), b[4:]
+    print "28-bit timestamp", int(b[4:], 2), b[4:]
     return b[:4]
 
 def print_payload(s):
@@ -93,8 +98,9 @@ class PennMicroslice(object):
         return (struct.calcsize(PennMicroslice.format_payload_header) + struct.calcsize(PennMicroslice.format_payload_timestamp)) / struct.calcsize("<c")
 
 
-    def __init__(self, mode = 0, nticks_per_microslice = 10, sequence = 0):
-        self.mode = mode
+    def __init__(self, payload_mode = 0, trigger_mode = 0, nticks_per_microslice = 10, sequence = 0):
+        self.payload_mode = payload_mode
+        self.trigger_mode = trigger_mode
         self.nticks_per_microslice = nticks_per_microslice
         self.sequence = sequence
         self.packed = False
@@ -105,21 +111,21 @@ class PennMicroslice(object):
     def create_payload_counter(self):
         #This is just a long list of bit values
 
-        if self.mode == 0:    # All off
+        if self.payload_mode == 0:    # All off
             payload = "0"  * PennMicroslice.num_values_counter
             
-        elif self.mode == 1:  # All on
+        elif self.payload_mode == 1:  # All on
             payload = "1"  * PennMicroslice.num_values_counter
             
-        elif self.mode == 2:  # Alternating on/off
+        elif self.payload_mode == 2:  # Alternating on/off
             payload = "01" * (PennMicroslice.num_values_counter / 2)
             
-        elif self.mode == 3:  # Random values across full bit-range interval  
+        elif self.payload_mode == 3:  # Random values across full bit-range interval  
             maxVal = 1
             payload = ''.join(str(random.randint(0, maxVal)) for i in xrange(PennMicroslice.num_values_counter))
             
         else:
-            print 'Unknown mode:', self.mode
+            print 'Unknown payload_mode:', self.payload_mode
             sys.exit(1)
 
         return self.create_payload_header('c') + bin_to_char(payload)
@@ -127,23 +133,23 @@ class PennMicroslice(object):
     def create_payload_trigger(self):
         #This is just a long list of bit values
 
-        if self.mode == 0:    # No triggers
+        if self.payload_mode == 0:    # No triggers
             payload = "0" * PennMicroslice.num_values_trigger
 
-        elif self.mode == 1:  # All on
+        elif self.payload_mode == 1:  # All on
             payload = "1"  * PennMicroslice.num_values_trigger
             
-        elif self.mode == 2:  # Alternating on/off
+        elif self.payload_mode == 2:  # Alternating on/off
             payload = "01" * (PennMicroslice.num_values_trigger / 2)
             
-        elif self.mode == 3:  # A single random trigger
+        elif self.payload_mode == 3:  # A single random trigger
             payload = "0" * PennMicroslice.num_values_trigger
             l = list(payload)
             l[random.randint(0, len(l) - 1)] = "1"
             payload = ''.join(l)
 
         else:
-            print 'Unknown mode:', self.mode
+            print 'Unknown payload_mode:', self.payload_mode
             sys.exit(1)
 
         return self.create_payload_header('t') + bin_to_char(payload)
@@ -203,7 +209,7 @@ class PennMicroslice(object):
             self.time = NovaTimestamp(None)
             data  += self.create_payload_counter()
             nchar += int(PennMicroslice.format_payload_counter[1:-1]) + int(PennMicroslice.format_payload_header[1:-1])
-            if random.randint(0,1) or self.mode == 0:
+            if self.trigger_mode == 1 or (random.randint(0,1) and self.trigger_mode == 2):
                 data += self.create_payload_trigger()
                 nchar += int(PennMicroslice.format_payload_trigger[1:-1]) + int(PennMicroslice.format_payload_header[1:-1])
 
@@ -243,7 +249,8 @@ class PennMicroslice(object):
         print 'sequence id',
         print_string_as_bin(data[1])
         print 'block size',
-        print_string_as_bin(data[2:4])
+        blocksize = string_to_bin(data[2:4])
+        print int(blocksize[4:], 2), blocksize
 
         if only_header:
             return
@@ -267,13 +274,9 @@ class PennMicroslice(object):
 
 if __name__ == '__main__':
 
-    import binascii
-    import math
-    import random
-
     #create a single microslice and print all information
     print "PENN microslice header has a length of", PennMicroslice.length_header(), "chars"
-    uslice = PennMicroslice(mode = 2, nticks_per_microslice = 10, sequence = 0)
+    uslice = PennMicroslice(payload_mode = 2, trigger_mode = 1, nticks_per_microslice = 10, sequence = 0)
     packed_uslice = uslice.pack()
     print "Packed microslice has length", len(packed_uslice), "bytes, contents:", binascii.hexlify(packed_uslice)
     uslice.print_microslice()
@@ -285,7 +288,7 @@ if __name__ == '__main__':
     while i < 10:
     #while True:
         print "Microslice", i
-        uslice = PennMicroslice(mode = 2, nticks_per_microslice = random.randint(1,20), sequence = i % 256)
+        uslice = PennMicroslice(payload_mode = 2, trigger_mode = 2, nticks_per_microslice = random.randint(1,20), sequence = i % 256)
         packed_uslice = uslice.pack()
         uslice.print_microslice(only_header = True)
         i += 1
