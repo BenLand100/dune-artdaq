@@ -42,6 +42,7 @@ def print_payload(s):
     for c in s:
         h = binascii.hexlify(c)
         b +=  bin(int(h,16))[2:].zfill(8)
+        b += ' '
     print 'payload', b
 
 class NovaTimestamp(object):

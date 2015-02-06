@@ -162,9 +162,16 @@ void lbne::PennClient::send_xml(std::string const & xml_frag)
 	// Get the response
 	std::string response = this->receive();
 
+#ifdef PENN_EMULATOR
+	  if(response.find("ACK") == 0)
+	    std::cout << "Acknowledged OK: " << response << std::endl;
+	  else
+	    std::cout << "Failed: " << response << std::endl;
+#else
 	// Traverse the DOM of the XML response and determine if any of the child elements are error.
 	xmlDocPtr doc = xmlReadMemory(response.c_str(), response.length()-1, "noname.xml", NULL, 0);
 	if (doc == NULL) {
+
 	  std::cout << "Failed to parse XML response:" << std::endl;
 	  std::cout << response << std::endl;
 	  std::cout << "Response had length " << response.length() << std::endl;
@@ -182,7 +189,7 @@ void lbne::PennClient::send_xml(std::string const & xml_frag)
 		if (errorContent) {
 		  std::cout << "Got error response from PENN: " << errorContent << std::endl;
 		} else {
-		  std::cout << "Got error resposne from PENN but cannot parse content" << std::endl;
+		  std::cout << "Got error response from PENN but cannot parse content" << std::endl;
 		}
 		xmlFree(errorContent);
 	      }
@@ -190,17 +197,9 @@ void lbne::PennClient::send_xml(std::string const & xml_frag)
 	  }
 	}
 	xmlFreeDoc(doc);
-
-	// Parse the response to ensure the command was acknowledged
-	// if (this->response_is_ack(response, command))
-	// {
-	// 	std::cout << "Acknowledged OK: " << response << std::endl;
-	// }
-	// else
-	// {
-	// 	std::cout << "Failed: " << response <<std::endl;
-	// }
+#endif //PENN_EMUALTOR
 }
+
 // ------------ Private methods ---------------
 
 void lbne::PennClient::set_deadline(void)
