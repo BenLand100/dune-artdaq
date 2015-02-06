@@ -1,0 +1,42 @@
+ physics:
+{
+  analyzers:
+  {
+    pennMilliSliceDump:
+    {
+      module_type: PennMilliSliceDump
+      raw_data_label: daq
+      frag_type: TRIGGER
+      verbose_microslice_ids: [0,1,2,3,4,5,6,7,8,9] #make this an empty vector to turn off microslice & payload printing
+      verbose_payload_ids:    [0,1,2,3,4]    #only prints the payloads that lie within the verbose microslices
+    }
+  }
+
+  a1: [ pennMilliSliceDump ]
+  e1: [ out1 ]
+  end_paths: [ a1, e1 ]
+}
+
+services : {
+  TFileService:
+  {
+      fileName: "pennMilliSliceDumpOutput.root"
+  }
+}
+
+outputs:
+{
+  out1:
+  {
+    module_type: FileDumperOutput
+    wantProductFriendlyClassName: true
+  }
+}
+
+source:
+{
+  module_type: RootInput
+}
+
+process_name: EVTDUMP
+ 
