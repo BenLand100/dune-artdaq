@@ -367,9 +367,12 @@ void lbne::PennDataReceiver::handle_received_data(std::size_t length)
 	    header = reinterpret_cast<lbne::PennMicroSlice::Header*>(current_write_ptr_);
 	    //PennMicrosliceHeader* header = reinterpret_cast<PennMicrosliceHeader*>(current_write_ptr_);
 
-	    uint8_t microslice_version = header->format_version;
-	    uint8_t sequence_id        = header->sequence_id;
-	    microslice_size_           = header->block_size;
+	    lbne::PennMicroSlice::Header::format_version_t microslice_version;
+	    lbne::PennMicroSlice::Header::sequence_id_t    sequence_id;
+	    //lbne::PennMicroSlice::get_header_contents(header, microslice_version, sequence_id, microslice_size_);
+	    microslice_version = header->format_version;
+	    sequence_id        = header->sequence_id;
+	    microslice_size_   = header->block_size;
 	    //TODO fix it so we don't have to do the byte-swap
 	    microslice_size_           = ((microslice_size_ & 0xFF00) >> 8) | ((microslice_size_ & 0x00FF) << 8);
 
