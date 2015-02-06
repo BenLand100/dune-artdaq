@@ -13,6 +13,8 @@
 #include <atomic>
 #include <chrono>
 #include <ctime>
+#include <string>
+#include <vector>
 #include <boost/asio.hpp>
 #include <boost/bind.hpp>
 #include <boost/array.hpp>
@@ -83,22 +85,29 @@ private:
 	void*            current_write_ptr_;
 
         enum NextReceiveState { ReceiveMicrosliceHeader, ReceiveMicroslicePayloadHeader, ReceiveMicroslicePayloadCounter, ReceiveMicroslicePayloadTrigger, ReceiveMicroslicePayloadTimestamp };
+        std::string nextReceiveStateToString(NextReceiveState val);
+  std::vector<std::string> const next_receive_state_names_ 
+	  { "ReceiveMicrosliceHeader", "ReceiveMicroslicePayloadHeader", "ReceiveMicroslicePayloadCounter", "ReceiveMicroslicePayloadTrigger", "ReceiveMicroslicePayloadTimestamp" };
 	NextReceiveState next_receive_state_;
 	size_t           next_receive_size_;
 
 	enum MillisliceState { MillisliceEmpty, MillisliceIncomplete, MicrosliceIncomplete, MillisliceComplete };
+        std::string millisliceStateToString(MillisliceState val);
+  std::vector<std::string> const millislice_state_names_ 
+	  { "MillisliceEmpty", "MillisliceIncomplete", "MicrosliceIncomplete", "MillisliceComplete" };
 	MillisliceState  millislice_state_;
 	size_t           millislice_size_recvd_;
 	uint16_t         microslices_recvd_;
-	uint32_t         microslice_size_;
+  uint16_t         microslice_size_;
 	size_t           microslice_size_recvd_;
 	uint32_t         millislices_recvd_;
 
   uint16_t microslices_recvd_timestamp_; //counts the number of microslices received that contain a timestamp word
   bool microslice_seen_timestamp_word_;
 
-  uint8_t microslice_version_;
-
+  bool    microslice_version_initialised_;
+  uint8_t last_microslice_version_;
+  
 	bool     sequence_id_initialised_;
 	uint8_t last_sequence_id_;
 

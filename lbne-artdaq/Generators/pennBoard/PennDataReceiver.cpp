@@ -9,19 +9,17 @@
 
 #include <iostream>
 #include <unistd.h>
+#include <stdexcept>
+#include <bitset>
 
 #include "lbne-raw-data/Overlays/PennMicroSlice.hh"
-/*
-#define TEMP_PENN_HEADER_FORMAT 1
 
+/*
 struct PennMicrosliceHeader
 {
-#ifdef TEMP_PENN_HEADER_FORMAT
-  uint32_t microslice_size;
-  uint32_t sequence_id;
-#else
-  uint32_t raw_header_words[6];
-#endif
+  uint8_t  format_version;
+  uint8_t  sequence_id;
+  uint16_t block_size;
 };
 */
 
@@ -98,6 +96,10 @@ void lbne::PennDataReceiver::start(void)
 	sequence_id_initialised_ = false;
 	last_sequence_id_ = 0;
 
+	// Initialise microslice version latch
+	microslice_version_initialised_ = false;
+	last_microslice_version_ = 0;
+
 	// Initialise receive state to read a microslice header first
 	next_receive_state_ = ReceiveMicrosliceHeader;
 	next_receive_size_  = sizeof(lbne::PennMicroSlice::Header);
@@ -136,7 +138,7 @@ void lbne::PennDataReceiver::stop(void)
 	double elapsed_secs = ((double)elapsed_msecs) / 1000;
 	double rate = ((double)millislices_recvd_) / elapsed_secs;
 
-	RECV_DEBUG(0) << "lbne::PennDataRecevier::stop : last sequence id was " << last_sequence_id_ << std::endl;
+	RECV_DEBUG(0) << "lbne::PennDataRecevier::stop : last sequence id was " << (unsigned int)last_sequence_id_ << std::endl;
 	RECV_DEBUG(0) << "lbne::PennDataReceiver::stop : received " << millislices_recvd_ << " millislices in "
 			      << elapsed_secs << " seconds, rate "
 			      << rate << " Hz" << std::endl;
@@ -302,14 +304,14 @@ void lbne::PennDataReceiver::do_read(void)
 
 	}
 
-	RECV_DEBUG(3) << "RECV: state " << (unsigned int)next_receive_state_
-			  	  << " mslice state " << (unsigned int)millislice_state_
-			  	  << " uslice " << microslices_recvd_
-			  	  << " uslice size " << microslice_size_recvd_
-			  	  << " mslice size " << millislice_size_recvd_
-			  	  << " addr " << current_write_ptr_
-			  	  << " next recv size " << next_receive_size_ << std::endl;
-
+	RECV_DEBUG(3) << "RECV: state "     << (unsigned int)next_receive_state_ << " " << nextReceiveStateToString(next_receive_state_)
+		      << " mslice state "   << (unsigned int)millislice_state_   << " " << millisliceStateToString(millislice_state_)
+		      << " uslice "         << microslices_recvd_
+		      << " uslice size "    << microslice_size_recvd_
+		      << " mslice size "    << millislice_size_recvd_
+		      << " addr "           << current_write_ptr_
+		      << " next recv size " << next_receive_size_ << std::endl;
+	
 	// Start the asynchronous receive operation into the current raw buffer.
 	data_socket_.async_receive(
 		boost::asio::buffer(current_write_ptr_, next_receive_size_),
@@ -350,34 +352,59 @@ void lbne::PennDataReceiver::handle_received_data(std::size_t length)
 
 	microslice_size_recvd_ += length;
 
+	RECV_DEBUG(6) << "Bits received: ";
+	for(unsigned int i = 0; i < length; i++)
+	  RECV_DEBUG(6) << std::bitset<8>(*((reinterpret_cast<uint8_t*>(current_write_ptr_))+i)) << " ";
+	RECV_DEBUG(6) << std::endl;
+
 	switch (next_receive_state_)
 	{
 	case ReceiveMicrosliceHeader:
 	  {
-	    lbne::PennMicroSlice::Header* header;
-	    uint8_t sequence_id;
 
 	    // Capture the microslice version, length and sequence ID from the header
+	    lbne::PennMicroSlice::Header* header;
 	    header = reinterpret_cast<lbne::PennMicroSlice::Header*>(current_write_ptr_);
-	    
-	    microslice_version_ = header->format_version;
-	    microslice_size_    = header->block_size;
-	    sequence_id         = header->sequence_id;
+	    //PennMicrosliceHeader* header = reinterpret_cast<PennMicrosliceHeader*>(current_write_ptr_);
 
-	    RECV_DEBUG(2) << "Got header for microslice version " << microslice_version_ << " with size " << microslice_size_ << " sequence ID " << sequence_id << std::endl;
+	    uint8_t microslice_version = header->format_version;
+	    uint8_t sequence_id        = header->sequence_id;
+	    microslice_size_           = header->block_size;
+	    //TODO fix it so we don't have to do the byte-swap
+	    microslice_size_           = ((microslice_size_ & 0xFF00) >> 8) | ((microslice_size_ & 0x00FF) << 8);
+
+	    RECV_DEBUG(2) << "Got header for microslice version 0x" << std::hex << (unsigned int)microslice_version << std::dec 
+			  << " with size " << (unsigned int)microslice_size_
+			  << " sequence ID " << (unsigned int)sequence_id
+			  << std::endl;
+
+	    RECV_DEBUG(5) << "Header bits: " << std::bitset<8>(microslice_version) << " " << std::bitset<8>(sequence_id) << " " << std::bitset<16>(microslice_size_) << std::endl;
+
+	    // Validate the version - it shouldn't change!
+	    if(microslice_version_initialised_ && (microslice_version != last_microslice_version_)) {
+	      std::cout << "ERROR: Latest microslice version 0x" << std::hex << (unsigned int)microslice_version
+			    << " is different to previous microslice version 0x" << (unsigned int)last_microslice_version_ << std::dec
+			    << std::endl;
+	      //TODO handle error cleanly here
+	    }
+	    else{
+	      microslice_version_initialised_ = true;
+	    }
+	    last_microslice_version_ = microslice_version;
 
 	    // Validate the version - should be a 4-bit version & 4-bit version complement
-	    uint8_t version            =  microslice_version_ & 0x0F;
-	    uint8_t version_complement = (microslice_version_ & 0xF0) >> 4;
-	    if(version ^ (~version_complement)) {
-	      RECV_DEBUG(1) << "Microslice version and version complement do not match 0x" << std::hex << version << ", 0x" << version_complement << std::endl;
+	    uint8_t version            =  microslice_version & 0x0F;
+	    uint8_t version_complement = (microslice_version & 0xF0) >> 4;
+	    if( ! ((version ^ version_complement) << 4) ) {
+	      std::cout << "ERROR: Microslice version and version complement do not agree 0x"
+			    << std::hex << (unsigned int)version << ", 0x" << (unsigned int)version_complement << std::dec << std::endl;
 	      //TODO handle error cleanly here
 	    }
 	    
 	    // Validate the sequence ID - should be incrementing monotonically
-	    if (sequence_id_initialised_ && (sequence_id != last_sequence_id_+1))
+	    if (sequence_id_initialised_ && (sequence_id != uint8_t(last_sequence_id_+1)))
 	      {
-		std::cout << "WARNING: mismatch in microslice sequence IDs! Got " << sequence_id << " expected " << last_sequence_id_+1 << std::endl;
+		std::cout << "WARNING: mismatch in microslice sequence IDs! Got " << (unsigned int)sequence_id << " expected " << (unsigned int)(uint8_t(last_sequence_id_+1)) << std::endl;
 		//TODO handle error cleanly here
 	      }
 	    else
@@ -398,15 +425,26 @@ void lbne::PennDataReceiver::handle_received_data(std::size_t length)
 	  {
 	    RECV_DEBUG(2) << "Got microslice payload header length " << length << std::endl;
 	    
+	    /*
 	    lbne::PennMicroSlice::Payload_Header* payload_header;
-
 	    // Capture the microslice payload type & timestamp from the payload header
 	    payload_header = reinterpret_cast<lbne::PennMicroSlice::Payload_Header*>(current_write_ptr_);
-	    uint8_t  type      = payload_header->data_packet_type;
-	    uint32_t timestamp = payload_header->short_nova_timestamp;
+	    //uint8_t  type      = payload_header->data_packet_type;
+	    //uint32_t timestamp = payload_header->short_nova_timestamp;
+	    */
+
+	    //TODO fix it to use a PennMicroSlice::Payload_Header
+	    uint32_t payload_header = *(reinterpret_cast<uint32_t*>(current_write_ptr_));
+
+	    //TODO fix it so we don't have to do the byte-swaps
+	    uint8_t  type           =  (payload_header & 0x000000F0) >> 4;
+	    uint32_t timestamp      = ((payload_header & 0xFF000000) >> 24) | ((payload_header & 0x00FF0000) >> 8) | ((payload_header & 0x0000FF00) << 8) | ((payload_header & 0x0000000F)) << 24;
+
+	    RECV_DEBUG(2) << "Got header for microslice payload with type 0x" << std::hex << (unsigned int)type << std::dec 
+			  << " and timestamp " << timestamp << std::endl;
 	    
-	    RECV_DEBUG(2) << "Got header for microslice payload with type " << type << " and timestamp " << timestamp << std::endl;
-	    
+	    RECV_DEBUG(5) << "Payload header bits: " << std::bitset<4>(type) << " " << std::bitset<28>(timestamp) << std::endl;
+
 	    switch(type)
 	      {
 	      case 0x01: // 0b0001
@@ -422,7 +460,7 @@ void lbne::PennDataReceiver::handle_received_data(std::size_t length)
 		next_receive_size_  = lbne::PennMicroSlice::payload_size_timestamp;
 		break;
 	      default:
-		RECV_DEBUG(1) << "WARNING: Unknown payload type " << type << std::endl;
+		RECV_DEBUG(1) << "WARNING: Unknown payload type 0x" << std::hex << (unsigned int)type << std::dec << std::endl;
 		//TODO handle error cleanly here
 	      }
 	    millislice_state_ = MicrosliceIncomplete;
@@ -438,6 +476,7 @@ void lbne::PennDataReceiver::handle_received_data(std::size_t length)
 	    RECV_DEBUG(2) << "Got microslice payload length " << length << std::endl;
 	  
 	    if (microslice_size_recvd_ == microslice_size_)
+	      //got a full microslice
 	      {
 		RECV_DEBUG(2) << "Complete payload received for microslice " << microslices_recvd_ << std::endl;
 		microslices_recvd_++;
@@ -449,13 +488,14 @@ void lbne::PennDataReceiver::handle_received_data(std::size_t length)
 		next_receive_size_ = sizeof(lbne::PennMicroSlice::Header);
 	      }
 	    else
+	      //the microslice isn't yet complete. go get another payload header
 	      {
 		RECV_DEBUG(2) << "Incomplete payload received for microslice " << microslices_recvd_
 			      << " (got " << microslice_size_recvd_
 			      << " expected " << microslice_size_ << " bytes)" << std::endl;
 		millislice_state_ = MicrosliceIncomplete;
-		//next_receive_state_ = ReceiveMicroslicePayload; //no need to update this. it's already set correctly
-		next_receive_size_ = microslice_size_ - microslice_size_recvd_;
+		next_receive_state_ = ReceiveMicroslicePayloadHeader;
+		next_receive_size_ = sizeof(lbne::PennMicroSlice::Payload_Header);
 	      }
 	    break;
 	  }
@@ -477,8 +517,8 @@ void lbne::PennDataReceiver::handle_received_data(std::size_t length)
 	if (microslices_recvd_timestamp_ == number_of_microslices_per_millislice_)
 	{
 		RECV_DEBUG(1) << "Millislice " << millislices_recvd_
-					  << " complete with " << microslices_recvd_
-					  << " microslices, total size " << millislice_size_recvd_ << " bytes" << std::endl;
+			      << " complete with " << microslices_recvd_
+			      << " microslices, total size " << millislice_size_recvd_ << " bytes" << std::endl;
 		millislices_recvd_++;
 		millislice_state_ = MillisliceComplete;
 	}
@@ -565,4 +605,26 @@ void lbne::PennDataReceiver::check_deadline(void)
 	{
 		RECV_DEBUG(1) << "Deadline actor terminating" << std::endl;
 	}
+}
+
+std::string lbne::PennDataReceiver::nextReceiveStateToString(NextReceiveState val)
+{
+  try {
+    return next_receive_state_names_.at(val);
+  }
+  catch(const std::out_of_range& e) {
+    return "INVALID/UNKNOWN";
+  }
+  return "INVALID/UNKNOWN";
+}
+
+std::string lbne::PennDataReceiver::millisliceStateToString(MillisliceState val)
+{
+  try {
+    return millislice_state_names_.at(val);
+  }
+  catch(const std::out_of_range& e) {
+    return "INVALID/UNKNOWN";
+  }
+  return "INVALID/UNKNOWN";
 }

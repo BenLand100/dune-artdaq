@@ -70,10 +70,10 @@ class PennMicroslice(object):
     #ASSUME little-endian
     format_header            = '<4c'   #32 bit header = 8 bit version + 8 bit sequence + 16 bit block size(bytes)
     format_payload_header    = '<4c'   #32 bit header = 4 bit type + 28 bit (partial) timestamp
-    #ASSUME 128 bit data
-    format_payload_counter   = '<16c'  #128 bit data
-    #ASSUME 8 bit data
-    format_payload_trigger   = '<1c'   #8 bit data
+    #ASSUME 96 bit data
+    format_payload_counter   = '<12c'  #96 bit data
+    #ASSUME 32 bit data
+    format_payload_trigger   = '<4c'   #32 bit data
     format_payload_timestamp = '<8c'   #64 bit data
 
     num_values_counter = 8 * int(format_payload_counter[1:-1])
