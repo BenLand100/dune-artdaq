@@ -362,19 +362,20 @@ void lbne::PennDataReceiver::handle_received_data(std::size_t length)
 	case ReceiveMicrosliceHeader:
 	  {
 
+	    //byte swap the block_size before we create the Header
+	    *((uint16_t*)current_write_ptr_ + 1) = ntohs(*((uint16_t*)current_write_ptr_ + 1));
+
 	    // Capture the microslice version, length and sequence ID from the header
 	    lbne::PennMicroSlice::Header* header;
 	    header = reinterpret_cast<lbne::PennMicroSlice::Header*>(current_write_ptr_);
-	    //PennMicrosliceHeader* header = reinterpret_cast<PennMicrosliceHeader*>(current_write_ptr_);
 
 	    lbne::PennMicroSlice::Header::format_version_t microslice_version;
 	    lbne::PennMicroSlice::Header::sequence_id_t    sequence_id;
-	    //lbne::PennMicroSlice::get_header_contents(header, microslice_version, sequence_id, microslice_size_);
 	    microslice_version = header->format_version;
 	    sequence_id        = header->sequence_id;
 	    microslice_size_   = header->block_size;
-	    //TODO fix it so we don't have to do the byte-swap
-	    microslice_size_           = ((microslice_size_ & 0xFF00) >> 8) | ((microslice_size_ & 0x00FF) << 8);
+
+	    //microslice_size_ = ((microslice_size_ & 0xFF00) >> 8) | ((microslice_size_ & 0x00FF) << 8);
 
 	    RECV_DEBUG(2) << "Got header for microslice version 0x" << std::hex << (unsigned int)microslice_version << std::dec 
 			  << " with size " << (unsigned int)microslice_size_
@@ -386,8 +387,8 @@ void lbne::PennDataReceiver::handle_received_data(std::size_t length)
 	    // Validate the version - it shouldn't change!
 	    if(microslice_version_initialised_ && (microslice_version != last_microslice_version_)) {
 	      std::cout << "ERROR: Latest microslice version 0x" << std::hex << (unsigned int)microslice_version
-			    << " is different to previous microslice version 0x" << (unsigned int)last_microslice_version_ << std::dec
-			    << std::endl;
+			<< " is different to previous microslice version 0x" << (unsigned int)last_microslice_version_ << std::dec
+			<< std::endl;
 	      //TODO handle error cleanly here
 	    }
 	    else{
@@ -400,7 +401,7 @@ void lbne::PennDataReceiver::handle_received_data(std::size_t length)
 	    uint8_t version_complement = (microslice_version & 0xF0) >> 4;
 	    if( ! ((version ^ version_complement) << 4) ) {
 	      std::cout << "ERROR: Microslice version and version complement do not agree 0x"
-			    << std::hex << (unsigned int)version << ", 0x" << (unsigned int)version_complement << std::dec << std::endl;
+			<< std::hex << (unsigned int)version << ", 0x" << (unsigned int)version_complement << std::dec << std::endl;
 	      //TODO handle error cleanly here
 	    }
 	    
@@ -428,20 +429,14 @@ void lbne::PennDataReceiver::handle_received_data(std::size_t length)
 	  {
 	    RECV_DEBUG(2) << "Got microslice payload header length " << length << std::endl;
 	    
-	    /*
+	    //byte swap the data before we create the Payload_Header
+            *((uint32_t*)current_write_ptr_) = ntohl(*((uint32_t*)current_write_ptr_));
+
 	    lbne::PennMicroSlice::Payload_Header* payload_header;
 	    // Capture the microslice payload type & timestamp from the payload header
 	    payload_header = reinterpret_cast<lbne::PennMicroSlice::Payload_Header*>(current_write_ptr_);
-	    //uint8_t  type      = payload_header->data_packet_type;
-	    //uint32_t timestamp = payload_header->short_nova_timestamp;
-	    */
-
-	    //TODO fix it to use a PennMicroSlice::Payload_Header
-	    uint32_t payload_header = *(reinterpret_cast<uint32_t*>(current_write_ptr_));
-
-	    //TODO fix it so we don't have to do the byte-swaps
-	    uint8_t  type           =  (payload_header & 0x000000F0) >> 4;
-	    uint32_t timestamp      = ((payload_header & 0xFF000000) >> 24) | ((payload_header & 0x00FF0000) >> 8) | ((payload_header & 0x0000FF00) << 8) | ((payload_header & 0x0000000F)) << 24;
+	    uint8_t  type      = payload_header->data_packet_type;
+	    uint32_t timestamp = payload_header->short_nova_timestamp;
 
 	    RECV_DEBUG(2) << "Got header for microslice payload with type 0x" << std::hex << (unsigned int)type << std::dec 
 			  << " and timestamp " << timestamp << std::endl;
