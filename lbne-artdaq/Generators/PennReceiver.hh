@@ -80,6 +80,7 @@ namespace lbne {
     uint16_t    penn_data_dest_port_;
     uint32_t    penn_data_num_millislices_;
     uint32_t    penn_data_num_microslices_;
+    bool        penn_data_repeat_microslices_;
     float       penn_data_frag_rate_;
     uint16_t    penn_data_payload_mode_;
     uint16_t    penn_data_trigger_mode_;

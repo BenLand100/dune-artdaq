@@ -28,6 +28,9 @@ class PennDataSender(object):
     def set_port(self, port):
         self.dest_port = int(port)
 
+    def set_repeat_microslices(self, repeat):
+        self.repeat_microslices = bool(repeat)
+
     def set_rate(self, rate):
         self.send_rate = float(rate)
 
@@ -92,19 +95,22 @@ class PennDataSender(object):
 
         i = 0
         
+        if self.repeat_microslices:
+            message = uslice.pack()
+
         while self.do_send:
                 
             next_time = time.time() + send_interval
 
-            uslice.set_sequence_id(num_uslices_sent)
-            #uslice.set_timestamp()
-            message = uslice.pack()
+            if not self.repeat_microslices:
+                uslice.set_sequence_id(num_uslices_sent)
+                message = uslice.pack()
 
-            if not (i % 100):
-                uslice.print_microslice()
-            else:
-                uslice.print_microslice(only_header=True)
-            i += 1
+                if not (i % 100):
+                    uslice.print_microslice()
+                else:
+                    uslice.print_microslice(only_header=True)
+                i += 1
 
             if self.use_tcp:
                 self.sock.sendall(message)

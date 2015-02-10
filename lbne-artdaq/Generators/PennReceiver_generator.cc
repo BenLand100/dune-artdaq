@@ -60,6 +60,8 @@ lbne::PennReceiver::PennReceiver(fhicl::ParameterSet const & ps)
 	ps.get<uint32_t>("penn_data_num_millislices", 10);
   penn_data_num_microslices_ =
 	ps.get<uint32_t>("penn_data_num_microslices", 10);
+  penn_data_repeat_microslices_ =
+        ps.get<bool>("penn_data_repeat_microslices", false);
   penn_data_frag_rate_ =
 	ps.get<float>("penn_data_frag_rate", 10.0);
   penn_data_payload_mode_ =
@@ -161,6 +163,7 @@ void lbne::PennReceiver::start(void)
 	dpm_client_->set_param("port",  penn_data_dest_port_, "int");
 	dpm_client_->set_param("millislices", penn_data_num_millislices_, "int");
 	dpm_client_->set_param("microslices", penn_data_num_microslices_, "int");
+	dpm_client_->set_param("repeat_microslices", penn_data_repeat_microslices_, "bool");
 	dpm_client_->set_param("rate",  penn_data_frag_rate_, "float");
 	dpm_client_->set_param("payload_mode", penn_data_payload_mode_, "int");
 	dpm_client_->set_param("trigger_mode", penn_data_trigger_mode_, "int");
