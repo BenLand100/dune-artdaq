@@ -28,7 +28,9 @@ function launch() {
   DemoControl.rb ${enableSerial} -s -c $1 \
     --penn `hostname`,${LBNEARTDAQ_BR_PORT[0]},0 \
     --eb `hostname`,${LBNEARTDAQ_EB_PORT[0]} \
+    --eb `hostname`,${LBNEARTDAQ_EB_PORT[1]} \
     --ag `hostname`,${LBNEARTDAQ_AG_PORT[0]},1 \
+    --ag `hostname`,${LBNEARTDAQ_AG_PORT[1]},1 \
     --data-dir ${4} --online-monitoring $3 \
     --write-data ${6} --run-event-count ${7} \
     --run-duration ${8} --file-size ${9} \

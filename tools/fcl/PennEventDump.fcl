@@ -8,7 +8,7 @@
       raw_data_label: daq
       frag_type: TRIGGER
       verbose_microslice_ids: [0,1,2,3,4,5,6,7,8,9] #make this an empty vector to turn off microslice & payload printing
-      verbose_payload_ids:    [0,1,2,3,4]    #only prints the payloads that lie within the verbose microslices
+      verbose_payload_ids:    [0,1,2,3,4,5,6,7,8,9,20]    #only prints the payloads that lie within the verbose microslices
     }
   }
 
