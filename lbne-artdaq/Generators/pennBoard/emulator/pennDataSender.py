@@ -47,7 +47,7 @@ class PennDataSender(object):
     def set_trigger_mode(self, trigger_mode):
         self.trigger_mode = int(trigger_mode)
         
-    def set_ntickspermicroslice(self, nticks_per_microslice):
+    def set_nticks_per_microslice(self, nticks_per_microslice):
         self.nticks_per_microslice = int(nticks_per_microslice)
 
     def set_fragment_microslice_at_ticks(self, fragment_microslice_at_ticks):
