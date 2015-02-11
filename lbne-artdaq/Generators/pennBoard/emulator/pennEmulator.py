@@ -158,7 +158,7 @@ class PennCommandParser(object):
         # Trap any exceptions raised by the set_ methods trying to convert
         # an argument value to the approriate type
         try:
-            for param in ['host', 'port', 'repeat_microslices', 'rate', 'millislices', 'microslices', 'payload_mode', 'trigger_mode', 'ntickspermicroslice']:
+            for param in ['host', 'port', 'repeat_microslices', 'rate', 'millislices', 'microslices', 'payload_mode', 'trigger_mode', 'ntickspermicroslice', 'fragment_microslice_at_ticks']:
                 if param in self.params:
                     getattr(self.sender, 'set_' + param)(self.params[param])
 

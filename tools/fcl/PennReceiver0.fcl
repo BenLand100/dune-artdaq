@@ -17,11 +17,12 @@
  penn_data_dest_port: 8991  
  penn_data_num_millislices: 0    # 0=Run until stopped
  penn_data_num_microslices: 1000
- penn_data_repeat_microslices : true #for rate testing
+ penn_data_repeat_microslices: false #for rate testing
  penn_data_frag_rate: 10000 #Hz
  penn_data_payload_mode: 2  #counter&trigger payload contents 0=all off, 1=all on, 2=alternating on/off, 3=random
  penn_data_trigger_mode: 2  #0=no trigger words sent. 1=trigger word sent every tick. 2=trigger word sent randomly
- penn_data_nticks_per_microslice: 64
+ penn_data_nticks_per_microslice: 64 #set this negative to create variable-sized uslices (uses random.randint(1,nticks))
+ penn_data_fragment_microslice_at_ticks: 50 #after this many ticks the uslice will be fragmented (<=0 means don't fragment)
  
  # Port to receive data from PENN on  
  receive_port: 8991

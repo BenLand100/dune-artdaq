@@ -18,6 +18,7 @@ class PennDataSender(object):
         self.payload_mode = 0
         self.trigger_mode = 0
         self.nticks_per_microslice = 10
+        self.fragment_microslice_at_ticks = -1
         
         self.use_tcp = use_tcp
         self.do_send = False
@@ -48,7 +49,10 @@ class PennDataSender(object):
         
     def set_ntickspermicroslice(self, nticks_per_microslice):
         self.nticks_per_microslice = int(nticks_per_microslice)
-        
+
+    def set_fragment_microslice_at_ticks(self, fragment_microslice_at_ticks):
+        self.fragment_microslice_at_ticks = int(fragment_microslice_at_ticks)
+
     def run(self):
 
         cmd_ok = True
@@ -86,7 +90,7 @@ class PennDataSender(object):
 
         send_interval = 1.0 / self.send_rate
 
-        uslice = PennMicroslice(sequence = 0, payload_mode = self.payload_mode, trigger_mode = self.trigger_mode, nticks_per_microslice = self.nticks_per_microslice)
+        uslice = PennMicroslice(sequence = 0, payload_mode = self.payload_mode, trigger_mode = self.trigger_mode, nticks_per_microslice = self.nticks_per_microslice, fragment_microslice_at_ticks = self.fragment_microslice_at_ticks)
         
         start_time = time.time()
 
@@ -106,7 +110,7 @@ class PennDataSender(object):
                 uslice.set_sequence_id(num_uslices_sent)
                 message = uslice.pack()
 
-                if not (i % 100):
+                if not (i % 1000):
                     uslice.print_microslice()
                 else:
                     uslice.print_microslice(only_header=True)
