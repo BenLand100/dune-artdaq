@@ -23,6 +23,7 @@
  penn_data_trigger_mode: 2  #0=no trigger words sent. 1=trigger word sent every tick. 2=trigger word sent randomly
  penn_data_nticks_per_microslice: 64 #set this negative to create variable-sized uslices (uses random.randint(1,nticks))
  penn_data_fragment_microslice_at_ticks: 50 #after this many ticks the uslice will be fragmented (<=0 means don't fragment)
+ penn_data_debug_partial_recv: false #slows emulator down to send 1 byte at a time, every 0.1 seconds. For testing how the boardreader handles async_receive that grabs less than requested bytes
  
  # Port to receive data from PENN on  
  receive_port: 8991

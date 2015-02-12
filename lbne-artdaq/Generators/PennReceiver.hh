@@ -86,6 +86,7 @@ namespace lbne {
     uint16_t    penn_data_trigger_mode_;
     int32_t	penn_data_nticks_per_microslice_;
     int32_t     penn_data_fragment_microslice_at_ticks_;
+    bool        penn_data_debug_partial_recv_;
 
     uint16_t receive_port_;
     size_t raw_buffer_size_;

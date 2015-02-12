@@ -72,6 +72,8 @@ lbne::PennReceiver::PennReceiver(fhicl::ParameterSet const & ps)
         ps.get<int32_t>("penn_data_nticks_per_microslice", 10);
   penn_data_fragment_microslice_at_ticks_ =
         ps.get<int32_t>("penn_data_fragment_microslice_at_ticks", -1);
+  penn_data_debug_partial_recv_ =
+        ps.get<bool>("penn_data_debug_partial_recv", false);
 
   receive_port_ =
 	ps.get<uint16_t>("receive_port", 9999);
@@ -165,12 +167,13 @@ void lbne::PennReceiver::start(void)
 	dpm_client_->set_param("port",  penn_data_dest_port_, "int");
 	dpm_client_->set_param("millislices", penn_data_num_millislices_, "int");
 	dpm_client_->set_param("microslices", penn_data_num_microslices_, "int");
-	dpm_client_->set_param("repeat_microslices", penn_data_repeat_microslices_, "int"); //should be bool
+	dpm_client_->set_param("repeat_microslices", penn_data_repeat_microslices_, "int"); //emulator can't parse bool correctly
 	dpm_client_->set_param("rate",  penn_data_frag_rate_, "float");
 	dpm_client_->set_param("payload_mode", penn_data_payload_mode_, "int");
 	dpm_client_->set_param("trigger_mode", penn_data_trigger_mode_, "int");
 	dpm_client_->set_param("nticks_per_microslice", penn_data_nticks_per_microslice_, "int");
 	dpm_client_->set_param("fragment_microslice_at_ticks", penn_data_fragment_microslice_at_ticks_, "int");
+	dpm_client_->set_param("debug_partial_recv", penn_data_debug_partial_recv_, "int"); //emulator can't parse bool correctly
 
 	// Send start command to PENN
 	dpm_client_->send_command("START");
