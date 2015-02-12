@@ -105,6 +105,7 @@ private:
   
   uint16_t microslices_recvd_timestamp_; //counts the number of microslices received that contain a timestamp word
   bool microslice_seen_timestamp_word_;
+  bool last_microslice_was_fragment_;
 
   bool                                           microslice_version_initialised_;
   lbne::PennMicroSlice::Header::format_version_t last_microslice_version_;

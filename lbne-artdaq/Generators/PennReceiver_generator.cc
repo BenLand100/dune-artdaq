@@ -239,7 +239,7 @@ bool lbne::PennReceiver::getNext_(artdaq::FragmentPtrs & frags) {
 		}
 		else
 		{
-	    	mf::LogInfo("PennReceiver") << "No unprocessed filled buffers available at end of run";
+		        mf::LogInfo("PennReceiver") << "No unprocessed filled buffers available at end of run";
 		}
 
 	return false;

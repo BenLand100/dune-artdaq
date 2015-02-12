@@ -405,17 +405,25 @@ void lbne::PennDataReceiver::handle_received_data(std::size_t length)
 	      //TODO handle error cleanly here
 	    }
 	    
-	    // Validate the sequence ID - should be incrementing monotonically
-	    if (sequence_id_initialised_ && (sequence_id != uint8_t(last_sequence_id_+1)))
-	      {
+	    // Validate the sequence ID - should be incrementing monotonically (or identical to previous if it was fragmented)
+	    if (sequence_id_initialised_ && (sequence_id != uint8_t(last_sequence_id_+1))) {
+	      if (last_microslice_was_fragment_ && (sequence_id == uint8_t(last_sequence_id_))) {
+		// do nothing - we're in a normal fragmented microslice
+	      }
+	      else if (last_microslice_was_fragment_ && (sequence_id != uint8_t(last_sequence_id_))) {
+		std::cout << "WARNING: mismatch in microslice sequence IDs! Got " << (unsigned int)sequence_id << " expected " << (unsigned int)(uint8_t(last_sequence_id_)) << std::endl;
+		//TODO handle error cleanly here
+	      }
+	      else {
 		std::cout << "WARNING: mismatch in microslice sequence IDs! Got " << (unsigned int)sequence_id << " expected " << (unsigned int)(uint8_t(last_sequence_id_+1)) << std::endl;
 		//TODO handle error cleanly here
 	      }
-	    else
-	      {
-		sequence_id_initialised_ = true;
-	      }
+	    }
+	    else {
+	      sequence_id_initialised_ = true;
+	    }
 	    last_sequence_id_ = sequence_id;
+	    last_microslice_was_fragment_ = false;
 	    
 	    millislice_state_ = MicrosliceIncomplete;
 	    next_receive_state_ = ReceiveMicroslicePayloadHeader;
@@ -478,8 +486,12 @@ void lbne::PennDataReceiver::handle_received_data(std::size_t length)
 	      {
 		RECV_DEBUG(2) << "Complete payload received for microslice " << microslices_recvd_ << std::endl;
 		microslices_recvd_++;
-		if(microslice_seen_timestamp_word_)
+		if(microslice_seen_timestamp_word_) {
 		  microslices_recvd_timestamp_++;
+		}
+		else {
+		  last_microslice_was_fragment_ = true;
+		}
 		microslice_size_recvd_ = 0;
 		millislice_state_ = MillisliceIncomplete;
 		next_receive_state_ = ReceiveMicrosliceHeader;
@@ -515,8 +527,10 @@ void lbne::PennDataReceiver::handle_received_data(std::size_t length)
 	if (microslices_recvd_timestamp_ == number_of_microslices_per_millislice_)
 	{
 		RECV_DEBUG(1) << "Millislice " << millislices_recvd_
-			      << " complete with " << microslices_recvd_
-			      << " microslices, total size " << millislice_size_recvd_ << " bytes" << std::endl;
+			      << " complete with " << microslices_recvd_timestamp_
+			      << " microslices (" << microslices_recvd_
+			      << " including fragments), total size " << millislice_size_recvd_
+			      << " bytes" << std::endl;
 		millislices_recvd_++;
 		millislice_state_ = MillisliceComplete;
 	}
