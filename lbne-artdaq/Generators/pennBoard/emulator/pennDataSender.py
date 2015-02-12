@@ -19,7 +19,9 @@ class PennDataSender(object):
         self.trigger_mode = 0
         self.nticks_per_microslice = 10
         self.fragment_microslice_at_ticks = -1
-        
+        self.debug_partial_recv = False
+        self.repeat_microslices = False
+
         self.use_tcp = use_tcp
         self.do_send = False
 
@@ -52,6 +54,9 @@ class PennDataSender(object):
 
     def set_fragment_microslice_at_ticks(self, fragment_microslice_at_ticks):
         self.fragment_microslice_at_ticks = int(fragment_microslice_at_ticks)
+
+    def set_debug_partial_recv(self, debug_partial_recv):
+        self.debug_partial_recv = bool(debug_partial_recv)
 
     def run(self):
 
@@ -116,11 +121,20 @@ class PennDataSender(object):
                     uslice.print_microslice(only_header=True)
                 i += 1
 
-            if self.use_tcp:
-                self.sock.sendall(message)
+            if self.debug_partial_recv:
+                #send a byte at a time, with a nice long wait between them
+                for i in xrange(len(message)):
+                    if self.use_tcp:
+                        self.sock.sendall(message[i])
+                    else:
+                        self.sock.sendto(message[i], (self.dest_host, self.dest_port))
+                    time.sleep(0.1)
             else:
-                self.sock.sendto(message, (self.dest_host, self.dest_port))
-
+                if self.use_tcp:
+                    self.sock.sendall(message)
+                else:
+                    self.sock.sendto(message, (self.dest_host, self.dest_port))
+                    
             num_uslices_sent += 1
             
             if (not self.do_send) or ((num_uslices_total > 0) and (num_uslices_sent >= num_uslices_total)):
