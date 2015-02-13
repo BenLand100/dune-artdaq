@@ -85,12 +85,16 @@ private:
 	PennRawBufferPtr current_raw_buffer_;
 	void*            current_write_ptr_;
 
-  enum NextReceiveState { ReceiveMicrosliceHeader, ReceiveMicroslicePayloadHeader, ReceiveMicroslicePayloadCounter, ReceiveMicroslicePayloadTrigger, ReceiveMicroslicePayloadTimestamp };
+  void*            state_start_ptr_;
+  std::size_t      state_nbytes_recvd_;
+
+  enum NextReceiveState { ReceiveMicrosliceHeader, ReceiveMicroslicePayload, ReceiveMicroslicePayloadHeader, ReceiveMicroslicePayloadCounter, ReceiveMicroslicePayloadTrigger, ReceiveMicroslicePayloadTimestamp };
   std::string nextReceiveStateToString(NextReceiveState val);
   std::vector<std::string> const next_receive_state_names_ 
-  { "ReceiveMicrosliceHeader", "ReceiveMicroslicePayloadHeader", "ReceiveMicroslicePayloadCounter", "ReceiveMicroslicePayloadTrigger", "ReceiveMicroslicePayloadTimestamp" };
+  { "ReceiveMicrosliceHeader", "ReceiveMicroslicePayload", "ReceiveMicroslicePayloadHeader", "ReceiveMicroslicePayloadCounter", "ReceiveMicroslicePayloadTrigger", "ReceiveMicroslicePayloadTimestamp" };
   NextReceiveState next_receive_state_;
   size_t           next_receive_size_;
+  size_t           nextReceiveStateToExpectedBytes(NextReceiveState val);
 
   enum MillisliceState { MillisliceEmpty, MillisliceIncomplete, MicrosliceIncomplete, MillisliceComplete };
   std::string millisliceStateToString(MillisliceState val);
