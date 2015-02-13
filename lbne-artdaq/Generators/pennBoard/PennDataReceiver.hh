@@ -32,7 +32,7 @@ namespace lbne {
 class PennDataReceiver {
 
 public:
-	PennDataReceiver(int debug_level, uint32_t tick_period_usecs, uint16_t udp_receive_port, uint16_t number_of_microslices_per_millislice);
+  PennDataReceiver(int debug_level, uint32_t tick_period_usecs, uint16_t udp_receive_port, uint16_t number_of_microslices_per_millislice, bool rate_test);
 	virtual ~PennDataReceiver();
 
 	void start();
@@ -113,6 +113,8 @@ private:
   lbne::PennMicroSlice::Header::sequence_id_t    last_sequence_id_;
 
 	std::chrono::high_resolution_clock::time_point start_time_;
+
+  bool rate_test_;
 
 };
 

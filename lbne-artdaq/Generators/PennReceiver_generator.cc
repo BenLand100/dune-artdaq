@@ -109,13 +109,16 @@ lbne::PennReceiver::PennReceiver(fhicl::ParameterSet const & ps)
   std::ostringstream config_frag;
   config_frag << "<DataDpm><DaqMode>" << penn_daq_mode_ << "</DaqMode></DataDpm>";
   dpm_client_->send_config(config_frag.str());
+  bool rate_test = false;
+#else
+  bool rate_test = penn_data_repeat_microslices_;
 #endif //!PENN_EMULATOR
 
 #endif //!NO_PENN_CLIENT
 
   // Create a PennDataReceiver instance
   data_receiver_ = std::unique_ptr<lbne::PennDataReceiver>(new lbne::PennDataReceiver(
-		  receiver_debug_level, receiver_tick_period_usecs_, receive_port_, number_of_microslices_per_millislice_));
+		     receiver_debug_level, receiver_tick_period_usecs_, receive_port_, number_of_microslices_per_millislice_, rate_test));
 
 }
 

@@ -71,7 +71,10 @@ class PennServerHandler(SocketServer.BaseRequestHandler):
                     response = self.server.parser.parse_command(line)
 
                     # Return response to client
-                    self.request.sendall(response)
+                    try:
+                        self.request.sendall(response)
+                    except socket.error as e:
+                        print "Could not send response. Exception {}".format(e)
 
         print "Closed conection from {}". format(self.client_address[0])
 

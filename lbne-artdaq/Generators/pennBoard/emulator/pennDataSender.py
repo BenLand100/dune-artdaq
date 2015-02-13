@@ -121,20 +121,25 @@ class PennDataSender(object):
                     uslice.print_microslice(only_header=True)
                 i += 1
 
-            if self.debug_partial_recv:
-                #send a byte at a time, with a nice long wait between them
-                for i in xrange(len(message)):
-                    if self.use_tcp:
-                        self.sock.sendall(message[i])
-                    else:
-                        self.sock.sendto(message[i], (self.dest_host, self.dest_port))
-                    time.sleep(0.1)
-            else:
-                if self.use_tcp:
-                    self.sock.sendall(message)
+            try:
+                if self.debug_partial_recv:
+                    #send a byte at a time, with a nice long wait between them
+                    for i in xrange(len(message)):
+                        if self.use_tcp:
+                            self.sock.sendall(message[i])
+                        else:
+                            self.sock.sendto(message[i], (self.dest_host, self.dest_port))
+                        time.sleep(0.1)
                 else:
-                    self.sock.sendto(message, (self.dest_host, self.dest_port))
-                    
+                    if self.use_tcp:
+                        self.sock.sendall(message)
+                    else:
+                        self.sock.sendto(message, (self.dest_host, self.dest_port))
+            except socket.error as e:
+                print "Could not send microslice. Exception {}. Stopping send".format(e)
+                self.do_send = False
+                break
+
             num_uslices_sent += 1
             
             if (not self.do_send) or ((num_uslices_total > 0) and (num_uslices_sent >= num_uslices_total)):

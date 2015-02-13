@@ -26,7 +26,7 @@ struct PennMicrosliceHeader
 #define RECV_DEBUG(level) if (level <= debug_level_) std::cout
 
 lbne::PennDataReceiver::PennDataReceiver(int debug_level, uint32_t tick_period_usecs,
-		uint16_t receive_port, uint16_t number_of_microslices_per_millislice) :
+					 uint16_t receive_port, uint16_t number_of_microslices_per_millislice, bool rate_test) :
 	debug_level_(debug_level),
 	acceptor_(io_service_, tcp::endpoint(tcp::v4(), (short)receive_port)),
 	accept_socket_(io_service_),
@@ -39,7 +39,8 @@ lbne::PennDataReceiver::PennDataReceiver(int debug_level, uint32_t tick_period_u
 	run_receiver_(true),
 	suspend_readout_(false),
 	readout_suspended_(false),
-	recv_socket_(0)
+	recv_socket_(0),
+	rate_test_(rate_test)
 {
 	RECV_DEBUG(1) << "lbne::PennDataReceiver constructor" << std::endl;
 
@@ -413,6 +414,9 @@ void lbne::PennDataReceiver::handle_received_data(std::size_t length)
 	      else if (last_microslice_was_fragment_ && (sequence_id != uint8_t(last_sequence_id_))) {
 		std::cout << "WARNING: mismatch in microslice sequence IDs! Got " << (unsigned int)sequence_id << " expected " << (unsigned int)(uint8_t(last_sequence_id_)) << std::endl;
 		//TODO handle error cleanly here
+	      }
+	      else if (rate_test_ && (sequence_id == uint8_t(last_sequence_id_))) {
+		// do nothing - alll microslices in the rate test have the same sequence id
 	      }
 	      else {
 		std::cout << "WARNING: mismatch in microslice sequence IDs! Got " << (unsigned int)sequence_id << " expected " << (unsigned int)(uint8_t(last_sequence_id_+1)) << std::endl;
