@@ -554,36 +554,28 @@ void lbne::PennDataReceiver::handle_received_data(std::size_t length)
 #else
 	case ReceiveMicroslicePayload:
 	  {
-	    RECV_DEBUG(2) << "Got microslice payload length " << state_nbytes_recvd_ << std::endl;
-
 	    //got a full microslice (complete size checks already done)
-	    RECV_DEBUG(2) << "Complete payload received for microslice " << microslices_recvd_ << std::endl;
+	    RECV_DEBUG(2) << "Complete payload received for microslice " << microslices_recvd_ << " length " << state_nbytes_recvd_ << std::endl;
 	    microslices_recvd_++;
 
-	    /*
-	    lbne::PennMicroSlice* uslice;
-            uslice = reinterpret_cast<lbne::PennMicroSlice*>(((uint8_t*)state_start_ptr_) - sizeof(lbne::PennMicroSlice::Header));
-
+	    //form a microslice & check for the timestamp word to see if we're in a fragmented microslice
+	    lbne::PennMicroSlice uslice(((uint8_t*)state_start_ptr_) - sizeof(lbne::PennMicroSlice::Header));
 	    lbne::PennMicroSlice::sample_count_t n_counter_words(0);
 	    lbne::PennMicroSlice::sample_count_t n_trigger_words(0);
 	    lbne::PennMicroSlice::sample_count_t n_timestamp_words(0);
 	    lbne::PennMicroSlice::sample_count_t n_words =
-	      uslice->sampleCount(n_counter_words, n_trigger_words, n_timestamp_words);
+	      uslice.sampleCount(n_counter_words, n_trigger_words, n_timestamp_words, true);	    
 	    RECV_DEBUG(2) << "Payload contains " << n_words
-			  << " total words (" << n_counter_words
-			  << " counter + " << n_trigger_words
-			  << " trigger + " << n_timestamp_words
-			  << " timestamp)" << std::endl;
+			  << " total words ("    << n_counter_words
+			  << " counter + "       << n_trigger_words
+			  << " trigger + "       << n_timestamp_words
+			  << " timestamp)"       << std::endl;
 	    if(n_timestamp_words) {
 	      microslices_recvd_timestamp_++;
 	      last_microslice_was_fragment_ = false;
 	    }
 	    else
 	      last_microslice_was_fragment_ = true;
-	    */
-	    //TODO fix the 'full payload' check for fragmented blocks
-	    microslices_recvd_timestamp_++;
-	    last_microslice_was_fragment_ = false;
 
 	    microslice_size_recvd_ = 0;
 	    millislice_state_ = MillisliceIncomplete;

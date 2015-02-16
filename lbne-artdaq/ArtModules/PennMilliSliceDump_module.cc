@@ -118,7 +118,7 @@ void lbne::PennMilliSliceDump::analyze(art::Event const & evt)
 	      uint32_t n_data_words_counter(0);
 	      uint32_t n_data_words_trigger(0);
 	      uint32_t n_data_words_timestamp(0);
-	      n_data_words = microslice->sampleCount(n_data_words_counter, n_data_words_trigger, n_data_words_timestamp);
+	      n_data_words = microslice->sampleCount(n_data_words_counter, n_data_words_trigger, n_data_words_timestamp, false);
 	      std::cout << "Microslice contains " << n_data_words << " data words ("
 			<< n_data_words_counter   << " counter + "
 			<< n_data_words_trigger   << " trigger + "
@@ -131,7 +131,7 @@ void lbne::PennMilliSliceDump::analyze(art::Event const & evt)
 		  lbne::PennMicroSlice::Payload_Header::data_packet_type_t     data_packet_type;
 		  lbne::PennMicroSlice::Payload_Header::short_nova_timestamp_t short_nova_timestamp;
 		  size_t   payload_size;
-		  uint8_t* payload = microslice->get_payload(uint32_t(ip), data_packet_type, short_nova_timestamp, payload_size);
+		  uint8_t* payload = microslice->get_payload(uint32_t(ip), data_packet_type, short_nova_timestamp, payload_size, false);
 		  if(payload) {
 		    std::cout << "Payload " << ip << " is type " << std::hex << (unsigned int)data_packet_type << std::dec
 			      << " with timestamp " << short_nova_timestamp << " and contents ";
