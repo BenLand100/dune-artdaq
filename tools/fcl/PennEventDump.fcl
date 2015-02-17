@@ -7,8 +7,9 @@
       module_type: PennMilliSliceDump
       raw_data_label: daq
       frag_type: TRIGGER
-      verbose_microslice_ids: [0,1,2,3,4,5,6,7,8,9] #make this an empty vector to turn off microslice & payload printing
-      verbose_payload_ids:    [0,1,2,3,4,5,6,7,8,9,20]    #only prints the payloads that lie within the verbose microslices
+      verbose_microslice_ids: [0,1,2,3,4,5,6,7,8,9]       #make this an empty vector to turn off microslice (& payload in non-reblock mode) printing
+      #verbose_payload_ids:    [0,1,2,3,4,5,6,7,8,9,20]    #only prints the payloads that lie within the verbose microslices (in non-reblock mode)
+      verbose_payload_ids:    [1000000]                   #or make it > 999999 to print all payloads
     }
   }
 

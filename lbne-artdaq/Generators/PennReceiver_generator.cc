@@ -80,7 +80,14 @@ lbne::PennReceiver::PennReceiver(fhicl::ParameterSet const & ps)
 	ps.get<uint32_t>("raw_buffer_precommit", 10);
 
   use_fragments_as_raw_buffer_ =
-	ps.get<bool>("use_fragments_as_raw_buffer", false);
+    ps.get<bool>("use_fragments_as_raw_buffer", true);
+
+#ifdef 
+  if(use_fragments_as_raw_buffer_ == false) {
+    mf::LogError("PennReceiver") << "use_fragments_as_raw_buffer == false has not been implemented";
+    //TODO handle error cleanly here    
+  }
+#endif
 
   receiver_tick_period_usecs_ =
     ps.get<uint32_t>("receiver_tick_period_usecs", 10000);

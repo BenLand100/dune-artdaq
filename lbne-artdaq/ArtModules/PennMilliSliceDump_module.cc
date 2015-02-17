@@ -103,21 +103,22 @@ void lbne::PennMilliSliceDump::analyze(art::Event const & evt)
 		  << n_words_timestamp  << " timestamp)"
 		  << std::endl << std::endl;
 
-
 #ifdef REBLOCK_USLICE
 	lbne::PennMicroSlice::Payload_Header::data_packet_type_t type;
 	lbne::PennMicroSlice::Payload_Header::short_nova_timestamp_t timestamp;
 	size_t payload_size;
-	for (uint32_t i = 0; i < n_words; i++) {
-	  uint8_t* payload_data = msf.payload(i, type, timestamp, payload_size);
-	  if(payload_data && payload_size) {
-	    std::cout << "Payload " << i << " is type " << std::hex << (unsigned int)type << std::dec
+	for (uint32_t ip = 0; ip < n_words; ip++) {
+	  uint8_t* payload_data = msf.payload(ip, type, timestamp, payload_size);
+	  bool verb_payload = ((std::find(verb_payload_ids_.begin(), verb_payload_ids_.end(), ip) != verb_payload_ids_.end())
+			       || (verb_payload_ids_.size() == 1 && verb_payload_ids_.at(0) > 999999)) ? true : false;
+	  if(payload_data && payload_size && verb_payload) {
+	    std::cout << "Payload " << ip << " is type " << std::hex << (unsigned int)type << std::dec
 		      << " with timestamp " << timestamp << " and contents ";
 	    for(size_t ib = 0; ib < payload_size; ib++)
 	      std::cout << std::bitset<8>(*(payload_data + ib)) << " ";
 	    std::cout << std::endl;
 	  }//payload_data && payload_size
-	}
+	}//ip
 #else
 	for (uint32_t i_ms = 0; i_ms < msf.microSliceCount(); ++i_ms)
 	  {
