@@ -29,7 +29,11 @@ namespace lbne
       dataPtr_(dataPtr),
       size_(size),
       flags_(0),
-      count_(0)
+      count_(0),
+      count_payload_(0),
+      count_payload_counter_(0),
+      count_payload_trigger_(0),
+      count_payload_timestamp_(0)
     { }
 
     ~PennRawBuffer()
@@ -46,10 +50,18 @@ namespace lbne
 
     void setFlags(uint32_t flags) { flags_ = flags; }
     void setCount(uint32_t count) { count_ = count; }
+    void setCountPayload         (uint16_t count_payload          ) { count_payload_           = count_payload; }
+    void setCountPayloadCounter  (uint16_t count_payload_counter  ) { count_payload_counter_   = count_payload_counter; }
+    void setCountPayloadTrigger  (uint16_t count_payload_trigger  ) { count_payload_trigger_   = count_payload_trigger; }
+    void setCountPayloadTimestamp(uint16_t count_payload_timestamp) { count_payload_timestamp_ = count_payload_timestamp; }
 
     size_t   size(void)    { return size_; }
     uint32_t flags(void)   { return flags_; }
     uint32_t count(void)   { return count_; }
+    uint16_t countPayload         (void)   { return count_payload_; }
+    uint16_t countPayloadCounter  (void)   { return count_payload_counter_; }
+    uint16_t countPayloadTrigger  (void)   { return count_payload_trigger_; }
+    uint16_t countPayloadTimestamp(void)   { return count_payload_timestamp_; }
     uint8_t* dataPtr(void) { return dataPtr_; }
 
   private:
@@ -58,6 +70,10 @@ namespace lbne
     size_t   size_;
     uint32_t flags_;
     uint32_t count_;
+    uint16_t count_payload_;
+    uint16_t count_payload_counter_;
+    uint16_t count_payload_trigger_;
+    uint16_t count_payload_timestamp_;
 
   };
 

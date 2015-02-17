@@ -17,6 +17,8 @@
 #include <boost/asio/deadline_timer.hpp>
 #include <boost/lexical_cast.hpp>
 
+#include "lbne-artdaq/Generators/pennBoard/PennCompileOptions.hh"
+
 using boost::asio::ip::tcp;
 
 namespace lbne {

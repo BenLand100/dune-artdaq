@@ -20,9 +20,6 @@
 
 #include <unistd.h>
 
-//#define NO_PENN_CLIENT 1
-#define PENN_EMULATOR 1
-
 lbne::PennReceiver::PennReceiver(fhicl::ParameterSet const & ps)
   :
   CommandableFragmentGenerator(ps),
@@ -274,7 +271,9 @@ bool lbne::PennReceiver::getNext_(artdaq::FragmentPtrs & frags) {
 		  frag = std::move(raw_to_frag_map_[data_ptr]);
 
 		  // Validate and finalize the fragment received
-		  millislice_size = validate_millislice_from_fragment_buffer(frag->dataBeginBytes(), recvd_buffer->size(), recvd_buffer->count());
+		  millislice_size = validate_millislice_from_fragment_buffer(frag->dataBeginBytes(), recvd_buffer->size(), recvd_buffer->count(),
+									     recvd_buffer->countPayload(), recvd_buffer->countPayloadCounter(),
+									     recvd_buffer->countPayloadTrigger(), recvd_buffer->countPayloadTimestamp());
 
 		  // Clean up entry in map to remove raw fragment buffer
 		  raw_to_frag_map_.erase(data_ptr);
@@ -400,11 +399,15 @@ uint32_t lbne::PennReceiver::format_millislice_from_raw_buffer(uint16_t* src_add
 
 }
 
-uint32_t lbne::PennReceiver::validate_millislice_from_fragment_buffer(uint8_t* data_addr, size_t data_size, uint32_t count)
+uint32_t lbne::PennReceiver::validate_millislice_from_fragment_buffer(uint8_t* data_addr, size_t data_size, uint32_t us_count,
+								      uint16_t payload_count, uint16_t payload_count_counter,
+								      uint16_t payload_count_trigger, uint16_t payload_count_timestamp)
 {
 	lbne::PennMilliSliceWriter millislice_writer(data_addr, data_size+sizeof(PennMilliSlice::Header));
 
-	millislice_writer.finalize(true, data_size, count);
+	millislice_writer.finalize(true, data_size, us_count, payload_count, payload_count_counter, payload_count_trigger, payload_count_timestamp);
+	//TODO add a check here to make sure the size agrees with the payload counts + header size
+
 	return millislice_writer.size();
 }
 

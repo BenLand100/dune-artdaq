@@ -1,7 +1,7 @@
  # FHiCL parameters for configuring PennReceiver generator
  
  # Number of microslice to concatenate into a millislice
- number_of_microslices_per_millislice: 1000
+ number_of_microslices_per_millislice: 100 #this is the 'millislice width' when running with REBLOCK_USLICE defined
    
  # PENN client connection parameters
  penn_client_host_addr: '127.0.0.1' # this is localhost
@@ -15,14 +15,14 @@
  # PENN emulator configuration parameters 
  penn_data_dest_host: localhost #'10.0.1.2'
  penn_data_dest_port: 8991  
- penn_data_num_millislices: 0    # 0=Run until stopped
+ penn_data_num_millislices: 1    # 0=Run until stopped
  penn_data_num_microslices: 1000
  penn_data_repeat_microslices: false #for rate testing
- penn_data_frag_rate: 10000 #Hz
+ penn_data_frag_rate: 1000 #Hz
  penn_data_payload_mode: 2  #counter&trigger payload contents 0=all off, 1=all on, 2=alternating on/off, 3=random
  penn_data_trigger_mode: 2  #0=no trigger words sent. 1=trigger word sent every tick. 2=trigger word sent randomly
- penn_data_nticks_per_microslice: 64 #set this negative to create variable-sized uslices (uses random.randint(1,nticks))
- penn_data_fragment_microslice_at_ticks: 50 #after this many ticks the uslice will be fragmented (<=0 means don't fragment)
+ penn_data_nticks_per_microslice: 30 #set this negative to create variable-sized uslices (uses random.randint(1,nticks)) #TODO check its not uint
+ penn_data_fragment_microslice_at_ticks: 20 #after this many ticks the uslice will be fragmented (<=0 means don't fragment)
  penn_data_debug_partial_recv: false #slows emulator down to send 1 byte at a time, every 0.1 seconds. For testing how the boardreader handles async_receive that grabs less than requested bytes
  
  # Port to receive data from PENN on  

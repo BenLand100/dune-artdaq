@@ -47,13 +47,15 @@ def print_payload(s):
 
 class NovaTimestamp(object):
     
-    # NoVa epoch is 00:00:00 GMT 1st Jan, 2000 
+    # NOvA epoch is 00:00:00 GMT 1st Jan, 2000 
     epoch = datetime.datetime(2000, 1, 1, 0, 0, 0, 0)
     
-    # NoVa clock is 64 MHZ, = 15.6ns tick
+    # NOvA clock is 64 MHZ, = 15.6ns tick
     ticks_per_sec = 64E6
     
-    def __init__(self, posix_time=None):
+    #NOvA clock is 56 bits
+
+    def __init__(self, posix_time=None, override=None):
         
         if posix_time == None:
             self.now = datetime.datetime.now()
@@ -62,9 +64,19 @@ class NovaTimestamp(object):
             
         self.since_epoch       = (self.now - NovaTimestamp.epoch).total_seconds()
         self.ticks_since_epoch = int(self.since_epoch * NovaTimestamp.ticks_per_sec)
-        self.timestamp_low     = self.ticks_since_epoch & 0xFFFFFFFF
-        self.timestamp_high    = (self.ticks_since_epoch >> 32) & 0xFFFFFF
-        self.timestamp_short   = self.ticks_since_epoch & 0xFFFFFFF
+        if(override):
+            self.ticks_since_epoch = override
+        self.epoch_to_timestamp()
+
+    def epoch_to_timestamp(self):
+        self.timestamp_low     = self.ticks_since_epoch & 0xFFFFFFFF #32 bits
+        self.timestamp_high    = (self.ticks_since_epoch >> 32) & 0xFFFFFF #24 bits
+        self.timestamp_short   = self.ticks_since_epoch & 0xFFFFFFF #28 bits
+
+    def increment(self):
+        self.ticks_since_epoch += 1
+        self.epoch_to_timestamp()
+
         
 class PennMicroslice(object):
 
@@ -107,6 +119,7 @@ class PennMicroslice(object):
         self.fragment_microslice_at_ticks = fragment_microslice_at_ticks
         self.sequence = sequence
         self.packed = False
+        self.time = 0
 
     def set_sequence_id(self, sequence):
         self.sequence = sequence % 256
@@ -162,7 +175,6 @@ class PennMicroslice(object):
         #Get the NOvA timestamp & convert it to bits, then to char's
 
         #print (self.time.timestamp_high << 32) |  self.time.timestamp_low
-        #print self.time.ticks_since_epoch
         low  = self.time.timestamp_low
         high = self.time.timestamp_high
         time64 = (high << 32) | low
@@ -201,13 +213,10 @@ class PennMicroslice(object):
 
     def pack(self):
 
-        #TODO handle 'large' microslices where they don't end with a timestamp word
-
         data  = ''
         totaldata = ''
         nchar = 0
         totalnchar = 0
-        self.time = 0
 
         #negative nticks_per_microslice means random number of data words
         nticks = self.nticks_per_microslice
@@ -216,7 +225,11 @@ class PennMicroslice(object):
 
         #get the data words
         for i in xrange(nticks):
-            self.time = NovaTimestamp(None)
+            if not self.time:
+                #self.time = NovaTimestamp(None)
+                self.time = NovaTimestamp(None, (1 << 29) - 10) #test the 28-bit rollover
+            else:
+                self.time.increment()
             #add the counter word
             data  += self.create_payload_counter()
             nchar += int(PennMicroslice.format_payload_counter[1:-1]) + int(PennMicroslice.format_payload_header[1:-1])

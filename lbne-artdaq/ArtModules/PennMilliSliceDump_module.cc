@@ -14,7 +14,7 @@
 #include "art/Utilities/Exception.h"
 #include "lbne-raw-data/Overlays/PennMilliSliceFragment.hh"
 #include "artdaq-core/Data/Fragments.hh"
-
+#include "lbne-artdaq/Generators/pennBoard/PennCompileOptions.hh"
 
 #include <cassert>
 #include <cmath>
@@ -89,12 +89,36 @@ void lbne::PennMilliSliceDump::analyze(art::Event const & evt)
 	const auto& frag((*raw)[idx]);
 
 	PennMilliSliceFragment msf(frag);
+	lbne::PennMilliSlice::Header::payload_count_t n_words, n_words_counter, n_words_trigger, n_words_timestamp;
+	n_words = msf.payloadCount(n_words_counter, n_words_trigger, n_words_timestamp);
 
-	std::cout << std::endl;
-	std::cout << "PennMilliSlice fragment " << frag.fragmentID() << " consists of: " << msf.size() << " bytes containing "
-		  << msf.microSliceCount() << " microslices" << std::endl;
-	std::cout << std::endl;
+	std::cout << std::endl
+		  << "PennMilliSlice fragment " << frag.fragmentID()
+		  << " consists of: " << msf.size() << " bytes containing "
+		  << msf.microSliceCount() << " microslices"
+		  << std::endl
+		  << " and " << n_words << " total words ("
+		  << n_words_counter    << " counter + "
+		  << n_words_trigger    << " trigger + "
+		  << n_words_timestamp  << " timestamp)"
+		  << std::endl << std::endl;
 
+
+#ifdef REBLOCK_USLICE
+	lbne::PennMicroSlice::Payload_Header::data_packet_type_t type;
+	lbne::PennMicroSlice::Payload_Header::short_nova_timestamp_t timestamp;
+	size_t payload_size;
+	for (uint32_t i = 0; i < n_words; i++) {
+	  uint8_t* payload_data = msf.payload(i, type, timestamp, payload_size);
+	  if(payload_data && payload_size) {
+	    std::cout << "Payload " << i << " is type " << std::hex << (unsigned int)type << std::dec
+		      << " with timestamp " << timestamp << " and contents ";
+	    for(size_t ib = 0; ib < payload_size; ib++)
+	      std::cout << std::bitset<8>(*(payload_data + ib)) << " ";
+	    std::cout << std::endl;
+	  }//payload_data && payload_size
+	}
+#else
 	for (uint32_t i_ms = 0; i_ms < msf.microSliceCount(); ++i_ms)
 	  {
 	    bool verb_microslice = (std::find(verb_microslice_ids_.begin(), verb_microslice_ids_.end(), i_ms) != verb_microslice_ids_.end()) ? true : false;
@@ -143,6 +167,7 @@ void lbne::PennMilliSliceDump::analyze(art::Event const & evt)
 	      }//n_data_words loop
 	    }//verb_microslice
 	  }//microslice loop
+#endif
       }//raw fragment loop
   }//raw.IsValid()?
   else {

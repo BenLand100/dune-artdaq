@@ -26,6 +26,7 @@
 #include "lbne-raw-data/Overlays/FragmentType.hh"
 #include "lbne-artdaq/Generators/pennBoard/PennClient.hh"
 #include "lbne-artdaq/Generators/pennBoard/PennDataReceiver.hh"
+#include "lbne-artdaq/Generators/pennBoard/PennCompileOptions.hh"
 
 #include <random>
 #include <vector>
@@ -112,7 +113,9 @@ namespace lbne {
     PennRawBufferPtr create_new_buffer_from_fragment(void);
     uint32_t format_millislice_from_raw_buffer(uint16_t* src_addr, size_t src_size,
     		                                   uint8_t* dest_addr, size_t dest_size);
-    uint32_t validate_millislice_from_fragment_buffer(uint8_t* data_addr, size_t data_size, uint32_t count);
+    uint32_t validate_millislice_from_fragment_buffer(uint8_t* data_addr, size_t data_size, uint32_t count,
+						      uint16_t payload_count, uint16_t payload_count_counter,
+						      uint16_t payload_count_trigger, uint16_t payload_count_timestamp);
 
   };
 }

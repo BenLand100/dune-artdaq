@@ -24,6 +24,7 @@
 #include "lbne-artdaq/Generators/RceSupportLib/SafeQueue.hh"
 #include "lbne-artdaq/Generators/pennBoard/PennRawBuffer.hh"
 #include "lbne-raw-data/Overlays/PennMicroSlice.hh"
+#include "lbne-artdaq/Generators/pennBoard/PennCompileOptions.hh"
 
 using boost::asio::ip::tcp;
 
@@ -103,6 +104,10 @@ private:
   MillisliceState  millislice_state_;
   size_t           millislice_size_recvd_;
   uint16_t         microslices_recvd_;
+  uint16_t         payloads_recvd_;
+  uint16_t         payloads_recvd_counter_;
+  uint16_t         payloads_recvd_trigger_;
+  uint16_t         payloads_recvd_timestamp_;
   lbne::PennMicroSlice::Header::block_size_t microslice_size_;
   size_t           microslice_size_recvd_;
   uint32_t         millislices_recvd_;
@@ -120,6 +125,18 @@ private:
 
   bool rate_test_;
 
+#ifdef REBLOCK_USLICE
+  size_t   remaining_size_;
+  static const int REMAINING_BUFFER_SIZE = 1024;
+  uint8_t  remaining_ptr_[lbne::PennDataReceiver::REMAINING_BUFFER_SIZE];
+  lbne::PennMicroSlice::sample_count_t remaining_payloads_recvd_;
+  lbne::PennMicroSlice::sample_count_t remaining_payloads_recvd_counter_;
+  lbne::PennMicroSlice::sample_count_t remaining_payloads_recvd_trigger_;
+  lbne::PennMicroSlice::sample_count_t remaining_payloads_recvd_timestamp_;
+  uint64_t boundary_time_;    //unit is 64MHz NOvA clock ticks
+  uint64_t run_start_time_;   //unit is 64MHz NOvA clock ticks
+  uint64_t millislice_width_; //unit is 64MHz NOvA clock ticks
+#endif
 };
 
 } /* namespace lbne */

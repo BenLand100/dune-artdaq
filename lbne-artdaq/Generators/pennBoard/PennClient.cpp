@@ -12,8 +12,6 @@
 #include <libxml/parser.h>
 #include <libxml/tree.h>
 
-#define PENN_EMULATOR 1
-
 lbne::PennClient::PennClient(const std::string& host_name, const std::string& port_or_service, const unsigned int timeout_usecs) :
 	socket_(io_service_),
 	deadline_(io_service_),
