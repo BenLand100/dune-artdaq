@@ -43,6 +43,10 @@ namespace SSPDAQ{
     //Clear data vector and set header word to 0xDEADBEEF
     void SetEmpty();
 
+    void DumpHeader();
+
+    void DumpEvent();
+
     EventHeader header;
 
     std::vector<unsigned int> data;
