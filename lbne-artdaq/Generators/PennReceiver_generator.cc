@@ -98,6 +98,9 @@ lbne::PennReceiver::PennReceiver(fhicl::ParameterSet const & ps)
   number_of_microslices_per_millislice_ =
 	ps.get<uint16_t>("number_of_microslices_per_millislice", 10);
 
+  overlap_width_ = 
+        ps.get<uint16_t>("overlap_width", 5);
+
   reporting_interval_fragments_ =
     ps.get<uint32_t>("reporting_interval_fragments", 100);
 
@@ -121,8 +124,9 @@ lbne::PennReceiver::PennReceiver(fhicl::ParameterSet const & ps)
 #endif //!NO_PENN_CLIENT
 
   // Create a PennDataReceiver instance
-  data_receiver_ = std::unique_ptr<lbne::PennDataReceiver>(new lbne::PennDataReceiver(
-		     receiver_debug_level, receiver_tick_period_usecs_, receive_port_, number_of_microslices_per_millislice_, rate_test));
+  data_receiver_ = 
+    std::unique_ptr<lbne::PennDataReceiver>(new lbne::PennDataReceiver(receiver_debug_level, receiver_tick_period_usecs_, receive_port_,
+								       number_of_microslices_per_millislice_, overlap_width_, rate_test));
 
 }
 
