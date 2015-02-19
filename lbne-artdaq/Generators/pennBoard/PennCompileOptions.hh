@@ -8,7 +8,7 @@
 //  N complete uslices
 //or
 //  reblocked in a set time-width
-#define REBLOCK_USLICE
+#define REBLOCK_PENN_USLICE
 
 //does we request on the data stream:
 //  1) the 4 bytes header
@@ -19,10 +19,6 @@
 //  1) the 4 bytes header
 //  2) the rest of the uslice in one go
 //#define RECV_PENN_USLICE_IN_CHUNKS
-
-
-//TODO make REBLOCK_USLICE and RECV_PENN_USLICE_IN_CHUNKS work when both switched on
-
 
 //#define NO_PENN_CLIENT
 

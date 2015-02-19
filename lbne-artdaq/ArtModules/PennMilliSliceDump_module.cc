@@ -103,7 +103,7 @@ void lbne::PennMilliSliceDump::analyze(art::Event const & evt)
 		  << n_words_timestamp  << " timestamp)"
 		  << std::endl << std::endl;
 
-#ifdef REBLOCK_USLICE
+#ifdef REBLOCK_PENN_USLICE
 	lbne::PennMicroSlice::Payload_Header::data_packet_type_t type;
 	lbne::PennMicroSlice::Payload_Header::short_nova_timestamp_t timestamp;
 	size_t payload_size;

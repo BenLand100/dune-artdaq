@@ -82,7 +82,7 @@ lbne::PennReceiver::PennReceiver(fhicl::ParameterSet const & ps)
   use_fragments_as_raw_buffer_ =
     ps.get<bool>("use_fragments_as_raw_buffer", true);
 
-#ifdef 
+#ifdef REBLOCK_PENN_USLICE
   if(use_fragments_as_raw_buffer_ == false) {
     mf::LogError("PennReceiver") << "use_fragments_as_raw_buffer == false has not been implemented";
     //TODO handle error cleanly here    

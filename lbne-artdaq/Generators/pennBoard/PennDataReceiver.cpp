@@ -32,14 +32,14 @@ lbne::PennDataReceiver::PennDataReceiver(int debug_level, uint32_t tick_period_u
 	readout_suspended_(false),
 	recv_socket_(0),
 	rate_test_(rate_test)
-#ifdef REBLOCK_USLICE
+#ifdef REBLOCK_PENN_USLICE
 	,
 	millislice_width_(number_of_microslices_per_millislice)
 #endif
 {
 	RECV_DEBUG(1) << "lbne::PennDataReceiver constructor" << std::endl;
 
-#ifdef REBLOCK_USLICE
+#ifdef REBLOCK_PENN_USLICE
 	if(millislice_width_ > lbne::PennMicroSlice::ROLLOVER_LOW_VALUE) {
 	  RECV_DEBUG(0) << "lbne::PennDataReceiver WARNING millislice_width_ " << millislice_width_
 			<< " is greater than lbne::PennMicroSlice::ROLLOVER_LOW_VALUE " << lbne::PennMicroSlice::ROLLOVER_LOW_VALUE
@@ -117,7 +117,7 @@ void lbne::PennDataReceiver::start(void)
 	state_nbytes_recvd_ = 0;
 	state_start_ptr_ = 0;
 
-#ifdef REBLOCK_USLICE
+#ifdef REBLOCK_PENN_USLICE
 	// Clear the times used for calculating millislice boundaries
 	run_start_time_ = 0;
 	boundary_time_ = 0;
@@ -128,7 +128,7 @@ void lbne::PennDataReceiver::start(void)
 	remaining_payloads_recvd_counter_ = 0;
 	remaining_payloads_recvd_trigger_ = 0;
 	remaining_payloads_recvd_timestamp_ = 0;
-#endif
+#endif //REBLOCK_PENN_USLICE
 
 	// Clear suspend readout handshake flags
 	suspend_readout_.store(false);
@@ -320,13 +320,13 @@ void lbne::PennDataReceiver::do_read(void)
 			current_write_ptr_ = (void*)(current_raw_buffer_->dataPtr());
 			RECV_DEBUG(2) << "Receiving new millislice into raw buffer at address " << current_write_ptr_ << std::endl;
 
-#ifdef REBLOCK_USLICE
+#ifdef REBLOCK_PENN_USLICE
 			//add any remains of the previous microslice (due to millislice boundary occuring within it) to the start of this millislice
 			if(remaining_size_) {
 			  //TODO if the microslice time is wider than the millislice time, need to split the remains up, finalise a millislice, and call do_read() again
 			  memmove(current_write_ptr_, remaining_ptr_, remaining_size_);
 			  current_write_ptr_ = (void*)((char*)current_write_ptr_ + remaining_size_);
-			  RECV_DEBUG(2) << "Added the last " << remaining_size_ << " bytes of previous microslice to this millislice. "
+			  RECV_DEBUG(2) << "Added the last "   << remaining_size_ << " bytes of previous microslice to this millislice. "
 					<< "Payload contains " << remaining_payloads_recvd_
 					<< " total words ("    << remaining_payloads_recvd_counter_
 					<< " counter + "       << remaining_payloads_recvd_trigger_
@@ -346,7 +346,7 @@ void lbne::PennDataReceiver::do_read(void)
 			  remaining_payloads_recvd_trigger_ = 0;
 			  remaining_payloads_recvd_timestamp_ = 0;
 			}
-#endif
+#endif //REBLOCK_PENN_USLICE
 		}
 		else
 		{
@@ -517,7 +517,7 @@ void lbne::PennDataReceiver::handle_received_data(std::size_t length)
 	    microslice_seen_timestamp_word_ = false;
 	    last_microslice_was_fragment_ = false;
 
-#ifdef REBLOCK_USLICE
+#ifdef REBLOCK_PENN_USLICE
 	    //and roll back the current_write_ptr_, as to overwrite the Header in the next recv
 	    current_write_ptr_ = (void*)((char*)current_write_ptr_ - sizeof(lbne::PennMicroSlice::Header));
 	    millislice_size_recvd_ -= sizeof(lbne::PennMicroSlice::Header);
@@ -544,25 +544,73 @@ void lbne::PennDataReceiver::handle_received_data(std::size_t length)
 	    
 	    RECV_DEBUG(5) << "Payload header bits: " << std::bitset<4>(type) << " " << std::bitset<28>(timestamp) << std::endl;
 
+#ifdef REBLOCK_PENN_USLICE
+            //TODO add a better way of getting a start time, to calculate millislice boundaries from
+            if(!run_start_time_) {
+              run_start_time_ = timestamp & 0xFFFFFFF; //lowest 28 bits
+              boundary_time_  = (run_start_time_ + millislice_width_ - 1) & 0xFFFFFFF; //lowest 28 bits
+            }
+
+	    //check the timestamp
+	    if(timestamp > boundary_time_) {
+	      //need to be careful and make sure that boundary_time hasn't overflowed the 28 bits
+	      //do this by checking whether timestamp isn't very large AND boundary_time isn't very small
+	      //TODO a better way to catch rollovers?
+	      if(!((boundary_time_ < lbne::PennMicroSlice::ROLLOVER_LOW_VALUE) && (timestamp > lbne::PennMicroSlice::ROLLOVER_HIGH_VALUE))) {
+
+		//set the payload counters
+		remaining_payloads_recvd_++;
+		payloads_recvd_--;
+		switch(type)
+		  {
+		  case lbne::PennMicroSlice::DataTypeCounter:
+		    remaining_payloads_recvd_counter_++;
+		    payloads_recvd_counter_--;
+		    break;
+		  case lbne::PennMicroSlice::DataTypeTrigger:
+		    remaining_payloads_recvd_trigger_++;
+		    payloads_recvd_trigger_--;
+		    break;
+		  case lbne::PennMicroSlice::DataTypeTimestamp:
+		    remaining_payloads_recvd_timestamp_++;
+		    payloads_recvd_timestamp_--;
+		    break;
+		  default:
+		    break;
+		  }//switch(type)
+
+		//stash the Payload_Header for use later
+		remaining_size_ = sizeof(lbne::PennMicroSlice::Payload_Header);
+		memmove(remaining_ptr_, state_start_ptr_, remaining_size_);
+		millislice_size_recvd_ -= remaining_size_;
+	      }
+	    }
+#endif
+
             //update states ready to be for next call
 	    switch(type)
 	      {
-	      case 0x01: // 0b0001
+	      case lbne::PennMicroSlice::DataTypeCounter:
 		next_receive_state_ = ReceiveMicroslicePayloadCounter;
 		next_receive_size_  = lbne::PennMicroSlice::payload_size_counter;
+		payloads_recvd_counter_++;
 		break;
-	      case 0x02: // 0b0010
+	      case lbne::PennMicroSlice::DataTypeTrigger:
 		next_receive_state_ = ReceiveMicroslicePayloadTrigger;
 		next_receive_size_  = lbne::PennMicroSlice::payload_size_trigger;
+		payloads_recvd_trigger_++;
 		break;
-	      case 0x08: // 0b1000
+	      case lbne::PennMicroSlice::DataTypeTimestamp:
 		next_receive_state_ = ReceiveMicroslicePayloadTimestamp;
 		next_receive_size_  = lbne::PennMicroSlice::payload_size_timestamp;
+		payloads_recvd_timestamp_++;
 		break;
 	      default:
 		RECV_DEBUG(1) << "WARNING: Unknown payload type 0x" << std::hex << (unsigned int)type << std::dec << std::endl;
+		break;
 		//TODO handle error cleanly here
-	      }
+	      }//switch(type)
+	    payloads_recvd_++;
 	    millislice_state_ = MicrosliceIncomplete;
 	    
 	    break;
@@ -601,6 +649,7 @@ void lbne::PennDataReceiver::handle_received_data(std::size_t length)
 		next_receive_state_ = ReceiveMicroslicePayloadHeader;
 		next_receive_size_ = sizeof(lbne::PennMicroSlice::Payload_Header);
 	      }
+
 	    break;
 	  }//case ReceiveMicroslicePayload[Counter,Trigger,Timestamp]
 
@@ -611,11 +660,11 @@ void lbne::PennDataReceiver::handle_received_data(std::size_t length)
 	    RECV_DEBUG(2) << "Complete payload received for microslice " << microslices_recvd_ << " length " << state_nbytes_recvd_ << std::endl;
 	    microslices_recvd_++;
 
-#ifdef REBLOCK_USLICE
+#ifdef REBLOCK_PENN_USLICE
 	    //TODO add a better way of getting a start time, to calculate millislice boundaries from
 	    if(!run_start_time_) {
-	      run_start_time_    = ntohl(*((uint32_t*)state_start_ptr_)) & 0xFFFFFFF; //lowest 28 bits
-	      boundary_time_ = (run_start_time_ + millislice_width_ - 1) & 0xFFFFFFF; //lowest 28 bits
+	      run_start_time_ = ntohl(*((uint32_t*)state_start_ptr_))     & 0xFFFFFFF; //lowest 28 bits
+	      boundary_time_  = (run_start_time_ + millislice_width_ - 1) & 0xFFFFFFF; //lowest 28 bits
 	    }
 
 	    //form a microslice & check for the timestamp word to see if we're in a fragmented microslice
@@ -630,7 +679,7 @@ void lbne::PennDataReceiver::handle_received_data(std::size_t length)
 	    lbne::PennMicroSlice::sample_count_t n_timestamp_words(0);
 	    lbne::PennMicroSlice::sample_count_t n_words(0);
 
-#ifdef REBLOCK_USLICE
+#ifdef REBLOCK_PENN_USLICE
 	    //also check to see if the millislice boundary is inside this microslice
 
 	    //n_words = uslice.sampleCount(n_counter_words, n_trigger_words, n_timestamp_words, true, microslice_size_);
@@ -643,6 +692,10 @@ void lbne::PennDataReceiver::handle_received_data(std::size_t length)
 					     true, microslice_size_);
 
             if(split_ptr) {
+		if(remaining_size_ > lbne::PennDataReceiver::remaining_buffer_size) {
+		  std::cout << "ERROR buffer overflow for 'remaining bytes of microslice, after the millislice boundary'" << std::endl;
+		  //TODO handle error cleanly here (also find out the largest possible microslice size & set remaining_buffer_size appropriately)
+		}
               RECV_DEBUG(2) << "Millislice boundary found within microslice " << microslices_recvd_timestamp_
                             << ". Storing " << remaining_size_ << " bytes for next millislice" << std::endl;
               memmove(remaining_ptr_, split_ptr, remaining_size_);
@@ -657,8 +710,8 @@ void lbne::PennDataReceiver::handle_received_data(std::size_t length)
 			  << " counter + "       << n_trigger_words
 			  << " trigger + "       << n_timestamp_words
 			  << " timestamp)"
-#ifdef REBLOCK_USLICE
-			  << " before any millislice boundaries"
+#ifdef REBLOCK_PENN_USLICE
+			  << " before the millislice boundary"
 #endif
 			  << std::endl;
 
@@ -699,20 +752,25 @@ void lbne::PennDataReceiver::handle_received_data(std::size_t length)
 	state_start_ptr_    = 0;
 
 	// If correct number of microslices (with timestamps) have been received, flag millislice as complete
-#ifdef REBLOCK_USLICE
+#ifdef REBLOCK_PENN_USLICE
 	if(remaining_size_)
 #else
 	if (microslices_recvd_timestamp_ == number_of_microslices_per_millislice_)
-#endif
+#endif //REBLOCK_PENN_USLICE
 	{
 		RECV_DEBUG(1) << "Millislice " << millislices_recvd_
 			      << " complete with " << microslices_recvd_timestamp_
 			      << " microslices (" << microslices_recvd_
 			      << " including fragments), total size " << millislice_size_recvd_
-			      << " bytes" << std::endl;
+			      << " bytes and " << payloads_recvd_
+			      << " payload words (" << payloads_recvd_counter_
+			      << " counter + " << payloads_recvd_trigger_
+			      << " trigger + " << payloads_recvd_timestamp_
+			      << " timestamp)"
+			      << std::endl;
 		millislices_recvd_++;
 		millislice_state_ = MillisliceComplete;
-#ifdef REBLOCK_USLICE
+#ifdef REBLOCK_PENN_USLICE
 		boundary_time_ = (boundary_time_ + millislice_width_) & 0xFFFFFFF; //lowest 28 bits
 #endif
 	}

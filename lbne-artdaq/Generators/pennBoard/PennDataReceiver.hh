@@ -125,18 +125,20 @@ private:
 
   bool rate_test_;
 
-#ifdef REBLOCK_USLICE
-  size_t   remaining_size_;
-  static const int REMAINING_BUFFER_SIZE = 1024;
-  uint8_t  remaining_ptr_[lbne::PennDataReceiver::REMAINING_BUFFER_SIZE];
+#ifdef REBLOCK_PENN_USLICE
+  size_t           remaining_size_;
+  static const int remaining_buffer_size = 65536;
+  uint8_t          remaining_ptr_[lbne::PennDataReceiver::remaining_buffer_size];
+
   lbne::PennMicroSlice::sample_count_t remaining_payloads_recvd_;
   lbne::PennMicroSlice::sample_count_t remaining_payloads_recvd_counter_;
   lbne::PennMicroSlice::sample_count_t remaining_payloads_recvd_trigger_;
   lbne::PennMicroSlice::sample_count_t remaining_payloads_recvd_timestamp_;
+
   uint64_t boundary_time_;    //unit is 64MHz NOvA clock ticks
   uint64_t run_start_time_;   //unit is 64MHz NOvA clock ticks
   uint64_t millislice_width_; //unit is 64MHz NOvA clock ticks
-#endif
+#endif //REBLOCK_PENN_USLICE
 };
 
 } /* namespace lbne */
