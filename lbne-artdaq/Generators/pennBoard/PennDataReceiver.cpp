@@ -332,11 +332,6 @@ void lbne::PennDataReceiver::do_read(void)
 
 			//add the overlap period with the previous millislice to the start of this millislice
                         if(overlap_size_) {
-#ifndef RECV_PENN_USLICE_IN_CHUNKS
-			  //form a microslice of the overlap data & use it to grab the payload statistics
-			  lbne::PennMicroSlice uslice(((uint8_t*)state_start_ptr_));
-			  overlap_payloads_recvd_ = uslice.sampleCount(overlap_payloads_recvd_counter_, overlap_payloads_recvd_trigger_, overlap_payloads_recvd_timestamp_, false, overlap_size_);
-#endif
 			  //move the overlap period to the start of the new millislice
                           memmove(current_write_ptr_, overlap_ptr_, overlap_size_);
                           current_write_ptr_ = (void*)((char*)current_write_ptr_ + overlap_size_);
@@ -765,13 +760,25 @@ void lbne::PennDataReceiver::handle_received_data(std::size_t length)
 	    //n_words = uslice.sampleCount(n_counter_words, n_trigger_words, n_timestamp_words, true, microslice_size_);
 	    //uint8_t* split_ptr = uslice.sampleTimeSplit(boundary_time_, remaining_size_, false, microslice_size_);
 
+	    /*
 	    uint8_t* split_ptr = 
 	      uslice.sampleTimeSplitAndCount(boundary_time_, remaining_size_, 
 					     n_words, n_counter_words, n_trigger_words, n_timestamp_words,
 					     remaining_payloads_recvd_, remaining_payloads_recvd_counter_, remaining_payloads_recvd_trigger_, remaining_payloads_recvd_timestamp_,
 					     true, microslice_size_);
+	    */
 
-            if(split_ptr) {
+	    std::size_t this_overlap_size(0);
+	    uint8_t* this_overlap_ptr = nullptr;
+	    uint8_t* split_ptr = 
+	      uslice.sampleTimeSplitAndCountTwice(boundary_time_, remaining_size_,
+						  overlap_time_,  this_overlap_size, this_overlap_ptr,
+						  n_words, n_counter_words, n_trigger_words, n_timestamp_words,
+						  remaining_payloads_recvd_, remaining_payloads_recvd_counter_, remaining_payloads_recvd_trigger_, remaining_payloads_recvd_timestamp_,
+						  overlap_payloads_recvd_,   overlap_payloads_recvd_counter_,   overlap_payloads_recvd_trigger_,   overlap_payloads_recvd_timestamp_,
+						  true, microslice_size_);						  
+
+            if(split_ptr != nullptr) {
 		if(remaining_size_ > lbne::PennDataReceiver::remaining_buffer_size) {
 		  std::cout << "ERROR buffer overflow for 'remaining bytes of microslice, after the millislice boundary'" << std::endl;
 		  //TODO handle error cleanly here (also find out the largest possible microslice size & set remaining_buffer_size appropriately)
@@ -781,6 +788,18 @@ void lbne::PennDataReceiver::handle_received_data(std::size_t length)
               memmove(remaining_ptr_, split_ptr, remaining_size_);
               millislice_size_recvd_ -= remaining_size_;
             }
+
+	    if(this_overlap_ptr != nullptr) {
+	      if(overlap_size_ + this_overlap_size > lbne::PennDataReceiver::overlap_buffer_size) {
+		std::cout << "ERROR buffer overflow for 'overlap bytes of microslice, after the millislice boundary'" << std::endl;
+		//TODO handle error cleanly here (also find out the largest possible overlap size & set overlap_buffer_size appropriately)
+	      }
+	      RECV_DEBUG(2) << "Overlap period found within microslice " << microslices_recvd_timestamp_
+                            << ". Storing " << overlap_size_ << " bytes for start of next millislice" << std::endl;
+	      memmove(overlap_ptr_ + overlap_size_, this_overlap_ptr, this_overlap_size);
+	      overlap_size_ += this_overlap_size;
+	    }
+
 #else
 	    n_words = uslice.sampleCount(n_counter_words, n_trigger_words, n_timestamp_words, true);
 #endif

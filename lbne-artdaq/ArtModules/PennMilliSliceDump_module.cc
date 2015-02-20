@@ -111,7 +111,7 @@ void lbne::PennMilliSliceDump::analyze(art::Event const & evt)
 	  uint8_t* payload_data = msf.payload(ip, type, timestamp, payload_size);
 	  bool verb_payload = ((std::find(verb_payload_ids_.begin(), verb_payload_ids_.end(), ip) != verb_payload_ids_.end())
 			       || (verb_payload_ids_.size() == 1 && verb_payload_ids_.at(0) > 999999)) ? true : false;
-	  if(payload_data && payload_size && verb_payload) {
+	  if((payload_data != nullptr) && payload_size && verb_payload) {
 	    std::cout << "Payload " << ip << " is type " << std::hex << (unsigned int)type << std::dec
 		      << " with timestamp " << timestamp << " and contents ";
 	    for(size_t ib = 0; ib < payload_size; ib++)
@@ -157,7 +157,7 @@ void lbne::PennMilliSliceDump::analyze(art::Event const & evt)
 		  lbne::PennMicroSlice::Payload_Header::short_nova_timestamp_t short_nova_timestamp;
 		  size_t   payload_size;
 		  uint8_t* payload = microslice->get_payload(uint32_t(ip), data_packet_type, short_nova_timestamp, payload_size, false);
-		  if(payload) {
+		  if(payload != nullptr) {
 		    std::cout << "Payload " << ip << " is type " << std::hex << (unsigned int)data_packet_type << std::dec
 			      << " with timestamp " << short_nova_timestamp << " and contents ";
 		    for(size_t ib = 0; ib < payload_size; ib++)
