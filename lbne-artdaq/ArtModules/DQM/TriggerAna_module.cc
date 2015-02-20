@@ -23,6 +23,7 @@
 #include "lbne-raw-data/Overlays/anlTypes.hh"
 #include "artdaq-core/Data/Fragments.hh"
 #include <iostream>
+#include <climits>
 #include "TH1.h"
 #include "TFile.h"
 
@@ -59,6 +60,34 @@ private:
   bool _verbose;                    ///< Control verbosity of output  
   // Declare histograms
   TH1D  *h_ssp_adc;
+  TH1D  *h_delta_event_number;
+  art::EventNumber_t   _last_event_number;
+
+
+  int _number_of_triggers;
+  int _number_of_trggers_per_fragment;
+  size_t _number_of_ssps;
+
+  bool _make_per_fragment_histos=false;
+
+  TH1D *h_number_of_triggers;
+
+  TH1D *h_integrated_sum;
+  TH1D *h_peak_time;
+  TH1D *h_peak_sum;
+  TH1D *h_channel_id;
+  TH1D *h_trigger_id;
+  TH1D *h_trigger_type;
+
+  TH1D **h_number_of_triggers_per_fragment;
+
+  TH1D **h_trigger_type_per_fragment;
+  TH1D **h_trigger_id_per_fragment; 
+  TH1D **h_channel_id_per_fragment; 
+  TH1D **h_peak_sum_per_fragment; 
+  TH1D **h_peak_time_per_fragment; 
+  TH1D **h_integrated_sum_per_fragment; 
+
 };
 
 
@@ -77,20 +106,102 @@ TriggerAna::TriggerAna(fhicl::ParameterSet const & p)
     std::cout << "    SSP module label:           "   << _sspModuleLabel    << std::endl;
     std::cout << "    verbose:                    "   << _verbose           << std::endl;
   }
+  _last_event_number = 0;
+
 }
 
 void TriggerAna::beginJob()
 {
   art::ServiceHandle<art::TFileService> tfs;
-  h_ssp_adc = tfs->make<TH1D>("ssp_adc_values","ssp_adc_values",120,-0.5,119.5);  
+  h_ssp_adc = tfs->make<TH1D>("ssp_adc_values","ssp_adc_values",SHRT_MAX,-0.5,SHRT_MAX-0.5);  
+  h_delta_event_number = tfs->make<TH1D>("delta_event_number","Difference between this and next event number",100,-0.5,100-0.5);  
+  h_number_of_triggers = tfs->make<TH1D>("number_of_triggers", "Total number of triggers in an event",100,-0.5,100-0.5);
+
+  std::string hist_name;
+  std::string hist_title;
+
+  hist_name = "trigger_type";
+  hist_title = "Trigger type";  
+  h_trigger_type = tfs->make<TH1D>(hist_name.c_str(),hist_title.c_str(), SHRT_MAX,-0.5,SHRT_MAX-0.5);
+
+  hist_name = "trigger_id";
+  hist_title = "Trigger id";    
+  h_trigger_id = tfs->make<TH1D>(hist_name.c_str(),hist_title.c_str(), SHRT_MAX,-0.5,SHRT_MAX-0.5);
+
+  hist_name = "channel_id";
+  hist_title = "Channel id";    
+  h_channel_id = tfs->make<TH1D>(hist_name.c_str(),hist_title.c_str(), SHRT_MAX,-0.5,SHRT_MAX-0.5);
+
+  hist_name = "peak_sum";
+  hist_title = "Peak sum";    
+  h_peak_sum = tfs->make<TH1D>(hist_name.c_str(),hist_title.c_str(), SHRT_MAX,-0.5,SHRT_MAX-0.5);
+
+  hist_name = "peak_time";
+  hist_title = "Peak time";    
+  h_peak_time = tfs->make<TH1D>(hist_name.c_str(),hist_title.c_str(), SHRT_MAX,-0.5,SHRT_MAX-0.5);
+
+  hist_name = "integrated_sum";
+  hist_title = "Integrated sum";    
+  h_integrated_sum = tfs->make<TH1D>(hist_name.c_str(),hist_title.c_str(), SHRT_MAX,-0.5,SHRT_MAX-0.5);
+
+  _number_of_ssps = 6;
+
+  if(_make_per_fragment_histos){
+    h_number_of_triggers_per_fragment = new TH1D*[_number_of_ssps];
+
+    h_trigger_type_per_fragment = new TH1D*[_number_of_ssps];
+    h_trigger_id_per_fragment = new TH1D*[_number_of_ssps];
+    h_channel_id_per_fragment = new TH1D*[_number_of_ssps];
+    h_peak_sum_per_fragment = new TH1D*[_number_of_ssps];
+    h_peak_time_per_fragment = new TH1D*[_number_of_ssps];
+    h_integrated_sum_per_fragment = new TH1D*[_number_of_ssps];
+
+    for(size_t ssp=0;ssp<_number_of_ssps;ssp++){
+      hist_name = "number_of_triggers_fragment_" + std::to_string(ssp);
+      hist_title = "Total number of triggers in fragment " + std::to_string(ssp);
+      h_number_of_triggers_per_fragment[ssp] = tfs->make<TH1D>(hist_name.c_str(), hist_title.c_str(),100,-0.5,100-0.5);
+
+      hist_name = "trigger_type_fragment_" + std::to_string(ssp);
+      hist_title = "Trigger type in fragment " + std::to_string(ssp);
+      h_trigger_type_per_fragment[ssp] = tfs->make<TH1D>(hist_name.c_str(),hist_title.c_str(), SHRT_MAX,-0.5,SHRT_MAX-0.5);
+
+      hist_name = "trigger_id_fragment_" + std::to_string(ssp);
+      hist_title = "Trigger id in fragment " + std::to_string(ssp);
+      h_trigger_id_per_fragment[ssp] = tfs->make<TH1D>(hist_name.c_str(),hist_title.c_str(), SHRT_MAX,-0.5,SHRT_MAX-0.5); 
+
+      hist_name = "channel_id_fragment_" + std::to_string(ssp);
+      hist_title = "Channel id in fragment " + std::to_string(ssp);
+  
+      hist_name = "peak_sum_fragment_" + std::to_string(ssp);
+      hist_title = "Peak sum in fragment " + std::to_string(ssp);
+      h_peak_sum_per_fragment[ssp] = tfs->make<TH1D>(hist_name.c_str(),hist_title.c_str(), SHRT_MAX,-0.5,SHRT_MAX-0.5); 
+
+      hist_name = "peak_time_fragment_" + std::to_string(ssp);
+      hist_title = "Peak time in fragment " + std::to_string(ssp);
+      h_peak_time_per_fragment[ssp] = tfs->make<TH1D>(hist_name.c_str(),hist_title.c_str(), SHRT_MAX,-0.5,SHRT_MAX-0.5); 
+
+      hist_name = "integrated_sum_fragment_" + std::to_string(ssp);
+      hist_title = "Integrated sum in fragment " + std::to_string(ssp);
+      h_integrated_sum_per_fragment[ssp] = tfs->make<TH1D>(hist_name.c_str(),hist_title.c_str(), SHRT_MAX,-0.5,SHRT_MAX-0.5); 
+
+    }//loop over ssp number
+  }//if _make_per_fragment_histos
 }
+
 
 void TriggerAna::analyze(art::Event const & evt)
 {
   // Implementation of required member function here.
+  _number_of_triggers=0;
+
   _nEvents++;
   bool trigger_decision = false;
   auto eventID = evt.id();
+  art::EventNumber_t   _this_event_number = evt.event();
+
+  h_delta_event_number->Fill(_this_event_number-_last_event_number);
+
+  _last_event_number=_this_event_number;
 
   if (_verbose) std::cout << "--- TriggerAna, eventID: " << eventID << std::endl;
 
@@ -119,6 +230,7 @@ void TriggerAna::analyze(art::Event const & evt)
     
     for (size_t idx = 0; idx < ssp_fragments->size(); ++idx) {
       _nFragments++;
+      _number_of_trggers_per_fragment=0;
       const auto& fragment((*ssp_fragments)[idx]);      
       lbne::SSPFragment ssp_fragment(fragment);
       
@@ -135,6 +247,11 @@ void TriggerAna::analyze(art::Event const & evt)
       if(fragment.hasMetadata()) {
         ssp_header = &(fragment.metadata<lbne::SSPFragment::Metadata>()->sliceHeader);
         
+        _number_of_triggers+=ssp_header->nTriggers;
+        _number_of_trggers_per_fragment+=ssp_header->nTriggers;
+
+        if(idx < _number_of_ssps && _make_per_fragment_histos) h_number_of_triggers_per_fragment[idx]->Fill(_number_of_trggers_per_fragment);
+
         if (_verbose){
           std::cout << "        SSP metadata: "
                     << "Start time: "           << ssp_header->startTime
@@ -161,6 +278,27 @@ void TriggerAna::analyze(art::Event const & evt)
         
         dataPointer+=sizeof(SSPDAQ::EventHeader)/sizeof(unsigned int);
         
+
+
+        //Fill per trigger information 
+        h_trigger_type->Fill((daqHeader->group1 & 0xFF00) >> 8);
+        h_trigger_id->Fill(daqHeader->triggerID);
+        h_channel_id->Fill((daqHeader->group2 & 0x000F) >> 0);
+        h_peak_sum->Fill(peaksum);
+        h_peak_time->Fill((daqHeader->group3 & 0xFF00) >> 8);
+        h_integrated_sum->Fill(((unsigned int)(daqHeader->intSumHigh) << 8) + (((unsigned int)(daqHeader->group4) & 0xFF00) >> 8));
+
+
+        if(idx < _number_of_ssps && _make_per_fragment_histos)
+        {
+          h_trigger_type_per_fragment[idx]->Fill((daqHeader->group1 & 0xFF00) >> 8);
+          h_trigger_id_per_fragment[idx]->Fill(daqHeader->triggerID);
+          h_channel_id_per_fragment[idx]->Fill((daqHeader->group2 & 0x000F) >> 0);
+          h_peak_sum_per_fragment[idx]->Fill(peaksum);
+          h_peak_time_per_fragment[idx]->Fill((daqHeader->group3 & 0xFF00) >> 8);
+          h_integrated_sum_per_fragment[idx]->Fill(((unsigned int)(daqHeader->intSumHigh) << 8) + (((unsigned int)(daqHeader->group4) & 0xFF00) >> 8));
+        }
+
         //get the information from the data
         unsigned int nADC=(daqHeader->length-sizeof(SSPDAQ::EventHeader)/sizeof(unsigned int))*2;
         const unsigned short* adcPointer=reinterpret_cast<const unsigned short*>(dataPointer);
@@ -174,6 +312,9 @@ void TriggerAna::analyze(art::Event const & evt)
       } // end of while over each trigger
     } // end of loop over SSP fragments
   } // end of if on is SSP fragment valid
+
+  h_number_of_triggers->Fill(_number_of_triggers);
+
 }
 
 void TriggerAna::endJob()

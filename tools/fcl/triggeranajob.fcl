@@ -20,7 +20,7 @@ physics:
 
     randomana:{
       module_type: TriggerAna
-      TriggerModuleLabel: prescale100
+      TriggerModuleLabel: prescale1
       Verbose: false
     }
 
