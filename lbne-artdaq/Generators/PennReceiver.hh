@@ -98,7 +98,7 @@ namespace lbne {
     uint32_t receiver_tick_period_usecs_;
 
     std::map<uint8_t*, std::unique_ptr<artdaq::Fragment>> raw_to_frag_map_;
-    uint16_t number_of_microslices_per_millislice_;
+    uint32_t number_of_microslices_per_millislice_;
     uint16_t overlap_width_;
 
     std::unique_ptr<lbne::PennClient> dpm_client_;

@@ -204,6 +204,9 @@ class PennMicroslice(object):
         sequence = bin(self.sequence)[2:].zfill(8)
 
         block_size = bin(nbytes)[2:].zfill(16)
+        if len(block_size) > 16:
+            print "FATAL ERROR. Block created with block size greater than 16 bits. nbytes is ", nbytes
+            sys.exit(1)
 
         #print "header string"
         #print version, sequence, block_size
@@ -238,7 +241,7 @@ class PennMicroslice(object):
                 data += self.create_payload_trigger()
                 nchar += int(PennMicroslice.format_payload_trigger[1:-1]) + int(PennMicroslice.format_payload_header[1:-1])
             #add a header, and reset counters, if we've got too many ticks & have to make a fragmented block
-            if i == self.fragment_microslice_at_ticks - 1:
+            if ((self.fragment_microslice_at_ticks > 0 and i > 0 and (i % self.fragment_microslice_at_ticks) == self.fragment_microslice_at_ticks - 1) and i != nticks - 1) or (nchar + int(PennMicroslice.format_header[1:-1]) + 20 >= 65535):
                 nchar += int(PennMicroslice.format_header[1:-1])
                 data   = self.create_header(nchar) + data
                 totalnchar += nchar
@@ -289,7 +292,7 @@ class PennMicroslice(object):
             print_string_as_bin(data[1])
             print 'block size',
             blocksizebin = string_to_bin(data[2:4])
-            blocksize = int(blocksizebin[4:], 2)
+            blocksize = int(blocksizebin, 2)
             print blocksize, blocksizebin
             
             #get the microslice contents (to be able to print it)
@@ -322,15 +325,16 @@ if __name__ == '__main__':
 
     #create a single microslice and print all information
     print "PENN microslice header has a length of", PennMicroslice.length_header(), "chars"
-    uslice = PennMicroslice(payload_mode = 2, trigger_mode = 0, nticks_per_microslice = 10, sequence = 0, fragment_microslice_at_ticks = 10)
+    uslice = PennMicroslice(payload_mode = 2, trigger_mode = 0, nticks_per_microslice = 100, sequence = 0, fragment_microslice_at_ticks = 10)
     packed_uslice = uslice.pack()
     print "Packed microslice has length", len(packed_uslice), "bytes, contents:", binascii.hexlify(packed_uslice)
-    uslice.print_microslice()
+    uslice.print_microslice(only_header = False)
+    #uslice.print_microslice(only_header = True)
+
+    #sys.exit(1)
 
     print ""
 
-    #sys.exit()
-    
     #create lots of microslices, printing only the header
     i = 0
     while i < 10:

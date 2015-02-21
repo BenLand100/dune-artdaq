@@ -33,7 +33,7 @@ namespace lbne {
 class PennDataReceiver {
 
 public:
-  PennDataReceiver(int debug_level, uint32_t tick_period_usecs, uint16_t udp_receive_port, uint16_t number_of_microslices_per_millislice, uint16_t overlap_width, bool rate_test);
+  PennDataReceiver(int debug_level, uint32_t tick_period_usecs, uint16_t udp_receive_port, uint32_t number_of_microslices_per_millislice, uint16_t overlap_width, bool rate_test);
 	virtual ~PennDataReceiver();
 
 	void start();
@@ -71,7 +71,7 @@ private:
 	uint32_t tick_period_usecs_;
 
 	uint16_t receive_port_;
-	uint16_t number_of_microslices_per_millislice_;
+  uint32_t number_of_microslices_per_millislice_;
 
 	std::atomic<bool> run_receiver_;
 	std::atomic<bool> suspend_readout_;

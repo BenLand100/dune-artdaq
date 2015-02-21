@@ -96,7 +96,7 @@ lbne::PennReceiver::PennReceiver(fhicl::ParameterSet const & ps)
 	ps.get<int>("receiver_debug_level", 0);
 
   number_of_microslices_per_millislice_ =
-	ps.get<uint16_t>("number_of_microslices_per_millislice", 10);
+	ps.get<uint32_t>("number_of_microslices_per_millislice", 10);
 
   overlap_width_ = 
         ps.get<uint16_t>("overlap_width", 5);

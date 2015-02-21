@@ -17,7 +17,7 @@
 #define RECV_DEBUG(level) if (level <= debug_level_) std::cout
 
 lbne::PennDataReceiver::PennDataReceiver(int debug_level, uint32_t tick_period_usecs,
-					 uint16_t receive_port, uint16_t number_of_microslices_per_millislice, 
+					 uint16_t receive_port, uint32_t number_of_microslices_per_millislice, 
 					 uint16_t overlap_width, bool rate_test ) :
 	debug_level_(debug_level),
 	acceptor_(io_service_, tcp::endpoint(tcp::v4(), (short)receive_port)),
