@@ -1,4 +1,4 @@
-cet_script(setupDemoEnvironment.sh DemoControl.rb startSspSystem.sh manageSspSystem.sh start2x2System.sh manage2x2System.sh start2x2x2System.sh manage2x2x2System.sh CreateNewFragmentGenerator.rb  generateEventBuilderMain.rb  generateWFViewer.rb generateEventBuilder.rb generateSSP.rb generateTpc.rb demo_utilities.rb generateToy.rb generateAggregator.rb generateAggregatorMain.rb generateBoardReaderMain.rb RunDriver.rb startSystem.sh startRceSystem.sh manageRceSystem.sh startTriggerSystem.sh manageTriggerSystem.sh generateTrigger.rb)
+cet_script(setupDemoEnvironment.sh DemoControl.rb startSspSystem.sh manageSspSystem.sh start2x2System.sh manage2x2System.sh start2x2x2System.sh manage2x2x2System.sh CreateNewFragmentGenerator.rb  generateEventBuilderMain.rb  generateWFViewer.rb generateEventBuilder.rb generateSSP.rb generateTpc.rb demo_utilities.rb generateToy.rb generateAggregator.rb generateAggregatorMain.rb generateBoardReaderMain.rb RunDriver.rb startSystem.sh startRceSystem.sh manageRceSystem.sh startTriggerSystem.sh manageTriggerSystem.sh generateTrigger.rb startPennSystem.sh managePennSystem.sh generatePenn.rb )
 
 art_make_exec(driver
   LIBRARIES
