@@ -1,0 +1,51 @@
+######################################################################
+# The ART code
+######################################################################
+
+physics:
+{
+  analyzers:
+  {
+    ssptightana:{
+      module_type: TriggerAna
+      TriggerModuleLabel: ssptighthypo
+      Verbose: false
+    }
+
+    ssplooseana:{
+      module_type: TriggerAna
+      TriggerModuleLabel: ssploosehypo
+      Verbose: false
+    }
+
+    randomana:{
+      module_type: TriggerAna
+      TriggerModuleLabel: prescale1
+      Verbose: false
+    }
+
+    allana:{
+      module_type: TriggerAna
+      TriggerModuleLabel: all
+      Verbose: false
+    }
+  }
+
+  a1: [ allana, ssplooseana, ssptightana, randomana ]
+  end_paths: [ a1 ]
+}
+
+source:
+{
+  module_type: RootInput
+  fileNames: ["/tmp/lbne_r000106_sr01_20141217T160625.root"]
+}
+
+services : {
+  TFileService:
+  {
+      fileName: "TriggerAnaHistograms.root"
+  }
+}
+
+process_name: Driver
