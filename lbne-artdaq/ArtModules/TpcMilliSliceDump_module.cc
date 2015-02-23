@@ -122,8 +122,18 @@ void lbne::TpcMilliSliceDump::analyze(art::Event const & evt)
 			    		<< " has sequence ID " << microslice->sequence_id()
 			    		<< " size " << microslice->size()
 			    		<< " and consists of: "<< microslice->nanoSliceCount() << " nanoslices" << std::endl;
+					std::cout << " frame size header    : 0x"
+						  << std::hex << std::setw(8) << std::setfill('0') << microslice->size() <<std::dec << std::endl;
+					std::cout << " sequence ID header    : 0x"
+						  << std::hex << std::setw(8) << std::setfill('0') << microslice->sequence_id() <<std::dec << std::endl;
+					std::cout << " type ID header    : 0x"
+						  << std::hex << std::setw(8) << std::setfill('0') << microslice->type_id() <<std::dec << std::endl;
+					std::cout << " software message    : 0x"
+						  << std::hex << std::setw(16) << std::setfill('0') << microslice->software_message() <<std::dec << std::endl;				   
+					std::cout << " firmware message    : 0x"
+						  << std::hex << std::setw(16) << std::setfill('0') << microslice->firmware_message() <<std::dec << std::endl;								
 				}
-
+				
 				if (microslice->nanoSliceCount() == 0) continue;
 
 				// First pass through nanoslices listed for verbose output. This is faster than iterating through many nanoslices

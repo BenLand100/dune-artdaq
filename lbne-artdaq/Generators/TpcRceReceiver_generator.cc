@@ -112,7 +112,7 @@ lbne::TpcRceReceiver::TpcRceReceiver(fhicl::ParameterSet const & ps)
   sleep(1);
   dpm_client_->send_command("ReadXmlFile", rce_xml_config_file_);
   std::ostringstream config_frag;
-  config_frag << "<DataDpm><DaqMode>" << rce_daq_mode_ << "</DaqMode></DataDpm>";
+  config_frag << "<DataDpm><DataBuffer><RunMode>" << rce_daq_mode_ << "</RunMode></DataBuffer></DataDpm>";
   dpm_client_->send_config(config_frag.str());
 
   // If the DTM client is enabled (for standalone testing of the RCE), open
@@ -121,9 +121,12 @@ lbne::TpcRceReceiver::TpcRceReceiver(fhicl::ParameterSet const & ps)
     dtm_client_ = std::unique_ptr<lbne::RceClient>(new lbne::RceClient(
 	       dtm_client_host_addr_, dtm_client_host_port_, dtm_client_timeout_usecs_));
     dtm_client_->send_command("HardReset");
-    std::ostringstream config_frag;
-    config_frag << "<TimingDtm><TimingRtm><EmulationEnable>False</EmulationEnable></TimingRtm></TimingDtm>";
-    dtm_client_->send_config(config_frag.str());
+    sleep(1);
+    //mg changes 2/16/2015...add configuration command; remove set emulation false
+    dtm_client_->send_command("ReadXmlFile", rce_xml_config_file_);
+    //    std::ostringstream config_frag;
+    //    config_frag << "<TimingDtm><TimingRtm><EmulationEnable>False</EmulationEnable></TimingRtm></TimingDtm>";
+    //    dtm_client_->send_config(config_frag.str());
   }
 #endif
 
@@ -204,13 +207,21 @@ void lbne::TpcRceReceiver::stop(void)
 {
 	mf::LogInfo("TpcRceReceiver") << "stop() called";
 
+	//put DPM stop first...see if that helps the DPM freeze issue
+	dpm_client_->send_command("SetRunState", "Stopped");
+	
+	sleep(10);
+
 	// Instruct the RCE to stop
 #ifndef NO_RCE_CLIENT
 	if (dtm_client_enable_)
 	{
 	  dtm_client_->send_command("SetRunState", "Stopped");
+	  //mg 2/16/2015; add a short sleep...this may help the race condition with DPM in triggered mode
 	}
-	dpm_client_->send_command("SetRunState", "Stopped");
+	
+	//	dpm_client_->send_command("SetRunState", "Stopped");
+
 
 	//dpm_client_->send_command("STOP");
 #endif
