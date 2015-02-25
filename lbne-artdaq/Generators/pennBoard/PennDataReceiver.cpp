@@ -869,22 +869,31 @@ void lbne::PennDataReceiver::handle_received_data(std::size_t length)
 			      << std::endl;
 		millislices_recvd_++;
 		millislice_state_ = MillisliceComplete;
-#ifdef REBLOCK_PENN_USLICE
-		boundary_time_ = (boundary_time_ + millislice_width_) & 0xFFFFFFF; //lowest 28 bits
-		overlap_time_  = (boundary_time_ - overlap_width_)    & 0xFFFFFFF; //lowest 28 bits
-#endif
 	}
 
 	// If the millislice is complete, place the buffer to the filled queue and set the state accordingly
 	if (millislice_state_ == MillisliceComplete)
 	{
 		current_raw_buffer_->setSize(millislice_size_recvd_);
+#ifndef REBLOCK_PENN_USLICE
 		current_raw_buffer_->setCount(microslices_recvd_);
+#endif
+		current_raw_buffer_->setSequenceID(millislices_recvd_ & 0xFFFF); //lowest 16 bits
 		current_raw_buffer_->setCountPayload(payloads_recvd_);
 		current_raw_buffer_->setCountPayloadCounter(payloads_recvd_counter_);
 		current_raw_buffer_->setCountPayloadTrigger(payloads_recvd_trigger_);
 		current_raw_buffer_->setCountPayloadTimestamp(payloads_recvd_timestamp_);
+		current_raw_buffer_->setEndTimestamp(boundary_time_);
+		current_raw_buffer_->setWidthTicks(millislice_width_);
+		current_raw_buffer_->setOverlapTicks(overlap_width_);
 		current_raw_buffer_->setFlags(0);
+
+		//update the times
+#ifdef REBLOCK_PENN_USLICE
+		boundary_time_ = (boundary_time_ + millislice_width_) & 0xFFFFFFF; //lowest 28 bits
+		overlap_time_  = (boundary_time_ - overlap_width_)    & 0xFFFFFFF; //lowest 28 bits
+#endif
+
 		filled_buffer_queue_.push(std::move(current_raw_buffer_));
 		millislice_state_ = MillisliceEmpty;
 	}

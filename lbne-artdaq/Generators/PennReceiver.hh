@@ -114,9 +114,14 @@ namespace lbne {
     PennRawBufferPtr create_new_buffer_from_fragment(void);
     uint32_t format_millislice_from_raw_buffer(uint16_t* src_addr, size_t src_size,
     		                                   uint8_t* dest_addr, size_t dest_size);
-    uint32_t validate_millislice_from_fragment_buffer(uint8_t* data_addr, size_t data_size, uint32_t count,
+    uint32_t validate_millislice_from_fragment_buffer(uint8_t* data_addr, size_t data_size, 
+#ifndef REBLOCK_PENN_USLICE
+						      uint32_t us_count,
+#endif
+						      uint16_t millislice_id,
 						      uint16_t payload_count, uint16_t payload_count_counter,
-						      uint16_t payload_count_trigger, uint16_t payload_count_timestamp);
+						      uint16_t payload_count_trigger, uint16_t payload_count_timestamp,
+						      uint64_t end_timestamp, uint32_t width_in_ticks, uint32_t overlap_in_ticks);
 
   };
 }

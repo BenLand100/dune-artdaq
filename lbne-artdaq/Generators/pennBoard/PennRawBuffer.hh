@@ -21,7 +21,17 @@ namespace lbne
       dataPtr_(&*(data_->begin())),
       size_(size),
       flags_(0),
-      count_(0)
+#ifndef REBLOCK_PENN_USLICE
+      count_(0),
+#endif
+      sequence_id_(0),
+      count_payload_(0),
+      count_payload_counter_(0),
+      count_payload_trigger_(0),
+      count_payload_timestamp_(0),
+      end_timestamp_(0),
+      width_in_ticks_(0),
+      overlap_in_ticks_(0)
     { }
 
     PennRawBuffer(uint8_t* dataPtr, size_t size) :
@@ -29,11 +39,17 @@ namespace lbne
       dataPtr_(dataPtr),
       size_(size),
       flags_(0),
+#ifndef REBLOCK_PENN_USLICE
       count_(0),
+#endif
+      sequence_id_(0),
       count_payload_(0),
       count_payload_counter_(0),
       count_payload_trigger_(0),
-      count_payload_timestamp_(0)
+      count_payload_timestamp_(0),
+      end_timestamp_(0),
+      width_in_ticks_(0),
+      overlap_in_ticks_(0)
     { }
 
     ~PennRawBuffer()
@@ -49,19 +65,31 @@ namespace lbne
     }
 
     void setFlags(uint32_t flags) { flags_ = flags; }
+#ifndef REBLOCK_PENN_USLICE
     void setCount(uint32_t count) { count_ = count; }
+#endif
+    void setSequenceID           (uint16_t sequence_id            ) { sequence_id_             = sequence_id; }
     void setCountPayload         (uint16_t count_payload          ) { count_payload_           = count_payload; }
     void setCountPayloadCounter  (uint16_t count_payload_counter  ) { count_payload_counter_   = count_payload_counter; }
     void setCountPayloadTrigger  (uint16_t count_payload_trigger  ) { count_payload_trigger_   = count_payload_trigger; }
     void setCountPayloadTimestamp(uint16_t count_payload_timestamp) { count_payload_timestamp_ = count_payload_timestamp; }
+    void setEndTimestamp         (uint64_t end_timestamp          ) { end_timestamp_           = end_timestamp; }
+    void setWidthTicks           (uint32_t width_in_ticks         ) { width_in_ticks_          = width_in_ticks; }
+    void setOverlapTicks         (uint32_t overlap_in_ticks       ) { overlap_in_ticks_        = overlap_in_ticks; }
 
     size_t   size(void)    { return size_; }
     uint32_t flags(void)   { return flags_; }
+#ifndef REBLOCK_PENN_USLICE
     uint32_t count(void)   { return count_; }
+#endif
+    uint16_t sequenceID           (void)   { return sequence_id_; }
     uint16_t countPayload         (void)   { return count_payload_; }
     uint16_t countPayloadCounter  (void)   { return count_payload_counter_; }
     uint16_t countPayloadTrigger  (void)   { return count_payload_trigger_; }
     uint16_t countPayloadTimestamp(void)   { return count_payload_timestamp_; }
+    uint64_t endTimestamp         (void)   { return end_timestamp_; }
+    uint32_t widthTicks           (void)   { return width_in_ticks_; }
+    uint32_t overlapTicks         (void)   { return overlap_in_ticks_; }
     uint8_t* dataPtr(void) { return dataPtr_; }
 
   private:
@@ -69,12 +97,17 @@ namespace lbne
     uint8_t* dataPtr_;
     size_t   size_;
     uint32_t flags_;
+#ifndef REBLOCK_PENN_USLICE
     uint32_t count_;
+#endif
+    uint16_t sequence_id_;
     uint16_t count_payload_;
     uint16_t count_payload_counter_;
     uint16_t count_payload_trigger_;
     uint16_t count_payload_timestamp_;
-
+    uint64_t end_timestamp_;
+    uint32_t width_in_ticks_;
+    uint32_t overlap_in_ticks_;
   };
 
   typedef std::unique_ptr<lbne::PennRawBuffer> PennRawBufferPtr;

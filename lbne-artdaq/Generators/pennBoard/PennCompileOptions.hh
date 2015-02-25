@@ -8,7 +8,13 @@
 //  N complete uslices
 //or
 //  reblocked in a set time-width
+#ifndef PENN_DONT_REBLOCK_USLICES
 #define REBLOCK_PENN_USLICE
+#endif
+/// note having REBLOCK_PENN_USLICE turned OFF is not fully implemented including:
+///   overlap region
+///   millislice header timing information
+
 
 //does we request on the data stream:
 //  1) the 4 bytes header

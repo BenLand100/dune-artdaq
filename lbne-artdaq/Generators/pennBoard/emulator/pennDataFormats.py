@@ -93,7 +93,7 @@ class PennMicroslice(object):
     num_values_trigger   = 8 * int(format_payload_trigger[1:-1])
     num_values_timestamp = 8 * int(format_payload_timestamp[1:-1])
 
-    version            = 0x0
+    version            = 0xF
 
     @classmethod
     def length_header(cls):
