@@ -79,12 +79,15 @@ SSPTrigger::SSPTrigger(fhicl::ParameterSet const & p)
     std::cout << "    Select all:                 "   << _selectAll       << std::endl;
     std::cout << "    verbose:                    "   << _verbose         << std::endl;
   }
+
+  produces< bool >(); // The world's simplest trigger decision
 }
 
 bool SSPTrigger::filter(art::Event & evt)
 {
   _nEvents++;
   bool trigger_decision = false;
+  std::unique_ptr<bool> is_good_event(new bool(false));
 
   auto eventID = evt.id();
   if (_verbose){
@@ -146,7 +149,11 @@ bool SSPTrigger::filter(art::Event & evt)
     if (_verbose) std::cout << "      -- selecting all events" << std::endl;
   }
 
-  if (trigger_decision) _nEventsPassed++;
+  if (trigger_decision){
+    _nEventsPassed++;
+    *is_good_event = true;
+  }
+  evt.put(std::move(is_good_event));
   return trigger_decision;
 }
 

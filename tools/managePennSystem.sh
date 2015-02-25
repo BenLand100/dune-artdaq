@@ -26,19 +26,16 @@ function launch() {
   fi
 
   DemoControl.rb ${enableSerial} -s -c $1 \
-    --toy1 `hostname`,${LBNEARTDAQ_BR_PORT[0]},0 \
-    --toy2 `hostname`,${LBNEARTDAQ_BR_PORT[1]},1 \
-    --ssp ${THIS_NODE},${LBNEARTDAQ_BR_PORT[2]},2,2 \
+    --penn `hostname`,${LBNEARTDAQ_BR_PORT[0]},0 \
     --eb `hostname`,${LBNEARTDAQ_EB_PORT[0]} \
     --eb `hostname`,${LBNEARTDAQ_EB_PORT[1]} \
     --ag `hostname`,${LBNEARTDAQ_AG_PORT[0]},1 \
     --ag `hostname`,${LBNEARTDAQ_AG_PORT[1]},1 \
-    --data-dir ${5} --online-monitoring $3 \
-    --trigger $4 \
-    --write-data ${7} --run-event-count ${8} \
-    --run-duration ${9} --file-size ${10} \
-    --file-event-count ${11} --file-duration ${12} \
-    --run-number $2  2>&1 | tee -a ${6}
+    --data-dir ${4} --online-monitoring $3 \
+    --write-data ${6} --run-event-count ${7} \
+    --run-duration ${8} --file-size ${9} \
+    --file-event-count ${10} --file-duration ${11} \
+    --run-number $2  2>&1 | tee -a ${5}
 }
 
 scriptName=`basename $0`
@@ -53,7 +50,6 @@ General options:
   -h, --help: prints this usage message
 Configuration options (init commands):
   -m <on|off>: specifies whether to run online monitoring [default=off]
-  -T <on|off>: specifies whether to enable the trigger [default=off]
   -D : disables the writing of data to disk
   -s <file size>: specifies the size threshold for closing data files (in MB)
       [default is 8000 MB (~7.8 GB); zero means that there is no file size limit]
@@ -102,9 +98,8 @@ Examples: ${scriptName} -p 32768 init
 # parse the command-line options
 originalCommand="$0 $*"
 onmonEnable=off
-triggerEnable=off
 diskWriting=1
-dataDir="/tmp"
+dataDir="/data/lbnedaq/data"
 runNumber=""
 runEventCount=0
 runDuration=0
@@ -114,7 +109,7 @@ fileEventCount=0
 fileDuration=0
 verbose=0
 OPTIND=1
-while getopts "hc:N:o:t:m:Dn:d:s:w:v-:T:" opt; do
+while getopts "hc:N:o:t:m:Dn:d:s:w:v-:" opt; do
     if [ "$opt" = "-" ]; then
         opt=$OPTARG
     fi
@@ -128,9 +123,6 @@ while getopts "hc:N:o:t:m:Dn:d:s:w:v-:T:" opt; do
             ;;
         m)
             onmonEnable=${OPTARG}
-            ;;
-        T)
-            triggerEnable=${OPTARG}
             ;;
         o)
             dataDir=${OPTARG}
@@ -225,13 +217,6 @@ else
     onmonEnable=0
 fi
 
-# translate the trigger enable flag
-if [[ "$triggerEnable" == "on" ]]; then
-    triggerEnable=1
-else
-    triggerEnable=0
-fi
-
 # verify that we don't have both a number of events and a time limit
 # for stopping a run
 if [[ "$command" == "stop" ]]; then
@@ -245,7 +230,7 @@ fi
 
 # build the logfile name
 TIMESTAMP=`date '+%Y%m%d%H%M%S'`
-logFile="/tmp/masterControl/dsMC-${TIMESTAMP}-${command}.log"
+logFile="/data/lbnedaq/daqlogs/masterControl/dsMC-${TIMESTAMP}-${command}.log"
 echo "${originalCommand}" > $logFile
 echo ">>> ${originalCommand} (Disk writing is ${diskWriting})"
 
@@ -256,11 +241,11 @@ shmKeyString=`printf "0x%x" ${shmKey}`
 # invoke the requested command
 if [[ "$command" == "shutdown" ]]; then
     # first send a stop command to end the run (in case it is needed)
-    launch "stop" $runNumber $onmonEnable $triggerEnable $dataDir \
+    launch "stop" $runNumber $onmonEnable $dataDir \
         $logFile $diskWriting $runEventCount $runDuration $fileSize \
         $fileEventCount $fileDuration $verbose
     # next send a shutdown command to move the processes to their ground state
-    launch "shutdown" $runNumber $onmonEnable $triggerEnable $dataDir \
+    launch "shutdown" $runNumber $onmonEnable $dataDir \
         $logFile $diskWriting $runEventCount $runDuration $fileSize \
         $fileEventCount $fileDuration $verbose
     # stop the MPI program
@@ -272,11 +257,11 @@ elif [[ "$command" == "start-system" ]]; then
     xmlrpc ${THIS_NODE}:${LBNEARTDAQ_PMT_PORT}/RPC2 pmt.startSystem
 elif [[ "$command" == "restart" ]]; then
     # first send a stop command to end the run (in case it is needed)
-    launch "stop" $runNumber $onmonEnable $triggerEnable $dataDir \
+    launch "stop" $runNumber $onmonEnable $dataDir \
         $logFile $diskWriting $runEventCount $runDuration $fileSize \
         $fileEventCount $fileDuration $verbose
     # next send a shutdown command to move the processes to their ground state
-    launch "shutdown" $runNumber $onmonEnable $triggerEnable $dataDir \
+    launch "shutdown" $runNumber $onmonEnable $dataDir \
         $logFile $diskWriting $runEventCount $runDuration $fileSize \
         $fileEventCount $fileDuration $verbose
     # stop the MPI program
@@ -287,11 +272,11 @@ elif [[ "$command" == "restart" ]]; then
     xmlrpc ${THIS_NODE}:${LBNEARTDAQ_PMT_PORT}/RPC2 pmt.startSystem
 elif [[ "$command" == "reinit" ]]; then
     # first send a stop command to end the run (in case it is needed)
-    launch "stop" $runNumber $onmonEnable $triggerEnable $dataDir \
+    launch "stop" $runNumber $onmonEnable $dataDir \
         $logFile $diskWriting $runEventCount $runDuration $fileSize \
         $fileEventCount $fileDuration $verbose
     # next send a shutdown command to move the processes to their ground state
-    launch "shutdown" $runNumber $onmonEnable $triggerEnable $dataDir \
+    launch "shutdown" $runNumber $onmonEnable $dataDir \
         $logFile $diskWriting $runEventCount $runDuration $fileSize \
         $fileEventCount $fileDuration $verbose
     # stop the MPI program
@@ -302,11 +287,11 @@ elif [[ "$command" == "reinit" ]]; then
     xmlrpc ${THIS_NODE}:${LBNEARTDAQ_PMT_PORT}/RPC2 pmt.startSystem
     # send the init command to re-initialize the system
     sleep 5
-    launch "init" $runNumber $onmonEnable $triggerEnable $dataDir \
+    launch "init" $runNumber $onmonEnable $dataDir \
         $logFile $diskWriting $runEventCount $runDuration $fileSize \
         $fileEventCount $fileDuration $verbose
 elif [[ "$command" == "exit" ]]; then
-    launch "shutdown" $runNumber $onmonEnable $triggerEnable $dataDir \
+    launch "shutdown" $runNumber $onmonEnable $dataDir \
         $logFile $diskWriting $runEventCount $runDuration $fileSize \
         $fileEventCount $fileDuration $verbose
     xmlrpc ${THIS_NODE}:${LBNEARTDAQ_PMT_PORT}/RPC2 pmt.stopSystem
@@ -325,7 +310,7 @@ elif [[ "$command" == "fast-reinit" ]]; then
     ssh ${AGGREGATOR_NODE} "ipcs | grep ${shmKeyString} | awk '{print \$2}' | xargs ipcrm -m 2>/dev/null"
     xmlrpc ${THIS_NODE}:${LBNEARTDAQ_PMT_PORT}/RPC2 pmt.startSystem
     sleep 5
-    launch "init" $runNumber $onmonEnable $triggerEnable $dataDir \
+    launch "init" $runNumber $onmonEnable $dataDir \
         $logFile $diskWriting $runEventCount $runDuration $fileSize \
         $fileEventCount $fileDuration $verbose
 elif [[ "$command" == "fast-exit" ]]; then
@@ -334,7 +319,7 @@ elif [[ "$command" == "fast-exit" ]]; then
     ssh ${AGGREGATOR_NODE} "ipcs | grep ${shmKeyString} | awk '{print \$2}' | xargs ipcrm -m 2>/dev/null"
 
 else
-    launch $command $runNumber $onmonEnable $triggerEnable $dataDir \
+    launch $command $runNumber $onmonEnable $dataDir \
         $logFile $diskWriting $runEventCount $runDuration $fileSize \
         $fileEventCount $fileDuration $verbose
 fi

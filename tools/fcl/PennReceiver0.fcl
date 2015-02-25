@@ -1,0 +1,47 @@
+ # FHiCL parameters for configuring PennReceiver generator
+ 
+ # Millislice size options
+ number_of_microslices_per_millislice : 200    #this is the 'millislice width' when running with REBLOCK_PENN_USLICE defined
+ overlap_width                        : 20     #number of blocks or number of ticks, depending on REBLOCK_PENN_USLICE value
+                                               #by construction, the first millislice is smaller than the others (it is pre-pended, not post-pended)
+   
+ # PENN client connection parameters
+ penn_client_host_addr     : '127.0.0.1' # this is localhost
+ penn_client_host_port     : 9999
+ penn_client_timeout_usecs : 5E5
+   
+ # Real PENN configuration parameters
+ penn_xml_config_file : 'config/defaults.xml'  # Configuration file
+ penn_daq_mode        : 'Trigger'              # Can be one of Burst, Scope, Trigger
+
+ # PENN emulator configuration parameters 
+  #connection
+ penn_data_dest_host                    : localhost
+ penn_data_dest_port                    : 8991  
+  #amount of data
+ penn_data_num_millislices              : 1         # 0=Run until stopped
+ penn_data_num_microslices              : 1000
+ penn_data_frag_rate                    : 1000      # Hz
+  #type of data
+ penn_data_payload_mode                 : 2         #counter&trigger payload contents 0=all off, 1=all on, 2=alternating on/off, 3=random
+ penn_data_trigger_mode                 : 2         #0=no trigger words sent. 1=trigger word sent every tick. 2=trigger word sent randomly
+ penn_data_nticks_per_microslice        : 100       #
+ penn_data_fragment_microslice_at_ticks : 0         #after this many ticks the uslice will be fragmented (<=0 means fragment automatically based on size)
+  #testing parameters
+ penn_data_repeat_microslices           : false     #for rate testing
+ penn_data_debug_partial_recv           : false     #slows emulator down to send 1 byte at a time, every 0.1 seconds. For testing how the boardreader handles async_receive that grabs less than requested bytes
+ 
+ # Port to receive data from PENN on  
+ receive_port : 8991
+ 
+ # Receiver parameters  
+ receiver_debug_level       : 0   #higher number = print more info (6 is current highest level)
+ receiver_tick_period_usecs : 1E4
+ 
+ # Stats reporting
+ reporting_interval_fragments : 10
+ 
+ # Buffer parameters  
+ raw_buffer_size             : 4000000
+ raw_buffer_precommit        : 50 
+ use_fragments_as_raw_buffer : true     #false not currently implemented

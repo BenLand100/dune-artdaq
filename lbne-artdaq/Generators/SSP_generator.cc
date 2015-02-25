@@ -176,8 +176,9 @@ void lbne::SSP::ConfigureDAQ(fhicl::ParameterSet const& ps){
   
 void lbne::SSP::start(){
   device_interface_->Start();
-  fNMissingFragments=0;
-  fNFullFragments=0;
+  fNNoFragments=0;
+  fNFragmentsSent=0;
+  fNGetNextCalls=0;
 }
 
 void lbne::SSP::stop(){
@@ -190,22 +191,39 @@ bool lbne::SSP::getNext_(artdaq::FragmentPtrs & frags) {
     return false;
   }
 
-  std::vector<unsigned int> millislice;
-  device_interface_->GetMillislice(millislice);
+  ++fNGetNextCalls;
 
-  if(millislice.size()==0){
-    ++fNMissingFragments;
-    return true;
-  }
-  ++fNFullFragments;
-  if(!(fNFullFragments%1000)){
-    SSPDAQ::Log::Info()<<device_interface_->GetIdentifier()
-		       <<"Generator sending fragment "<<fNFullFragments
-		       <<", total refused event requests "<<fNMissingFragments<<std::endl;
-  }
+  bool hasSeenSlice=false;
 
-  SSPFragment::Metadata metadata;
-  metadata.sliceHeader=*((SSPDAQ::MillisliceHeader*)(void*)millislice.data());
+  unsigned int maxFrags=100;
+
+  for(unsigned int fragsBuilt=0;fragsBuilt<maxFrags;++fragsBuilt){
+
+    std::vector<unsigned int> millislice;
+
+    device_interface_->GetMillislice(millislice);
+
+    if(millislice.size()==0){
+      if(!hasSeenSlice){
+	++fNNoFragments;
+      }
+    break;
+    }
+
+    hasSeenSlice=true;
+
+    ++fNFragmentsSent;
+
+    if(!(fNFragmentsSent%1000)){
+      SSPDAQ::Log::Info()<<device_interface_->GetIdentifier()
+			 <<"Generator sending fragment "<<fNFragmentsSent
+			 <<", calls to GetNext "<<fNGetNextCalls
+			 <<", of which returned null "<<fNNoFragments<<std::endl;
+			 
+    }
+    
+    SSPFragment::Metadata metadata;
+    metadata.sliceHeader=*((SSPDAQ::MillisliceHeader*)(void*)millislice.data());
 
   // And use it, along with the artdaq::Fragment header information
   // (fragment id, sequence id, and user type) to create a fragment
@@ -225,26 +243,27 @@ bool lbne::SSP::getNext_(artdaq::FragmentPtrs & frags) {
   // artdaq::Fragment constructor itself was not altered so as to
   // maintain backward compatibility.
 
-  SSPDAQ::Log::Debug()<<"SSP generator appending event to fragment holder"<<std::endl;
-
-  std::size_t dataLength = (millislice.size()-SSPDAQ::MillisliceHeader::sizeInUInts)*sizeof(unsigned int);
-
-  frags.emplace_back( artdaq::Fragment::FragmentBytes(0,
-						      ev_counter(), fragment_id(),
-						      fragment_type_, metadata) );
-
-  // Then any overlay-specific quantities next; will need the
-  // SSPFragmentWriter class's setter-functions for this
-
-  SSPFragmentWriter newfrag(*frags.back());
-
-  newfrag.set_hdr_run_number(999);
-
-  newfrag.resize(dataLength);
-  std::copy(millislice.begin()+SSPDAQ::MillisliceHeader::sizeInUInts,millislice.end(),newfrag.dataBegin());
-
-  ev_counter_inc();
-
+    SSPDAQ::Log::Debug()<<"SSP generator appending event to fragment holder"<<std::endl;
+    
+    std::size_t dataLength = millislice.size()-SSPDAQ::MillisliceHeader::sizeInUInts;
+    
+    frags.emplace_back( artdaq::Fragment::FragmentBytes(0,
+							ev_counter(), fragment_id(),
+							fragment_type_, metadata) );
+    
+    // Then any overlay-specific quantities next; will need the
+    // SSPFragmentWriter class's setter-functions for this
+    
+    SSPFragmentWriter newfrag(*frags.back());
+    
+    newfrag.set_hdr_run_number(999);
+    
+    newfrag.resize(dataLength);
+    std::copy(millislice.begin()+SSPDAQ::MillisliceHeader::sizeInUInts,millislice.end(),newfrag.dataBegin());
+    
+    ev_counter_inc();
+  } 
+  
   return true;
 }
 

@@ -55,6 +55,7 @@ private:
 
   //histograms, counters, etc
   TH1D * adc_values_;
+  TH1D * all_adc_values_;
   uint32_t n_adc_counter_;  //counter of total number of ALL adc values in an event
   uint64_t adc_cumulative_; //cumulative total of ALL adc values in an event
 };
@@ -69,6 +70,7 @@ lbne::SSPDump::SSPDump(fhicl::ParameterSet const & pset)
       verb_adcs_(pset.get<uint32_t>        ("verbose_adcs", 10000)),
       verb_meta_(pset.get<bool>            ("verbose_metadata", true)),
       adc_values_(nullptr),
+      all_adc_values_(nullptr),
       n_adc_counter_(0),
       adc_cumulative_(0)
 {
@@ -78,6 +80,7 @@ void lbne::SSPDump::beginJob()
 {
   art::ServiceHandle<art::TFileService> tfs;
   adc_values_ = tfs->make<TH1D>("adc_values","adc_values",4096,-0.5,4095.5);  
+  all_adc_values_ = tfs->make<TH1D>("all_adc_values","all_adc_values",4096,-0.5,4095.5);  
 }
 
 void lbne::SSPDump::beginEvent(art::EventNumber_t /*eventNumber*/)
@@ -212,6 +215,7 @@ void lbne::SSPDump::analyze(art::Event const & evt)
 	  
 	  const unsigned short* adc = adcPointer + idata;
 	  adc_values_->Fill(*adc);
+	  all_adc_values_->Fill(*adc);
 	  n_adc_counter_++;
 	  adc_cumulative_ += (uint64_t)(*adc);
 	  //	  hist->SetBinContent(idata+1,*adc);

@@ -249,22 +249,25 @@ void SSPDAQ::EthernetDevice::ReceiveEthernet(SSPDAQ::CtrlPacket& rx, unsigned in
 void SSPDAQ::EthernetDevice::DevicePurge(boost::asio::ip::tcp::socket& socket){
   bool done = false;
   unsigned int bytesQueued = 0;
-    
+  unsigned int sleepTime = 0;
+
   //Keep getting data from channel until queue is empty
   do{
     bytesQueued=socket.available();
 
     //Read data from device, up to 256 bytes
     if(bytesQueued!=0){
+      sleepTime=0;
       unsigned int bytesToGet=std::min((unsigned int)256,bytesQueued);
       std::vector<char> junkBuf(bytesToGet);
       socket.read_some(boost::asio::buffer(junkBuf,bytesToGet));
     }
     //If queue is empty, wait a bit and check that it hasn't filled up again, then return 
     else{
-      usleep(10000);	// 10ms
+      usleep(1000);	// 1ms
+      sleepTime+=1000;
       bytesQueued=socket.available();
-      if (bytesQueued == 0) {
+      if (bytesQueued == 0&&sleepTime>1000000) {
 	done = 1;
       }
     }

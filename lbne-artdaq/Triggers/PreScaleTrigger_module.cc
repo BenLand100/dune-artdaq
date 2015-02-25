@@ -65,8 +65,8 @@ trig::PreScaleTrigger::PreScaleTrigger(fhicl::ParameterSet const & p)
 
   _iPreScale = p.get < int > ("PreScale", 2 );
   if(_iPreScale<1){
-      std::cerr << "Error setting _iPreScale: " << _iPreScale << " Must be greater that 0" << std::endl;
-      _iPreScale=1;
+    std::cerr << "Error setting _iPreScale: " << _iPreScale << " Must be greater that 0" << std::endl;
+    _iPreScale=1;
   }
 
   _iEventCounter = 0;
@@ -80,6 +80,8 @@ trig::PreScaleTrigger::PreScaleTrigger(fhicl::ParameterSet const & p)
   _iNumFailed=0;
 
   printParams();
+
+  produces< bool >(); // The world's simplest trigger decision
 
 }
 
@@ -95,40 +97,34 @@ void trig::PreScaleTrigger::printParams(){
 
 }
 
-bool trig::PreScaleTrigger::filter(art::Event & e)
+bool trig::PreScaleTrigger::filter(art::Event & evt)
 {
   // Implementation of required member function here.
-  auto eventID = e.id();
+  bool trigger_decision = false;
+  std::unique_ptr<bool> is_good_event(new bool(false));
+  auto eventID = evt.id();
 
   _iEventCounter++;
 
   std::cout << "eventID " << eventID << " _iEventCounter " << _iEventCounter;
   
   if(_bUseRndmPreScale){
-    if(_rndmDistribution(_generator)<1){
-        std::cout << "  passed" << std::endl; 
-        _iNumPassed++;
-        return 1;
-    }
-    else{
-        std::cout << "  failed" << std::endl; 
-        _iNumFailed++;
-        return 0;
-    }
-
+    if(_rndmDistribution(_generator)<1)   trigger_decision = true;
   }//_bUseRndmPreScale==true
   else{  
-    if(_iEventCounter % _iPreScale == 0){
-      std::cout << " passed" << std::endl;
-        _iNumPassed++;
-      return 1;
-    } 
-    else{
-      std::cout << " failed" << std::endl;
-      _iNumFailed++;
-      return 0;
-    } 
+    if(_iEventCounter % _iPreScale == 0)  trigger_decision = true;
   } //_bUseRndmPreScale==false
+
+  if (trigger_decision){
+    std::cout << "  passed" << std::endl; 
+    _iNumPassed++;
+    *is_good_event = true;
+  } else {
+    std::cout << "  failed" << std::endl; 
+    _iNumFailed++;
+  }
+  evt.put(std::move(is_good_event));
+  return trigger_decision;
 }
 
 void trig::PreScaleTrigger::endJob()
