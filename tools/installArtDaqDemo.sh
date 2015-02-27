@@ -90,11 +90,11 @@ function install_package {
 
 . $products_dir/setup
 
-install_package artdaq-core v1_04_06 e6 s5
-install_package lbne-raw-data v0_00_09 e6 s5
-install_package artdaq v1_12_04 e6 s5 eth
+install_package artdaq-core v1_04_10 e6 s6
+install_package lbne-raw-data v1_02_00 e6 s6
+install_package artdaq v1_12_08 e6 s6 eth
 
-setup_qualifier="e6 eth"
+setup_qualifier="e6 s6 eth"
 
 
 if [[ "$HOSTNAME" != "lbne35t-gateway01.fnal.gov" ]] ; then
