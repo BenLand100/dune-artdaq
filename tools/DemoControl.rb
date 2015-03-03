@@ -607,7 +607,7 @@ class SystemControl
     totalFRs = @options.boardReaders.length
     totalEBs = @options.eventBuilders.length
     totalAGs = @options.aggregators.length
-    inputBuffSizeWords = 2097152
+    inputBuffSizeWords = 8388608
 
     #if Integer(totalv1720s) > 0
     #  inputBuffSizeWords = 8192 * @options.v1720s[0].gate_width

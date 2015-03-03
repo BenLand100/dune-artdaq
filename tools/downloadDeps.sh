@@ -21,7 +21,7 @@ starttime=`date`
 cd ${productdir}
 
 prods="\
-mpich v3_1_2 -f Linux64bit+2.6-2.12 -z ${productdir} -q ${basequal2}:${build_type}
+mpich v3_1_2a -f Linux64bit+2.6-2.12 -z ${productdir} -q ${basequal2}:${build_type}
 xmlrpc_c v1_25_30 -f Linux64bit+2.6-2.12 -z ${productdir} -q ${basequal2}:${build_type}"
 
 # Some tarfiles have names that deviate from the standard "template",
@@ -29,7 +29,11 @@ xmlrpc_c v1_25_30 -f Linux64bit+2.6-2.12 -z ${productdir} -q ${basequal2}:${buil
 
 prods2="\
 smc_compiler/v6_1_0/smc_compiler-6.1.0-noarch.tar.bz2
-TRACE/v3_03_03/TRACE-3.03.03-slf6.tar.bz2"
+TRACE/v3_03_03/TRACE-3.03.03-slf6.tar.bz2
+cetbuildtools/v4_07_03/cetbuildtools-4.07.03-noarch.tar.bz2
+cmake/v3_1_2/cmake-3.1.2-slf6-x86_64.tar.bz2
+cetpkgsupport/v1_08_04/cetpkgsupport-1.08.04-noarch.tar.bz2
+"
 
 # $1=prod_area $2="prod_lines"
 
@@ -62,16 +66,17 @@ cd ${productdir}
 export savedPRODUCTS=${PRODUCTS}
 installDir=`pwd`
 simpleQual=`echo ${basequal} | sed 's/:eth//g' | sed 's/eth://g' | sed 's/ib://g' | sed 's/:ib//g'`
-artVersion=v1_12_02
-pullScript=pullProducts-${artVersion}
-url=http://scisoft.fnal.gov/scisoft/projects/art/${artVersion}/${pullScript}
+artVersion=v1_12_05
+pullScript=pullProducts
+url=http://scisoft.fnal.gov/scisoft/bundles/tools/pullProducts
 echo url=$url
 wget $url 2>/dev/null
 chmod +x ${pullScript}
 mkdir tarfiles
 cd tarfiles
 export PRODUCTS=${installDir}
-../${pullScript} ${installDir} slf6 artdev ${simpleQual} ${build_type}
+echo "../${pullScript} ${installDir} slf6 art-${artVersion} ${simpleQual} ${build_type}"
+../${pullScript} ${installDir} slf6 art-${artVersion} ${simpleQual} ${build_type}
 export PRODUCTS=${savedPRODUCTS}
 cd ${installDir}
 rm -rf tarfiles

@@ -118,7 +118,7 @@ fi
 # sure we know what qualifier is meant to be passed to the
 # downloadDeps.sh and installArtDaqDemo.sh scripts below
 
-defaultqual=`grep defaultqual $git_working_path/ups/product_deps | awk '{print $2}' `
+defaultqual=$( grep "^[^#]*defaultqual" $git_working_path/ups/product_deps | awk '{print $2}' )
 
 
 vecho() { test $opt_v -gt 0 && echo "$@"; }
