@@ -94,6 +94,9 @@ void lbne::PennMilliSliceDump::analyze(art::Event const & evt)
 	lbne::PennMilliSlice::Header::payload_count_t n_words, n_words_counter, n_words_trigger, n_words_timestamp;
 	n_words = msf.payloadCount(n_words_counter, n_words_trigger, n_words_timestamp);
 
+	///> Another way to find only the total number of payload words in the millislice
+	//lbne::PennMilliSlice::Header::payload_count_t n_words_again = msf.payloadCount();
+
 	///> Find the total number of bytes in the millislice
 	lbne::PennMilliSlice::Header::millislice_size_t ms_size = msf.size();
 
