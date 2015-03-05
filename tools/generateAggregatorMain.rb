@@ -30,7 +30,7 @@ source: {
   module_type: NetMonInput
 }
 outputs: {
-  %{root_output}rootOutput: {
+  %{root_output}normalOutput: {
   %{root_output}  module_type: RootOutput
   %{root_output}  fileName: \"%{output_file}\"
   %{root_output}}

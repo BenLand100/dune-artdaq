@@ -1,7 +1,6 @@
 # The parent line must be the first non-comment line in the file
 # This line defines the product name and version
-parent lbne_artdaq	v1_01_01
-#defaultqual	e6:s6
+parent lbne_artdaq	v1_01_02
 defaultqual	e6
 
 # These optional lines define the installed directories where
