@@ -21,9 +21,7 @@ namespace lbne
       dataPtr_(&*(data_->begin())),
       size_(size),
       flags_(0),
-#ifndef REBLOCK_PENN_USLICE
       count_(0),
-#endif
       sequence_id_(0),
       count_payload_(0),
       count_payload_counter_(0),
@@ -39,9 +37,7 @@ namespace lbne
       dataPtr_(dataPtr),
       size_(size),
       flags_(0),
-#ifndef REBLOCK_PENN_USLICE
       count_(0),
-#endif
       sequence_id_(0),
       count_payload_(0),
       count_payload_counter_(0),
@@ -65,9 +61,7 @@ namespace lbne
     }
 
     void setFlags(uint32_t flags) { flags_ = flags; }
-#ifndef REBLOCK_PENN_USLICE
     void setCount(uint32_t count) { count_ = count; }
-#endif
     void setSequenceID           (uint16_t sequence_id            ) { sequence_id_             = sequence_id; }
     void setCountPayload         (uint16_t count_payload          ) { count_payload_           = count_payload; }
     void setCountPayloadCounter  (uint16_t count_payload_counter  ) { count_payload_counter_   = count_payload_counter; }
@@ -79,9 +73,7 @@ namespace lbne
 
     size_t   size(void)    { return size_; }
     uint32_t flags(void)   { return flags_; }
-#ifndef REBLOCK_PENN_USLICE
     uint32_t count(void)   { return count_; }
-#endif
     uint16_t sequenceID           (void)   { return sequence_id_; }
     uint16_t countPayload         (void)   { return count_payload_; }
     uint16_t countPayloadCounter  (void)   { return count_payload_counter_; }
@@ -97,9 +89,7 @@ namespace lbne
     uint8_t* dataPtr_;
     size_t   size_;
     uint32_t flags_;
-#ifndef REBLOCK_PENN_USLICE
     uint32_t count_;
-#endif
     uint16_t sequence_id_;
     uint16_t count_payload_;
     uint16_t count_payload_counter_;
