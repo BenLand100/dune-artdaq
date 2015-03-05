@@ -23,8 +23,8 @@
  penn_data_num_microslices              : 1000
  penn_data_frag_rate                    : 1000      # Hz
   #type of data
- penn_data_payload_mode                 : 2         #counter&trigger payload contents 0=all off, 1=all on, 2=alternating on/off, 3=random
- penn_data_trigger_mode                 : 2         #0=no trigger words sent. 1=trigger word sent every tick. 2=trigger word sent randomly
+ penn_data_payload_mode                 : 4         #counter&trigger payload contents 0=all off, 1=all on, 2=alternating on/off, 3=random, 4=counter mostly 0 (but a few bits randomly on) word not sent if 0, trigger value is nhits if nhits>1
+ penn_data_trigger_mode                 : 1         #0=no trigger words sent. 1=trigger word sent every tick. 2=trigger word sent randomly
  penn_data_nticks_per_microslice        : 100       #
  penn_data_fragment_microslice_at_ticks : 0         #after this many ticks the uslice will be fragmented (<=0 means fragment automatically based on size)
   #testing parameters

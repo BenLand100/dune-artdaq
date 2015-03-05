@@ -139,14 +139,20 @@ class PennMicroslice(object):
         elif self.payload_mode == 3:  # Random values across full bit-range interval  
             maxVal = 1
             payload = ''.join(str(random.randint(0, maxVal)) for i in xrange(PennMicroslice.num_values_counter))
+
+        elif self.payload_mode == 4:  # Random values only in 8 bits
+            maxVal = 1
+            payload = ''.join(str(1 if (random.random() > 0.9) else 0) for i in xrange(8)) + "0"  * (PennMicroslice.num_values_counter - 8)
+            if not payload.count("1", 0, 8):
+                return False, 0
             
         else:
             print 'Unknown payload_mode:', self.payload_mode
             sys.exit(1)
 
-        return self.create_payload_header('c') + bin_to_char(payload)
+        return self.create_payload_header('c') + bin_to_char(payload), payload.count("1", 0, 8)
        
-    def create_payload_trigger(self):
+    def create_payload_trigger(self, nhits = 0):
         #This is just a long list of bit values
 
         if self.payload_mode == 0:    # No triggers
@@ -163,6 +169,12 @@ class PennMicroslice(object):
             l = list(payload)
             l[random.randint(0, len(l) - 1)] = "1"
             payload = ''.join(l)
+
+        elif self.payload_mode == 4:  # Use the number of hits to create a trigger word
+            if nhits > 1:
+                payload = bin(nhits)[2:].zfill(PennMicroslice.num_values_trigger)
+            else:
+                return False
 
         else:
             print 'Unknown payload_mode:', self.payload_mode
@@ -234,13 +246,18 @@ class PennMicroslice(object):
             else:
                 self.time.increment()
             #add the counter word
-            data  += self.create_payload_counter()
-            nchar += int(PennMicroslice.format_payload_counter[1:-1]) + int(PennMicroslice.format_payload_header[1:-1])
-            #add the trigger word
-            if self.trigger_mode == 1 or (random.randint(0,1) and self.trigger_mode == 2):
-                data += self.create_payload_trigger()
-                nchar += int(PennMicroslice.format_payload_trigger[1:-1]) + int(PennMicroslice.format_payload_header[1:-1])
-            #add a header, and reset counters, if we've got too many ticks & have to make a fragmented block
+            counter, nhits = self.create_payload_counter()
+            if counter:
+                data  += counter
+                nchar += int(PennMicroslice.format_payload_counter[1:-1]) + int(PennMicroslice.format_payload_header[1:-1])
+                #add the trigger word
+                if self.trigger_mode == 1 or (random.randint(0,1) and self.trigger_mode == 2):
+                    trigger = self.create_payload_trigger(nhits)
+                    if trigger:
+                        data += trigger
+                        nchar += int(PennMicroslice.format_payload_trigger[1:-1]) + int(PennMicroslice.format_payload_header[1:-1])
+                    
+            #add a header, and reset counters, if we've got too many ticks & have to make a fragmented block (or if a block is too big)
             if ((self.fragment_microslice_at_ticks > 0 and i > 0 and (i % self.fragment_microslice_at_ticks) == self.fragment_microslice_at_ticks - 1) and i != nticks - 1) or (nchar + int(PennMicroslice.format_header[1:-1]) + 20 >= 65535):
                 nchar += int(PennMicroslice.format_header[1:-1])
                 data   = self.create_header(nchar) + data
@@ -325,7 +342,7 @@ if __name__ == '__main__':
 
     #create a single microslice and print all information
     print "PENN microslice header has a length of", PennMicroslice.length_header(), "chars"
-    uslice = PennMicroslice(payload_mode = 2, trigger_mode = 0, nticks_per_microslice = 100, sequence = 0, fragment_microslice_at_ticks = 10)
+    uslice = PennMicroslice(payload_mode = 4, trigger_mode = 4, nticks_per_microslice = 100, sequence = 0, fragment_microslice_at_ticks = 0)
     packed_uslice = uslice.pack()
     print "Packed microslice has length", len(packed_uslice), "bytes, contents:", binascii.hexlify(packed_uslice)
     uslice.print_microslice(only_header = False)
