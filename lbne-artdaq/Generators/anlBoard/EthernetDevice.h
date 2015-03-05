@@ -1,8 +1,9 @@
-#ifndef EMULATEDDEVICE_H__
-#define EMULATEDDEVICE_H__
+#ifndef ETHERNETDEVICE_H__
+#define ETHERNETDEVICE_H__
 
 #include "lbne-raw-data/Overlays/anlTypes.hh"
 #include "Device.h"
+#include "boost/asio.hpp"
 
 #include <iostream>
 #include <iomanip>
@@ -11,27 +12,27 @@
 #include <cstdio>
 #include <cstring>
 #include <unistd.h>
-#include <memory>
-#include "SafeQueue.h"
-#include <atomic>
 
 namespace SSPDAQ{
 
-class EmulatedDevice : public Device{
+class EthernetDevice : public Device{
+
+  private:
 
  friend class DeviceManager;
 
  public:
 
- EmulatedDevice(unsigned int deviceNumber=0);
+ //Create a device object using FTDI handles given for data and communication channels
+ EthernetDevice(unsigned long ipAddress);
 
-  virtual ~EmulatedDevice(){};
+ virtual ~EthernetDevice(){};
+ 
+ //Implementation of base class interface
 
-  //Implementation of base class interface
-
-  inline virtual bool IsOpen(){
-    return isOpen;
-  }
+ inline virtual bool IsOpen(){
+   return isOpen;
+ }
 
   virtual void Close();
 
@@ -59,34 +60,30 @@ class EmulatedDevice : public Device{
 
   virtual void DeviceArrayWrite(unsigned int address, unsigned int size, unsigned int* data);
 
+  //Internal functions - make public so debugging code can access them
+  
+  void SendReceive(CtrlPacket& tx, CtrlPacket& rx, unsigned int txSize, unsigned int rxSizeExpected, unsigned int retryCount=0);
+
+  void SendEthernet(CtrlPacket& tx, unsigned int txSize);
+
+  void ReceiveEthernet(CtrlPacket& rx, unsigned int rxSizeExpected);
+
+  void DevicePurge(boost::asio::ip::tcp::socket& socket);
+
  private:
-
-  virtual void Open(bool slowControlOnly=false);
-
-  //Start generation of events by emulator thread
-  //Called when appropriate register is set via DeviceWrite
-  void Start();
-
-  //Stop generation of events by emulator thread
-  //Called when appropriate register is set via DeviceWrite
-  void Stop();
-
-  //Add fake events to fEmulatedBuffer periodically
-  void EmulatorLoop();
-
-  //Device number to put into event headers
-  unsigned int fDeviceNumber;
 
   bool isOpen;
 
-  //Separate thread to generate fake data asynchronously
-  std::unique_ptr<std::thread> fEmulatorThread;
+  static boost::asio::io_service fIo_service;
 
-  //Buffer for fake data, popped from by DeviceReceive
-  SafeQueue<unsigned int> fEmulatedBuffer;
+  boost::asio::ip::tcp::socket fCommSocket;
+  boost::asio::ip::tcp::socket fDataSocket;
 
-  //Set by Stop method; tells emulator thread to stop generating data
-  std::atomic<bool> fEmulatorShouldStop;
+  boost::asio::ip::address fIP;
+
+  //Can only be opened by DeviceManager, not by user
+  virtual void Open(bool slowControlOnly=false);
+
 };
 
 }//namespace

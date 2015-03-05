@@ -1,6 +1,7 @@
 #include "lbne-artdaq/Generators/SSP.hh"
 #include "lbne-artdaq/Generators/anlBoard/Log.h"
 #include "lbne-artdaq/Generators/anlBoard/anlExceptions.h"
+#include "lbne-artdaq/Generators/anlBoard/Log.h"
 
 #include "art/Utilities/Exception.h"
 #include "artdaq/Application/GeneratorMacros.hh"
@@ -24,6 +25,22 @@ lbne::SSP::SSP(fhicl::ParameterSet const & ps)
   fragment_type_(lbne::detail::PHOTON),
   board_id_(ps.get<unsigned int>("board_id",0))
 {
+  
+  unsigned int verbosity(ps.get<unsigned int>("verbosity",5));
+
+  switch(verbosity){
+  case 0:
+    SSPDAQ::Log::SetErrorStream(*SSPDAQ::Log::junk);
+  case 1:
+    SSPDAQ::Log::SetWarningStream(*SSPDAQ::Log::junk);
+  case 2:
+    SSPDAQ::Log::SetInfoStream(*SSPDAQ::Log::junk);
+  case 3:
+    SSPDAQ::Log::SetDebugStream(*SSPDAQ::Log::junk);
+  case 4:
+    SSPDAQ::Log::SetTraceStream(*SSPDAQ::Log::junk);
+  }
+
   unsigned int interfaceTypeCode(ps.get<unsigned int>("interface_type",999));
 
   switch(interfaceTypeCode){
@@ -45,9 +62,16 @@ lbne::SSP::SSP(fhicl::ParameterSet const & ps)
       <<interfaceTypeCode
       <<".\n";
   }
+
   //Awful hack to get two devices to work together for now
-  device_interface_=new SSPDAQ::DeviceInterface(interface_type_,0);//board_id_);
-  device_interface_->Initialize();
+  if(interface_type_!=1){
+    board_id_=0;//std::stol(board_id_str);
+  }
+  else{
+    board_id_=inet_network(ps.get<std::string>("board_ip").c_str());
+  }
+  device_interface_=new SSPDAQ::DeviceInterface(interface_type_,board_id_);//board_id_);
+      device_interface_->Initialize();
   this->ConfigureDevice(ps);
   this->ConfigureDAQ(ps);
 }
@@ -118,15 +142,43 @@ void lbne::SSP::ConfigureDAQ(fhicl::ParameterSet const& ps){
     throw SSPDAQ::EDAQConfigError("");
   }
 
+  unsigned int emptyWriteDelay=daqConfig.get<unsigned int>("EmptyWriteDelay",0);
+
+  if(emptyWriteDelay==0){
+    SSPDAQ::Log::Error()<<"EmptyWriteDelay not defined in SSP DAQ configuration!"<<std::endl;
+    throw SSPDAQ::EDAQConfigError("");
+  }
+
+  unsigned int hardwareClockRate=daqConfig.get<unsigned int>("HardwareClockRate",0);
+
+  if(hardwareClockRate==1){
+    SSPDAQ::Log::Error()<<"Error: Hardware clock rate not defined in SSP DAQ configuration!"<<std::endl;
+    throw SSPDAQ::EDAQConfigError("");
+  }
+
+  unsigned int startOnNOvASync=daqConfig.get<unsigned int>("StartOnNOvASync",2);
+
+  if(startOnNOvASync>1){
+    SSPDAQ::Log::Error()<<"Error: StartOnNOvASync not defined, or invalidly defined, in SSP DAQ configuration!"<<std::endl;
+    throw SSPDAQ::EDAQConfigError("");
+  }
+
+
   device_interface_->SetMillisliceLength(millisliceLength);
   device_interface_->SetMillisliceOverlap(millisliceOverlap);
   device_interface_->SetUseExternalTimestamp(useExternalTimestamp);
+  device_interface_->SetEmptyWriteDelayInus(emptyWriteDelay);
+  device_interface_->SetHardwareClockRateInMHz(hardwareClockRate);
+  device_interface_->SetStartOnNOvASync(startOnNOvASync);
 }
 
 
   
 void lbne::SSP::start(){
   device_interface_->Start();
+  fNNoFragments=0;
+  fNFragmentsSent=0;
+  fNGetNextCalls=0;
 }
 
 void lbne::SSP::stop(){
@@ -139,15 +191,39 @@ bool lbne::SSP::getNext_(artdaq::FragmentPtrs & frags) {
     return false;
   }
 
-  std::vector<unsigned int> millislice;
-  device_interface_->GetMillislice(millislice);
+  ++fNGetNextCalls;
 
-  if(millislice.size()==0){
-    return true;
-  }
+  bool hasSeenSlice=false;
 
-  SSPFragment::Metadata metadata;
-  metadata.sliceHeader=*((SSPDAQ::MillisliceHeader*)(void*)millislice.data());
+  unsigned int maxFrags=100;
+
+  for(unsigned int fragsBuilt=0;fragsBuilt<maxFrags;++fragsBuilt){
+
+    std::vector<unsigned int> millislice;
+
+    device_interface_->GetMillislice(millislice);
+
+    if(millislice.size()==0){
+      if(!hasSeenSlice){
+	++fNNoFragments;
+      }
+    break;
+    }
+
+    hasSeenSlice=true;
+
+    ++fNFragmentsSent;
+
+    if(!(fNFragmentsSent%1000)){
+      SSPDAQ::Log::Info()<<device_interface_->GetIdentifier()
+			 <<"Generator sending fragment "<<fNFragmentsSent
+			 <<", calls to GetNext "<<fNGetNextCalls
+			 <<", of which returned null "<<fNNoFragments<<std::endl;
+			 
+    }
+    
+    SSPFragment::Metadata metadata;
+    metadata.sliceHeader=*((SSPDAQ::MillisliceHeader*)(void*)millislice.data());
 
   // And use it, along with the artdaq::Fragment header information
   // (fragment id, sequence id, and user type) to create a fragment
@@ -167,26 +243,27 @@ bool lbne::SSP::getNext_(artdaq::FragmentPtrs & frags) {
   // artdaq::Fragment constructor itself was not altered so as to
   // maintain backward compatibility.
 
-  std::cout<<"SSP generator appending event to fragment holder"<<std::endl;
-
-  std::size_t dataLength = (millislice.size()-SSPDAQ::MillisliceHeader::sizeInUInts)*sizeof(unsigned int);
-
-  frags.emplace_back( artdaq::Fragment::FragmentBytes(0,
-						      ev_counter(), fragment_id(),
-						      fragment_type_, metadata) );
-
-  // Then any overlay-specific quantities next; will need the
-  // SSPFragmentWriter class's setter-functions for this
-
-  SSPFragmentWriter newfrag(*frags.back());
-
-  newfrag.set_hdr_run_number(999);
-
-  newfrag.resize(dataLength);
-  std::copy(millislice.begin()+SSPDAQ::MillisliceHeader::sizeInUInts,millislice.end(),newfrag.dataBegin());
-
-  ev_counter_inc();
-
+    SSPDAQ::Log::Debug()<<"SSP generator appending event to fragment holder"<<std::endl;
+    
+    std::size_t dataLength = millislice.size()-SSPDAQ::MillisliceHeader::sizeInUInts;
+    
+    frags.emplace_back( artdaq::Fragment::FragmentBytes(0,
+							ev_counter(), fragment_id(),
+							fragment_type_, metadata) );
+    
+    // Then any overlay-specific quantities next; will need the
+    // SSPFragmentWriter class's setter-functions for this
+    
+    SSPFragmentWriter newfrag(*frags.back());
+    
+    newfrag.set_hdr_run_number(999);
+    
+    newfrag.resize(dataLength);
+    std::copy(millislice.begin()+SSPDAQ::MillisliceHeader::sizeInUInts,millislice.end(),newfrag.dataBegin());
+    
+    ev_counter_inc();
+  } 
+  
   return true;
 }
 

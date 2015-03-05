@@ -1,20 +1,28 @@
  # FHiCL parameters for configuring TpcRceReceiver generator
  
  # Number of microslice to concatenate into a millislice
- number_of_microslices_per_millislice: 10
+ number_of_microslices_per_millislice: 200
    
  # RCE client connection parameters
- rce_client_host_addr: '192.168.2.111'
+# rce_client_host_addr: lbnedpm0
+ rce_client_host_addr: '192.168.2.110'
  rce_client_host_port: 8090
  rce_client_timeout_usecs: 500000
    
  # Real RCE configuration parameters
  rce_xml_config_file: 'config/defaults.xml'  # Configuration file
- rce_daq_mode: 'Trigger' # Can be one of Burst, Scope, Trigger
+ rce_daq_mode: 'Idle' # Can be one of Burst, Scope, Trigger, Idle
+
+ # DTM client configuration parameters
+ dtm_client_enable: true
+# dtm_client_host_addr: lbnedtm0
+ dtm_client_host_addr: '192.168.2.210'
+ dtm_client_host_port: 8090
+ dtm_client_timeout_usecs: 500000
 
  # RCE emulator configuration parameters 
  rce_data_dest_host: '10.0.1.2'
- rce_data_dest_port: 8992  
+ rce_data_dest_port: 8991  
  rce_data_num_millislices: 0    # 0=Run until stopped
  rce_data_num_microslices: 100
  rce_data_frag_rate: 1000.0
@@ -23,7 +31,7 @@
  rce_data_adc_sigma: 100.0
  
  # Port to receive data from RCE on  
- receive_port: 8992
+ receive_port: 8991
  
  # Receiver parameters  
  receiver_debug_level: 1
@@ -34,5 +42,5 @@
  
  # Buffer parameters  
  raw_buffer_size: 4000000
- raw_buffer_precommit: 10 
+ raw_buffer_precommit: 50 
  use_fragments_as_raw_buffer: true

@@ -30,7 +30,8 @@ SSPDAQ::RegMap& SSPDAQ::RegMap::Get(void)
     instance->armOperMode                       = 0x00000044;   //      0x0044,         0x00000000              0xFFFFFFFF              0x00000000              regOperMode            
     instance->armOptions                        = 0x00000048;   //      0x0048,         0x00000000              0xFFFFFFFF              0x00000000              regOptions             
     instance->armModemStatus                    = 0x0000004C;   //      0x004C,         0x00000000              0xFFFFFFFF              0x00000000              regModemStatus         
-                                                                                                                                                                                       
+    instance->PurgeDDR                          = 0x00000300;   //      0x0300,         0x00000000              0x00000001              0x00000001
+
     // Registers in the Zynq FPGA       Address                         Address         Default Value   Read Mask               Write Mask              VHDL Name                      
     instance->zynqTest[0]                       = 0x40000000;   //      X"000",         X"33333333",    X"FFFFFFFF",    X"00000000",    regin_test_0                                   
     instance->zynqTest[1]                       = 0x40000004;   //      X"004",         X"44444444",    X"FFFFFFFF",    X"00000000",    unnamed test register                          
@@ -38,7 +39,7 @@ SSPDAQ::RegMap& SSPDAQ::RegMap::Get(void)
     instance->zynqTest[3]                       = 0x4000000C;   //      X"00C",         X"66666666",    X"FFFFFFFF",    X"0000FFFF",    unnamed test register                          
     instance->zynqTest[4]                       = 0x40000010;   //      X"010",         X"00000000",    X"FFFFFFFF",    X"FFFFFFFF",    reg_test_1                                     
     instance->zynqTest[5]                       = 0x40000014;   //      X"014",         X"00000000",    X"FFFFFFFF",    X"FFFFFFFF",    unnamed test register                          
-    instance->fakeControl                       = 0x40000020;   //      X"020",         X"00000000",    X"000000F8",    X"FFFFFFFF",    reg_fake_control                               
+    instance->eventDataInterfaceSelect          = 0x40000020;   //      X"020",         X"00000000",    X"000000F8",    X"FFFFFFFF",    reg_fake_control                               
     instance->fakeNumEvents                     = 0x40000024;   //      X"024",         X"00000000",    X"FFFFFFFF",    X"FFFFFFFF",    reg_fake_num_events                            
     instance->fakeEventSize                     = 0x40000028;   //      X"028",         X"00000000",    X"FFFFFFFF",    X"FFFFFFFF",    reg_fake_event_size                            
     instance->fakeBaseline                      = 0x4000002C;   //      X"02C",         X"00000000",    X"FFFFFFFF",    X"FFFFFFFF",    reg_fake_baseline                              
@@ -335,9 +336,10 @@ SSPDAQ::RegMap& SSPDAQ::RegMap::Get(void)
     instance->sync_period                       = 0x80000494;   //      X"494",         X"00000000",    X"FFFFFFFF",    X"00000000",    reg_last_sync_reset_count                      
     instance->sync_delay                        = 0x80000498;   //      X"498",         X"00000000",    X"FFFFFFFF",    X"00000000",    reg_external_timestamp (lsb)                   
     instance->sync_count                        = 0x8000049C;   //      X"49C",         X"00000000",    X"FFFFFFFF",    X"00000000",    reg_external_timestamp (msb)                   
-                                                                                                                                                                                       
+    instance->sync_stamp_low                    = 0x800004C8;
+    instance->sync_stamp_high                    = 0x800004CC;
     instance->master_logic_control               = 0x80000500;   //      X"500",         X"00000000",    X"FFFFFFFF",    X"00000073",    reg_master_logic_status                        
-    instance->trigger_config                    = 0x80000504;   //      X"504",         X"00000000",    X"00000003",    X"00000003",    reg_trigger_config                             
+    instance->master_logic_status                    = 0x80000504;   //      X"504",         X"00000000",    X"00000003",    X"00000003",    reg_trigger_config                             
     instance->overflow_status                   = 0x80000508;   //      X"508",         X"00000000",    X"FFFFFFFF",    X"00000000",    reg_overflow_status                            
     instance->phase_value                       = 0x8000050C;   //      X"50C",         X"00000000",    X"FFFFFFFF",    X"00000000",    reg_phase_value                                
     instance->link_tx_status                       = 0x80000510;   //      X"510",         X"00000000",    X"FFFFFFFF",    X"00000000",    reg_link_status                                
@@ -458,8 +460,9 @@ SSPDAQ::RegMap& SSPDAQ::RegMap::Get(void)
     instance->fNamed["armOperMode"]             =Register(  0x00000044, 0xFFFFFFFF, 0x00000000, 1 );      
     instance->fNamed["armOptions"]              =Register(  0x00000048, 0xFFFFFFFF, 0x00000000, 1 );      
     instance->fNamed["armModemStatus"]          =Register(  0x0000004C, 0xFFFFFFFF, 0x00000000, 1 );  
+    instance->fNamed["PurgeDDR"]                =Register(  0x00000300, 0x00000001, 0x00000001, 1 );  
     instance->fNamed["zynqTest"]                =Register(  0x40000000, 0xFFFFFFFF, 0x00000000, 6 );
-    instance->fNamed["fakeControl"]             =Register(  0x40000020, 0x000000F8, 0xFFFFFFFF, 1 );
+    instance->fNamed["eventDataInterfaceSelect"]=Register(  0x40000020, 0xFFFFFFFF, 0x00000001, 1 );
     instance->fNamed["fakeNumEvents"]           =Register(  0x40000024, 0xFFFFFFFF, 0xFFFFFFFF, 1 );
     instance->fNamed["fakeEventSize"]           =Register(  0x40000028, 0xFFFFFFFF, 0xFFFFFFFF, 1 );
     instance->fNamed["fakeBaseline"]            =Register(  0x4000002C, 0xFFFFFFFF, 0xFFFFFFFF, 1 );
@@ -540,8 +543,10 @@ SSPDAQ::RegMap& SSPDAQ::RegMap::Get(void)
     instance->fNamed["sync_period"]             =Register(  0x80000494, 0xFFFFFFFF, 0x00000000, 1 );
     instance->fNamed["sync_delay"]              =Register(  0x80000498, 0xFFFFFFFF, 0x00000000, 1 );
     instance->fNamed["sync_count"]              =Register(  0x8000049C, 0xFFFFFFFF, 0x00000000, 1 );
-    instance->fNamed["master_logic_control"]    =Register(  0x80000500, 0xFFFFFFFF, 0x00000073, 1 );     
-    instance->fNamed["trigger_config"]          =Register(  0x80000504, 0x00000003, 0x00000003, 1 );
+    instance->fNamed["sync_stamp_low"]          =Register(  0x800004C8, 0xFFFFFFFF, 0x00000000, 1 );
+    instance->fNamed["sync_stamp_high"]         =Register(  0x800004CC, 0xFFFFFFFF, 0x00000000, 1 );
+    instance->fNamed["master_logic_control"]    =Register(  0x80000500, 0xFFFFFFFF, 0x00000173, 1 );     
+    instance->fNamed["master_logic_status"]     =Register(  0x80000504, 0x00000001, 0x00000000, 1 );
     instance->fNamed["overflow_status"]         =Register(  0x80000508, 0xFFFFFFFF, 0x00000000, 1 );
     instance->fNamed["phase_value"]             =Register(  0x8000050C, 0xFFFFFFFF, 0x00000000, 1 );     
     instance->fNamed["link_tx_status"]          =Register(  0x80000510, 0xFFFFFFFF, 0x00000000, 1 );     

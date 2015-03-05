@@ -73,10 +73,14 @@ class Device{
 
   //=============================
 
+ protected:
+  
+  bool fSlowControlOnly;
+
  private:
 
   //Device can only be opened from the DeviceManager.
-  virtual void Open() = 0;
+  virtual void Open(bool slowControlOnly=false) = 0;
 
 };
 

@@ -38,12 +38,14 @@ services: {
 outputs: {
   %{netmon_output}netMonOutput: {
   %{netmon_output}  module_type: NetMonOutput
+  %{netmon_output}%{trigger_output}
   %{netmon_output}}
   %{root_output}normalOutput: {
   %{root_output}  module_type: RootOutput
   %{root_output}  fileName: \"%{output_file}\"
   %{root_output}  compressionLevel: 0
   %{root_output}}
+  
 }
 
 physics: {
@@ -57,6 +59,7 @@ physics: {
 
   %{netmon_output}my_output_modules: [ netMonOutput ]
   %{root_output}my_output_modules: [ normalOutput ]
+  %{trigger_path}
 }
 source: {
   module_type: RawInput
@@ -78,11 +81,17 @@ event_builder_code = generateEventBuilder( fragSizeWords, totalFRs, totalAGs, to
 ebConfig.gsub!(/\%\{event_builder_code\}/, event_builder_code)
 
 if Integer(triggerEnable) != 0
-  trigger_code =  generateTrigger()
+  trigger_output,trigger_code,trigger_path =  generateTrigger()
 else
-  trigger_code = ""
+  trigger_output = ""
+  trigger_code   = ""
+  trigger_path   = ""
 end
-ebConfig.gsub!(/\%\{trigger_code\}/, trigger_code)
+ebConfig.gsub!(/\%\{trigger_output\}/, trigger_output)
+ebConfig.gsub!(/\%\{trigger_code\}/,   trigger_code)
+ebConfig.gsub!(/\%\{trigger_path\}/,   trigger_path)
+# puts ebConfig
+# raise "Fail"
 
 ebConfig.gsub!(/\%\{ag_rank\}/, String(totalFRs + totalEBs))
 ebConfig.gsub!(/\%\{ag_count\}/, String(totalAGs))

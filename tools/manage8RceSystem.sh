@@ -25,30 +25,36 @@ function launch() {
       enableSerial="-e"
   fi
 
-  # DemoControl.rb ${enableSerial} -s -c $1 \
-  #   --tpc `hostname`,${LBNEARTDAQ_BR_PORT[0]},0 \
-  #   --tpc `hostname`,${LBNEARTDAQ_BR_PORT[1]},1 \
-  #   --eb `hostname`,${LBNEARTDAQ_EB_PORT[0]} \
-  #   --eb `hostname`,${LBNEARTDAQ_EB_PORT[1]} \
-  #   --ag `hostname`,${LBNEARTDAQ_AG_PORT[0]},1 \
-  #   --ag `hostname`,${LBNEARTDAQ_AG_PORT[1]},1 \
-  #   --data-dir ${4} --online-monitoring $3 \
-  #   --write-data ${6} --run-event-count ${7} \
-  #   --run-duration ${8} --file-size ${9} \
-  #   --file-event-count ${10} --file-duration ${11} \
-  #   --run-number $2  2>&1 | tee -a ${5}
+   DemoControl.rb ${enableSerial} -s -c $1 \
+     --tpc `hostname`,${LBNEARTDAQ_BR_PORT[0]},0 \
+     --tpc `hostname`,${LBNEARTDAQ_BR_PORT[1]},1 \
+     --tpc `hostname`,${LBNEARTDAQ_BR_PORT[2]},2 \
+     --tpc `hostname`,${LBNEARTDAQ_BR_PORT[3]},3 \
+     --tpc `hostname`,${LBNEARTDAQ_BR_PORT[4]},4 \
+     --tpc `hostname`,${LBNEARTDAQ_BR_PORT[5]},5 \
+     --tpc `hostname`,${LBNEARTDAQ_BR_PORT[6]},6 \
+     --tpc `hostname`,${LBNEARTDAQ_BR_PORT[7]},7 \
+     --eb `hostname`,${LBNEARTDAQ_EB_PORT[0]} \
+     --eb `hostname`,${LBNEARTDAQ_EB_PORT[1]} \
+     --ag `hostname`,${LBNEARTDAQ_AG_PORT[0]},1 \
+     --ag `hostname`,${LBNEARTDAQ_AG_PORT[1]},1 \
+     --data-dir ${4} --online-monitoring $3 \
+     --write-data ${6} --run-event-count ${7} \
+     --run-duration ${8} --file-size ${9} \
+     --file-event-count ${10} --file-duration ${11} \
+     --run-number $2  2>&1 | tee -a ${5}
 
-  DemoControl.rb ${enableSerial} -s -c $1 \
-    --tpc `hostname`,${LBNEARTDAQ_BR_PORT[0]},0 \
-    --eb `hostname`,${LBNEARTDAQ_EB_PORT[0]} \
-    --eb `hostname`,${LBNEARTDAQ_EB_PORT[1]} \
-    --ag `hostname`,${LBNEARTDAQ_AG_PORT[0]},1 \
-    --ag `hostname`,${LBNEARTDAQ_AG_PORT[1]},1 \
-    --data-dir ${4} --online-monitoring $3 \
-    --write-data ${6} --run-event-count ${7} \
-    --run-duration ${8} --file-size ${9} \
-    --file-event-count ${10} --file-duration ${11} \
-    --run-number $2  2>&1 | tee -a ${5}
+  #DemoControl.rb ${enableSerial} -s -c $1 \
+  #  --tpc `hostname`,${LBNEARTDAQ_BR_PORT[0]},0 \
+  #  --eb `hostname`,${LBNEARTDAQ_EB_PORT[0]} \
+  #  --eb `hostname`,${LBNEARTDAQ_EB_PORT[1]} \
+  #  --ag `hostname`,${LBNEARTDAQ_AG_PORT[0]},1 \
+  #  --ag `hostname`,${LBNEARTDAQ_AG_PORT[1]},1 \
+  #  --data-dir ${4} --online-monitoring $3 \
+  #  --write-data ${6} --run-event-count ${7} \
+  #  --run-duration ${8} --file-size ${9} \
+  #  --file-event-count ${10} --file-duration ${11} \
+  #  --run-number $2  2>&1 | tee -a ${5}
 
  #DemoControl.rb ${enableSerial} -s -c $1 \
  #   --tpc `hostname`,${LBNEARTDAQ_BR_PORT[0]},0 \

@@ -5,6 +5,7 @@
 #include "lbne-raw-data/Overlays/anlTypes.hh"
 #include "USBDevice.h"
 #include "EmulatedDevice.h"
+#include "EthernetDevice.h"
 
 #include <vector>
 #include <map>
@@ -27,14 +28,12 @@ class DeviceManager{
   //Get reference to instance of DeviceManager singleton
   static DeviceManager& Get();
 
-  //return pair containging <N_USBDevices,N_EthernetDevices>
-  //TODO: should really report serial numbers of available devices
-  std::pair<unsigned int, unsigned int> GetNDevices();
+  unsigned int GetNUSBDevices();
 
   //Open a device and return a pointer containing a handle to it
-  Device* OpenDevice(Comm_t commType,unsigned int deviceId);
+  Device* OpenDevice(Comm_t commType,unsigned int deviceId,bool slowControlOnly=false);
 
-  //Interrogate FTDI for list of devices. GetNDevices and OpenDevice will call this
+  //Interrogate FTDI for list of devices. GetNUSBDevices and OpenDevice will call this
   //if it has not yet been run, so it should not normally be necessary to call this directly.
   void RefreshDevices();
 
@@ -49,8 +48,8 @@ class DeviceManager{
   //List of USB devices on FTDI link
   std::vector<USBDevice> fUSBDevices;
 
-  //List of ethernet devices (interface not implemented yet)
-  std::vector<Device> fEthernetDevices;
+  //Ethernet devices keyed by IP address
+  std::map<unsigned long,std::unique_ptr<EthernetDevice> > fEthernetDevices;
 
   //List of emulated devices
   std::vector<std::unique_ptr<EmulatedDevice> > fEmulatedDevices;

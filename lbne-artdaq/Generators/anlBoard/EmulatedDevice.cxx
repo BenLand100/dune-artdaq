@@ -13,7 +13,9 @@ SSPDAQ::EmulatedDevice::EmulatedDevice(unsigned int deviceNumber){
   fEmulatorThread=0;
 }
 
-void SSPDAQ::EmulatedDevice::Open(){
+void SSPDAQ::EmulatedDevice::Open(bool slowControlOnly){
+
+  fSlowControlOnly=slowControlOnly;
   SSPDAQ::Log::Info()<<"Emulated device open"<<std::endl;
   isOpen=true;
 }

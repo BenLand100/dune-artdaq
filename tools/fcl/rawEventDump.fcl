@@ -8,18 +8,19 @@
 
 # ...where the "max events" argument is optional
 
+process_name: rawEventDump
+
 physics:
 {
 
 analyzers:
 {
-    printBuildInfo: {
-        module_type: PrintBuildInfo
+  printBuildInfo: {
+    module_type: PrintBuildInfo
 
-    	buildinfo_module_label: BuildInfo
-	buildinfo_instance_label: LbneArtdaq
-	#        buildinfo_instance_label: myInstanceName
-     }	
+    buildinfo_module_label: lbneArtdaqBuildInfo
+    buildinfo_instance_label: LbneArtdaqBuildInfo
+  }
 }
 
 
@@ -40,7 +41,7 @@ outputs:
   }
 }
 
-process_name: rawEventDump
+
 
 
 

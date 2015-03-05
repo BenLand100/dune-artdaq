@@ -26,7 +26,7 @@ function launch() {
   fi
 
   DemoControl.rb ${enableSerial} -s -c $1 \
-    --ssp lbnedaq1,${LBNEARTDAQ_BR_PORT[0]},0,0 \
+    --ssp lbnedaq1,${LBNEARTDAQ_BR_PORT[0]},0,1 \
     --eb lbnedaq2,${LBNEARTDAQ_EB_PORT[0]} \
     --eb lbnedaq2,${LBNEARTDAQ_EB_PORT[1]} \
     --ag lbnedaq3,${LBNEARTDAQ_AG_PORT[0]},1 \

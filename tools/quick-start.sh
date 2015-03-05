@@ -1,4 +1,4 @@
-#! /bin/sh
+#! /bin/env bash
 #  This file (lbne-artdaq-quickstart.sh) was created by Ron Rechenmacher <ron@fnal.gov> on
 #  Jan  7, 2014. "TERMS AND CONDITIONS" governing this file are in the README
 #  or COPYING file. If you do not have such a file, one can be obtained by
@@ -17,6 +17,21 @@ rev='$Revision: 1.20 $$Date: 2010/02/18 13:20:16 $'
 #      2b. build (via cmake),
 #  and 3.  start the lbne-artdaq system
 #
+
+# JCF, 1/23/15
+
+# Save all output from this script (stdout + stderr) in a file with a
+# name that looks like "quick-start.sh_Fri_Jan_16_13:58:27.script" as
+# well as all stderr in a file with a name that looks like
+# "quick-start.sh_Fri_Jan_16_13:58:27_stderr.script"
+
+alloutput_file=$( date | awk -v "SCRIPTNAME=$(basename $0)" '{print SCRIPTNAME"_"$1"_"$2"_"$3"_"$4".script"}' )
+
+stderr_file=$( date | awk -v "SCRIPTNAME=$(basename $0)" '{print SCRIPTNAME"_"$1"_"$2"_"$3"_"$4"_stderr.script"}' )
+
+exec  > >(tee $alloutput_file)
+exec 2> >(tee $stderr_file)
+
 
 # program (default) parameters
 root=
@@ -103,7 +118,7 @@ fi
 # sure we know what qualifier is meant to be passed to the
 # downloadDeps.sh and installArtDaqDemo.sh scripts below
 
-defaultqual=`grep defaultqual $git_working_path/ups/product_deps | awk '{print $2}' `
+defaultqual=$( grep "^[^#]*defaultqual" $git_working_path/ups/product_deps | awk '{print $2}' )
 
 
 vecho() { test $opt_v -gt 0 && echo "$@"; }

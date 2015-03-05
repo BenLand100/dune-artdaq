@@ -4,7 +4,7 @@
  number_of_microslices_per_millislice: 10
    
  # RCE client connection parameters
- rce_client_host_addr: '192.168.2.111'
+ rce_client_host_addr: '192.168.2.114'
  rce_client_host_port: 8090
  rce_client_timeout_usecs: 500000
    
@@ -23,7 +23,7 @@
  rce_data_adc_sigma: 100.0
  
  # Port to receive data from RCE on  
- receive_port: 8992
+ receive_port: 8995
  
  # Receiver parameters  
  receiver_debug_level: 1

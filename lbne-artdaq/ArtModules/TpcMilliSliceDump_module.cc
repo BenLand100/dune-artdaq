@@ -83,8 +83,7 @@ void lbne::TpcMilliSliceDump::analyze(art::Event const & evt)
 	// *** TpcMilliSlice Fragments ***
 	// ***********************
 
-	// look for raw TpcMilliSlice data
-
+	///> look for raw TpcMilliSlice data
 	art::Handle<artdaq::Fragments> raw;
 	evt.getByLabel(raw_data_label_, frag_type_, raw);
 
@@ -99,31 +98,68 @@ void lbne::TpcMilliSliceDump::analyze(art::Event const & evt)
 		{
 			const auto& frag((*raw)[idx]);
 
+			///> Create a TpcMilliSliceFragment from the generic artdaq fragment
 			TpcMilliSliceFragment msf(frag);
 
+			///> get the total size of the millislice (data+header, in bytes)
+			lbne::TpcMilliSlice::Header::millislice_size_t msf_size = msf.size();
+
+			///> get the number of MicroSlices in the MilliSlice
+			lbne::TpcMilliSlice::Header::microslice_count_t msf_us_count = msf.microSliceCount();
+
 			std::cout << std::endl;
-			std::cout << "TpcMilliSlice fragment " << frag.fragmentID() << " consists of: " << msf.size() << " bytes containing "
-					<< msf.microSliceCount() << " microslices" << std::endl;
+			std::cout << "TpcMilliSlice fragment " << frag.fragmentID() << " consists of: " << msf_size << " bytes containing "
+					<< msf_us_count << " microslices" << std::endl;
 			std::cout << std::endl;
 
-			for (uint32_t i_ms = 0; i_ms < msf.microSliceCount(); ++i_ms)
+			///> loop over the number of microslices
+			for (uint32_t i_us = 0; i_us < msf_us_count; ++i_us)
 			{
-				bool verb_microslice = (std::find(verb_microslice_ids_.begin(), verb_microslice_ids_.end(), i_ms) != verb_microslice_ids_.end()) ? true : false;
+				bool verb_microslice = (std::find(verb_microslice_ids_.begin(), verb_microslice_ids_.end(), i_us) != verb_microslice_ids_.end()) ? true : false;
 
-				std::unique_ptr<const TpcMicroSlice> microslice = msf.microSlice(i_ms);
+				///> get the 'i_us-th' microslice
+				std::unique_ptr<const TpcMicroSlice> microslice = msf.microSlice(i_us);
 
 				if (!microslice) {
 					throw cet::exception("Error in TpcMilliSliceDump module: unable to find requested microslice");
 				}
 
+				///> get the microslice sequence ID
+				lbne::TpcMicroSlice::Header::sequence_id_t us_sequence_id = microslice->sequence_id();
+
+				///> get the microslice total size (header+data, in bytes)
+				lbne::TpcMicroSlice::Header::microslice_size_t us_size = microslice->size();
+
+				///> get the number of NanoSlices in this MicroSlice
+				lbne::TpcMicroSlice::Header::nanoslice_count_t us_nanocount = microslice->nanoSliceCount();
+
+				///> get the microslice type ID
+				lbne::TpcMicroSlice::Header::type_id_t us_type_id = microslice->type_id();
+
+				///> get the software message
+				lbne::TpcMicroSlice::Header::softmsg_t us_software_message = microslice->software_message();
+
+				///> get the hardware (firmware) message
+				lbne::TpcMicroSlice::Header::firmmsg_t us_firmware_message = microslice->firmware_message();
+
 				if(verb_microslice) {
 					std::cout << "TpcMilliSlice fragment " << frag.fragmentID()
-			    		<< ", microslice " << i_ms
-			    		<< " has sequence ID " << microslice->sequence_id()
-			    		<< " size " << microslice->size()
-			    		<< " and consists of: "<< microslice->nanoSliceCount() << " nanoslices" << std::endl;
+			    		<< ", microslice " << i_us
+			    		<< " has sequence ID " << us_sequence_id
+			    		<< " size " << us_size
+			    		<< " and consists of: "<< us_nanocount << " nanoslices" << std::endl;
+					std::cout << " frame size header    : 0x"
+						  << std::hex << std::setw(8) << std::setfill('0') << us_size <<std::dec << std::endl;
+					std::cout << " sequence ID header    : 0x"
+						  << std::hex << std::setw(8) << std::setfill('0') << us_sequence_id <<std::dec << std::endl;
+					std::cout << " type ID header    : 0x"
+						  << std::hex << std::setw(8) << std::setfill('0') << us_type_id <<std::dec << std::endl;
+					std::cout << " software message    : 0x"
+						  << std::hex << std::setw(16) << std::setfill('0') << us_software_message <<std::dec << std::endl;				   
+					std::cout << " firmware message    : 0x"
+						  << std::hex << std::setw(16) << std::setfill('0') << us_firmware_message <<std::dec << std::endl;								
 				}
-
+				
 				if (microslice->nanoSliceCount() == 0) continue;
 
 				// First pass through nanoslices listed for verbose output. This is faster than iterating through many nanoslices
@@ -137,6 +173,7 @@ void lbne::TpcMilliSliceDump::analyze(art::Event const & evt)
 						verb_nanoslice_header = false;
 					}
 
+					///> get the 'i_nano-th' NanoSlice
 					std::unique_ptr<const TpcNanoSlice> nanoslice = microslice->nanoSlice(*i_nano);
 					if (! nanoslice )
 					{
@@ -145,34 +182,54 @@ void lbne::TpcMilliSliceDump::analyze(art::Event const & evt)
 					if (verb_nanoslice_header)
 					{
 
-						std::cout << "  NanoSlice " << *i_nano << " size " << nanoslice->size() << " bytes" << std::endl << std::endl;
+					        ///> get the size of the nanoslice (header+data, in bytes)
+  					        lbne::TpcNanoSlice::nanoslice_size_t ns_size = nanoslice->size();
 
+						std::cout << "  NanoSlice " << *i_nano << " size " << ns_size << " bytes" << std::endl << std::endl;
+
+						///> get a pointer to the first 64-bit word of the nanoslice (i.e. the first header word)
 						const uint64_t* nanoslice_raw = nanoslice->raw();
 
 						std::cout << "    Raw Header : 0x"
 								<< std::hex << std::setw(16) << std::setfill('0') << nanoslice_raw[0] <<std::dec << std::endl;
 
 						std::cout << "    Raw Data Payload:" << std::endl << "    ";
+
+						///> get the number of nanoslice data words
 						uint16_t num_nanoslice_words = (nanoslice->size() - sizeof(lbne::TpcNanoSlice::Header))/sizeof(uint64_t);
+
+						///> find out how many uint64_t's the header is
 						size_t word_offset = sizeof(lbne::TpcNanoSlice::Header)/sizeof(uint64_t);
 
+						///> loop over all 16-bit ADC values
 						for (int i_adc_word = 0; i_adc_word < num_nanoslice_words; i_adc_word++)
 						{
 							std::cout << "0x" << std::hex << std::setfill('0') << std::setw(16) << nanoslice_raw[word_offset+i_adc_word] << std::dec << " ";
 							if ((i_adc_word % 4) == 3) std::cout << std::endl << "    ";
 						}
 						std::cout << std::endl;
+						
+						///> get the NOvA timestamp
+						lbne::TpcNanoSlice::Header::nova_timestamp_t ns_timestamp = nanoslice->nova_timestamp();
 
 						//std::cout << "    Decoded Header:" << std::endl;
 						std::cout << "    NOvA timestamp   : 0x" << std::hex << std::setw(14) << std::setfill('0')
-							      << nanoslice->nova_timestamp() << std::dec << std::endl;
+							      << ns_timestamp << std::dec << std::endl;
 
+						///> get the number of channels contained in the nanoslice
+						const int ns_nchan = lbne::TpcNanoSlice::num_channels;
+						///> an alternative way to get the number of samples in the nanoslice
+						//lbne::TpcNanoSlice::sample_count_t ns_chan_again = nanoslice->sampleCount();
 
 						std::cout << "    Decoded ADC Values:" << std::endl << "    ";
-						for (uint32_t i_samp = 0; i_samp < lbne::TpcNanoSlice::num_channels; i_samp++)
+						///> loop over all 16-bit ADC values
+						for (uint32_t i_samp = 0; i_samp < ns_nchan; i_samp++)
 						{
 							uint16_t val = std::numeric_limits<uint16_t>::max();
+
+							///> get the 'i_samp-th' ADC value from the NanoSlice
 							nanoslice->sampleValue(i_samp, val);
+
 							std::cout << std::setfill(' ') << std::setw(4) << i_samp << " : " << std::setw(4) << val << " ";
 							if ((i_samp % 8) == 7) std::cout << std::endl << "    ";
 
@@ -184,18 +241,23 @@ void lbne::TpcMilliSliceDump::analyze(art::Event const & evt)
 				std::cout << std::endl;
 
 				// Make a second pass through all nanoslices to build some statistics and fill histograms
+				///> Loop over the NanoSlice's in this MicroSlice
 				for (uint32_t i_nano = 0; i_nano < microslice->nanoSliceCount(); i_nano++)
 				{
-					std::unique_ptr<const TpcNanoSlice> nanoslice = microslice->nanoSlice(i_nano);
+				        ///> get the 'i_nano-th' NanoSlice
+				        std::unique_ptr<const TpcNanoSlice> nanoslice = microslice->nanoSlice(i_nano);
 
 					if (!nanoslice)
 					{
 						throw cet::exception("Error in TpcMilliSliceDump module: Unable to find requested nanoslice");
 					}
 
+					///> loop over all 16-bit ADC values
 					for (uint32_t i_samp = 0; i_samp < nanoslice->sampleCount(); i_samp++)
 					{
 						uint16_t val = std::numeric_limits<uint16_t>::max();
+
+						///> get the 'i_samp-th' ADC value from the NanoSlice
 						bool success = nanoslice->sampleValue(i_samp, val);
 
 						if (!success)
@@ -207,7 +269,7 @@ void lbne::TpcMilliSliceDump::analyze(art::Event const & evt)
 						adc_values_->Fill(val);
 					} // i_samp
 				} // i_nano
-			} // i_ms
+			} // i_us
 
 		} //idx
 

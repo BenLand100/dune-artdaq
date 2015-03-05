@@ -28,6 +28,7 @@ function launch() {
   DemoControl.rb ${enableSerial} -s -c $1 \
     --toy1 `hostname`,${LBNEARTDAQ_BR_PORT[0]},0 \
     --toy2 `hostname`,${LBNEARTDAQ_BR_PORT[1]},1 \
+    --ssp ${THIS_NODE},${LBNEARTDAQ_BR_PORT[2]},2,2 \
     --eb `hostname`,${LBNEARTDAQ_EB_PORT[0]} \
     --eb `hostname`,${LBNEARTDAQ_EB_PORT[1]} \
     --ag `hostname`,${LBNEARTDAQ_AG_PORT[0]},1 \

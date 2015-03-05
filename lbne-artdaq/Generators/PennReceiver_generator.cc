@@ -282,9 +282,14 @@ bool lbne::PennReceiver::getNext_(artdaq::FragmentPtrs & frags) {
 		  frag = std::move(raw_to_frag_map_[data_ptr]);
 
 		  // Validate and finalize the fragment received
-		  millislice_size = validate_millislice_from_fragment_buffer(frag->dataBeginBytes(), recvd_buffer->size(), recvd_buffer->count(),
+		  millislice_size = validate_millislice_from_fragment_buffer(frag->dataBeginBytes(), recvd_buffer->size(),
+#ifndef REBLOCK_PENN_USLICE
+									     recvd_buffer->count(),
+#endif
+									     recvd_buffer->sequenceID(),
 									     recvd_buffer->countPayload(), recvd_buffer->countPayloadCounter(),
-									     recvd_buffer->countPayloadTrigger(), recvd_buffer->countPayloadTimestamp());
+									     recvd_buffer->countPayloadTrigger(), recvd_buffer->countPayloadTimestamp(),
+									     recvd_buffer->endTimestamp(), recvd_buffer->widthTicks(), recvd_buffer->overlapTicks());
 
 		  // Clean up entry in map to remove raw fragment buffer
 		  raw_to_frag_map_.erase(data_ptr);
@@ -308,10 +313,12 @@ bool lbne::PennReceiver::getNext_(artdaq::FragmentPtrs & frags) {
 	  size_t fragDataSize = recvd_buffer->size() * 10;
 	  frag = artdaq::Fragment::FragmentBytes(fragDataSize);
 
+#ifndef REBLOCK_PENN_USLICE
 	  // Format the raw digitisations (nanoslices) in the received buffer into a millislice
 	  // within the data payload of the fragment
 	  millislice_size = format_millislice_from_raw_buffer((uint16_t*)data_ptr, recvd_buffer->size(),
 			  (uint8_t*)(frag->dataBeginBytes()), fragDataSize);
+#endif
 
   }
 
@@ -371,6 +378,7 @@ lbne::PennRawBufferPtr lbne::PennReceiver::create_new_buffer_from_fragment(void)
 
 }
 
+#ifndef REBLOCK_PENN_USLICE
 uint32_t lbne::PennReceiver::format_millislice_from_raw_buffer(uint16_t* src_addr, size_t src_size,
 		                                                         uint8_t* dest_addr, size_t dest_size)
 {
@@ -409,14 +417,26 @@ uint32_t lbne::PennReceiver::format_millislice_from_raw_buffer(uint16_t* src_add
   return millislice_writer.size();
 
 }
+#endif
 
-uint32_t lbne::PennReceiver::validate_millislice_from_fragment_buffer(uint8_t* data_addr, size_t data_size, uint32_t us_count,
+uint32_t lbne::PennReceiver::validate_millislice_from_fragment_buffer(uint8_t* data_addr, size_t data_size,
+#ifndef REBLOCK_PENN_USLICE
+								      uint32_t us_count,
+#endif
+								      uint16_t millislice_id,
 								      uint16_t payload_count, uint16_t payload_count_counter,
-								      uint16_t payload_count_trigger, uint16_t payload_count_timestamp)
+								      uint16_t payload_count_trigger, uint16_t payload_count_timestamp,
+								      uint64_t end_timestamp, uint32_t width_in_ticks, uint32_t overlap_in_ticks)
 {
 	lbne::PennMilliSliceWriter millislice_writer(data_addr, data_size+sizeof(PennMilliSlice::Header));
 
-	millislice_writer.finalize(true, data_size, us_count, payload_count, payload_count_counter, payload_count_trigger, payload_count_timestamp);
+	millislice_writer.finalize(true, data_size, 
+#ifndef REBLOCK_PENN_USLICE
+				   us_count,
+#endif
+				   millislice_id,
+				   payload_count, payload_count_counter, payload_count_trigger, payload_count_timestamp,
+				   end_timestamp, width_in_ticks, overlap_in_ticks);
 	//TODO add a check here to make sure the size agrees with the payload counts + header size
 
 	return millislice_writer.size();

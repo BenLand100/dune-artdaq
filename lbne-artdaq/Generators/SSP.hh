@@ -67,6 +67,10 @@ namespace lbne {
 
     //Pointer to device interface defined in anlBoard library
     SSPDAQ::DeviceInterface* device_interface_;
+
+    unsigned long fNNoFragments;
+    unsigned long fNFragmentsSent;
+    unsigned long fNGetNextCalls;
   };
 }
 

@@ -10,7 +10,9 @@ SSPDAQ::USBDevice::USBDevice(FT_DEVICE_LIST_INFO_NODE* dataChannel, FT_DEVICE_LI
   isOpen=false;
 }
 
-void SSPDAQ::USBDevice::Open(){
+void SSPDAQ::USBDevice::Open(bool slowControlOnly){
+
+  fSlowControlOnly=slowControlOnly;
 
   if(FT_OpenEx(fCommChannel.SerialNumber,FT_OPEN_BY_SERIAL_NUMBER, &(fCommChannel.ftHandle)) != FT_OK){
     SSPDAQ::Log::Error()<<"Error opening USB comm path"<<std::endl;
@@ -44,6 +46,11 @@ void SSPDAQ::USBDevice::Open(){
     throw(SSPDAQ::EFTDIError("Failed to configure USB comm channel"));
   }
   SSPDAQ::Log::Info()<<"Opened control path"<<std::endl;
+  if(slowControlOnly){
+    SSPDAQ::Log::Info()<<"Device open!"<<std::endl;
+    isOpen=true;
+    return;
+  }
 
   // Open the Data Path
   if (FT_OpenEx(fDataChannel.SerialNumber,FT_OPEN_BY_SERIAL_NUMBER, &(fDataChannel.ftHandle)) != FT_OK) {
@@ -87,7 +94,9 @@ void SSPDAQ::USBDevice::Close(){
   // This code uses FTDI's D2XX driver for the control and data paths
   // It seems to be necessary to manually flush the data path RX buffer
   // to avoid crashing LBNEWare when Disconnect is pressed
-  this->DevicePurgeData();
+  if(!fSlowControlOnly){
+    this->DevicePurgeData();
+  }
   this->DevicePurgeComm();
   
   if(FT_Close(fCommChannel.ftHandle)!=FT_OK){
@@ -95,11 +104,12 @@ void SSPDAQ::USBDevice::Close(){
     throw(SSPDAQ::EFTDIError("Failed to close comm channel"));
   }
 
-  if(FT_Close(fDataChannel.ftHandle)!=FT_OK){
-    SSPDAQ::Log::Error()<<"Failed to close USB data channel"<<std::endl;
-    throw(SSPDAQ::EFTDIError("Failed to close data channel"));
-  }  
-
+  if(!fSlowControlOnly){
+    if(FT_Close(fDataChannel.ftHandle)!=FT_OK){
+      SSPDAQ::Log::Error()<<"Failed to close USB data channel"<<std::endl;
+      throw(SSPDAQ::EFTDIError("Failed to close data channel"));
+    }  
+  }
   isOpen=false;
   SSPDAQ::Log::Info()<<"Device closed"<<std::endl;
 } 

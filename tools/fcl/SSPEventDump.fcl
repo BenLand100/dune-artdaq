@@ -8,7 +8,7 @@
       raw_data_label: daq
       frag_type: PHOTON
       verbose_metadata: true
-      verbose_adcs: 20
+      verbose_adcs: 2048
     }
   }
 

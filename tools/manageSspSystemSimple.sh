@@ -2,7 +2,7 @@
 
 source `which setupDemoEnvironment.sh` ""
 
-AGGREGATOR_NODE=`hostname`
+AGGREGATOR_NODE=localhost
 THIS_NODE=`hostname -s`
 
 # this function expects a number of arguments:
@@ -25,44 +25,14 @@ function launch() {
       enableSerial="-e"
   fi
 
-  # DemoControl.rb ${enableSerial} -s -c $1 \
-  #   --tpc `hostname`,${LBNEARTDAQ_BR_PORT[0]},0 \
-  #   --tpc `hostname`,${LBNEARTDAQ_BR_PORT[1]},1 \
-  #   --eb `hostname`,${LBNEARTDAQ_EB_PORT[0]} \
-  #   --eb `hostname`,${LBNEARTDAQ_EB_PORT[1]} \
-  #   --ag `hostname`,${LBNEARTDAQ_AG_PORT[0]},1 \
-  #   --ag `hostname`,${LBNEARTDAQ_AG_PORT[1]},1 \
-  #   --data-dir ${4} --online-monitoring $3 \
-  #   --write-data ${6} --run-event-count ${7} \
-  #   --run-duration ${8} --file-size ${9} \
-  #   --file-event-count ${10} --file-duration ${11} \
-  #   --run-number $2  2>&1 | tee -a ${5}
-
   DemoControl.rb ${enableSerial} -s -c $1 \
-    --tpc `hostname`,${LBNEARTDAQ_BR_PORT[0]},0 \
-    --eb `hostname`,${LBNEARTDAQ_EB_PORT[0]} \
-    --eb `hostname`,${LBNEARTDAQ_EB_PORT[1]} \
-    --ag `hostname`,${LBNEARTDAQ_AG_PORT[0]},1 \
-    --ag `hostname`,${LBNEARTDAQ_AG_PORT[1]},1 \
+      --ssp localhost,${LBNEARTDAQ_BR_PORT[0]},0,1 \
+    --eb localhost,${LBNEARTDAQ_EB_PORT[0]} \
     --data-dir ${4} --online-monitoring $3 \
     --write-data ${6} --run-event-count ${7} \
     --run-duration ${8} --file-size ${9} \
     --file-event-count ${10} --file-duration ${11} \
     --run-number $2  2>&1 | tee -a ${5}
-
- #DemoControl.rb ${enableSerial} -s -c $1 \
- #   --tpc `hostname`,${LBNEARTDAQ_BR_PORT[0]},0 \
- #   --toy2 `hostname`,${LBNEARTDAQ_BR_PORT[1]},1 \
- #   --eb `hostname`,${LBNEARTDAQ_EB_PORT[0]} \
- #   --eb `hostname`,${LBNEARTDAQ_EB_PORT[1]} \
- #   --ag `hostname`,${LBNEARTDAQ_AG_PORT[0]},1 \
- #   --ag `hostname`,${LBNEARTDAQ_AG_PORT[1]},1 \
- #   --data-dir ${4} --online-monitoring $3 \
- #   --write-data ${6} --run-event-count ${7} \
- #   --run-duration ${8} --file-size ${9} \
- #   --file-event-count ${10} --file-duration ${11} \
- #   --run-number $2  2>&1 | tee -a ${5}
-
 }
 
 scriptName=`basename $0`
@@ -84,7 +54,7 @@ Configuration options (init commands):
       [default=0, which means no event count limit for files]
   --file-duration <duration>: specifies the desired duration of each file (minutes)
       [default=0, which means no duration limit for files]
-  -o <data dir>: specifies the directory for data files [default=/tmp]
+  -o <data dir>: specifies the directory for data files [default=/data/lbnedaq/data]
 Begin-run options (start command):
   -N <run number>: specifies the run number
 End-run options (stop command):
@@ -126,7 +96,7 @@ Examples: ${scriptName} -p 32768 init
 originalCommand="$0 $*"
 onmonEnable=off
 diskWriting=1
-dataDir="/u1/lbne/data/lbnedaq/data"
+dataDir="/data/lbnedaq/data"
 runNumber=""
 runEventCount=0
 runDuration=0
@@ -257,7 +227,7 @@ fi
 
 # build the logfile name
 TIMESTAMP=`date '+%Y%m%d%H%M%S'`
-logFile="/u1/lbne/data/lbnedaq/daqlogs/masterControl/dsMC-${TIMESTAMP}-${command}.log"
+logFile="/data/lbnedaq/daqlogs/masterControl/dsMC-${TIMESTAMP}-${command}.log"
 echo "${originalCommand}" > $logFile
 echo ">>> ${originalCommand} (Disk writing is ${diskWriting})"
 
