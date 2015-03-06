@@ -106,11 +106,20 @@ void lbne::TpcMilliSliceDump::analyze(art::Event const & evt)
 
 			///> get the number of MicroSlices in the MilliSlice
 			lbne::TpcMilliSlice::Header::microslice_count_t msf_us_count = msf.microSliceCount();
+			
+			/* methods not yet implemented
+			///> get the millislice version
+			lbne::TpcMilliSlice::Header::version_t msf_version = msf.version();
 
-			std::cout << std::endl;
-			std::cout << "TpcMilliSlice fragment " << frag.fragmentID() << " consists of: " << msf_size << " bytes containing "
-					<< msf_us_count << " microslices" << std::endl;
-			std::cout << std::endl;
+			///> get the millislice fixed pattern
+			lbne::TpcMilliSlice::Header::pattern_t msf_fixed_pattern = msf.fixed_pattern();
+			*/
+
+			std::cout << std::endl
+				  << "TpcMilliSlice fragment " << frag.fragmentID() << " consists of: " << msf_size << " bytes containing "
+				  << msf_us_count << " microslices" << std::endl
+				  //<< "Version " << msf_version << " pattern " << msf_fixed_pattern << std::endl
+				  << std::endl;
 
 			///> loop over the number of microslices
 			for (uint32_t i_us = 0; i_us < msf_us_count; ++i_us)
@@ -214,7 +223,9 @@ void lbne::TpcMilliSliceDump::analyze(art::Event const & evt)
 
 						//std::cout << "    Decoded Header:" << std::endl;
 						std::cout << "    NOvA timestamp   : 0x" << std::hex << std::setw(14) << std::setfill('0')
-							      << ns_timestamp << std::dec << std::endl;
+							  << ns_timestamp << std::dec
+							  << "\t" << std::bitset<64>(nanoslice->nova_timestamp())
+							  << std::endl;
 
 						///> get the number of channels contained in the nanoslice
 						const int ns_nchan = lbne::TpcNanoSlice::num_channels;
