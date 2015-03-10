@@ -27,7 +27,7 @@
  receive_port: 8995
  
  # Receiver parameters  
- receiver_debug_level: 1
+ receiver_debug_level: 0
  receiver_tick_period_usecs: 10000
  
  # Stats reporting
@@ -35,5 +35,5 @@
  
  # Buffer parameters  
  raw_buffer_size: 4000000
- raw_buffer_precommit: 10 
+ raw_buffer_precommit: 100 
  use_fragments_as_raw_buffer: true

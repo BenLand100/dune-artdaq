@@ -153,7 +153,7 @@ void lbne::RceClient::send_xml(std::string const & xml_frag)
 
 	// Send the XML request to the RCEcomman
 	this->send(xml_cmd.str());
-	//        sleep(6);
+
 	// Get the response
 	xmlDocPtr doc;
 	std::string response;
@@ -166,7 +166,7 @@ void lbne::RceClient::send_xml(std::string const & xml_frag)
 	    sleep(1);
 	    cnt++;
 	  }	else {
-	    std::cout << "Response is " << response << std::endl;	    
+	    //std::cout << "Response is " << response << std::endl;	    
 	    break;
 	  }
 	}

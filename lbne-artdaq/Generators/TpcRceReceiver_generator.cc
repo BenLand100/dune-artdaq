@@ -51,7 +51,7 @@ lbne::TpcRceReceiver::TpcRceReceiver(fhicl::ParameterSet const & ps)
 	ps.get<uint32_t>("rce_client_timeout_usecs", 0);
 
   dtm_client_enable_ = 
-        ps.get<bool>("dtm_client_enable", "false");
+        ps.get<bool>("dtm_client_enable", false);
   dtm_client_host_addr_ =
 	ps.get<std::string>("dtm_client_host_addr", "localhost");
   dtm_client_host_port_ =
@@ -214,7 +214,7 @@ void lbne::TpcRceReceiver::stop(void)
 	//put DPM stop first...see if that helps the DPM freeze issue
 	dpm_client_->send_command("SetRunState", "Stopped");
 	
-	sleep(10);
+	//sleep(10);
 
 	// Instruct the RCE to stop
 #ifndef NO_RCE_CLIENT

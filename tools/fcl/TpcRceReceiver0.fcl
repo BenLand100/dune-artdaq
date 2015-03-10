@@ -1,7 +1,7 @@
  # FHiCL parameters for configuring TpcRceReceiver generator
  
  # Number of microslice to concatenate into a millislice
- number_of_microslices_per_millislice: 100
+ number_of_microslices_per_millislice: 10
    
  # RCE client connection parameters
  rce_client_host_addr: lbnedpm0
@@ -44,5 +44,5 @@
  
  # Buffer parameters  
  raw_buffer_size: 4000000
- raw_buffer_precommit: 200 
+ raw_buffer_precommit: 100
  use_fragments_as_raw_buffer: true
