@@ -308,7 +308,7 @@ void lbne::SSPDump::analyze(art::Event const & evt)
 	  if(idata >= verb_adcs_)
 	    verb_values = false;
 	  else if(idata == 0&&verb_adcs_>0)
-	    std::cout << "Data values: ";
+	    std::cout << "Printing the " << nADC << " ADC values saved with the trigger:" << std::endl;
 	  
 	  adc_values_->Fill(*adc);
 	  all_adc_values_->Fill(*adc);
