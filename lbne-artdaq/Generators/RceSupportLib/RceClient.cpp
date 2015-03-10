@@ -153,12 +153,25 @@ void lbne::RceClient::send_xml(std::string const & xml_frag)
 
 	// Send the XML request to the RCEcomman
 	this->send(xml_cmd.str());
-
+	//        sleep(6);
 	// Get the response
-	std::string response = this->receive();
-
+	xmlDocPtr doc;
+	std::string response;
+	int maxSleep=10;
+	int cnt=0;
+	while(1){
+	  response = this->receive();
+	  doc = xmlReadMemory(response.c_str(), response.length()-1, "noname.xml", NULL, 0);
+	  if (doc == NULL&&cnt<maxSleep) {
+	    sleep(1);
+	    cnt++;
+	  }	else {
+	    std::cout << "Response is " << response << std::endl;	    
+	    break;
+	  }
+	}
 	// Traverse the DOM of the XML response and determine if any of the child elements are error.
-	xmlDocPtr doc = xmlReadMemory(response.c_str(), response.length()-1, "noname.xml", NULL, 0);
+	//	xmlDocPtr doc = xmlReadMemory(response.c_str(), response.length()-1, "noname.xml", NULL, 0);
 	if (doc == NULL) {
 	  std::cout << "Failed to parse XML response:" << std::endl;
 	  std::cout << response << std::endl;

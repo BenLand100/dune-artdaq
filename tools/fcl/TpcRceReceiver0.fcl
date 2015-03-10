@@ -1,11 +1,11 @@
  # FHiCL parameters for configuring TpcRceReceiver generator
  
  # Number of microslice to concatenate into a millislice
- number_of_microslices_per_millislice: 10
+ number_of_microslices_per_millislice: 100
    
  # RCE client connection parameters
-# rce_client_host_addr: lbnedpm0
- rce_client_host_addr: '192.168.2.110'
+ rce_client_host_addr: lbnedpm0
+# rce_client_host_addr: '192.168.2.110'
  rce_client_host_port: 8090
  rce_client_timeout_usecs: 500000
    
@@ -17,8 +17,8 @@
 
  # DTM client configuration parameters
  dtm_client_enable: true
-# dtm_client_host_addr: lbnedtm0
- dtm_client_host_addr: '192.168.2.210'
+ dtm_client_host_addr: lbnedtm0
+# dtm_client_host_addr: '192.168.2.210'
  dtm_client_host_port: 8090
  dtm_client_timeout_usecs: 500000
 
@@ -36,7 +36,7 @@
  receive_port: 8991
  
  # Receiver parameters  
- receiver_debug_level: 1
+ receiver_debug_level: 0
  receiver_tick_period_usecs: 10000
  
  # Stats reporting
@@ -44,5 +44,5 @@
  
  # Buffer parameters  
  raw_buffer_size: 4000000
- raw_buffer_precommit: 100 
+ raw_buffer_precommit: 200 
  use_fragments_as_raw_buffer: true

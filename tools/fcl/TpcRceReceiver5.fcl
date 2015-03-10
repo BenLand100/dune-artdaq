@@ -4,7 +4,8 @@
  number_of_microslices_per_millislice: 10
    
  # RCE client connection parameters
- rce_client_host_addr: '192.168.2.115'
+ rce_client_host_addr: lbnedpm5
+# rce_client_host_addr: '192.168.2.115'
  rce_client_host_port: 8090
  rce_client_timeout_usecs: 500000
    

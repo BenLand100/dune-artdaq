@@ -105,15 +105,6 @@ lbne::TpcRceReceiver::TpcRceReceiver(fhicl::ParameterSet const & ps)
 
   // Create an RCE client instance
 #ifndef NO_RCE_CLIENT
-  dpm_client_ = std::unique_ptr<lbne::RceClient>(new lbne::RceClient(
-		  dpm_client_host_addr_, dpm_client_host_port_, dpm_client_timeout_usecs_));
-
-  dpm_client_->send_command("HardReset");
-  sleep(1);
-  dpm_client_->send_command("ReadXmlFile", rce_xml_config_file_);
-  std::ostringstream config_frag;
-  config_frag << "<DataDpm><DataBuffer><RunMode>" << rce_daq_mode_ << "</RunMode></DataBuffer></DataDpm>";
-  dpm_client_->send_config(config_frag.str());
 
   // If the DTM client is enabled (for standalone testing of the RCE), open
   // the connection, reset the DTM and enable timing emulation mode
@@ -121,13 +112,24 @@ lbne::TpcRceReceiver::TpcRceReceiver(fhicl::ParameterSet const & ps)
     dtm_client_ = std::unique_ptr<lbne::RceClient>(new lbne::RceClient(
 	       dtm_client_host_addr_, dtm_client_host_port_, dtm_client_timeout_usecs_));
     dtm_client_->send_command("HardReset");
-    sleep(1);
+    //    sleep(1);
     //mg changes 2/16/2015...add configuration command; remove set emulation false
     dtm_client_->send_command("ReadXmlFile", rce_xml_config_file_);
     //    std::ostringstream config_frag;
     //    config_frag << "<TimingDtm><TimingRtm><EmulationEnable>False</EmulationEnable></TimingRtm></TimingDtm>";
     //    dtm_client_->send_config(config_frag.str());
   }
+
+  dpm_client_ = std::unique_ptr<lbne::RceClient>(new lbne::RceClient(
+		  dpm_client_host_addr_, dpm_client_host_port_, dpm_client_timeout_usecs_));
+
+  dpm_client_->send_command("HardReset");
+  //sleep(10);
+  dpm_client_->send_command("ReadXmlFile", rce_xml_config_file_);
+  std::ostringstream config_frag;
+  config_frag << "<DataDpm><DataBuffer><RunMode>" << rce_daq_mode_ << "</RunMode></DataBuffer></DataDpm>";
+  dpm_client_->send_config(config_frag.str());
+
 #endif
 
   // Create a RceDataReceiver instance
@@ -192,11 +194,13 @@ void lbne::TpcRceReceiver::start(void)
 
 	if (dtm_client_enable_) 
         {
-	  //dtm_client_->send_command("SoftReset");
+	  //mg 2/9/15...SoftReset seems to reset the whole FEB configuration...new versions of firmware should fix this
+	  //	  dtm_client_->send_command("SoftReset");
 	  dtm_client_->send_command("SetRunState", "Enable");
 	}
 
-	dpm_client_->send_command("SoftReset");
+	  //mg 2/9/15...SoftReset seems to reset the whole FEB configuration...new versions of firmware should fix this
+	//       	dpm_client_->send_command("SoftReset");
 	dpm_client_->send_command("SetRunState", "Enable");
 
 #endif
