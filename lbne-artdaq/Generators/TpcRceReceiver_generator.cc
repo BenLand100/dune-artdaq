@@ -103,6 +103,9 @@ lbne::TpcRceReceiver::TpcRceReceiver(fhicl::ParameterSet const & ps)
   reporting_interval_fragments_ =
     ps.get<uint32_t>("reporting_interval_fragments", 100);
 
+  reporting_interval_time_ = 
+    ps.get<uint32_t>("reporting_interval_time", 0);
+
   // Create an RCE client instance
 #ifndef NO_RCE_CLIENT
 
@@ -174,6 +177,7 @@ void lbne::TpcRceReceiver::start(void)
 	millislices_received_ = 0;
 	total_bytes_received_ = 0;
 	start_time_ = std::chrono::high_resolution_clock::now();
+	report_time_ = start_time_;
 
 	// Start the data receiver
 	data_receiver_->start();
@@ -257,6 +261,16 @@ bool lbne::TpcRceReceiver::getNext_(artdaq::FragmentPtrs & frags) {
   do
   {
     buffer_available = data_receiver_->retrieve_filled_buffer(recvd_buffer, 500000);
+    if (reporting_interval_time_ != 0) 
+    {
+
+      if (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - report_time_).count() >
+	  (reporting_interval_time_ * 1000))
+      {
+	report_time_ = std::chrono::high_resolution_clock::now();
+	mf::LogInfo("TpcRceReceiver") << "Received " << millislices_received_ << " millislices so far";
+      }
+    }
   }
   while (!buffer_available && !should_stop());
 

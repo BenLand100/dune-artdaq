@@ -110,7 +110,9 @@ namespace lbne {
     std::size_t millislices_received_;
     std::size_t total_bytes_received_;
     std::chrono::high_resolution_clock::time_point start_time_;
+    std::chrono::high_resolution_clock::time_point report_time_;
     uint32_t reporting_interval_fragments_;
+    uint32_t reporting_interval_time_;
 
     RceRawBufferPtr create_new_buffer_from_fragment(void);
     uint32_t format_millislice_from_raw_buffer(uint16_t* src_addr, size_t src_size,
