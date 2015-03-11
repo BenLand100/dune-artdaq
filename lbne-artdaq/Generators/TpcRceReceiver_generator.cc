@@ -27,8 +27,16 @@
 lbne::TpcRceReceiver::TpcRceReceiver(fhicl::ParameterSet const & ps)
   :
   CommandableFragmentGenerator(ps),
+  instance_name_("TpcRceReceiver"),
   run_receiver_(false)
 {
+
+  int board_id = ps.get<int>("board_id", 0);
+  std::stringstream instance_name_ss;
+  instance_name_ss << instance_name_ << board_id;
+  instance_name_ = instance_name_ss.str();
+
+  mf::LogInfo(instance_name_) << "Starting up";
 
   int fragment_id = ps.get<int>("fragment_id");
   fragment_ids_.push_back(fragment_id);
@@ -112,7 +120,7 @@ lbne::TpcRceReceiver::TpcRceReceiver(fhicl::ParameterSet const & ps)
   // If the DTM client is enabled (for standalone testing of the RCE), open
   // the connection, reset the DTM and enable timing emulation mode
   if (dtm_client_enable_) {
-    dtm_client_ = std::unique_ptr<lbne::RceClient>(new lbne::RceClient(
+    dtm_client_ = std::unique_ptr<lbne::RceClient>(new lbne::RceClient(instance_name_,
 	       dtm_client_host_addr_, dtm_client_host_port_, dtm_client_timeout_usecs_));
     dtm_client_->send_command("HardReset");
     //    sleep(1);
@@ -123,7 +131,7 @@ lbne::TpcRceReceiver::TpcRceReceiver(fhicl::ParameterSet const & ps)
     //    dtm_client_->send_config(config_frag.str());
   }
 
-  dpm_client_ = std::unique_ptr<lbne::RceClient>(new lbne::RceClient(
+  dpm_client_ = std::unique_ptr<lbne::RceClient>(new lbne::RceClient(instance_name_,
 		  dpm_client_host_addr_, dpm_client_host_port_, dpm_client_timeout_usecs_));
 
   dpm_client_->send_command("HardReset");
@@ -136,14 +144,14 @@ lbne::TpcRceReceiver::TpcRceReceiver(fhicl::ParameterSet const & ps)
 #endif
 
   // Create a RceDataReceiver instance
-  data_receiver_ = std::unique_ptr<lbne::RceDataReceiver>(new lbne::RceDataReceiver(
+  data_receiver_ = std::unique_ptr<lbne::RceDataReceiver>(new lbne::RceDataReceiver(instance_name_,
 		  receiver_debug_level, receiver_tick_period_usecs_, receive_port_, number_of_microslices_per_millislice_));
 
 }
 
 void lbne::TpcRceReceiver::start(void)
 {
-	mf::LogDebug("TpcRceReceiver") << "start() called";
+	mf::LogDebug(instance_name_) << "start() called";
 
 	// Tell the data receiver to drain any unused buffers from the empty queue
 	data_receiver_->release_empty_buffers();
@@ -155,7 +163,7 @@ void lbne::TpcRceReceiver::start(void)
 	raw_to_frag_map_.clear();
 
 	// Pre-commit buffers to the data receiver object - creating either fragments or raw buffers depending on raw buffer mode
-	mf::LogDebug("TpcRceReceiver") << "Pre-committing " << raw_buffer_precommit_ << " buffers of size " << raw_buffer_size_ << " to receiver";
+	mf::LogDebug(instance_name_) << "Pre-committing " << raw_buffer_precommit_ << " buffers of size " << raw_buffer_size_ << " to receiver";
 	empty_buffer_low_mark_ = 0;
 	for (unsigned int i = 0; i < raw_buffer_precommit_; i++)
 	{
@@ -168,7 +176,7 @@ void lbne::TpcRceReceiver::start(void)
 		{
 			raw_buffer = lbne::RceRawBufferPtr(new RceRawBuffer(raw_buffer_size_));
 		}
-		// mf::LogDebug("TpcRceReceiver") << "Pre-commiting raw buffer " << i << " at address " << (void*)(raw_buffer->dataPtr());
+		// mf::LogDebug(instance_name_) << "Pre-commiting raw buffer " << i << " at address " << (void*)(raw_buffer->dataPtr());
 		data_receiver_->commit_empty_buffer(raw_buffer);
 		empty_buffer_low_mark_++;
 	}
@@ -213,7 +221,7 @@ void lbne::TpcRceReceiver::start(void)
 
 void lbne::TpcRceReceiver::stop(void)
 {
-	mf::LogInfo("TpcRceReceiver") << "stop() called";
+	mf::LogInfo(instance_name_) << "stop() called";
 
 	//put DPM stop first...see if that helps the DPM freeze issue
 	dpm_client_->send_command("SetRunState", "Stopped");
@@ -237,14 +245,14 @@ void lbne::TpcRceReceiver::stop(void)
 	// Stop the data receiver.
 	data_receiver_->stop();
 
-	mf::LogInfo("TpcRceReceiver") << "Low water mark on empty buffer queue is " << empty_buffer_low_mark_;
+	mf::LogInfo(instance_name_) << "Low water mark on empty buffer queue is " << empty_buffer_low_mark_;
 
 	auto elapsed_msecs = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - start_time_).count();
 	double elapsed_secs = ((double)elapsed_msecs) / 1000;
 	double rate = ((double)millislices_received_) / elapsed_secs;
 	double data_rate_mbs = ((double)total_bytes_received_) / ((1024*1024) * elapsed_secs);
 
-	mf::LogInfo("TpcRceReceiver") << "Received " << millislices_received_ << " millislices in "
+	mf::LogInfo(instance_name_) << "Received " << millislices_received_ << " millislices in "
 			      << elapsed_secs << " seconds, rate "
 			      << rate << " Hz, total data " << total_bytes_received_ << " bytes, rate " << data_rate_mbs << " MB/s" << std::endl;
 
@@ -268,7 +276,7 @@ bool lbne::TpcRceReceiver::getNext_(artdaq::FragmentPtrs & frags) {
 	  (reporting_interval_time_ * 1000))
       {
 	report_time_ = std::chrono::high_resolution_clock::now();
-	mf::LogInfo("TpcRceReceiver") << "Received " << millislices_received_ << " millislices so far";
+	mf::LogInfo(instance_name_) << "Received " << millislices_received_ << " millislices so far";
       }
     }
   }
@@ -280,11 +288,11 @@ bool lbne::TpcRceReceiver::getNext_(artdaq::FragmentPtrs & frags) {
 
 		if( data_receiver_->filled_buffers_available() > 0)
 		{
-			mf::LogWarning("TpcRceRecevier") << "getNext_ stopping while there were still filled buffers available";
+			mf::LogWarning(instance_name_) << "getNext_ stopping while there were still filled buffers available";
 		}
 		else
 		{
-	    	mf::LogInfo("TpcRceReceiver") << "No unprocessed filled buffers available at end of run";
+	    	mf::LogInfo(instance_name_) << "No unprocessed filled buffers available at end of run";
 		}
 
 	return false;
@@ -295,7 +303,7 @@ bool lbne::TpcRceReceiver::getNext_(artdaq::FragmentPtrs & frags) {
   // an empty list
   if (recvd_buffer->size() == 0)
   {
-	  mf::LogWarning("TpcRceReceiver") << "getNext_ : no data received in raw buffer";
+	  mf::LogWarning(instance_name_) << "getNext_ : no data received in raw buffer";
 	  return true;
   }
 
@@ -325,7 +333,7 @@ bool lbne::TpcRceReceiver::getNext_(artdaq::FragmentPtrs & frags) {
 	  }
 	  else
 	  {
-		  mf::LogError("TpcRceReciver") << "Cannot map raw buffer with data address" << (void*)recvd_buffer->dataPtr() << " back onto fragment";
+		  mf::LogError(instance_name_) << "Cannot map raw buffer with data address" << (void*)recvd_buffer->dataPtr() << " back onto fragment";
 		  return true;
 	  }
   }
@@ -353,7 +361,7 @@ bool lbne::TpcRceReceiver::getNext_(artdaq::FragmentPtrs & frags) {
 	  auto elapsed_msecs = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - start_time_).count();
 	  double elapsed_secs = ((double)elapsed_msecs)/1000;
 
-	  mf::LogInfo("TpcRceReceiver") << "Received " << millislices_received_ << " millislices, "
+	  mf::LogInfo(instance_name_) << "Received " << millislices_received_ << " millislices, "
 			  << float(total_bytes_received_)/(1024*1024) << " MB in " << elapsed_secs << " seconds";
   }
 
@@ -418,14 +426,14 @@ uint32_t lbne::TpcRceReceiver::format_millislice_from_raw_buffer(uint16_t* src_a
   for (uint32_t udx = 0; udx < number_of_microslices_to_generate_; ++udx) {
     microslice_writer_ptr = millislice_writer.reserveMicroSlice(MICROSLICE_BUFFER_SIZE);
     if (microslice_writer_ptr.get() == 0) {
-      mf::LogError("TpcRceReceiver")
+      mf::LogError(instance_name_)
         << "Unable to create microslice number " << udx;
     }
     else {
       for (uint32_t ndx = 0; ndx < number_of_nanoslices_to_generate_; ++ndx) {
         nanoslice_writer_ptr = microslice_writer_ptr->reserveNanoSlice(NANOSLICE_BUFFER_SIZE);
         if (nanoslice_writer_ptr.get() == 0) {
-          mf::LogError("TpcRceReceiver")
+          mf::LogError(instance_name_)
             << "Unable to create nanoslice number " << ndx;
         }
         else {
@@ -442,7 +450,7 @@ uint32_t lbne::TpcRceReceiver::format_millislice_from_raw_buffer(uint16_t* src_a
   // Check if we have overrun the end of the raw buffer
   if (sample_addr > (src_addr + src_size))
   {
-	  mf::LogError("TpcRceReceiver")
+	  mf::LogError(instance_name_)
 	  	  << "Raw buffer overrun during millislice formatting by " << ((src_addr + src_size) - sample_addr);
   }
   millislice_writer.finalize();

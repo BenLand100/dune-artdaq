@@ -104,6 +104,8 @@ namespace lbne {
     std::unique_ptr<lbne::RceClient> dpm_client_;
     std::unique_ptr<lbne::RceClient> dtm_client_;
 
+    std::string instance_name_;
+
     bool run_receiver_;
     std::unique_ptr<lbne::RceDataReceiver> data_receiver_;
 
