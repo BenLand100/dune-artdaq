@@ -145,6 +145,8 @@ void lbne::TpcMilliSliceDump::analyze(art::Event const & evt)
 				///> get the microslice type ID
 				lbne::TpcMicroSlice::Header::type_id_t us_type_id = microslice->type_id();
 
+				uint8_t us_run_mode = (us_type_id >> 16) & 0xF;
+
 				///> get the software message
 				lbne::TpcMicroSlice::Header::softmsg_t us_software_message = microslice->software_message();
 
@@ -162,9 +164,31 @@ void lbne::TpcMilliSliceDump::analyze(art::Event const & evt)
 					std::cout << " sequence ID header    : 0x"
 						  << std::hex << std::setw(8) << std::setfill('0') << us_sequence_id <<std::dec << std::endl;
 					std::cout << " type ID header    : 0x"
-						  << std::hex << std::setw(8) << std::setfill('0') << us_type_id <<std::dec << std::endl;
+						  << std::hex << std::setw(8) << std::setfill('0') << us_type_id <<std::dec << std::endl
+						  << "\t\t4 bit flags [error,software trigger,external trigger,dropped frame]:" << std::bitset<4>((us_type_id >> 28) & 0xF) << std::endl
+						  << "\t\tRun mode ID: " << (uint16_t)us_run_mode << std::endl
+						  << "\t\tRCE software version: 0x" << std::hex << std::setw(4) << std::setfill('0') << (us_type_id & 0xFFFF) << std::endl;
 					std::cout << " software message    : 0x"
-						  << std::hex << std::setw(16) << std::setfill('0') << us_software_message <<std::dec << std::endl;				   
+						  << std::hex << std::setw(16) << std::setfill('0') << us_software_message <<std::dec << std::endl 
+						  << "\t\t";
+					if(us_run_mode == 0x0)
+					  std::cout << "Run mode Idle. NOvA timestamp from first nanoslice: " << us_software_message << std::endl;
+					else if(us_run_mode == 0x1)
+					  std::cout << "Run mode Scope. Selected channel: " << us_software_message << std::endl;
+					else if(us_run_mode == 0x2)
+					  std::cout << "Run mode Burst. Software message 0: " << us_software_message << std::endl;
+					else if(us_run_mode == 0x3) {
+					  std::cout << "Run mode Trigger. " << std::endl
+						    << "\t\t";
+					  if(((us_type_id >> 28) & 0x6) == 0x4)
+					    std::cout << "255: " << ((us_software_message >> 56) & 0xFF)
+						      << " NOvA timestamp of first nanoslice in microslice: " << (us_software_message & 0xFFFFFFFFFFFFFF) << std::endl;
+					  else
+					    std::cout << "Trigger counter: " << ((us_software_message >> 56) & 0xFF)
+						      << " NOvA timestamp of external trigger: " << (us_software_message & 0xFFFFFFFFFFFFFF) << std::endl;
+					}
+					else
+					  std::cout << "Unknown run mode" << std::endl;
 					std::cout << " firmware message    : 0x"
 						  << std::hex << std::setw(16) << std::setfill('0') << us_firmware_message <<std::dec << std::endl;								
 				}
@@ -222,9 +246,10 @@ void lbne::TpcMilliSliceDump::analyze(art::Event const & evt)
 						lbne::TpcNanoSlice::Header::nova_timestamp_t ns_timestamp = nanoslice->nova_timestamp();
 
 						//std::cout << "    Decoded Header:" << std::endl;
-						std::cout << "    NOvA timestamp   : 0x" << std::hex << std::setw(14) << std::setfill('0')
+						std::cout << "    NOvA timestamp : 0x" << std::hex << std::setw(14) << std::setfill('0')
 							  << ns_timestamp << std::dec
-							  << "\t" << std::bitset<64>(nanoslice->nova_timestamp())
+							  << "\t" << ns_timestamp
+							  << "\t" << std::bitset<64>(ns_timestamp)
 							  << std::endl;
 
 						///> get the number of channels contained in the nanoslice
