@@ -71,6 +71,8 @@ lbne::TpcRceReceiver::TpcRceReceiver(fhicl::ParameterSet const & ps)
 	ps.get<std::string>("rce_xml_config_file", "config.xml");
   rce_daq_mode_ =
 	ps.get<std::string>("rce_daq_mode", "Trigger");
+  rce_feb_emulation_ =
+    ps.get<bool>("rce_feb_emulation_mode", false);
 
   rce_data_dest_host_ =
 	ps.get<std::string>("rce_data_dest_host", "127.0.0.1");
@@ -114,29 +116,39 @@ lbne::TpcRceReceiver::TpcRceReceiver(fhicl::ParameterSet const & ps)
   reporting_interval_time_ = 
     ps.get<uint32_t>("reporting_interval_time", 0);
 
-  // Create an RCE client instance
 #ifndef NO_RCE_CLIENT
 
   // If the DTM client is enabled (for standalone testing of the RCE), open
   // the connection, reset the DTM and enable timing emulation mode
-  if (dtm_client_enable_) {
+  if (dtm_client_enable_) 
+  {
     dtm_client_ = std::unique_ptr<lbne::RceClient>(new lbne::RceClient(instance_name_,
 	       dtm_client_host_addr_, dtm_client_host_port_, dtm_client_timeout_usecs_));
-    dtm_client_->send_command("HardReset");
-    //    sleep(1);
-    //mg changes 2/16/2015...add configuration command; remove set emulation false
-    dtm_client_->send_command("ReadXmlFile", rce_xml_config_file_);
-    //    std::ostringstream config_frag;
-    //    config_frag << "<TimingDtm><TimingRtm><EmulationEnable>False</EmulationEnable></TimingRtm></TimingDtm>";
-    //    dtm_client_->send_config(config_frag.str());
+  
+    //dtm_client_->send_command("HardReset");
+    //dtm_client_->send_command("ReadXmlFile", rce_xml_config_file_);
+    //std::ostringstream config_frag;
+    //config_frag << "<TimingDtm><TimingRtm><EmulationEnable>False</EmulationEnable></TimingRtm></TimingDtm>";
+    //dtm_client_->send_config(config_frag.str());
   }
 
+  // Create a client connection to the DPM
   dpm_client_ = std::unique_ptr<lbne::RceClient>(new lbne::RceClient(instance_name_,
 		  dpm_client_host_addr_, dpm_client_host_port_, dpm_client_timeout_usecs_));
 
+  // Set the DPM to FEB emulation mode if necessary
+  if (rce_feb_emulation_) {
+    mf::LogDebug(instance_name_) << "Enabling FEB emulation in RCE";
+    dpm_client_->send_command("StartDebugFebEmu");
+  }
+
+  // Send a HardReset command to the DPM
   dpm_client_->send_command("HardReset");
-  //sleep(10);
+
+  // Tell the DPM to read its configuration file
   dpm_client_->send_command("ReadXmlFile", rce_xml_config_file_);
+
+  // Set the DPM run mode as specified
   std::ostringstream config_frag;
   config_frag << "<DataDpm><DataBuffer><RunMode>" << rce_daq_mode_ << "</RunMode></DataBuffer></DataDpm>";
   dpm_client_->send_config(config_frag.str());
@@ -206,13 +218,11 @@ void lbne::TpcRceReceiver::start(void)
 
 	if (dtm_client_enable_) 
         {
-	  //mg 2/9/15...SoftReset seems to reset the whole FEB configuration...new versions of firmware should fix this
-	  //	  dtm_client_->send_command("SoftReset");
-	  dtm_client_->send_command("SetRunState", "Enable");
+	  //dtm_client_->send_command("SetRunState", "Enable");
+	  //dtm_client_->send_command("Start");
 	}
 
-	  //mg 2/9/15...SoftReset seems to reset the whole FEB configuration...new versions of firmware should fix this
-	//       	dpm_client_->send_command("SoftReset");
+	// Set the run state to enabled
 	dpm_client_->send_command("SetRunState", "Enable");
 
 #endif
@@ -223,22 +233,18 @@ void lbne::TpcRceReceiver::stop(void)
 {
 	mf::LogInfo(instance_name_) << "stop() called";
 
-	//put DPM stop first...see if that helps the DPM freeze issue
+#ifndef NO_RCE_CLIENT
+
+	// Instruct the DPM to stope
 	dpm_client_->send_command("SetRunState", "Stopped");
 	
-	//sleep(10);
-
-	// Instruct the RCE to stop
-#ifndef NO_RCE_CLIENT
 	if (dtm_client_enable_)
 	{
-	  dtm_client_->send_command("SetRunState", "Stopped");
-	  //mg 2/16/2015; add a short sleep...this may help the race condition with DPM in triggered mode
+	  //dtm_client_->send_command("SetRunState", "Stopped");
+	  //dtm_client_->send_command("Stop");
+
 	}
 	
-	//	dpm_client_->send_command("SetRunState", "Stopped");
-
-
 	//dpm_client_->send_command("STOP");
 #endif
 

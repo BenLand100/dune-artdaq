@@ -80,6 +80,7 @@ namespace lbne {
     
     std::string rce_xml_config_file_;
     std::string rce_daq_mode_;
+    bool        rce_feb_emulation_;
 
     std::string rce_data_dest_host_;
     uint16_t    rce_data_dest_port_;
