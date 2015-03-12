@@ -129,11 +129,12 @@ void lbne::SSP::ConfigureDAQ(fhicl::ParameterSet const& ps){
   }
 
   unsigned int millisliceOverlap=daqConfig.get<unsigned int>("MillisliceOverlap",0);
-
+  /*
   if(millisliceOverlap==0){
     SSPDAQ::Log::Error()<<"Error: Millislice overlap not defined in SSP DAQ configuration!"<<std::endl;
     throw SSPDAQ::EDAQConfigError("");
   }
+  */
 
   unsigned int useExternalTimestamp=daqConfig.get<unsigned int>("UseExternalTimestamp",2);
 
