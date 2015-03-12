@@ -85,6 +85,7 @@ private:
 	SafeQueue<lbne::RceRawBufferPtr> filled_buffer_queue_;
 	RceRawBufferPtr current_raw_buffer_;
 	void*           current_write_ptr_;
+        void*           current_header_ptr_;
 
 	enum NextReceiveState { ReceiveMicrosliceHeader, ReceiveMicroslicePayload };
 	NextReceiveState next_receive_state_;
