@@ -21,6 +21,7 @@
 #include <boost/asio/deadline_timer.hpp>
 #include "lbne-artdaq/Generators/RceSupportLib/SafeQueue.hh"
 #include "lbne-artdaq/Generators/RceSupportLib/RceRawBuffer.hh"
+#include "messagefacility/MessageLogger/MessageLogger.h"
 
 using boost::asio::ip::tcp;
 
@@ -29,7 +30,9 @@ namespace lbne {
 class RceDataReceiver {
 
 public:
-	RceDataReceiver(int debug_level, uint32_t tick_period_usecs, uint16_t udp_receive_port, uint16_t number_of_microslices_per_millislice);
+	RceDataReceiver(const std::string& instance_name, int debug_level,
+			uint32_t tick_period_usecs, uint16_t udp_receive_port,
+			uint16_t number_of_microslices_per_millislice);
 	virtual ~RceDataReceiver();
 
 	void start();
@@ -55,6 +58,7 @@ private:
 	void set_deadline(DeadlineIoObject io_object, unsigned int timeout_us);
 	void check_deadline(void);
 
+	std::string instance_name_;
 	int debug_level_;
 
 	boost::asio::io_service io_service_;

@@ -22,10 +22,11 @@ struct RceMicrosliceHeader
 #endif
 };
 
-#define RECV_DEBUG(level) if (level <= debug_level_) std::cout
+#define RECV_DEBUG(level) if (level <= debug_level_) mf::LogDebug(instance_name_)
 
-lbne::RceDataReceiver::RceDataReceiver(int debug_level, uint32_t tick_period_usecs,
+lbne::RceDataReceiver::RceDataReceiver(const std::string& instance_name, int debug_level, uint32_t tick_period_usecs,
 		uint16_t receive_port, uint16_t number_of_microslices_per_millislice) :
+	instance_name_(instance_name),
 	debug_level_(debug_level),
 	acceptor_(io_service_, tcp::endpoint(tcp::v4(), (short)receive_port)),
 	accept_socket_(io_service_),
@@ -40,7 +41,7 @@ lbne::RceDataReceiver::RceDataReceiver(int debug_level, uint32_t tick_period_use
 	readout_suspended_(false),
 	recv_socket_(0)
 {
-	RECV_DEBUG(1) << "lbne::RceDataReceiver constructor" << std::endl;
+	RECV_DEBUG(1) << "lbne::RceDataReceiver constructor";
 
 	// Initialise and start the persistent deadline actor that handles socket operation
 	// timeouts. Timeout is set to zero (no timeout) to start
@@ -57,7 +58,7 @@ lbne::RceDataReceiver::RceDataReceiver(int debug_level, uint32_t tick_period_use
 
 lbne::RceDataReceiver::~RceDataReceiver()
 {
-	RECV_DEBUG(1) << "lbne::RceDataReceiver destructor" << std::endl;
+	RECV_DEBUG(1) << "lbne::RceDataReceiver destructor";
 
 	// Flag receiver as no longer running
 	run_receiver_.store(false);
@@ -68,13 +69,13 @@ lbne::RceDataReceiver::~RceDataReceiver()
 	// Wait for thread running receiver IO service to terminate
 	receiver_thread_->join();
 
-	RECV_DEBUG(1) << "lbne::RceDataReceiver destructor: receiver thread joined OK" << std::endl;
+	RECV_DEBUG(1) << "lbne::RceDataReceiver destructor: receiver thread joined OK";
 
 }
 
 void lbne::RceDataReceiver::start(void)
 {
-	RECV_DEBUG(1) << "lbne::RceDataReceiver::start called" << std::endl;
+	RECV_DEBUG(1) << "lbne::RceDataReceiver::start called";
 
 	start_time_ = std::chrono::high_resolution_clock::now();
 
@@ -82,7 +83,7 @@ void lbne::RceDataReceiver::start(void)
 	if (current_raw_buffer_ != nullptr)
 	{
 		RECV_DEBUG(2) << "TpcRceReceiver::start: dropping unused or partially filled buffer containing "
-				      << microslices_recvd_ << " microslices" << std::endl;
+				      << microslices_recvd_ << " microslices";
 		current_raw_buffer_.reset();
 		millislice_state_ = MillisliceEmpty;
 	}
@@ -107,7 +108,7 @@ void lbne::RceDataReceiver::start(void)
 
 void lbne::RceDataReceiver::stop(void)
 {
-	RECV_DEBUG(1) << "lbne::RceDataReceiver::stop called" << std::endl;
+	RECV_DEBUG(1) << "lbne::RceDataReceiver::stop called";
 
 	// Suspend readout and wait for receiver thread to respond accordingly
 	suspend_readout_.store(true);
@@ -121,7 +122,7 @@ void lbne::RceDataReceiver::stop(void)
 		timeout_count++;
 		if (timeout_count > max_timeout_count)
 		{
-			std::cout << "ERROR - timeout waiting for RceDataReceiver thread to suspend readout" << std::endl;
+			mf::LogError(instance_name_) << "Timeout waiting for RceDataReceiver thread to suspend readout";
 			break;
 		}
 	}
@@ -130,10 +131,10 @@ void lbne::RceDataReceiver::stop(void)
 	double elapsed_secs = ((double)elapsed_msecs) / 1000;
 	double rate = ((double)millislices_recvd_) / elapsed_secs;
 
-	RECV_DEBUG(0) << "lbne::RceDataRecevier::stop : last sequence id was " << last_sequence_id_ << std::endl;
+	RECV_DEBUG(0) << "lbne::RceDataRecevier::stop : last sequence id was " << last_sequence_id_;
 	RECV_DEBUG(0) << "lbne::RceDataReceiver::stop : received " << millislices_recvd_ << " millislices in "
 			      << elapsed_secs << " seconds, rate "
-			      << rate << " Hz" << std::endl;
+			      << rate << " Hz";
 
 }
 
@@ -189,11 +190,11 @@ void lbne::RceDataReceiver::release_filled_buffers(void)
 
 void lbne::RceDataReceiver::run_service(void)
 {
-	RECV_DEBUG(1) << "lbne::RceDataReceiver::run_service starting" << std::endl;
+	RECV_DEBUG(1) << "lbne::RceDataReceiver::run_service starting";
 
 	io_service_.run();
 
-	RECV_DEBUG(1) << "lbne::RceDataReceiver::run_service stopping" << std::endl;
+	RECV_DEBUG(1) << "lbne::RceDataReceiver::run_service stopping";
 }
 
 void lbne::RceDataReceiver::do_accept(void)
@@ -201,13 +202,13 @@ void lbne::RceDataReceiver::do_accept(void)
 	// Suspend readout and cleanup any incomplete millislices if stop has been called
 	if (suspend_readout_.load())
 	{
-		RECV_DEBUG(3) << "Suspending readout at do_accept entry" << std::endl;
+		RECV_DEBUG(3) << "Suspending readout at do_accept entry";
 		this->suspend_readout(false);
 	}
 
 	// Exit if shutting receiver down
 	if (!run_receiver_.load()) {
-		RECV_DEBUG(1) << "Stopping do_accept() at entry" << std::endl;
+		RECV_DEBUG(1) << "Stopping do_accept() at entry";
 		return;
 	}
 
@@ -218,7 +219,7 @@ void lbne::RceDataReceiver::do_accept(void)
 		{
 			if (!ec)
 			{
-				RECV_DEBUG(1) << "Accepted new data connection from source " << accept_socket_.remote_endpoint() << std::endl;
+				RECV_DEBUG(1) << "Accepted new data connection from source " << accept_socket_.remote_endpoint();
 				data_socket_ = std::move(accept_socket_);
 				this->do_read();
 			}
@@ -226,11 +227,11 @@ void lbne::RceDataReceiver::do_accept(void)
 			{
 				if (ec == boost::asio::error::operation_aborted)
 				{
-					RECV_DEBUG(3) << "Timeout on async_accept" << std::endl;
+					RECV_DEBUG(3) << "Timeout on async_accept";
 				}
 				else
 				{
-					std::cout << "Got error on asynchronous accept: " << ec << std::endl;
+					mf::LogError(instance_name_) << "Got error on asynchronous accept: " << ec;
 				}
 				this->do_accept();
 			}
@@ -244,14 +245,14 @@ void lbne::RceDataReceiver::do_read(void)
 	// Suspend readout and cleanup any incomplete millislices if stop has been called
 	if (suspend_readout_.load())
 	{
-		RECV_DEBUG(3) << "Suspending readout at do_read entry" << std::endl;
+		RECV_DEBUG(3) << "Suspending readout at do_read entry";
 		this->suspend_readout(true);
 	}
 
 	// Terminate receiver read loop if required
 	if (!run_receiver_.load())
 	{
-		RECV_DEBUG(1) << "Stopping do_read at entry" << std::endl;
+		RECV_DEBUG(1) << "Stopping do_read at entry";
 		return;
 	}
 
@@ -272,7 +273,7 @@ void lbne::RceDataReceiver::do_read(void)
 			if (!buffer_available)
 			{
 				buffer_retries++;
-				std::cout << "lbne::RceDataReceiver::receiverLoop no buffers available on commit queue" <<std::endl;;
+				mf::LogWarning(instance_name_) << "lbne::RceDataReceiver::receiverLoop no buffers available on commit queue";
 			}
 		} while (!buffer_available && (buffer_retries < max_buffer_retries));
 
@@ -283,11 +284,11 @@ void lbne::RceDataReceiver::do_read(void)
 			microslices_recvd_ = 0;
 			microslice_size_recvd_ = 0;
 			current_write_ptr_ = (void*)(current_raw_buffer_->dataPtr());
-			RECV_DEBUG(2) << "Receiving new millislice into raw buffer at address " << current_write_ptr_ << std::endl;
+			RECV_DEBUG(2) << "Receiving new millislice into raw buffer at address " << current_write_ptr_;
 		}
 		else
 		{
-			std::cout << "Failed to obtain new raw buffer for millislice, terminating receiver loop" << std::endl;
+			mf::LogError(instance_name_) << "Failed to obtain new raw buffer for millislice, terminating receiver loop";
 			// TODO handle error cleanly here
 			return;
 		}
@@ -300,7 +301,7 @@ void lbne::RceDataReceiver::do_read(void)
 			  	  << " uslice size " << microslice_size_recvd_
 			  	  << " mslice size " << millislice_size_recvd_
 			  	  << " addr " << current_write_ptr_
-			  	  << " next recv size " << next_receive_size_ << std::endl;
+			  	  << " next recv size " << next_receive_size_;
 
 	// Start the asynchronous receive operation into the current raw buffer.
 	data_socket_.async_receive(
@@ -309,7 +310,7 @@ void lbne::RceDataReceiver::do_read(void)
 		{
 			if (!ec)
 			{
-				RECV_DEBUG(2) << "Received " << length << " bytes on socket" << std::endl;
+				RECV_DEBUG(2) << "Received " << length << " bytes on socket";
 
 				this->handle_received_data(length);
 
@@ -319,17 +320,17 @@ void lbne::RceDataReceiver::do_read(void)
 			{
 				if (ec == boost::asio::error::eof)
 				{
-					RECV_DEBUG(1) << "Client socket closed the connection" << std::endl;
+					RECV_DEBUG(1) << "Client socket closed the connection";
 					this->do_accept();
 				}
 				else if (ec == boost::asio::error::operation_aborted)
 				{
-					RECV_DEBUG(3) << "Timeout on read from data socket" << std::endl;
+					RECV_DEBUG(3) << "Timeout on read from data socket";
 					this->do_read();
 				}
 				else
 				{
-					std::cout << "Got error on aysnchronous read: " << ec << std::endl;
+					mf::LogError(instance_name_) << "Got error on aysnchronous read: " << ec;
 				}
 
 			}
@@ -358,12 +359,12 @@ void lbne::RceDataReceiver::handle_received_data(std::size_t length)
 		microslice_size_ = (header->raw_header_words[0] & 0xFFFFF) * sizeof(uint32_t);
 		sequence_id = (header->raw_header_words[5]);
 #endif
-		RECV_DEBUG(2) << "Got header for microslice with size " << microslice_size_ << " sequence ID " << sequence_id << std::endl;
+		RECV_DEBUG(2) << "Got header for microslice with size " << microslice_size_ << " sequence ID " << sequence_id;
 
 		// Validate the sequence ID - should be incrementing monotonically
 		if (sequence_id_initialised_ && (sequence_id != last_sequence_id_+1))
 		{
-			std::cout << "WARNING: mismatch in microslice sequence IDs! Got " << sequence_id << " expected " << last_sequence_id_+1 << std::endl;
+			mf::LogWarning(instance_name_) << "WARNING: mismatch in microslice sequence IDs! Got " << sequence_id << " expected " << last_sequence_id_+1;
 			//TODO handle error cleanly here
 		}
 		else
@@ -379,11 +380,11 @@ void lbne::RceDataReceiver::handle_received_data(std::size_t length)
 
 	case ReceiveMicroslicePayload:
 
-		RECV_DEBUG(2) << "Got microslice payload length " << length << std::endl;
+		RECV_DEBUG(2) << "Got microslice payload length " << length;
 
 		if (microslice_size_recvd_ == microslice_size_)
 		{
-			RECV_DEBUG(2) << "Complete payload received for microslice " << microslices_recvd_ << std::endl;
+			RECV_DEBUG(2) << "Complete payload received for microslice " << microslices_recvd_;
 			microslices_recvd_++;
 			microslice_size_recvd_ = 0;
 			millislice_state_ = MillisliceIncomplete;
@@ -394,7 +395,7 @@ void lbne::RceDataReceiver::handle_received_data(std::size_t length)
 		{
 			RECV_DEBUG(2) << "Incomplete payload received for microslice " << microslices_recvd_
 					      << " (got " << microslice_size_recvd_
-					      << " expected " << microslice_size_ << " bytes)" << std::endl;
+					      << " expected " << microslice_size_ << " bytes)";
 			millislice_state_ = MicrosliceIncomplete;
 			next_receive_state_ = ReceiveMicroslicePayload;
 			next_receive_size_ = microslice_size_ - microslice_size_recvd_;
@@ -404,7 +405,7 @@ void lbne::RceDataReceiver::handle_received_data(std::size_t length)
 	default:
 
 		// Should never happen - bug or data corruption
-		std::cout << "FATAL ERROR after async_recv - unrecognised next receive state: " << next_receive_state_ << std::endl;
+		mf::LogError(instance_name_) << "Fatal error after async_recv - unrecognised next receive state: " << next_receive_state_;
 		return;
 		break;
 	}
@@ -418,7 +419,7 @@ void lbne::RceDataReceiver::handle_received_data(std::size_t length)
 	{
 		RECV_DEBUG(1) << "Millislice " << millislices_recvd_
 					  << " complete with " << microslices_recvd_
-					  << " microslices, total size " << millislice_size_recvd_ << " bytes" << std::endl;
+					  << " microslices, total size " << millislice_size_recvd_ << " bytes";
 		millislices_recvd_++;
 		millislice_state_ = MillisliceComplete;
 	}
@@ -440,12 +441,12 @@ void lbne::RceDataReceiver::suspend_readout(bool await_restart)
 
 	if (await_restart)
 	{
-		RECV_DEBUG(2) << "TpcRceReceiver::suspend_readout: awaiting restart or shutdown" << std::endl;
+		RECV_DEBUG(2) << "TpcRceReceiver::suspend_readout: awaiting restart or shutdown";
 		while (suspend_readout_.load() && run_receiver_.load())
 		{
 			usleep(tick_period_usecs_);
 		}
-		RECV_DEBUG(2) << "TpcRceReceiver::suspend_readout: restart or shutdown detected, exiting wait loop" << std::endl;
+		RECV_DEBUG(2) << "TpcRceReceiver::suspend_readout: restart or shutdown detected, exiting wait loop";
 	}
 
 }
@@ -503,6 +504,6 @@ void lbne::RceDataReceiver::check_deadline(void)
 	}
 	else
 	{
-		RECV_DEBUG(1) << "Deadline actor terminating" << std::endl;
+		RECV_DEBUG(1) << "Deadline actor terminating";
 	}
 }

@@ -18,8 +18,8 @@ analyzers:
   printBuildInfo: {
     module_type: PrintBuildInfo
 
-    buildinfo_module_label: lbneArtdaqBuildInfo
-    buildinfo_instance_label: LbneArtdaqBuildInfo
+    buildinfo_module_label: BuildInfo
+    buildinfo_instance_label: LbneArtdaq
   }
 }
 

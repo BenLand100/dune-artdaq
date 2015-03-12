@@ -12,7 +12,9 @@
 #include <libxml/parser.h>
 #include <libxml/tree.h>
 
-lbne::RceClient::RceClient(const std::string& host_name, const std::string& port_or_service, const unsigned int timeout_usecs) :
+lbne::RceClient::RceClient(const std::string& instance_name, const std::string& host_name,
+		const std::string& port_or_service, const unsigned int timeout_usecs) :
+	instance_name_(instance_name),
 	socket_(io_service_),
 	deadline_(io_service_),
 	timeout_usecs_(timeout_usecs)
@@ -37,7 +39,7 @@ lbne::RceClient::RceClient(const std::string& host_name, const std::string& port
 		while ((endpoint_iter != end) && (socket_.is_open() == false))
 		{
 			tcp::endpoint endpoint = *endpoint_iter++;
-			std::cout << "Connecting to RCE at " << endpoint << std::endl;
+			mf::LogInfo(instance_name_) << "Connecting to RCE at " << endpoint;
 
 			// If a client timeout is specified, set the deadline timer appropriately
 			this->set_deadline();
@@ -61,19 +63,19 @@ lbne::RceClient::RceClient(const std::string& host_name, const std::string& port
 			if (error == boost::asio::error::operation_aborted)
 			{
 				socket_.close();
-				std::cerr << "Timeout establishing client connection to RCE at " << endpoint << std::endl;
+				mf::LogError(instance_name_) << "Timeout establishing client connection to RCE at " << endpoint;
 				// TODO replace with exception
 			}
 			// If another error occurred during connect - throw an exception
 			else if (error)
 			{
 				socket_.close();
-				std::cerr << "Error establishing connection to RCE at " << endpoint << " : " << error.message() << std::endl;
+				mf::LogError(instance_name_) << "Error establishing connection to RCE at " << endpoint << " : " << error.message();
 			}
 		}
 		if (socket_.is_open() == false)
 		{
-			std::cerr << "Failed to open connection to RCE" << std::endl;
+			mf::LogError(instance_name_) << "Failed to open connection to RCE";
 		} else {
 			// Send RCE a bell character to suppress async updates
 			this->send("\a\n");
@@ -84,13 +86,13 @@ lbne::RceClient::RceClient(const std::string& host_name, const std::string& port
 			  data = this->receive();
 			  bytesFlushed += data.length();
 			} while (data.length() > 0);
-			std::cout << "Flushed " << bytesFlushed << " bytes of stale data from client socket" << std::endl;
+			mf::LogDebug(instance_name_)  << "Flushed " << bytesFlushed << " bytes of stale data from client socket";
 		  
 		}
 	}
 	catch (boost::system::system_error& e)
 	{
-		std::cerr << "Exception caught opening connection to RCE: " << e.what() << std::endl;
+		mf::LogError(instance_name_) << "Exception caught opening connection to RCE: " << e.what();
 	}
 
 }
@@ -102,14 +104,14 @@ lbne::RceClient::~RceClient()
 	}
 	catch (boost::system::system_error& e)
 	{
-		std::cerr << "Exception caught closing RceClient connection:" << e.what() << std::endl;
+		mf::LogError(instance_name_) << "Exception caught closing RceClient connection:" << e.what();
 	}
 }
 
 void lbne::RceClient::send_command(std::string const & command, std::string const & param)
 {
 
-	std::cout << "Sending command: " << command << " with param: " << param << std::endl;
+	mf::LogDebug(instance_name_) << "Sending command: " << command << " with param: " << param;
 	
 	// Build XML fragment containing command enclosing the parameter
 	std::ostringstream xml_frag;
@@ -123,7 +125,7 @@ void lbne::RceClient::send_command(std::string const & command, std::string cons
 
 void lbne::RceClient::send_command(std::string const & command)
 {
-	std::cout << "Sending command: " << command << std::endl;
+	mf::LogDebug(instance_name_) << "Sending command: " << command;
 
 	// Build the XML fragment with command as empty closed tag
 	std::ostringstream xml_frag;
@@ -135,7 +137,7 @@ void lbne::RceClient::send_command(std::string const & command)
 
 void lbne::RceClient::send_config(std::string const & config)
 {
-	std::cout << "Sending config: " << config << std::endl;
+	mf::LogDebug(instance_name_) << "Sending config: " << config;
 	std::ostringstream config_frag;
 	config_frag << "<config>" << config << "</config>";
 
@@ -155,14 +157,26 @@ void lbne::RceClient::send_xml(std::string const & xml_frag)
 	this->send(xml_cmd.str());
 
 	// Get the response
-	std::string response = this->receive();
-
+	xmlDocPtr doc;
+	std::string response;
+	int maxSleep=10;
+	int cnt=0;
+	while(1){
+	  response = this->receive();
+	  doc = xmlReadMemory(response.c_str(), response.length()-1, "noname.xml", NULL, 0);
+	  if (doc == NULL&&cnt<maxSleep) {
+	    sleep(1);
+	    cnt++;
+	  }	else {
+	    //std::cout << "Response is " << response << std::endl;	    
+	    break;
+	  }
+	}
 	// Traverse the DOM of the XML response and determine if any of the child elements are error.
-	xmlDocPtr doc = xmlReadMemory(response.c_str(), response.length()-1, "noname.xml", NULL, 0);
+	//	xmlDocPtr doc = xmlReadMemory(response.c_str(), response.length()-1, "noname.xml", NULL, 0);
 	if (doc == NULL) {
-	  std::cout << "Failed to parse XML response:" << std::endl;
-	  std::cout << response << std::endl;
-	  std::cout << "Response had length " << response.length() << std::endl;
+		mf::LogError(instance_name_) << "Failed to parse XML response (length: " <<  response.length() << ")";
+		mf::LogDebug(instance_name_) << response;
 	}
 	else {
 	  /*Get the root element node */
@@ -175,9 +189,9 @@ void lbne::RceClient::send_xml(std::string const & xml_frag)
 		//xmlNode* error_node = cur_node->children;
 		xmlChar* errorContent = xmlNodeGetContent(cur_node);
 		if (errorContent) {
-		  std::cout << "Got error response from RCE: " << errorContent << std::endl;
+			mf::LogError(instance_name_) << "Got error response from RCE: " << errorContent;
 		} else {
-		  std::cout << "Got error resposne from RCE but cannot parse content" << std::endl;
+			mf::LogError(instance_name_) << "Got error resposne from RCE but cannot parse content";
 		}
 		xmlFree(errorContent);
 	      }
@@ -269,20 +283,20 @@ std::size_t lbne::RceClient::send(std::string const & send_str)
 	if (error == boost::asio::error::eof)
 	{
 		// Connection closed by peer
-		std::cerr << "Connection closed by RCE" << std::endl;
+		mf::LogError(instance_name_) << "Connection closed by RCE";
 	}
 	else if (error == boost::asio::error::operation_aborted)
 	{
 		// Timeout signalled by deadline actor
-		std::cerr << "Timeout sending message to RCE" << std::endl;
+		mf::LogError(instance_name_) << "Timeout sending message to RCE";
 	}
 	else if (error)
 	{
-		std::cerr << "Error sending message to RCE: " << error.message();
+		mf::LogError(instance_name_) << "Error sending message to RCE: " << error.message();
 	}
 	else if (send_len != send_str.size())
 	{
-		std::cerr << "Size mismatch when sending transaction: wrote " << send_len << " expected " << send_str.size();
+		mf::LogError(instance_name_) << "Size mismatch when sending transaction: wrote " << send_len << " expected " << send_str.size();
 	}
 
 	return send_len;
@@ -350,7 +364,7 @@ void lbne::RceClient::set_param_(std::string const & name, std::string const & e
 	// Parse the response to ensure the command was acknowledged
 	if (!response_is_ack(response, "SET"))
 	{
-		std::cout << "SET command failed: " << response;
+		mf::LogError(instance_name_) << "SET command failed: " << response;
 	}
 
 }

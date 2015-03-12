@@ -104,13 +104,17 @@ namespace lbne {
     std::unique_ptr<lbne::RceClient> dpm_client_;
     std::unique_ptr<lbne::RceClient> dtm_client_;
 
+    std::string instance_name_;
+
     bool run_receiver_;
     std::unique_ptr<lbne::RceDataReceiver> data_receiver_;
 
     std::size_t millislices_received_;
     std::size_t total_bytes_received_;
     std::chrono::high_resolution_clock::time_point start_time_;
+    std::chrono::high_resolution_clock::time_point report_time_;
     uint32_t reporting_interval_fragments_;
+    uint32_t reporting_interval_time_;
 
     RceRawBufferPtr create_new_buffer_from_fragment(void);
     uint32_t format_millislice_from_raw_buffer(uint16_t* src_addr, size_t src_size,
