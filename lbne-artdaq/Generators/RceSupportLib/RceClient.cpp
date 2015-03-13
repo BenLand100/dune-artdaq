@@ -159,57 +159,56 @@ void lbne::RceClient::send_xml(std::string const & xml_frag)
 	// Get the response
 	xmlDocPtr doc;
 	std::string response;
-	int maxSleep=10;
-	int cnt=0;
-	while(1){
+
+	int max_response_timeout_us = 10000000;
+	int max_retries = max_response_timeout_us / timeout_usecs_;
+	int retries = 0;
+
+	while ( retries++ < max_retries)
+	{
 	  response = this->receive();
 	  doc = xmlReadMemory(response.c_str(), response.length()-1, "noname.xml", NULL, 0);
-	  if (doc == NULL&&cnt<maxSleep) {
-	    sleep(1);
-	    cnt++;
-	  }	else {
+
+	  if (doc != NULL)
+	  {
 	    //std::cout << "Response is " << response << std::endl;	    
 	    break;
 	  }
 	}
-	// Traverse the DOM of the XML response and determine if any of the child elements are error.
-	//	xmlDocPtr doc = xmlReadMemory(response.c_str(), response.length()-1, "noname.xml", NULL, 0);
+
 	if (doc == NULL) {
 		mf::LogError(instance_name_) << "Failed to parse XML response (length: " <<  response.length() << ")";
 		mf::LogDebug(instance_name_) << response;
 	}
-	else {
-	  /*Get the root element node */
+	else
+	{
+
+	  // Get the root element node
 	  xmlNode* root_element = xmlDocGetRootElement(doc);
 	  xmlNode *cur_node = NULL;
-	  for (cur_node = root_element->children; cur_node; cur_node = cur_node->next) {
-	    if (cur_node->type == XML_ELEMENT_NODE) {
+
+	  // Traverse the DOM of the XML response and determine if any of the child elements are error.
+	  for (cur_node = root_element->children; cur_node; cur_node = cur_node->next)
+	  {
+	    if (cur_node->type == XML_ELEMENT_NODE)
+	    {
 	      if (std::string((const char*)(cur_node->name)) == "error") 
 	      {
-		//xmlNode* error_node = cur_node->children;
-		xmlChar* errorContent = xmlNodeGetContent(cur_node);
-		if (errorContent) {
-			mf::LogError(instance_name_) << "Got error response from RCE: " << errorContent;
-		} else {
-			mf::LogError(instance_name_) << "Got error resposne from RCE but cannot parse content";
-		}
-		xmlFree(errorContent);
+			//xmlNode* error_node = cur_node->children;
+			xmlChar* errorContent = xmlNodeGetContent(cur_node);
+			if (errorContent) {
+				mf::LogError(instance_name_) << "Got error response from RCE: " << errorContent;
+			} else {
+				mf::LogError(instance_name_) << "Got error resposne from RCE but cannot parse content";
+			}
+			xmlFree(errorContent);
 	      }
 	    }
 	  }
+	  xmlFreeDoc(doc);
 	}
-	xmlFreeDoc(doc);
-
-	// Parse the response to ensure the command was acknowledged
-	// if (this->response_is_ack(response, command))
-	// {
-	// 	std::cout << "Acknowledged OK: " << response << std::endl;
-	// }
-	// else
-	// {
-	// 	std::cout << "Failed: " << response <<std::endl;
-	// }
 }
+
 // ------------ Private methods ---------------
 
 void lbne::RceClient::set_deadline(void)

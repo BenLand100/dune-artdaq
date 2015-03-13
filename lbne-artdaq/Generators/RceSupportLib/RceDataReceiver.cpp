@@ -10,16 +10,13 @@
 #include <iostream>
 #include <unistd.h>
 
-#define TEMP_RCE_HEADER_FORMAT 1
-
 struct RceMicrosliceHeader
 {
-#ifdef TEMP_RCE_HEADER_FORMAT
   uint32_t microslice_size;
   uint32_t sequence_id;
-#else
-  uint32_t raw_header_words[6];
-#endif
+  uint32_t type_id;
+  uint32_t sw_frame_status[2];
+  uint32_t fw_frame_status[2];
 };
 
 #define RECV_DEBUG(level) if (level <= debug_level_) mf::LogDebug(instance_name_)
@@ -284,6 +281,7 @@ void lbne::RceDataReceiver::do_read(void)
 			microslices_recvd_ = 0;
 			microslice_size_recvd_ = 0;
 			current_write_ptr_ = (void*)(current_raw_buffer_->dataPtr());
+			current_header_ptr_ = current_write_ptr_;
 			RECV_DEBUG(2) << "Receiving new millislice into raw buffer at address " << current_write_ptr_;
 		}
 		else
@@ -331,6 +329,15 @@ void lbne::RceDataReceiver::do_read(void)
 				else
 				{
 					mf::LogError(instance_name_) << "Got error on aysnchronous read: " << ec;
+					mf::LogError(instance_name_) 
+					              << "RECV: state " << (unsigned int)next_receive_state_
+						      << " mslice state " << (unsigned int)millislice_state_
+						      << " uslice " << microslices_recvd_
+						      << " uslice size " << microslice_size_recvd_
+						      << " mslice size " << millislice_size_recvd_
+						      << " addr " << current_write_ptr_
+						      << " next recv size " << next_receive_size_;
+
 				}
 
 			}
@@ -350,33 +357,52 @@ void lbne::RceDataReceiver::handle_received_data(std::size_t length)
 	{
 	case ReceiveMicrosliceHeader:
 
-		// Capture the microslice length and sequence ID from the header
-		header = reinterpret_cast<RceMicrosliceHeader*>(current_write_ptr_);
-#ifdef TEMP_RCE_HEADER_FORMAT
-		microslice_size_ = header->microslice_size;
-		sequence_id = header->sequence_id;
-#else
-		microslice_size_ = (header->raw_header_words[0] & 0xFFFFF) * sizeof(uint32_t);
-		sequence_id = (header->raw_header_words[5]);
-#endif
-		RECV_DEBUG(2) << "Got header for microslice with size " << microslice_size_ << " sequence ID " << sequence_id;
+	  if (microslice_size_recvd_ == sizeof(RceMicrosliceHeader))
+	  {
+	    // Capture the microslice length and sequence ID from the header
+	    header = reinterpret_cast<RceMicrosliceHeader*>(current_header_ptr_);
+	    
+	    microslice_size_ = header->microslice_size;
+	    sequence_id = header->sequence_id;
+	    
+	    RECV_DEBUG(2) << "Got header for microslice with size " << microslice_size_ << " sequence ID " << sequence_id;
+	    
+	    // Validate the sequence ID - should be incrementing monotonically
+	    if (sequence_id_initialised_ && (sequence_id != last_sequence_id_+1))
+	    {
+	      mf::LogWarning(instance_name_) << "Got mismatch in microslice sequence IDs! Got " << sequence_id << " expected " << last_sequence_id_+1;
+	      mf::LogWarning(instance_name_) << "Receive length at mismatch : " << length;
+	      mf::LogWarning(instance_name_) << "Microslice header at mismatch :"
+					     << " size : 0x"         << std::hex << header->microslice_size << std::dec
+					     << " sequence ID : 0x " << std::hex << header->sequence_id     << std::dec
+					     << " type ID : 0x"      << std::hex << header->type_id         << std::dec
+					     << " sw status: 0x"     << std::hex  
+					     << ((uint64_t)(header->sw_frame_status[0]) << 32 | (header->sw_frame_status[1])) << std::dec
+					     << " fw status: 0x"     << std::hex 
+					     << ((uint64_t)(header->fw_frame_status[0]) << 32 | (header->fw_frame_status[1])) << std::dec;
 
-		// Validate the sequence ID - should be incrementing monotonically
-		if (sequence_id_initialised_ && (sequence_id != last_sequence_id_+1))
-		{
-			mf::LogWarning(instance_name_) << "WARNING: mismatch in microslice sequence IDs! Got " << sequence_id << " expected " << last_sequence_id_+1;
-			//TODO handle error cleanly here
-		}
-		else
-		{
-			sequence_id_initialised_ = true;
-		}
-		last_sequence_id_ = sequence_id;
+		//TODO handle error cleanly here
+	    }
+	    else
+	    {
+	      sequence_id_initialised_ = true;
+	    }
 
-		millislice_state_ = MicrosliceIncomplete;
-		next_receive_state_ = ReceiveMicroslicePayload;
-		next_receive_size_ = microslice_size_ - sizeof(RceMicrosliceHeader);
-		break;
+	    last_sequence_id_ = sequence_id;
+
+	    millislice_state_ = MicrosliceIncomplete;
+	    next_receive_state_ = ReceiveMicroslicePayload;
+	    next_receive_size_ = microslice_size_ - sizeof(RceMicrosliceHeader);
+	  }
+	  else
+	  {
+	    millislice_state_   = MicrosliceIncomplete;
+	    next_receive_state_ = ReceiveMicrosliceHeader;
+	    next_receive_size_  = sizeof(RceMicrosliceHeader) - microslice_size_recvd_;
+	    RECV_DEBUG(2) << "Incomplete header received for microslice " << microslices_recvd_
+	                  << " size " << microslice_size_recvd_ << " next recv size is " << next_receive_size_;
+	  }
+	  break;
 
 	case ReceiveMicroslicePayload:
 
@@ -390,6 +416,7 @@ void lbne::RceDataReceiver::handle_received_data(std::size_t length)
 			millislice_state_ = MillisliceIncomplete;
 			next_receive_state_ = ReceiveMicrosliceHeader;
 			next_receive_size_ = sizeof(RceMicrosliceHeader);
+			current_header_ptr_ = (void*)((char*)current_header_ptr_ + microslice_size_);
 		}
 		else
 		{
