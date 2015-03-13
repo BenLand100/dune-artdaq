@@ -141,12 +141,19 @@ lbne::TpcRceReceiver::TpcRceReceiver(fhicl::ParameterSet const & ps)
     mf::LogDebug(instance_name_) << "Enabling FEB emulation in RCE";
     dpm_client_->send_command("StartDebugFebEmu");
   }
+  // else
+  // {
+  //   mf::LogDebug(instance_name_) << "Disabling FEB emulation in RCE";
+  //   dpm_client_->send_command("StopDebugFebEmu");
+  // }
 
   // Send a HardReset command to the DPM
   dpm_client_->send_command("HardReset");
 
   // Tell the DPM to read its configuration file
   dpm_client_->send_command("ReadXmlFile", rce_xml_config_file_);
+
+  dpm_client_->send_command("ConfigFebAsic");
 
   // Set the DPM run mode as specified
   std::ostringstream config_frag;
