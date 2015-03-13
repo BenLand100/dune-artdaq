@@ -3,6 +3,7 @@ import random
 import math
 import datetime
 import time
+import binascii
 
 
 class NovaTimestamp(object):
@@ -27,9 +28,9 @@ class NovaTimestamp(object):
         
 class RceNanoslice(object):
 
-    format = '<12I'
-    num_adcs = 32
-    adc_width = 12
+    format = '<33q' #1-word header + 32-word data
+    num_adcs = 128
+    adc_width = 32
 
     @classmethod
     def length_words(cls):
@@ -49,12 +50,29 @@ class RceNanoslice(object):
         elif adc_mode == 3:  # Random ADC values across full bit-range interval  
             maxVal = (2**RceNanoslice.adc_width) - 1
             self.adc_vals = [random.randint(0, maxVal) for x in xrange(RceNanoslice.num_adcs)]
+
+        elif adc_mode == 4:
+            self.adc_vals = [0 for x in xrange(RceNanoslice.num_adcs)]
             
         else:               # Gaussian distribution with specified mean and sigma, clipped to ADC range
             self.adc_vals = [(int(random.gauss(mean,sigma)) & 0xFFFFFF) for x in xrange(RceNanoslice.num_adcs)]
 
     def pack(self):
 
+        packedAdcs = [0] * (RceNanoslice.num_adcs // 4)
+        for adc in range(RceNanoslice.num_adcs // 4):
+            packedAdcs[adc] = ((self.adc_vals[(adc*4)+3] & 0xFFFF) << 48) | ((self.adc_vals[(adc*4)+2] & 0xFFFF) << 32) | ((self.adc_vals[(adc*4)+1] & 0xFFFF) << 16) | ((self.adc_vals[(adc*4)] & 0xFFFF))
+        packedAdcs = [NovaTimestamp(None).ticks_since_epoch] + packedAdcs
+
+        verbose = False
+        if verbose:
+            print packedAdcs[0], hex(packedAdcs[0]), 
+            bintime = bin(packedAdcs[0])[2:].zfill(64)
+            for i in xrange(8):
+                print bintime[i*8:(i*8)+8], " ",
+            print
+
+        """
          # Pack ADCs into 12 32-bit words according to scheme suggested by JJ -
         # low bytes of all ADCs in first 8 words, followed by high nibble of all
         # ADCs in last 4, giving a total of 12 words
@@ -67,13 +85,13 @@ class RceNanoslice(object):
             highNibbleShift  = (adc % 8) * 4
             packedAdcs[lowByteOffset] |= ((self.adc_vals[adc] & 0xFF) << lowByteShift)
             packedAdcs[highNibbleOffset] |= ((self.adc_vals[adc] & 0xF00) >> 8) << highNibbleShift
-
+        """
         return struct.pack(RceNanoslice.format, *packedAdcs)
 
 class RceMicroslice(object):
 
     #header_format = '<IIBHBBBB'
-    header_format = "<IIIIII"
+    header_format = "<IIIIIII"
     num_lanes = 4
 
     @classmethod
@@ -132,11 +150,31 @@ class RceMicroslice(object):
 
         #block_type_version = self.block_version << 4 | self.block_type
         
-        now = time.time()
+        #now = time.time()
         if (self.num_nanoslices): 
             self.num_times = int(math.log(self.num_nanoslices)/math.log(2))
 
         header_word = [0] * RceMicroslice.header_length_words()
+        #size in bytes
+        header_word[0] = (4 * self.record_length) & 0xFFFFFFFF
+        #sequence
+        header_word[1] = self.sequence_id
+        #type id
+        header_word[2] = ((self.sub_type    &  0xF) <<  0) | ((self.trig_type   & 0xF) <<  4) | \
+                         ((self.data_format &  0xF) <<  8) | ((self.reserved_0  & 0xF) << 12) | \
+                         ((self.num_chans   &  0xF) << 16) | ((self.num_times   & 0xF) << 20) | \
+                         ((self.reserved_2  & 0xFF) << 24)
+        #software message
+        header_word[3] = self.timestamp
+        header_word[4] = 0xDEADC0DE
+        #hardware message
+        header_word[5] = 0xDEADBEEF
+        header_word[6] = 0xDEADBEEF
+                    
+        #print header_word[0], bin(header_word[0])
+        #print header_word[1], bin(header_word[1])
+
+        """
         header_word[0] = ((self.record_length & 0xFFFFF) <<  0) | ((self.reserved_0 & 0xF) << 20) | \
                          ((self.record_type   &     0xF) << 24) | ((self.format     & 0xF) << 28)
         header_word[1] = self.timestamp
@@ -147,16 +185,37 @@ class RceMicroslice(object):
         header_word[3] = ((self.physical_id[0] & 0xFFFF) << 0) | ((self.physical_id[1] & 0xFFFF) << 16)
         header_word[4] = ((self.physical_id[2] & 0xFFFF) << 0) | ((self.physical_id[3] & 0xFFFF) << 16)
         header_word[5] = self.sequence_id
-        
+        """
+
         packed_header = struct.pack(RceMicroslice.header_format, *header_word)
         
         return packed_header + self.packed_nanoslices
 
-        
+def print_ints_as_bin(ii):
+    for i in ii:
+        print hex(i), i, 
+        for j in xrange(4):
+            print bin(i)[2:].zfill(32)[j*8:j*8+8], " ",
+        print
+
+def print_rce_microslice(packed_data):
+    data = struct.unpack('<'+str(len(packed_data)//4)+'I', packed_data)
+
+    print 'size',
+    print_ints_as_bin(data[0:1])
+    print 'sequence',
+    print_ints_as_bin(data[1:2])
+    print 'type',
+    print_ints_as_bin(data[2:3])
+    print 'softmsg',
+    print_ints_as_bin(data[3:5])
+    print 'hardmsg',
+    print_ints_as_bin(data[5:7])
+
+
 if __name__ == '__main__':
 
-    import binascii
-    import math
+    import sys
 
     print "RCE nanoslice has a length of", RceNanoslice.length_words(), "words"
     nslice = RceNanoslice(4)
@@ -169,12 +228,16 @@ if __name__ == '__main__':
     mslice = RceMicroslice(123)
     packed_mslice = mslice.pack()
     print "Packed microslice header has length", len(packed_mslice) , "bytes, contents:", binascii.hexlify(packed_mslice)
+
+    print_rce_microslice(packed_mslice)
+    sys.exit(1)
+
    
     num_nano = 32
     mslice.generate_nanoslices(num_nano, 4, 1000, 100)
     
     print "Microslice filled with", num_nano, "nanoslices reports a record length of", mslice.record_length, "words"
-    
+
     adc_sum = 0
     adc_sum_sq = 0
     num_adcs = 0
