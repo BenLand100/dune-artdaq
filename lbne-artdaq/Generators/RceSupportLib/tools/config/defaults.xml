@@ -1,0 +1,53 @@
+<system>
+   <config>
+      <DaqHost>127.0.0.1</DaqHost>
+      <DaqPort>8991</DaqPort>
+      <SendRate>1000.0</SendRate>
+      <NumMillislices>0</NumMillislices>
+      <NumMicroslices>100</NumMicroslices>
+      <AdcMode>4</AdcMode>
+      <AdcMean>1000.0</AdcMean>
+      <AdcSigma>100.0</AdcSigma>
+      <DataCompress>False</DataCompress>
+      <DataFile></DataFile>
+      <DebugCmdTime>True</DebugCmdTime>
+      <DebugEnable>False</DebugEnable>
+      <Enabled>True</Enabled>
+      <RunCount>0</RunCount>
+      <RunRate>1Hz</RunRate>
+      <TimingDtm>
+         <Enabled>True</Enabled>
+         <RceCommon>
+            <Enabled>True</Enabled>
+         </RceCommon>
+      </TimingDtm>
+      <DataDpm>
+         <CompressData>False</CompressData>
+         <EnableStream>False</EnableStream>
+         <Enabled>True</Enabled>
+         <SmplPerPacket>0x63</SmplPerPacket>
+         <DaqSamplesPerTx>1000</DaqSamplesPerTx>
+         <DaqPreTrigger>10</DaqPreTrigger>
+         <DaqPostTrigger>10</DaqPostTrigger>
+         <DaqScopeChannel>0</DaqScopeChannel>
+         <DaqSwTrigPeriod>1000</DaqSwTrigPeriod>
+         <DaqMode>Trigger</DaqMode>
+         <DaqPort>0</DaqPort>
+      </DataDpm>
+      <DataDpm index="18">
+         <DaqHost>192.168.100.103</DaqHost>
+         <DaqPort>8991</DaqPort>
+      </DataDpm> 
+      <DataDpm index="19">
+         <DaqHost>192.168.100.103</DaqHost>
+         <DaqPort>8992</DaqPort>
+      </DataDpm> 
+      <Enabled>True</Enabled>
+      <TimingDtm index="0">
+         <Enabled>True</Enabled>
+         <RceCommon index="0">
+            <Enabled>True</Enabled>
+         </RceCommon>
+      </TimingDtm>
+   </config>
+</system>
