@@ -49,6 +49,18 @@ lbne::PennReceiver::PennReceiver(fhicl::ParameterSet const & ps)
   penn_daq_mode_ =
 	ps.get<std::string>("penn_daq_mode", "Trigger");
 
+  penn_mode_calibration_ =
+    ps.get<bool>("penn_mode_calibration", false);
+  penn_mode_external_triggers_ =
+    ps.get<bool>("penn_mode_external_triggers", false);
+  penn_mode_muon_triggers_ =
+    ps.get<bool>("penn_mode_muon_triggers", false);
+
+  penn_hit_mask_bsu_ =
+    ps.get<uint64_t>("penn_hit_mask_bsu", 0x0003FFFFFFFFFFFF);
+  penn_hit_mask_tsu_ =
+    ps.get<uint64_t>("penn_hit_mask_tsu", 0x000000FFFFFFFFFF);
+  
   penn_data_dest_host_ =
 	ps.get<std::string>("penn_data_dest_host", "127.0.0.1");
   penn_data_dest_port_ =
@@ -114,7 +126,7 @@ lbne::PennReceiver::PennReceiver(fhicl::ParameterSet const & ps)
   sleep(1);
   dpm_client_->send_command("ReadXmlFile", penn_xml_config_file_);
   std::ostringstream config_frag;
-  config_frag << "<DataDpm><DaqMode>" << penn_daq_mode_ << "</DaqMode></DataDpm>";
+  this->generate_config_frag(config_frag);
   dpm_client_->send_config(config_frag.str());
   bool rate_test = false;
 #else
@@ -440,6 +452,25 @@ uint32_t lbne::PennReceiver::validate_millislice_from_fragment_buffer(uint8_t* d
 	//TODO add a check here to make sure the size agrees with the payload counts + header size
 
 	return millislice_writer.size();
+}
+
+void lbne::PennReceiver::generate_config_frag(std::ostringstream& config_frag) {
+
+  config_frag << "<RunMode>" << std::endl
+	      << " <Calibrations>" << (penn_mode_calibration_       ? "True" : "False") << "</Calibrations>" << std::endl
+	      << " <ExtTriggers>"  << (penn_mode_external_triggers_ ? "True" : "False") << "</ExtTriggers>"  << std::endl
+	      << " <MuonTriggers>" << (penn_mode_muon_triggers_     ? "True" : "False") << "</MuonTriggers>" << std::endl
+	      << "</RunMode>" << std::endl;
+
+  config_frag << "<MuonTriggers>" << std::endl
+	      << " <HitMaskBSU>" << penn_hit_mask_bsu_ << "</HitMaskBSU>" << std::endl
+	      << " <HitMaskTSU>" << penn_hit_mask_tsu_ << "</HitMaskTSU>" << std::endl
+	      << "</MuonTriggers>" << std::endl;
+
+  config_frag << "<DataBuffer>" << std::endl
+	      << " <DaqHost>" << penn_data_dest_host_ << "</DaqHost>" << std::endl
+	      << " <DaqPort>" << penn_data_dest_port_ << "</DaqPort>" << std::endl
+	      << "</DataBuffer>" << std::endl;
 }
 
 // The following macro is defined in artdaq's GeneratorMacros.hh header

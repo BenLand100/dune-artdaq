@@ -14,6 +14,13 @@
  penn_xml_config_file : 'config/defaults.xml'  # Configuration file
  penn_daq_mode        : 'Trigger'              # Can be one of Burst, Scope, Trigger
 
+ penn_mode_calibration        : false              # Turn calibration triggers on
+ penn_mode_external_triggers  : false              # Turn triggers from external sources on
+ penn_mode_muon_triggers      : true               # Turn triggers from the muon counters on
+
+ penn_hit_mask_bsu            : 0x0003FFFFFFFFFFFF # Mask for the BSU channels
+ penn_hit_mask_tsu            : 0x000000FFFFFFFFFF # Mask for the TSU channels
+
  # PENN emulator configuration parameters 
   #connection
  penn_data_dest_host                    : localhost
