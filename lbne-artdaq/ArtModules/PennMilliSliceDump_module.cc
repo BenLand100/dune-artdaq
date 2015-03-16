@@ -127,7 +127,8 @@ void lbne::PennMilliSliceDump::analyze(art::Event const & evt)
 		  << n_words            << " total words ("
 		  << n_words_counter    << " counter + "
 		  << n_words_trigger    << " trigger + "
-		  << n_words_timestamp  << " timestamp)"
+		  << n_words_timestamp  << " timestamp + "
+		  << n_words - n_words_counter - n_words_trigger - n_words_timestamp << " selftest & checksum)"
 		  << std::endl
 		  << " with width " << ms_width_in_ticks << " ticks (excluding overlap of " << ms_overlap_in_ticks
 		  << " ticks) and end timestamp " << ms_end_timestamp
