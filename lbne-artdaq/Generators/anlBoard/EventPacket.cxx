@@ -24,8 +24,8 @@ void SSPDAQ::EventPacket::DumpHeader(){
     << "External timestamp (FP mode):       " << std::endl
     << "  Sync delay:                       " << ((unsigned int)(header.timestamp[1]) << 16) + (unsigned int)(header.timestamp[0]) << std::endl
     << "  Sync count:                       " << ((unsigned int)(header.timestamp[3]) << 16) + (unsigned int)(header.timestamp[2]) << std::endl
-    << "External timestamp (NOvA mode):     " << (unsigned long)header.timestamp[3] << 48 + (unsigned long)header.timestamp[2] << 32
-    + (unsigned long)header.timestamp[1] << 16 + (unsigned long)header.timestamp[0] <<std::endl
+    << "External timestamp (NOvA mode):     " << ((unsigned long)header.timestamp[3]  << 48) +((unsigned long)header.timestamp[2] << 32)
+    + ((unsigned long)header.timestamp[1] << 16) + (unsigned long)header.timestamp[0] <<std::endl
     << "Peak sum:                           " << peaksum << std::endl
     << "Peak time:                          " << ((header.group3 & 0xFF00) >> 8) << std::endl
     << "Prerise:                            " << ((header.group4 & 0x00FF) << 16) + header.preriseLow << std::endl
