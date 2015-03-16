@@ -108,6 +108,8 @@ private:
   uint16_t         payloads_recvd_counter_;
   uint16_t         payloads_recvd_trigger_;
   uint16_t         payloads_recvd_timestamp_;
+  uint16_t         payloads_recvd_selftest_;
+  uint16_t         payloads_recvd_checksum_;
   lbne::PennMicroSlice::Header::block_size_t microslice_size_;
   size_t           microslice_size_recvd_;
   uint32_t         millislices_recvd_;
@@ -134,6 +136,8 @@ private:
   lbne::PennMicroSlice::sample_count_t overlap_payloads_recvd_counter_;
   lbne::PennMicroSlice::sample_count_t overlap_payloads_recvd_trigger_;
   lbne::PennMicroSlice::sample_count_t overlap_payloads_recvd_timestamp_;
+  lbne::PennMicroSlice::sample_count_t overlap_payloads_recvd_selftest_;
+  lbne::PennMicroSlice::sample_count_t overlap_payloads_recvd_checksum_;
 
 #ifdef REBLOCK_PENN_USLICE
   size_t           remaining_size_;
@@ -144,6 +148,8 @@ private:
   lbne::PennMicroSlice::sample_count_t remaining_payloads_recvd_counter_;
   lbne::PennMicroSlice::sample_count_t remaining_payloads_recvd_trigger_;
   lbne::PennMicroSlice::sample_count_t remaining_payloads_recvd_timestamp_;
+  lbne::PennMicroSlice::sample_count_t remaining_payloads_recvd_selftest_;
+  lbne::PennMicroSlice::sample_count_t remaining_payloads_recvd_checksum_;
 
   uint64_t boundary_time_;    //unit is 64MHz NOvA clock ticks
   uint64_t run_start_time_;   //unit is 64MHz NOvA clock ticks

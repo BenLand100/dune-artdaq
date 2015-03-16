@@ -83,17 +83,19 @@ class PennMicroslice(object):
     #ASSUME little-endian
     format_header            = '<4c'   #32 bit header = 8 bit version + 8 bit sequence + 16 bit block size(bytes)
     format_payload_header    = '<4c'   #32 bit header = 4 bit type + 28 bit (partial) timestamp
-    #ASSUME 96 bit data
-    format_payload_counter   = '<12c'  #96 bit data
-    #ASSUME 32 bit data
+    format_payload_counter   = '<16c'  #128 bit data
     format_payload_trigger   = '<4c'   #32 bit data
     format_payload_timestamp = '<8c'   #64 bit data
+    format_payload_selftest  = '<4c'   #32 bit data
+    format_payload_checksum  = '<4c'   #32 bit data
 
     num_values_counter   = 8 * int(format_payload_counter[1:-1])
     num_values_trigger   = 8 * int(format_payload_trigger[1:-1])
     num_values_timestamp = 8 * int(format_payload_timestamp[1:-1])
+    num_values_selftest  = 8 * int(format_payload_selftest [1:-1])
+    num_values_checksum  = 8 * int(format_payload_checksum [1:-1])
 
-    version            = 0xF
+    version            = 0xE
 
     @classmethod
     def length_header(cls):
@@ -110,6 +112,14 @@ class PennMicroslice(object):
     @classmethod
     def length_payload_timestamp(cls):
         return (struct.calcsize(PennMicroslice.format_payload_header) + struct.calcsize(PennMicroslice.format_payload_timestamp)) / struct.calcsize("<c")
+
+    @classmethod
+    def length_payload_selftest(cls):
+        return (struct.calcsize(PennMicroslice.format_payload_header) + struct.calcsize(PennMicroslice.format_payload_selftest )) / struct.calcsize("<c")
+
+    @classmethod
+    def length_payload_checksum(cls):
+        return (struct.calcsize(PennMicroslice.format_payload_header) + struct.calcsize(PennMicroslice.format_payload_checksum )) / struct.calcsize("<c")
 
 
     def __init__(self, payload_mode = 0, trigger_mode = 0, nticks_per_microslice = 10, sequence = 0, fragment_microslice_at_ticks = -1):
@@ -193,15 +203,27 @@ class PennMicroslice(object):
         bin64  = bin(time64)[2:].zfill(64)
         return self.create_payload_header('s') + bin_to_char(bin64)
 
+    def create_payload_selftest(self):
+        payload = "1"  * PennMicroslice.num_values_selftest
+        return self.create_payload_header('l') + bin_to_char(payload)
+
+    def create_payload_checksum(self):
+        payload = "1"  * PennMicroslice.num_values_checksum
+        return self.create_payload_header('w') + bin_to_char(payload)
+
     def create_payload_header(self, dtype):
         #concatanate 4 bit data type & 28 bit timestamp
 
-        if dtype == 'c':
+        if dtype == 'c':   #counter
             value = '0001'
-        elif dtype == 't':
+        elif dtype == 't': #trigger
             value = '0010'
-        elif dtype == 's': #for timeStamp
+        elif dtype == 's': #timeStamp
             value = '1000'
+        elif dtype == 'l': #selftest
+            value = '0000' 
+        elif dtype == 'w': #checksum
+            value = '0100'
         else:
             print 'Unknown data type:', dtype
             sys.exit(1)
@@ -238,6 +260,8 @@ class PennMicroslice(object):
         if nticks <= 0:
             nticks = random.randint(1, max(abs(nticks),1))
 
+        nchar_checksum = int(PennMicroslice.format_payload_checksum[1:-1]) + int(PennMicroslice.format_payload_header[1:-1])
+
         #get the data words
         for i in xrange(nticks):
             if not self.time:
@@ -257,10 +281,20 @@ class PennMicroslice(object):
                         data += trigger
                         nchar += int(PennMicroslice.format_payload_trigger[1:-1]) + int(PennMicroslice.format_payload_header[1:-1])
                     
+            #add a (low rate) self test word
+            if random.random() > 0.99:
+                data += self.create_payload_selftest()
+                nchar += int(PennMicroslice.format_payload_selftest[1:-1]) + int(PennMicroslice.format_payload_header[1:-1])
+
             #add a header, and reset counters, if we've got too many ticks & have to make a fragmented block (or if a block is too big)
             if ((self.fragment_microslice_at_ticks > 0 and i > 0 and (i % self.fragment_microslice_at_ticks) == self.fragment_microslice_at_ticks - 1) and i != nticks - 1) or (nchar + int(PennMicroslice.format_header[1:-1]) + 20 >= 65535):
+                #add the header
                 nchar += int(PennMicroslice.format_header[1:-1])
-                data   = self.create_header(nchar) + data
+                data   = self.create_header(nchar + nchar_checksum) + data
+                #add a checksum word
+                data += self.create_payload_checksum()
+                nchar += int(PennMicroslice.format_payload_checksum[1:-1]) + int(PennMicroslice.format_payload_header[1:-1])
+                #set counters
                 totalnchar += nchar
                 totaldata  += data
                 nchar = 0
@@ -274,7 +308,11 @@ class PennMicroslice(object):
 
         #and prepend the header (need to know block size before making header)
         nchar += int(PennMicroslice.format_header[1:-1])
-        data   = self.create_header(nchar) + data
+        data   = self.create_header(nchar + nchar_checksum) + data
+
+        #and add a checksum word
+        data += self.create_payload_checksum()
+        nchar += int(PennMicroslice.format_payload_checksum[1:-1]) + int(PennMicroslice.format_payload_header[1:-1])
 
         #account for any possible data from fragmented uslices
         totalnchar += nchar
@@ -332,6 +370,12 @@ class PennMicroslice(object):
                 elif mode == '1000':
                     print_payload(contents[:PennMicroslice.num_values_timestamp/8])
                     contents = contents[PennMicroslice.num_values_timestamp/8:]
+                elif mode == '0000':
+                    print_payload(contents[:PennMicroslice.num_values_selftest/8])
+                    contents = contents[PennMicroslice.num_values_selftest/8:]
+                elif mode == '0100':
+                    print_payload(contents[:PennMicroslice.num_values_checksum/8])
+                    contents = contents[PennMicroslice.num_values_checksum/8:]
 
             #blank line to separate microslices
             print

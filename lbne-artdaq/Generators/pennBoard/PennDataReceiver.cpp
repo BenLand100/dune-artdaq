@@ -131,6 +131,8 @@ void lbne::PennDataReceiver::start(void)
 	remaining_payloads_recvd_counter_ = 0;
 	remaining_payloads_recvd_trigger_ = 0;
 	remaining_payloads_recvd_timestamp_ = 0;
+	remaining_payloads_recvd_selftest_ = 0;
+	remaining_payloads_recvd_checksum_ = 0;
 #endif //REBLOCK_PENN_USLICE
 
         // Clear the counters used for the overlap period
@@ -139,6 +141,8 @@ void lbne::PennDataReceiver::start(void)
         overlap_payloads_recvd_counter_ = 0;
         overlap_payloads_recvd_trigger_ = 0;
         overlap_payloads_recvd_timestamp_ = 0;
+        overlap_payloads_recvd_selftest_ = 0;
+        overlap_payloads_recvd_checksum_ = 0;
 
 	// Clear suspend readout handshake flags
 	suspend_readout_.store(false);
@@ -327,6 +331,8 @@ void lbne::PennDataReceiver::do_read(void)
 			payloads_recvd_counter_ = 0;
 			payloads_recvd_trigger_ = 0;
 			payloads_recvd_timestamp_ = 0;
+			payloads_recvd_selftest_  = 0;
+			payloads_recvd_checksum_  = 0;
 			current_write_ptr_ = (void*)(current_raw_buffer_->dataPtr());
 			RECV_DEBUG(2) << "Receiving new millislice into raw buffer at address " << current_write_ptr_ << std::endl;
 
@@ -340,7 +346,9 @@ void lbne::PennDataReceiver::do_read(void)
                                         << " total words ("     << overlap_payloads_recvd_counter_
                                         << " counter + "        << overlap_payloads_recvd_trigger_
                                         << " trigger + "        << overlap_payloads_recvd_timestamp_
-                                        << " timestamp)"
+                                        << " timestamp + "      << overlap_payloads_recvd_selftest_
+                                        << " selftest + "       << overlap_payloads_recvd_checksum_
+                                        << "checksum)"
                                         << std::endl;
                           //increment size & payload counters
                           millislice_size_recvd_    += overlap_size_;
@@ -348,12 +356,16 @@ void lbne::PennDataReceiver::do_read(void)
                           payloads_recvd_counter_   += overlap_payloads_recvd_counter_;
                           payloads_recvd_trigger_   += overlap_payloads_recvd_trigger_;
                           payloads_recvd_timestamp_ += overlap_payloads_recvd_timestamp_;
+                          payloads_recvd_selftest_  += overlap_payloads_recvd_selftest_;
+                          payloads_recvd_checksum_  += overlap_payloads_recvd_checksum_;
                           //reset 'overlap' counters
-                          overlap_size_ = 0;
-                          overlap_payloads_recvd_ = 0;
-                          overlap_payloads_recvd_counter_ = 0;
-                          overlap_payloads_recvd_trigger_ = 0;
+                          overlap_size_                     = 0;
+                          overlap_payloads_recvd_           = 0;
+                          overlap_payloads_recvd_counter_   = 0;
+                          overlap_payloads_recvd_trigger_   = 0;
                           overlap_payloads_recvd_timestamp_ = 0;
+                          overlap_payloads_recvd_selftest_  = 0;
+                          overlap_payloads_recvd_checksum_  = 0;
                         }
 
 
@@ -368,7 +380,9 @@ void lbne::PennDataReceiver::do_read(void)
 					<< " total words ("    << remaining_payloads_recvd_counter_
 					<< " counter + "       << remaining_payloads_recvd_trigger_
 					<< " trigger + "       << remaining_payloads_recvd_timestamp_
-					<< " timestamp)"
+					<< " timestamp + "     << remaining_payloads_recvd_selftest_
+					<< " selftest + "      << remaining_payloads_recvd_checksum_
+					<< "checksum)"
 					<< std::endl;
 			  //increment size & payload counters
 			  millislice_size_recvd_    += remaining_size_;
@@ -376,12 +390,16 @@ void lbne::PennDataReceiver::do_read(void)
 			  payloads_recvd_counter_   += remaining_payloads_recvd_counter_;
 			  payloads_recvd_trigger_   += remaining_payloads_recvd_trigger_;
 			  payloads_recvd_timestamp_ += remaining_payloads_recvd_timestamp_;
+			  payloads_recvd_selftest_  += remaining_payloads_recvd_selftest_;
+			  payloads_recvd_checksum_  += remaining_payloads_recvd_checksum_;
 			  //reset 'remaining' counters
-			  remaining_size_ = 0;
-			  remaining_payloads_recvd_ = 0;
-			  remaining_payloads_recvd_counter_ = 0;
-			  remaining_payloads_recvd_trigger_ = 0;
+			  remaining_size_                     = 0;
+			  remaining_payloads_recvd_           = 0;
+			  remaining_payloads_recvd_counter_   = 0;
+			  remaining_payloads_recvd_trigger_   = 0;
 			  remaining_payloads_recvd_timestamp_ = 0;
+			  remaining_payloads_recvd_selftest_  = 0;
+			  remaining_payloads_recvd_checksum_  = 0;
 			}
 #endif //REBLOCK_PENN_USLICE
 		}
@@ -613,6 +631,14 @@ void lbne::PennDataReceiver::handle_received_data(std::size_t length)
 		    remaining_payloads_recvd_timestamp_++;
 		    payloads_recvd_timestamp_--;
 		    break;
+		  case lbne::PennMicroSlice::DataTypeSelftest:
+		    remaining_payloads_recvd_selftest_++;
+		    payloads_recvd_selftest_--;
+		    break;
+		  case lbne::PennMicroSlice::DataTypeChecksum:
+		    remaining_payloads_recvd_checksum_++;
+		    payloads_recvd_checksum_--;
+		    break;
 		  default:
 		    break;
 		  }//switch(type)
@@ -643,6 +669,12 @@ void lbne::PennDataReceiver::handle_received_data(std::size_t length)
                   case lbne::PennMicroSlice::DataTypeTimestamp:
                     overlap_payloads_recvd_timestamp_++;
                     break;
+                  case lbne::PennMicroSlice::DataTypeSelftest:
+                    overlap_payloads_recvd_selftest_++;
+                    break;
+                  case lbne::PennMicroSlice::DataTypeChecksum:
+                    overlap_payloads_recvd_checksum_++;
+                    break;
                   default:
                     break;
                   }//switch(type)
@@ -671,6 +703,16 @@ void lbne::PennDataReceiver::handle_received_data(std::size_t length)
 		next_receive_state_ = ReceiveMicroslicePayloadTimestamp;
 		next_receive_size_  = lbne::PennMicroSlice::payload_size_timestamp;
 		payloads_recvd_timestamp_++;
+		break;
+	      case lbne::PennMicroSlice::DataTypeSelftest:
+		next_receive_state_ = ReceiveMicroslicePayloadSelftest;
+		next_receive_size_  = lbne::PennMicroSlice::payload_size_selftest;
+		payloads_recvd_selftest_++;
+		break;
+	      case lbne::PennMicroSlice::DataTypeChecksum:
+		next_receive_state_ = ReceiveMicroslicePayloadChecksum;
+		next_receive_size_  = lbne::PennMicroSlice::payload_size_checksum;
+		payloads_recvd_checksum_++;
 		break;
 	      default:
 		RECV_DEBUG(1) << "WARNING: Unknown payload type 0x" << std::hex << (unsigned int)type << std::dec << std::endl;
@@ -752,19 +794,22 @@ void lbne::PennDataReceiver::handle_received_data(std::size_t length)
 	    lbne::PennMicroSlice::sample_count_t n_counter_words(0);
 	    lbne::PennMicroSlice::sample_count_t n_trigger_words(0);
 	    lbne::PennMicroSlice::sample_count_t n_timestamp_words(0);
+	    lbne::PennMicroSlice::sample_count_t n_selftest_words(0);
+	    lbne::PennMicroSlice::sample_count_t n_checksum_words(0);
 	    lbne::PennMicroSlice::sample_count_t n_words(0);
 
 #ifdef REBLOCK_PENN_USLICE
 	    //also check to see if the millislice boundary is inside this microslice
 
-	    //n_words = uslice.sampleCount(n_counter_words, n_trigger_words, n_timestamp_words, true, microslice_size_);
+	    //n_words = uslice.sampleCount(n_counter_words, n_trigger_words, n_timestamp_words, n_selftest_words, n_checksum_words, true, microslice_size_);
 	    //uint8_t* split_ptr = uslice.sampleTimeSplit(boundary_time_, remaining_size_, false, microslice_size_);
 
 	    /*
 	    uint8_t* split_ptr = 
 	      uslice.sampleTimeSplitAndCount(boundary_time_, remaining_size_, 
-					     n_words, n_counter_words, n_trigger_words, n_timestamp_words,
-					     remaining_payloads_recvd_, remaining_payloads_recvd_counter_, remaining_payloads_recvd_trigger_, remaining_payloads_recvd_timestamp_,
+					     n_words, n_counter_words, n_trigger_words, n_timestamp_words, n_selftest_words, n_checksum_words,
+					     remaining_payloads_recvd_, remaining_payloads_recvd_counter_, remaining_payloads_recvd_trigger_,
+					     remaining_payloads_recvd_timestamp_, remaining_payloads_recvd_selftest_, remaining_payloads_recvd_checksum_,
 					     true, microslice_size_);
 	    */
 
@@ -773,10 +818,12 @@ void lbne::PennDataReceiver::handle_received_data(std::size_t length)
 	    uint8_t* split_ptr = 
 	      uslice.sampleTimeSplitAndCountTwice(boundary_time_, remaining_size_,
 						  overlap_time_,  this_overlap_size, this_overlap_ptr,
-						  n_words, n_counter_words, n_trigger_words, n_timestamp_words,
-						  remaining_payloads_recvd_, remaining_payloads_recvd_counter_, remaining_payloads_recvd_trigger_, remaining_payloads_recvd_timestamp_,
-						  overlap_payloads_recvd_,   overlap_payloads_recvd_counter_,   overlap_payloads_recvd_trigger_,   overlap_payloads_recvd_timestamp_,
-						  true, microslice_size_);						  
+						  n_words, n_counter_words, n_trigger_words, n_timestamp_words, n_selftest_words, n_checksum_words,
+						  remaining_payloads_recvd_, remaining_payloads_recvd_counter_, remaining_payloads_recvd_trigger_,
+						  remaining_payloads_recvd_timestamp_, remaining_payloads_recvd_selftest_, remaining_payloads_recvd_checksum_,
+						  overlap_payloads_recvd_, overlap_payloads_recvd_counter_, overlap_payloads_recvd_trigger_,
+						  overlap_payloads_recvd_timestamp_, overlap_payloads_recvd_selftest_, overlap_payloads_recvd_checksum_,
+						  true, microslice_size_);
 
             if(split_ptr != nullptr) {
 		if(remaining_size_ > lbne::PennDataReceiver::remaining_buffer_size) {
@@ -801,14 +848,16 @@ void lbne::PennDataReceiver::handle_received_data(std::size_t length)
 	    }
 
 #else
-	    n_words = uslice.sampleCount(n_counter_words, n_trigger_words, n_timestamp_words, true);
+	    n_words = uslice.sampleCount(n_counter_words, n_trigger_words, n_timestamp_words, n_selftest_words, n_checksum_words, true);
 #endif
 
 	    RECV_DEBUG(2) << "Payload contains " << n_words
 			  << " total words ("    << n_counter_words
 			  << " counter + "       << n_trigger_words
 			  << " trigger + "       << n_timestamp_words
-			  << " timestamp)"
+			  << " timestamp + "     << n_selftest_words
+			  << " selftest + "      << n_checksum_words
+			  << "checksum)"
 #ifdef REBLOCK_PENN_USLICE
 			  << " before the millislice boundary"
 #endif
@@ -827,6 +876,8 @@ void lbne::PennDataReceiver::handle_received_data(std::size_t length)
 	    payloads_recvd_counter_   += n_counter_words;
 	    payloads_recvd_trigger_   += n_trigger_words;
 	    payloads_recvd_timestamp_ += n_timestamp_words;
+	    payloads_recvd_selftest_  += n_selftest_words;
+	    payloads_recvd_checksum_  += n_checksum_words;
 
 	    microslice_size_recvd_ = 0;
 	    millislice_state_ = MillisliceIncomplete;
@@ -861,11 +912,13 @@ void lbne::PennDataReceiver::handle_received_data(std::size_t length)
 			      << " complete with " << microslices_recvd_timestamp_
 			      << " microslices (" << microslices_recvd_
 			      << " including fragments), total size " << millislice_size_recvd_
-			      << " bytes and " << payloads_recvd_
+			      << " bytes and "      << payloads_recvd_
 			      << " payload words (" << payloads_recvd_counter_
-			      << " counter + " << payloads_recvd_trigger_
-			      << " trigger + " << payloads_recvd_timestamp_
-			      << " timestamp)"
+			      << " counter + "      << payloads_recvd_trigger_
+			      << " trigger + "      << payloads_recvd_timestamp_
+			      << " timestamp + "    << payloads_recvd_selftest_
+			      << " selftest + "     << payloads_recvd_checksum_
+			      << " checksum)"
 			      << std::endl;
 		millislices_recvd_++;
 		millislice_state_ = MillisliceComplete;
