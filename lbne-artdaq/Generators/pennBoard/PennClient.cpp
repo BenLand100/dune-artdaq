@@ -17,7 +17,7 @@ lbne::PennClient::PennClient(const std::string& host_name, const std::string& po
 	deadline_(io_service_),
 	timeout_usecs_(timeout_usecs)
 {
-  std::cout << "lbne::PennClient constructor" << std::endl;
+  mf::LogDebug("PennClient") << "lbne::PennClient constructor";
 
 	// Initialise deadline timer to positive infinity so that no action will be taken until a
 	// deadline is set
@@ -38,7 +38,7 @@ lbne::PennClient::PennClient(const std::string& host_name, const std::string& po
 		while ((endpoint_iter != end) && (socket_.is_open() == false))
 		{
 			tcp::endpoint endpoint = *endpoint_iter++;
-			std::cout << "Connecting to PENN at " << endpoint << std::endl;
+			mf::LogInfo("PennClient") << "Connecting to PENN at " << endpoint;
 
 			// If a client timeout is specified, set the deadline timer appropriately
 			this->set_deadline();
@@ -62,19 +62,19 @@ lbne::PennClient::PennClient(const std::string& host_name, const std::string& po
 			if (error == boost::asio::error::operation_aborted)
 			{
 				socket_.close();
-				std::cerr << "Timeout establishing client connection to PENN at " << endpoint << std::endl;
+				mf::LogError("PennClient") << "Timeout establishing client connection to PENN at " << endpoint;
 				// TODO replace with exception
 			}
 			// If another error occurred during connect - throw an exception
 			else if (error)
 			{
 				socket_.close();
-				std::cerr << "Error establishing connection to PENN at " << endpoint << " : " << error.message() << std::endl;
+				mf::LogError("PennClient") << "Error establishing connection to PENN at " << endpoint << " : " << error.message();
 			}
 		}
 		if (socket_.is_open() == false)
 		{
-			std::cerr << "Failed to open connection to PENN" << std::endl;
+			mf::LogError("PennClient") << "Failed to open connection to PENN";
 		} else {
 #ifndef PENN_EMULATOR
 			// Send PENN a bell character to suppress async updates
@@ -87,13 +87,13 @@ lbne::PennClient::PennClient(const std::string& host_name, const std::string& po
 			  data = this->receive();
 			  bytesFlushed += data.length();
 			} while (data.length() > 0);
-			std::cout << "Flushed " << bytesFlushed << " bytes of stale data from client socket" << std::endl;
+			mf::LogInfo("PennClient") << "Flushed " << bytesFlushed << " bytes of stale data from client socket";
 		  
 		}
 	}
 	catch (boost::system::system_error& e)
 	{
-		std::cerr << "Exception caught opening connection to PENN: " << e.what() << std::endl;
+		mf::LogError("PennClient") << "Exception caught opening connection to PENN: " << e.what();
 	}
 
 }
@@ -105,14 +105,14 @@ lbne::PennClient::~PennClient()
 	}
 	catch (boost::system::system_error& e)
 	{
-		std::cerr << "Exception caught closing PennClient connection:" << e.what() << std::endl;
+		mf::LogError("PennClient") << "Exception caught closing PennClient connection:" << e.what();
 	}
 }
 
 void lbne::PennClient::send_command(std::string const & command, std::string const & param)
 {
 
-	std::cout << "Sending command: " << command << " with param: " << param << std::endl;
+	mf::LogInfo("PennClient") << "Sending command: " << command << " with param: " << param;
 	
 	// Build XML fragment containing command enclosing the parameter
 	std::ostringstream xml_frag;
@@ -126,7 +126,7 @@ void lbne::PennClient::send_command(std::string const & command, std::string con
 
 void lbne::PennClient::send_command(std::string const & command)
 {
-	std::cout << "Sending command: " << command << std::endl;
+	mf::LogInfo("PennClient") << "Sending command: " << command;
 
 	// Build the XML fragment with command as empty closed tag
 	std::ostringstream xml_frag;
@@ -138,7 +138,7 @@ void lbne::PennClient::send_command(std::string const & command)
 
 void lbne::PennClient::send_config(std::string const & config)
 {
-	std::cout << "Sending config: " << config << std::endl;
+	mf::LogInfo("PennClient") << "Sending config: " << config;
 	std::ostringstream config_frag;
 	config_frag << "<config>" << config << "</config>";
 
@@ -162,17 +162,14 @@ void lbne::PennClient::send_xml(std::string const & xml_frag)
 
 #ifdef PENN_EMULATOR
 	  if(response.find("ACK") == 0)
-	    std::cout << "Acknowledged OK: " << response << std::endl;
+	    mf::LogInfo("PennClient") << "Acknowledged OK: " << response;
 	  else
-	    std::cout << "Failed: " << response << std::endl;
+	    mf::LogError("PennClient") << "Failed: " << response;
 #else
 	// Traverse the DOM of the XML response and determine if any of the child elements are error.
 	xmlDocPtr doc = xmlReadMemory(response.c_str(), response.length()-1, "noname.xml", NULL, 0);
 	if (doc == NULL) {
-
-	  std::cout << "Failed to parse XML response:" << std::endl;
-	  std::cout << response << std::endl;
-	  std::cout << "Response had length " << response.length() << std::endl;
+	  mf::LogError("PennClient") << "Failed to parse XML response: " << response <<  " Response had length " << response.length();
 	}
 	else {
 	  /*Get the root element node */
@@ -185,9 +182,9 @@ void lbne::PennClient::send_xml(std::string const & xml_frag)
 		//xmlNode* error_node = cur_node->children;
 		xmlChar* errorContent = xmlNodeGetContent(cur_node);
 		if (errorContent) {
-		  std::cout << "Got error response from PENN: " << errorContent << std::endl;
+		  mf::LogError("PennClient") << "Got error response from PENN: " << errorContent;
 		} else {
-		  std::cout << "Got error response from PENN but cannot parse content" << std::endl;
+		  mf::LogError("PennClient") << "Got error response from PENN but cannot parse content";
 		}
 		xmlFree(errorContent);
 	      }
@@ -271,20 +268,20 @@ std::size_t lbne::PennClient::send(std::string const & send_str)
 	if (error == boost::asio::error::eof)
 	{
 		// Connection closed by peer
-		std::cerr << "Connection closed by PENN" << std::endl;
+		mf::LogError("PennClient") << "Connection closed by PENN";
 	}
 	else if (error == boost::asio::error::operation_aborted)
 	{
 		// Timeout signalled by deadline actor
-		std::cerr << "Timeout sending message to PENN" << std::endl;
+		mf::LogError("PennClient") << "Timeout sending message to PENN";
 	}
 	else if (error)
 	{
-		std::cerr << "Error sending message to PENN: " << error.message();
+		mf::LogError("PennClient") << "Error sending message to PENN: " << error.message();
 	}
 	else if (send_len != send_str.size())
 	{
-		std::cerr << "Size mismatch when sending transaction: wrote " << send_len << " expected " << send_str.size();
+		mf::LogError("PennClient") << "Size mismatch when sending transaction: wrote " << send_len << " expected " << send_str.size();
 	}
 
 	return send_len;
@@ -352,7 +349,7 @@ void lbne::PennClient::set_param_(std::string const & name, std::string const & 
 	// Parse the response to ensure the command was acknowledged
 	if (!response_is_ack(response, "SET"))
 	{
-	  std::cout << "SET command failed: " << response << std::endl;
+	  mf::LogError("PennClient") << "SET command failed: " << response;
 	}
 
 }

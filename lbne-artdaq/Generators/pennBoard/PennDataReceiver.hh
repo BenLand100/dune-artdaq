@@ -21,10 +21,12 @@
 #include <boost/thread.hpp>
 #include <boost/asio/io_service.hpp>
 #include <boost/asio/deadline_timer.hpp>
+
 #include "lbne-artdaq/Generators/RceSupportLib/SafeQueue.hh"
 #include "lbne-artdaq/Generators/pennBoard/PennRawBuffer.hh"
 #include "lbne-raw-data/Overlays/PennMicroSlice.hh"
 #include "lbne-artdaq/Generators/pennBoard/PennCompileOptions.hh"
+#include "messagefacility/MessageLogger/MessageLogger.h"
 
 using boost::asio::ip::tcp;
 

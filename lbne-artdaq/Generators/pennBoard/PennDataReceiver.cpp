@@ -14,7 +14,7 @@
 
 #include "lbne-raw-data/Overlays/PennMicroSlice.hh"
 
-#define RECV_DEBUG(level) if (level <= debug_level_) std::cout
+#define RECV_DEBUG(level) if (level <= debug_level_) mf::LogDebug("PennDataReceiver")
 
 lbne::PennDataReceiver::PennDataReceiver(int debug_level, uint32_t tick_period_usecs,
 					 uint16_t receive_port, uint32_t number_of_microslices_per_millislice, 
@@ -39,13 +39,13 @@ lbne::PennDataReceiver::PennDataReceiver(int debug_level, uint32_t tick_period_u
 	millislice_width_(number_of_microslices_per_millislice)
 #endif
 {
-	RECV_DEBUG(1) << "lbne::PennDataReceiver constructor" << std::endl;
+	RECV_DEBUG(1) << "lbne::PennDataReceiver constructor";
 
 #ifdef REBLOCK_PENN_USLICE
 	if(millislice_width_ > lbne::PennMicroSlice::ROLLOVER_LOW_VALUE) {
 	  RECV_DEBUG(0) << "lbne::PennDataReceiver WARNING millislice_width_ " << millislice_width_
-			<< " is greater than lbne::PennMicroSlice::ROLLOVER_LOW_VALUE " << lbne::PennMicroSlice::ROLLOVER_LOW_VALUE
-			<< " 28-bit timestamp rollover will not be handled correctly" << std::endl;
+			<< " is greater than lbne::PennMicroSlice::ROLLOVER_LOW_VALUE " << (uint32_t)lbne::PennMicroSlice::ROLLOVER_LOW_VALUE
+			<< " 28-bit timestamp rollover will not be handled correctly";
 	  //TODO handle error cleanly
 	}
 #endif
@@ -64,7 +64,7 @@ lbne::PennDataReceiver::PennDataReceiver(int debug_level, uint32_t tick_period_u
 
 lbne::PennDataReceiver::~PennDataReceiver()
 {
-	RECV_DEBUG(1) << "lbne::PennDataReceiver destructor" << std::endl;
+	RECV_DEBUG(1) << "lbne::PennDataReceiver destructor";
 
 	// Flag receiver as no longer running
 	run_receiver_.store(false);
@@ -75,13 +75,13 @@ lbne::PennDataReceiver::~PennDataReceiver()
 	// Wait for thread running receiver IO service to terminate
 	receiver_thread_->join();
 
-	RECV_DEBUG(1) << "lbne::PennDataReceiver destructor: receiver thread joined OK" << std::endl;
+	RECV_DEBUG(1) << "lbne::PennDataReceiver destructor: receiver thread joined OK";
 
 }
 
 void lbne::PennDataReceiver::start(void)
 {
-	RECV_DEBUG(1) << "lbne::PennDataReceiver::start called" << std::endl;
+	RECV_DEBUG(1) << "lbne::PennDataReceiver::start called";
 
 	start_time_ = std::chrono::high_resolution_clock::now();
 
@@ -89,7 +89,7 @@ void lbne::PennDataReceiver::start(void)
 	if (current_raw_buffer_ != nullptr)
 	{
 		RECV_DEBUG(2) << "TpcPennReceiver::start: dropping unused or partially filled buffer containing "
-				      << microslices_recvd_ << " microslices" << std::endl;
+				      << microslices_recvd_ << " microslices";
 		current_raw_buffer_.reset();
 		millislice_state_ = MillisliceEmpty;
 	}
@@ -152,7 +152,7 @@ void lbne::PennDataReceiver::start(void)
 
 void lbne::PennDataReceiver::stop(void)
 {
-	RECV_DEBUG(1) << "lbne::PennDataReceiver::stop called" << std::endl;
+	RECV_DEBUG(1) << "lbne::PennDataReceiver::stop called";
 
 	// Suspend readout and wait for receiver thread to respond accordingly
 	suspend_readout_.store(true);
@@ -166,7 +166,7 @@ void lbne::PennDataReceiver::stop(void)
 		timeout_count++;
 		if (timeout_count > max_timeout_count)
 		{
-			std::cout << "ERROR - timeout waiting for PennDataReceiver thread to suspend readout" << std::endl;
+			mf::LogError("PennDataReceiver") << "ERROR - timeout waiting for PennDataReceiver thread to suspend readout";
 			break;
 		}
 	}
@@ -175,10 +175,10 @@ void lbne::PennDataReceiver::stop(void)
 	double elapsed_secs = ((double)elapsed_msecs) / 1000;
 	double rate = ((double)millislices_recvd_) / elapsed_secs;
 
-	RECV_DEBUG(0) << "lbne::PennDataRecevier::stop : last sequence id was " << (unsigned int)last_sequence_id_ << std::endl;
+	RECV_DEBUG(0) << "lbne::PennDataRecevier::stop : last sequence id was " << (unsigned int)last_sequence_id_;
 	RECV_DEBUG(0) << "lbne::PennDataReceiver::stop : received " << millislices_recvd_ << " millislices in "
 			      << elapsed_secs << " seconds, rate "
-			      << rate << " Hz" << std::endl;
+			      << rate << " Hz";
 
 }
 
@@ -234,11 +234,11 @@ void lbne::PennDataReceiver::release_filled_buffers(void)
 
 void lbne::PennDataReceiver::run_service(void)
 {
-	RECV_DEBUG(1) << "lbne::PennDataReceiver::run_service starting" << std::endl;
+	RECV_DEBUG(1) << "lbne::PennDataReceiver::run_service starting";
 
 	io_service_.run();
 
-	RECV_DEBUG(1) << "lbne::PennDataReceiver::run_service stopping" << std::endl;
+	RECV_DEBUG(1) << "lbne::PennDataReceiver::run_service stopping";
 }
 
 void lbne::PennDataReceiver::do_accept(void)
@@ -246,13 +246,13 @@ void lbne::PennDataReceiver::do_accept(void)
 	// Suspend readout and cleanup any incomplete millislices if stop has been called
 	if (suspend_readout_.load())
 	{
-		RECV_DEBUG(3) << "Suspending readout at do_accept entry" << std::endl;
+		RECV_DEBUG(3) << "Suspending readout at do_accept entry";
 		this->suspend_readout(false);
 	}
 
 	// Exit if shutting receiver down
 	if (!run_receiver_.load()) {
-		RECV_DEBUG(1) << "Stopping do_accept() at entry" << std::endl;
+		RECV_DEBUG(1) << "Stopping do_accept() at entry";
 		return;
 	}
 
@@ -263,7 +263,7 @@ void lbne::PennDataReceiver::do_accept(void)
 		{
 			if (!ec)
 			{
-				RECV_DEBUG(1) << "Accepted new data connection from source " << accept_socket_.remote_endpoint() << std::endl;
+				RECV_DEBUG(1) << "Accepted new data connection from source " << accept_socket_.remote_endpoint();
 				data_socket_ = std::move(accept_socket_);
 				this->do_read();
 			}
@@ -271,11 +271,11 @@ void lbne::PennDataReceiver::do_accept(void)
 			{
 				if (ec == boost::asio::error::operation_aborted)
 				{
-					RECV_DEBUG(3) << "Timeout on async_accept" << std::endl;
+					RECV_DEBUG(3) << "Timeout on async_accept";
 				}
 				else
 				{
-				  std::cout << "Got error on asynchronous accept: " << ec << " " << ec.message() << std::endl;
+				  mf::LogError("PennDataReceiver") << "Got error on asynchronous accept: " << ec << " " << ec.message();
 				}
 				this->do_accept();
 			}
@@ -289,14 +289,14 @@ void lbne::PennDataReceiver::do_read(void)
 	// Suspend readout and cleanup any incomplete millislices if stop has been called
 	if (suspend_readout_.load())
 	{
-		RECV_DEBUG(3) << "Suspending readout at do_read entry" << std::endl;
+		RECV_DEBUG(3) << "Suspending readout at do_read entry";
 		this->suspend_readout(true);
 	}
 
 	// Terminate receiver read loop if required
 	if (!run_receiver_.load())
 	{
-		RECV_DEBUG(1) << "Stopping do_read at entry" << std::endl;
+		RECV_DEBUG(1) << "Stopping do_read at entry";
 		return;
 	}
 
@@ -317,7 +317,7 @@ void lbne::PennDataReceiver::do_read(void)
 			if (!buffer_available)
 			{
 				buffer_retries++;
-				std::cout << "lbne::PennDataReceiver::receiverLoop no buffers available on commit queue" <<std::endl;;
+				mf::LogError("PennDataReceiver") << "lbne::PennDataReceiver::receiverLoop no buffers available on commit queue";
 			}
 		} while (!buffer_available && (buffer_retries < max_buffer_retries));
 
@@ -334,7 +334,7 @@ void lbne::PennDataReceiver::do_read(void)
 			payloads_recvd_selftest_  = 0;
 			payloads_recvd_checksum_  = 0;
 			current_write_ptr_ = (void*)(current_raw_buffer_->dataPtr());
-			RECV_DEBUG(2) << "Receiving new millislice into raw buffer at address " << current_write_ptr_ << std::endl;
+			RECV_DEBUG(2) << "Receiving new millislice into raw buffer at address " << current_write_ptr_;
 
 			//add the overlap period with the previous millislice to the start of this millislice
                         if(overlap_size_) {
@@ -348,8 +348,7 @@ void lbne::PennDataReceiver::do_read(void)
                                         << " trigger + "        << overlap_payloads_recvd_timestamp_
                                         << " timestamp + "      << overlap_payloads_recvd_selftest_
                                         << " selftest + "       << overlap_payloads_recvd_checksum_
-                                        << "checksum)"
-                                        << std::endl;
+                                        << "checksum)";
                           //increment size & payload counters
                           millislice_size_recvd_    += overlap_size_;
                           payloads_recvd_           += overlap_payloads_recvd_;
@@ -382,8 +381,7 @@ void lbne::PennDataReceiver::do_read(void)
 					<< " trigger + "       << remaining_payloads_recvd_timestamp_
 					<< " timestamp + "     << remaining_payloads_recvd_selftest_
 					<< " selftest + "      << remaining_payloads_recvd_checksum_
-					<< "checksum)"
-					<< std::endl;
+					<< "checksum)";
 			  //increment size & payload counters
 			  millislice_size_recvd_    += remaining_size_;
 			  payloads_recvd_           += remaining_payloads_recvd_;
@@ -405,7 +403,7 @@ void lbne::PennDataReceiver::do_read(void)
 		}
 		else
 		{
-			std::cout << "Failed to obtain new raw buffer for millislice, terminating receiver loop" << std::endl;
+			mf::LogError("PennDataReceiver") << "Failed to obtain new raw buffer for millislice, terminating receiver loop";
 			// TODO handle error cleanly here
 			return;
 		}
@@ -418,7 +416,7 @@ void lbne::PennDataReceiver::do_read(void)
 		      << " uslice size "    << microslice_size_recvd_
 		      << " mslice size "    << millislice_size_recvd_
 		      << " addr "           << current_write_ptr_
-		      << " next recv size " << next_receive_size_ << std::endl;
+		      << " next recv size " << next_receive_size_;
 	
 	// Start the asynchronous receive operation into the current raw buffer.
 	data_socket_.async_receive(
@@ -427,7 +425,7 @@ void lbne::PennDataReceiver::do_read(void)
 		{
 			if (!ec)
 			{
-				RECV_DEBUG(2) << "Received " << length << " bytes on socket" << std::endl;
+				RECV_DEBUG(2) << "Received " << length << " bytes on socket";
 
 				this->handle_received_data(length);
 
@@ -437,17 +435,17 @@ void lbne::PennDataReceiver::do_read(void)
 			{
 				if (ec == boost::asio::error::eof)
 				{
-					RECV_DEBUG(1) << "Client socket closed the connection" << std::endl;
+					RECV_DEBUG(1) << "Client socket closed the connection";
 					this->do_accept();
 				}
 				else if (ec == boost::asio::error::operation_aborted)
 				{
-					RECV_DEBUG(3) << "Timeout on read from data socket" << std::endl;
+					RECV_DEBUG(3) << "Timeout on read from data socket";
 					this->do_read();
 				}
 				else
 				{
-				  std::cout << "Got error on aysnchronous read: " << ec << " " << ec.message() << std::endl;
+				  mf::LogError("PennDataReceiver") << "Got error on aysnchronous read: " << ec << " " << ec.message();
 				}
 
 			}
@@ -459,10 +457,11 @@ void lbne::PennDataReceiver::handle_received_data(std::size_t length)
 {
 
 	if(debug_level_ > 6) {
-	  RECV_DEBUG(6) << "Bits received: ";
+	  std::stringstream bitstr;
+	  bitstr << "Bits received: ";
 	  for(unsigned int i = 0; i < length; i++)
-	    RECV_DEBUG(6) << std::bitset<8>(*((reinterpret_cast<uint8_t*>(current_write_ptr_))+i)) << " ";
-	  RECV_DEBUG(6) << std::endl;
+	    bitstr << std::bitset<8>(*((reinterpret_cast<uint8_t*>(current_write_ptr_))+i)) << " ";
+	  RECV_DEBUG(6) << bitstr.str();
 	}
 
 	//update size of uslice component, uslice & mslice
@@ -486,7 +485,7 @@ void lbne::PennDataReceiver::handle_received_data(std::size_t length)
 	  RECV_DEBUG(2) << "Incomplete " << nextReceiveStateToString(next_receive_state_)
 			<< " received for microslice " << microslices_recvd_
 			<< " (got " << state_nbytes_recvd_
-			<< " bytes, expected " << nbytes_expected << ")" << std::endl;
+			<< " bytes, expected " << nbytes_expected << ")";
 	  return;
 	}
 
@@ -510,16 +509,14 @@ void lbne::PennDataReceiver::handle_received_data(std::size_t length)
 
 	    RECV_DEBUG(2) << "Got header for microslice version 0x" << std::hex << (unsigned int)microslice_version << std::dec 
 			  << " with size " << (unsigned int)microslice_size_
-			  << " sequence ID " << (unsigned int)sequence_id
-			  << std::endl;
+			  << " sequence ID " << (unsigned int)sequence_id;
 
-	    RECV_DEBUG(5) << "Header bits: " << std::bitset<8>(microslice_version) << " " << std::bitset<8>(sequence_id) << " " << std::bitset<16>(microslice_size_) << std::endl;
+	    RECV_DEBUG(5) << "Header bits: " << std::bitset<8>(microslice_version) << " " << std::bitset<8>(sequence_id) << " " << std::bitset<16>(microslice_size_);
 
 	    // Validate the version - it shouldn't change!
 	    if(microslice_version_initialised_ && (microslice_version != last_microslice_version_)) {
-	      std::cout << "ERROR: Latest microslice version 0x" << std::hex << (unsigned int)microslice_version
-			<< " is different to previous microslice version 0x" << (unsigned int)last_microslice_version_ << std::dec
-			<< std::endl;
+	      mf::LogError("PennDataReceiver") << "ERROR: Latest microslice version 0x" << std::hex << (unsigned int)microslice_version
+			<< " is different to previous microslice version 0x" << (unsigned int)last_microslice_version_ << std::dec;
 	      //TODO handle error cleanly here
 	    }
 	    else{
@@ -531,8 +528,8 @@ void lbne::PennDataReceiver::handle_received_data(std::size_t length)
 	    uint8_t version            =  microslice_version & 0x0F;
 	    uint8_t version_complement = (microslice_version & 0xF0) >> 4;
 	    if( ! ((version ^ version_complement) << 4) ) {
-	      std::cout << "ERROR: Microslice version and version complement do not agree 0x"
-			<< std::hex << (unsigned int)version << ", 0x" << (unsigned int)version_complement << std::dec << std::endl;
+	      mf::LogError("PennDataReceiver") << "ERROR: Microslice version and version complement do not agree 0x"
+			<< std::hex << (unsigned int)version << ", 0x" << (unsigned int)version_complement << std::dec;
 	      //TODO handle error cleanly here
 	    }
 	    
@@ -542,14 +539,14 @@ void lbne::PennDataReceiver::handle_received_data(std::size_t length)
 		// do nothing - we're in a normal fragmented microslice
 	      }
 	      else if (last_microslice_was_fragment_ && (sequence_id != uint8_t(last_sequence_id_))) {
-		std::cout << "WARNING: mismatch in microslice sequence IDs! Got " << (unsigned int)sequence_id << " expected " << (unsigned int)(uint8_t(last_sequence_id_)) << std::endl;
+		mf::LogError("PennDataReceiver") << "WARNING: mismatch in microslice sequence IDs! Got " << (unsigned int)sequence_id << " expected " << (unsigned int)(uint8_t(last_sequence_id_));
 		//TODO handle error cleanly here
 	      }
 	      else if (rate_test_ && (sequence_id == uint8_t(last_sequence_id_))) {
 		// do nothing - alll microslices in the rate test have the same sequence id
 	      }
 	      else {
-		std::cout << "WARNING: mismatch in microslice sequence IDs! Got " << (unsigned int)sequence_id << " expected " << (unsigned int)(uint8_t(last_sequence_id_+1)) << std::endl;
+		mf::LogError("PennDataReceiver") << "WARNING: mismatch in microslice sequence IDs! Got " << (unsigned int)sequence_id << " expected " << (unsigned int)(uint8_t(last_sequence_id_+1));
 		//TODO handle error cleanly here
 	      }
 	    }
@@ -583,7 +580,7 @@ void lbne::PennDataReceiver::handle_received_data(std::size_t length)
 #ifdef RECV_PENN_USLICE_IN_CHUNKS
 	case ReceiveMicroslicePayloadHeader:
 	  {
-	    RECV_DEBUG(2) << "Got microslice payload header length " << state_nbytes_recvd_ << std::endl;
+	    RECV_DEBUG(2) << "Got microslice payload header length " << state_nbytes_recvd_;
 	    
 	    //byte swap the data before we create the Payload_Header
             *((uint32_t*)state_start_ptr_) = ntohl(*((uint32_t*)state_start_ptr_));
@@ -595,9 +592,9 @@ void lbne::PennDataReceiver::handle_received_data(std::size_t length)
 	    uint32_t timestamp = payload_header->short_nova_timestamp;
 
 	    RECV_DEBUG(2) << "Got header for microslice payload with type 0x" << std::hex << (unsigned int)type << std::dec 
-			  << " and timestamp " << timestamp << std::endl;
+			  << " and timestamp " << timestamp;
 	    
-	    RECV_DEBUG(5) << "Payload header bits: " << std::bitset<4>(type) << " " << std::bitset<28>(timestamp) << std::endl;
+	    RECV_DEBUG(5) << "Payload header bits: " << std::bitset<4>(type) << " " << std::bitset<28>(timestamp);
 
 #ifdef REBLOCK_PENN_USLICE
             //TODO add a better way of getting a start time, to calculate millislice boundaries from
@@ -715,7 +712,7 @@ void lbne::PennDataReceiver::handle_received_data(std::size_t length)
 		payloads_recvd_checksum_++;
 		break;
 	      default:
-		RECV_DEBUG(1) << "WARNING: Unknown payload type 0x" << std::hex << (unsigned int)type << std::dec << std::endl;
+		RECV_DEBUG(1) << "WARNING: Unknown payload type 0x" << std::hex << (unsigned int)type << std::dec;
 		break;
 		//TODO handle error cleanly here
 	      }//switch(type)
@@ -730,7 +727,7 @@ void lbne::PennDataReceiver::handle_received_data(std::size_t length)
 	case ReceiveMicroslicePayloadCounter:
 	case ReceiveMicroslicePayloadTrigger:
 	  {
-	    RECV_DEBUG(2) << "Got microslice payload length " << state_nbytes_recvd_ << std::endl;
+	    RECV_DEBUG(2) << "Got microslice payload length " << state_nbytes_recvd_;
 	    
 	    if(overlap_size_) {
 	      //stash the Payload for use later
@@ -742,7 +739,7 @@ void lbne::PennDataReceiver::handle_received_data(std::size_t length)
 	    if (microslice_size_recvd_ == microslice_size_)
 	      //got a full microslice
 	      {
-		RECV_DEBUG(2) << "Complete payload received for microslice " << microslices_recvd_ << std::endl;
+		RECV_DEBUG(2) << "Complete payload received for microslice " << microslices_recvd_;
 		microslices_recvd_++;
 		if(microslice_seen_timestamp_word_) {
 		  microslices_recvd_timestamp_++;
@@ -760,7 +757,7 @@ void lbne::PennDataReceiver::handle_received_data(std::size_t length)
 	      {
 		RECV_DEBUG(2) << "Incomplete payload received for microslice " << microslices_recvd_
 			      << " (got " << microslice_size_recvd_
-			      << " expected " << microslice_size_ << " bytes)" << std::endl;
+			      << " expected " << microslice_size_ << " bytes)";
 		millislice_state_ = MicrosliceIncomplete;
 		next_receive_state_ = ReceiveMicroslicePayloadHeader;
 		next_receive_size_ = sizeof(lbne::PennMicroSlice::Payload_Header);
@@ -773,7 +770,7 @@ void lbne::PennDataReceiver::handle_received_data(std::size_t length)
 	case ReceiveMicroslicePayload:
 	  {
 	    //got a full microslice (complete size checks already done)
-	    RECV_DEBUG(2) << "Complete payload received for microslice " << microslices_recvd_ << " length " << state_nbytes_recvd_ << std::endl;
+	    RECV_DEBUG(2) << "Complete payload received for microslice " << microslices_recvd_ << " length " << state_nbytes_recvd_;
 	    microslices_recvd_++;
 
 #ifdef REBLOCK_PENN_USLICE
@@ -827,22 +824,22 @@ void lbne::PennDataReceiver::handle_received_data(std::size_t length)
 
             if(split_ptr != nullptr) {
 		if(remaining_size_ > lbne::PennDataReceiver::remaining_buffer_size) {
-		  std::cout << "ERROR buffer overflow for 'remaining bytes of microslice, after the millislice boundary'" << std::endl;
+		  mf::LogError("PennDataReceiver") << "ERROR buffer overflow for 'remaining bytes of microslice, after the millislice boundary'";
 		  //TODO handle error cleanly here (also find out the largest possible microslice size & set remaining_buffer_size appropriately)
 		}
               RECV_DEBUG(2) << "Millislice boundary found within microslice " << microslices_recvd_timestamp_
-                            << ". Storing " << remaining_size_ << " bytes for next millislice" << std::endl;
+                            << ". Storing " << remaining_size_ << " bytes for next millislice";
               memmove(remaining_ptr_, split_ptr, remaining_size_);
               millislice_size_recvd_ -= remaining_size_;
             }
 
 	    if(this_overlap_ptr != nullptr) {
 	      if(overlap_size_ + this_overlap_size > lbne::PennDataReceiver::overlap_buffer_size) {
-		std::cout << "ERROR buffer overflow for 'overlap bytes of microslice, after the millislice boundary'" << std::endl;
+		mf::LogError("PennDataReceiver") << "ERROR buffer overflow for 'overlap bytes of microslice, after the millislice boundary'";
 		//TODO handle error cleanly here (also find out the largest possible overlap size & set overlap_buffer_size appropriately)
 	      }
 	      RECV_DEBUG(2) << "Overlap period found within microslice " << microslices_recvd_timestamp_
-                            << ". Storing " << overlap_size_ << " bytes for start of next millislice" << std::endl;
+                            << ". Storing " << overlap_size_ << " bytes for start of next millislice";
 	      memmove(overlap_ptr_ + overlap_size_, this_overlap_ptr, this_overlap_size);
 	      overlap_size_ += this_overlap_size;
 	    }
@@ -859,9 +856,10 @@ void lbne::PennDataReceiver::handle_received_data(std::size_t length)
 			  << " selftest + "      << n_checksum_words
 			  << "checksum)"
 #ifdef REBLOCK_PENN_USLICE
-			  << " before the millislice boundary"
+			  << " before the millislice boundary";
+#else
+	    ;
 #endif
-			  << std::endl;
 
 	    //check if we're inside a fragmented microslice
 	    if(n_timestamp_words) {
@@ -891,7 +889,7 @@ void lbne::PennDataReceiver::handle_received_data(std::size_t length)
 	default:
 	  {
 	    // Should never happen - bug or data corruption
-	    std::cout << "FATAL ERROR after async_recv - unrecognised next receive state: " << next_receive_state_ << std::endl;
+	    mf::LogError("PennDataReceiver") << "FATAL ERROR after async_recv - unrecognised next receive state: " << next_receive_state_;
 	    return;
 	    break;
 	  }
@@ -918,8 +916,7 @@ void lbne::PennDataReceiver::handle_received_data(std::size_t length)
 			      << " trigger + "      << payloads_recvd_timestamp_
 			      << " timestamp + "    << payloads_recvd_selftest_
 			      << " selftest + "     << payloads_recvd_checksum_
-			      << " checksum)"
-			      << std::endl;
+			      << " checksum)";
 		millislices_recvd_++;
 		millislice_state_ = MillisliceComplete;
 	}
@@ -958,12 +955,12 @@ void lbne::PennDataReceiver::suspend_readout(bool await_restart)
 
 	if (await_restart)
 	{
-		RECV_DEBUG(2) << "TpcPennReceiver::suspend_readout: awaiting restart or shutdown" << std::endl;
+		RECV_DEBUG(2) << "TpcPennReceiver::suspend_readout: awaiting restart or shutdown";
 		while (suspend_readout_.load() && run_receiver_.load())
 		{
 			usleep(tick_period_usecs_);
 		}
-		RECV_DEBUG(2) << "TpcPennReceiver::suspend_readout: restart or shutdown detected, exiting wait loop" << std::endl;
+		RECV_DEBUG(2) << "TpcPennReceiver::suspend_readout: restart or shutdown detected, exiting wait loop";
 	}
 
 }
@@ -1021,7 +1018,7 @@ void lbne::PennDataReceiver::check_deadline(void)
 	}
 	else
 	{
-		RECV_DEBUG(1) << "Deadline actor terminating" << std::endl;
+		RECV_DEBUG(1) << "Deadline actor terminating";
 	}
 }
 
