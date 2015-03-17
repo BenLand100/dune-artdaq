@@ -46,7 +46,8 @@
  receiver_tick_period_usecs : 1E4
  
  # Stats reporting
- reporting_interval_fragments : 10
+ reporting_interval_fragments : 1000  # Print a message every x millislices
+ reporting_interval_time      : 0     # Print a message every x seconds (0 to turn off)
  
  # Buffer parameters  
  raw_buffer_size             : 4000000
