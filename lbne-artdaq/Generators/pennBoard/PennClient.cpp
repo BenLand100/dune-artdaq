@@ -158,18 +158,35 @@ void lbne::PennClient::send_xml(std::string const & xml_frag)
 	this->send(xml_cmd.str());
 
 	// Get the response
-	std::string response = this->receive();
+#ifndef PENN_EMULATOR
+        xmlDocPtr doc;
+#endif
+	std::string response;
 
+        int max_response_timeout_us = 10000000;
+        int max_retries = max_response_timeout_us / timeout_usecs_;
+        int retries = 0;
+
+	while ( retries++ < max_retries) {
+	  response = this->receive();
 #ifdef PENN_EMULATOR
 	  if(response.find("ACK") == 0)
 	    mf::LogInfo("PennClient") << "Acknowledged OK: " << response;
 	  else
 	    mf::LogError("PennClient") << "Failed: " << response;
+	  break;
 #else
+	  doc = xmlReadMemory(response.c_str(), response.length()-1, "noname.xml", NULL, 0);
+	  if(doc != NULL) {
+	    break;
+	  }
+#endif
+	}//while(retries)
+
+#ifndef PENN_EMULATOR
 	// Traverse the DOM of the XML response and determine if any of the child elements are error.
-	xmlDocPtr doc = xmlReadMemory(response.c_str(), response.length()-1, "noname.xml", NULL, 0);
 	if (doc == NULL) {
-	  mf::LogError("PennClient") << "Failed to parse XML response: " << response <<  " Response had length " << response.length();
+	  mf::LogError("PennClient") << "Failed to parse XML response: " << response <<  " (length " << response.length() << ")";
 	}
 	else {
 	  /*Get the root element node */
@@ -190,8 +207,8 @@ void lbne::PennClient::send_xml(std::string const & xml_frag)
 	      }
 	    }
 	  }
-	}
-	xmlFreeDoc(doc);
+	  xmlFreeDoc(doc);
+	}//doc != NULL
 #endif //PENN_EMUALTOR
 }
 
