@@ -5,7 +5,7 @@ import datetime
 import time
 import sys
 import binascii
-
+from novaTimestamp import NovaTimestamp
 
 def bin_to_char(b):
     #print "bin to char", b
@@ -45,39 +45,6 @@ def print_payload(s):
         b += ' '
     print 'payload', b
 
-class NovaTimestamp(object):
-    
-    # NOvA epoch is 00:00:00 GMT 1st Jan, 2000 
-    epoch = datetime.datetime(2000, 1, 1, 0, 0, 0, 0)
-    
-    # NOvA clock is 64 MHZ, = 15.6ns tick
-    ticks_per_sec = 64E6
-    
-    #NOvA clock is 56 bits
-
-    def __init__(self, posix_time=None, override=None):
-        
-        if posix_time == None:
-            self.now = datetime.datetime.now()
-        else:
-            self.now = datetime.datetime.fromtimestamp(posix_time)
-            
-        self.since_epoch       = (self.now - NovaTimestamp.epoch).total_seconds()
-        self.ticks_since_epoch = int(self.since_epoch * NovaTimestamp.ticks_per_sec)
-        if(override):
-            self.ticks_since_epoch = override
-        self.epoch_to_timestamp()
-
-    def epoch_to_timestamp(self):
-        self.timestamp_low     = self.ticks_since_epoch & 0xFFFFFFFF #32 bits
-        self.timestamp_high    = (self.ticks_since_epoch >> 32) & 0xFFFFFF #24 bits
-        self.timestamp_short   = self.ticks_since_epoch & 0xFFFFFFF #28 bits
-
-    def increment(self):
-        self.ticks_since_epoch += 1
-        self.epoch_to_timestamp()
-
-        
 class PennMicroslice(object):
 
     #ASSUME little-endian
