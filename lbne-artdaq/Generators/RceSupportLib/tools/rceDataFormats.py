@@ -8,8 +8,8 @@ import binascii
 
 class NovaTimestamp(object):
     
-    # NoVa epoch is 00:00:00 GMT 1st Jan, 2000 
-    epoch = datetime.datetime(2000, 1, 1, 0, 0, 0, 0)
+    # NoVa epoch is 00:00:00 GMT 1st Jan, 2010 
+    epoch = datetime.datetime(2010, 1, 1, 0, 0, 0, 0)
     
     # NoVa clock is 64 MHZ, = 15.6ns tick
     ticks_per_sec = 64E6
