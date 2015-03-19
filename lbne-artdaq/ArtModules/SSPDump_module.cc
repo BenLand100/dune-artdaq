@@ -56,6 +56,7 @@ private:
   //histograms, counters, etc
   TH1D * adc_values_;
   TH1D * all_adc_values_;
+  TH1D * n_event_triggers_;
   uint32_t n_adc_counter_;  //counter of total number of ALL adc values in an event
   uint64_t adc_cumulative_; //cumulative total of ALL adc values in an event
 };
@@ -71,6 +72,7 @@ lbne::SSPDump::SSPDump(fhicl::ParameterSet const & pset)
       verb_meta_(pset.get<bool>            ("verbose_metadata", true)),
       adc_values_(nullptr),
       all_adc_values_(nullptr),
+      n_event_triggers_(nullptr),
       n_adc_counter_(0),
       adc_cumulative_(0)
 {
@@ -81,6 +83,7 @@ void lbne::SSPDump::beginJob()
   art::ServiceHandle<art::TFileService> tfs;
   adc_values_ = tfs->make<TH1D>("adc_values","adc_values",4096,-0.5,4095.5);  
   all_adc_values_ = tfs->make<TH1D>("all_adc_values","all_adc_values",4096,-0.5,4095.5);  
+  n_event_triggers_ = tfs->make<TH1D>("n_event_triggers","n_event_triggers",960,-0.5,959.5);  
 }
 
 void lbne::SSPDump::beginEvent(art::EventNumber_t /*eventNumber*/)
@@ -129,6 +132,10 @@ void lbne::SSPDump::analyze(art::Event const & evt)
               << ", event " << eventNumber << " has " << raw->size()
               << " fragment(s) of type " << frag_type_ << std::endl;
     
+    unsigned int allTriggersProcessed = 0;
+
+    std::map<int, int> triggers_per_fragment;
+
     for (size_t idx = 0; idx < raw->size(); ++idx) {
       const auto& frag((*raw)[idx]);
       
@@ -326,7 +333,14 @@ void lbne::SSPDump::analyze(art::Event const & evt)
 	++triggersProcessed;
 	std::cout<<std::endl<<"Triggers processed: "<<triggersProcessed<<std::endl<<std::endl;
       }//triggers
-    }	
+      triggers_per_fragment[frag.fragmentID()] = triggersProcessed;
+      allTriggersProcessed += triggersProcessed;
+    }//fragments
+    n_event_triggers_->Fill(allTriggersProcessed);
+    std::cout << "Event " << eventNumber << " has " << allTriggersProcessed << " total triggers";
+    for(std::map<int, int>::iterator i_triggers_per_fragment = triggers_per_fragment.begin(); i_triggers_per_fragment != triggers_per_fragment.end(); i_triggers_per_fragment++)
+      std::cout << " " << i_triggers_per_fragment->first << ":" << i_triggers_per_fragment->second;
+    std::cout << std::endl;
     std::cout << std::endl
 	      << "Event ADC average is (from counter):   " << (double)adc_cumulative_/(double)n_adc_counter_
 	      << std::endl
@@ -340,7 +354,7 @@ void lbne::SSPDump::analyze(art::Event const & evt)
   }
   std::cout << std::endl;
   //  f.Write();
-  beginEvent(eventNumber);
+  endEvent(eventNumber);
 }
 
 DEFINE_ART_MODULE(lbne::SSPDump)
