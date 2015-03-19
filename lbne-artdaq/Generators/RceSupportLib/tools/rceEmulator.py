@@ -19,8 +19,11 @@ class RceEmulator(object):
                             help="Host address for control server to listen on")
         parser.add_argument("--port", action="store", type=int, dest="port", default=9999,
                             help="Port for control server to listen on")
-        parser.add_argument('--xml', action="store_true",
+        group = parser.add_mutually_exclusive_group()
+        group.add_argument('--xml', action="store_true", default=True,
                             help="Enable RCE-style XML command parser")
+        group.add_argument("--kvp", action="store_true", default=False,
+                            help="Enable legacy key-value pair command parser")
         self.args = parser.parse_args()
 
         self.doneEvent = threading.Event()
