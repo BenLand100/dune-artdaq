@@ -11,10 +11,11 @@ class RceXmlCommandParser(RceCommandParser):
 
         # Define dictionary of legal commands and associated methods
         self.commands = { 
-            'SoftReset'   : self.softReset_cmd,
-            'HardReset'   : self.hardReset_cmd,
-            'ReadXmlFile' : self.readXmlFile_cmd,
-            'SetRunState' : self.setRunState_cmd,
+            'SoftReset'     : self.softReset_cmd,
+            'HardReset'     : self.hardReset_cmd,
+            'ReadXmlFile'   : self.readXmlFile_cmd,
+            'SetRunState'   : self.setRunState_cmd,
+            'ConfigFebAsic' : self.configFebAsic_cmd,
                         }
         
         # Empty dictionary to contain any configuration parameters set by command or 
@@ -145,6 +146,13 @@ class RceXmlCommandParser(RceCommandParser):
             cmd_ok = True
             reply = "XML config file {} loaded OK".format(xmlFile)
                 
+        return (cmd_ok, reply)
+    
+    def configFebAsic_cmd(self, args):
+        
+        cmd_ok = True
+        reply = "ConfigFebASIC command OK"
+        
         return (cmd_ok, reply)
     
     def setRunState_cmd(self, args):
