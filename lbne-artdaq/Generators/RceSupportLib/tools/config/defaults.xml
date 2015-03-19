@@ -2,7 +2,7 @@
    <config>
       <DaqHost>127.0.0.1</DaqHost>
       <DaqPort>8991</DaqPort>
-      <SendRate>1000.0</SendRate>
+      <SendRate>100.0</SendRate>
       <NumMillislices>0</NumMillislices>
       <NumMicroslices>100</NumMicroslices>
       <AdcMode>4</AdcMode>
