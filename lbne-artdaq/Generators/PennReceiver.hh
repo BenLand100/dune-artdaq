@@ -63,52 +63,55 @@ namespace lbne {
     // data members
     std::vector<artdaq::Fragment::fragment_id_t> fragment_ids_;
 
-    // methods and data that emulate calls to a third-party library
-    // to fetch the data from the hardware
-    uint32_t number_of_microslices_to_generate_;
-    uint32_t number_of_nanoslices_to_generate_;
-    uint32_t number_of_values_to_generate_;
-    uint32_t simulated_readout_time_usec_;
-
-    std::string dpm_client_host_addr_;
-    std::string dpm_client_host_port_;
-    uint32_t	dpm_client_timeout_usecs_;
-
-    std::string penn_xml_config_file_;
-    std::string penn_daq_mode_;
-
+    ////HARDWARE OPTIONS
+    // config stream connection
+    std::string penn_client_host_addr_;
+    std::string penn_client_host_port_;
+    uint32_t	penn_client_timeout_usecs_;
+    // trigger options
     bool        penn_mode_calibration_;
     bool        penn_mode_external_triggers_;
     bool        penn_mode_muon_triggers_;
-
+    // channel masks
     uint64_t    penn_hit_mask_bsu_;
     uint64_t    penn_hit_mask_tsu_;
-
+    // microslice duration
+    uint32_t    penn_data_microslice_size_;
+    // data stream connection
     std::string penn_data_dest_host_;
     uint16_t    penn_data_dest_port_;
-    uint32_t    penn_data_num_millislices_;
-    uint32_t    penn_data_num_microslices_;
-    bool        penn_data_repeat_microslices_;
-    float       penn_data_frag_rate_;
-    uint16_t    penn_data_payload_mode_;
-    uint16_t    penn_data_trigger_mode_;
-    int32_t	penn_data_nticks_per_microslice_;
-    int32_t     penn_data_fragment_microslice_at_ticks_;
-    bool        penn_data_debug_partial_recv_;
 
-    uint16_t receive_port_;
+    ////BOARDREADER OPTIONS
+    //
+    uint32_t receiver_tick_period_usecs_;
+    // millislice size
+    uint32_t millislice_size_;
+    uint16_t millislice_overlap_size_;
+    // boardreader printout
+    uint32_t reporting_interval_fragments_;
+    uint32_t reporting_interval_time_;
+    //buffer sizes
     size_t raw_buffer_size_;
     uint32_t raw_buffer_precommit_;
     size_t empty_buffer_low_mark_;
     bool   use_fragments_as_raw_buffer_;
 
-    uint32_t receiver_tick_period_usecs_;
+    ////EMULATOR OPTIONS
+    // amount of data to generate
+    uint32_t    penn_data_num_millislices_;
+    uint32_t    penn_data_num_microslices_;
+    float       penn_data_frag_rate_;
+    // type of data to generate
+    uint16_t    penn_data_payload_mode_;
+    uint16_t    penn_data_trigger_mode_;
+    int32_t     penn_data_fragment_microslice_at_ticks_;
+    // special debug options
+    bool        penn_data_repeat_microslices_;
+    bool        penn_data_debug_partial_recv_;
 
     std::map<uint8_t*, std::unique_ptr<artdaq::Fragment>> raw_to_frag_map_;
-    uint32_t number_of_microslices_per_millislice_;
-    uint16_t overlap_width_;
 
-    std::unique_ptr<lbne::PennClient> dpm_client_;
+    std::unique_ptr<lbne::PennClient> penn_client_;
 
     bool run_receiver_;
     std::unique_ptr<lbne::PennDataReceiver> data_receiver_;
@@ -117,8 +120,6 @@ namespace lbne {
     std::size_t total_bytes_received_;
     std::chrono::high_resolution_clock::time_point start_time_;
     std::chrono::high_resolution_clock::time_point report_time_;
-    uint32_t reporting_interval_fragments_;
-    uint32_t reporting_interval_time_;
 
     PennRawBufferPtr create_new_buffer_from_fragment(void);
     uint32_t format_millislice_from_raw_buffer(uint16_t* src_addr, size_t src_size,

@@ -14,9 +14,9 @@
 /// note having REBLOCK_PENN_USLICE turned OFF is not fully implemented including:
 ///   overlap region
 ///   millislice header timing information
+///   
 
-
-//does we request on the data stream:
+//do we request on the data stream:
 //  1) the 4 bytes header
 //  2) a 4 bytes payload header
 //  3) an N bytes payload
@@ -25,7 +25,5 @@
 //  1) the 4 bytes header
 //  2) the rest of the uslice in one go
 //#define RECV_PENN_USLICE_IN_CHUNKS
-
-//#define NO_PENN_CLIENT
 
 #endif //PENNCOMPILEOPTIONS_HH_

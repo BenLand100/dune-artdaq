@@ -17,8 +17,8 @@
 #define RECV_DEBUG(level) if (level <= debug_level_) mf::LogDebug("PennDataReceiver")
 
 lbne::PennDataReceiver::PennDataReceiver(int debug_level, uint32_t tick_period_usecs,
-					 uint16_t receive_port, uint32_t number_of_microslices_per_millislice, 
-					 uint16_t overlap_width, bool rate_test ) :
+					 uint16_t receive_port, uint32_t millislice_size, 
+					 uint16_t millislice_overlap_size, bool rate_test ) :
 	debug_level_(debug_level),
 	acceptor_(io_service_, tcp::endpoint(tcp::v4(), (short)receive_port)),
 	accept_socket_(io_service_),
@@ -27,23 +27,19 @@ lbne::PennDataReceiver::PennDataReceiver(int debug_level, uint32_t tick_period_u
 	deadline_io_object_(None),
 	tick_period_usecs_(tick_period_usecs),
 	receive_port_(receive_port),
-	number_of_microslices_per_millislice_(number_of_microslices_per_millislice),
+	millislice_size_(millislice_size),
 	run_receiver_(true),
 	suspend_readout_(false),
 	readout_suspended_(false),
 	recv_socket_(0),
 	rate_test_(rate_test),
-	overlap_width_(overlap_width)
-#ifdef REBLOCK_PENN_USLICE
-	,
-	millislice_width_(number_of_microslices_per_millislice)
-#endif
+	millislice_overlap_size_(millislice_overlap_size)
 {
 	RECV_DEBUG(1) << "lbne::PennDataReceiver constructor";
 
 #ifdef REBLOCK_PENN_USLICE
-	if(millislice_width_ > lbne::PennMicroSlice::ROLLOVER_LOW_VALUE) {
-	  RECV_DEBUG(0) << "lbne::PennDataReceiver WARNING millislice_width_ " << millislice_width_
+	if(millislice_size_ > lbne::PennMicroSlice::ROLLOVER_LOW_VALUE) {
+	  RECV_DEBUG(0) << "lbne::PennDataReceiver WARNING millislice_size_ " << millislice_size_
 			<< " is greater than lbne::PennMicroSlice::ROLLOVER_LOW_VALUE " << (uint32_t)lbne::PennMicroSlice::ROLLOVER_LOW_VALUE
 			<< " 28-bit timestamp rollover will not be handled correctly";
 	  //TODO handle error cleanly
@@ -599,9 +595,9 @@ void lbne::PennDataReceiver::handle_received_data(std::size_t length)
 #ifdef REBLOCK_PENN_USLICE
             //TODO add a better way of getting a start time, to calculate millislice boundaries from
             if(!run_start_time_) {
-              run_start_time_ = timestamp                                 & 0xFFFFFFF; //lowest 28 bits
-              boundary_time_  = (run_start_time_ + millislice_width_ - 1) & 0xFFFFFFF; //lowest 28 bits
-	      overlap_time_   = (boundary_time_ - overlap_width_)         & 0xFFFFFFF; //lowest 28 bits
+              run_start_time_ = timestamp                                   & 0xFFFFFFF; //lowest 28 bits
+              boundary_time_  = (run_start_time_ + millislice_size_ - 1)    & 0xFFFFFFF; //lowest 28 bits
+	      overlap_time_   = (boundary_time_ - millislice_overlap_size_) & 0xFFFFFFF; //lowest 28 bits
             }
 
 	    //check the timestamp against the millislice boundary time
@@ -776,9 +772,9 @@ void lbne::PennDataReceiver::handle_received_data(std::size_t length)
 #ifdef REBLOCK_PENN_USLICE
 	    //TODO add a better way of getting a start time, to calculate millislice boundaries from
 	    if(!run_start_time_) {
-	      run_start_time_ = ntohl(*((uint32_t*)state_start_ptr_))     & 0xFFFFFFF; //lowest 28 bits
-	      boundary_time_  = (run_start_time_ + millislice_width_ - 1) & 0xFFFFFFF; //lowest 28 bits
-	      overlap_time_   = (boundary_time_ - overlap_width_)         & 0xFFFFFFF; //lowest 28 bits
+	      run_start_time_ = ntohl(*((uint32_t*)state_start_ptr_))        & 0xFFFFFFF; //lowest 28 bits
+	      boundary_time_  = (run_start_time_ + millislice_size_ - 1)     & 0xFFFFFFF; //lowest 28 bits
+	      overlap_time_   = (boundary_time_  - millislice_overlap_size_) & 0xFFFFFFF; //lowest 28 bits
 	    }
 
 	    //form a microslice & check for the timestamp word to see if we're in a fragmented microslice
@@ -903,7 +899,7 @@ void lbne::PennDataReceiver::handle_received_data(std::size_t length)
 #ifdef REBLOCK_PENN_USLICE
 	if(remaining_size_)
 #else
-	if (microslices_recvd_timestamp_ == number_of_microslices_per_millislice_)
+	if (microslices_recvd_timestamp_ == millislice_size_)
 #endif //REBLOCK_PENN_USLICE
 	{
 		RECV_DEBUG(1) << "Millislice " << millislices_recvd_
@@ -934,14 +930,14 @@ void lbne::PennDataReceiver::handle_received_data(std::size_t length)
 		current_raw_buffer_->setCountPayloadTrigger(payloads_recvd_trigger_);
 		current_raw_buffer_->setCountPayloadTimestamp(payloads_recvd_timestamp_);
 		current_raw_buffer_->setEndTimestamp(boundary_time_);
-		current_raw_buffer_->setWidthTicks(millislice_width_);
-		current_raw_buffer_->setOverlapTicks(overlap_width_);
+		current_raw_buffer_->setWidthTicks(millislice_size_);
+		current_raw_buffer_->setOverlapTicks(millislice_overlap_size_);
 		current_raw_buffer_->setFlags(0);
 
 		//update the times
 #ifdef REBLOCK_PENN_USLICE
-		boundary_time_ = (boundary_time_ + millislice_width_) & 0xFFFFFFF; //lowest 28 bits
-		overlap_time_  = (boundary_time_ - overlap_width_)    & 0xFFFFFFF; //lowest 28 bits
+		boundary_time_ = (boundary_time_ + millislice_size_)         & 0xFFFFFFF; //lowest 28 bits
+		overlap_time_  = (boundary_time_ - millislice_overlap_size_) & 0xFFFFFFF; //lowest 28 bits
 #endif
 
 		filled_buffer_queue_.push(std::move(current_raw_buffer_));
