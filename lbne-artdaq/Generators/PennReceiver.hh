@@ -77,6 +77,13 @@ namespace lbne {
     std::string penn_xml_config_file_;
     std::string penn_daq_mode_;
 
+    bool        penn_mode_calibration_;
+    bool        penn_mode_external_triggers_;
+    bool        penn_mode_muon_triggers_;
+
+    uint64_t    penn_hit_mask_bsu_;
+    uint64_t    penn_hit_mask_tsu_;
+
     std::string penn_data_dest_host_;
     uint16_t    penn_data_dest_port_;
     uint32_t    penn_data_num_millislices_;
@@ -123,7 +130,9 @@ namespace lbne {
 						      uint16_t payload_count_trigger, uint16_t payload_count_timestamp,
 						      uint64_t end_timestamp, uint32_t width_in_ticks, uint32_t overlap_in_ticks);
 
+    void generate_config_frag(std::ostringstream& config_frag);
   };
+
 }
 
 #endif /* lbne_artdaq_Generators_PennReceiver_hh */

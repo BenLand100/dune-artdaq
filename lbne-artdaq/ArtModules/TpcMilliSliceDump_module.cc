@@ -44,7 +44,6 @@ private:
 	std::string frag_type_;
 	std::vector<int> verb_microslice_ids_;
 	std::vector<int> verb_nanoslice_ids_;
-	uint32_t         verb_nanoslice_adcs_;
 	TH1D * adc_values_;
 };
 
@@ -55,7 +54,6 @@ lbne::TpcMilliSliceDump::TpcMilliSliceDump(fhicl::ParameterSet const & pset)
   frag_type_(pset.get<std::string>("frag_type")),
   verb_microslice_ids_(pset.get<std::vector<int>>("verbose_microslice_ids", std::vector<int>(1,0))),
   verb_nanoslice_ids_ (pset.get<std::vector<int>>("verbose_nanoslice_ids",  std::vector<int>(1,0))),
-  verb_nanoslice_adcs_(pset.get<uint32_t>        ("verbose_nanoslice_adcs", 6)),
   adc_values_(nullptr)
 {
 }
