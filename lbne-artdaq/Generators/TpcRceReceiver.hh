@@ -41,6 +41,11 @@ namespace lbne {
   public:
     explicit TpcRceReceiver(fhicl::ParameterSet const & ps);
 
+  protected:
+    std::string metricsReportingInstanceName() const {
+      return instance_name_for_metrics_;
+    }
+
   private:
 
     // The "getNext_" function is used to implement user-specific
@@ -122,6 +127,7 @@ namespace lbne {
     		                                   uint8_t* dest_addr, size_t dest_size);
     uint32_t validate_millislice_from_fragment_buffer(uint8_t* data_addr, size_t data_size, uint32_t count);
 
+    std::string instance_name_for_metrics_;
   };
 }
 
