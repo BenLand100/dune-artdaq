@@ -2,6 +2,8 @@
 #define PENNCOMPILEOPTIONS_HH_
 
 //are we using the Penn emulator?
+/// when off, force the sequence id repeat check to be off (safety check)
+/// when on, send a second xml config file with emulator options
 #define PENN_EMULATOR
 
 //does the millislice contain:

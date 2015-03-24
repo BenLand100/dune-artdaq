@@ -76,10 +76,7 @@ lbne::PennClient::PennClient(const std::string& host_name, const std::string& po
 		{
 			mf::LogError("PennClient") << "Failed to open connection to PENN";
 		} else {
-#ifndef PENN_EMULATOR
-			// Send PENN a bell character to suppress async updates
-			this->send("\a\n");
-#endif
+
 			// Flush the socket of any stale aysnc update data from PENN
 			size_t bytesFlushed = 0;
 			std::string data;
@@ -158,9 +155,7 @@ void lbne::PennClient::send_xml(std::string const & xml_frag)
 	this->send(xml_cmd.str());
 
 	// Get the response
-#ifndef PENN_EMULATOR
         xmlDocPtr doc;
-#endif
 	std::string response;
 
         int max_response_timeout_us = 10000000;
@@ -169,21 +164,12 @@ void lbne::PennClient::send_xml(std::string const & xml_frag)
 
 	while ( retries++ < max_retries) {
 	  response = this->receive();
-#ifdef PENN_EMULATOR
-	  if(response.find("ACK") == 0)
-	    mf::LogInfo("PennClient") << "Acknowledged OK: " << response;
-	  else
-	    mf::LogError("PennClient") << "Failed: " << response;
-	  break;
-#else
 	  doc = xmlReadMemory(response.c_str(), response.length()-1, "noname.xml", NULL, 0);
 	  if(doc != NULL) {
 	    break;
 	  }
-#endif
 	}//while(retries)
 
-#ifndef PENN_EMULATOR
 	// Traverse the DOM of the XML response and determine if any of the child elements are error.
 	if (doc == NULL) {
 	  mf::LogError("PennClient") << "Failed to parse XML response: " << response <<  " (length " << response.length() << ")";
@@ -209,7 +195,6 @@ void lbne::PennClient::send_xml(std::string const & xml_frag)
 	  }
 	  xmlFreeDoc(doc);
 	}//doc != NULL
-#endif //PENN_EMUALTOR
 }
 
 // ------------ Private methods ---------------

@@ -132,15 +132,21 @@ lbne::PennReceiver::PennReceiver(fhicl::ParameterSet const & ps)
   penn_client_ = std::unique_ptr<lbne::PennClient>(new lbne::PennClient(
 		  penn_client_host_addr_, penn_client_host_port_, penn_client_timeout_usecs_));
 
-#ifndef PENN_EMULATOR
   penn_client_->send_command("HardReset");
   sleep(1);
   std::ostringstream config_frag;
   this->generate_config_frag(config_frag);
   penn_client_->send_config(config_frag.str());
+
+#ifndef PENN_EMULATOR
   bool rate_test = false;
 #else
   bool rate_test = penn_data_repeat_microslices_;
+
+  //TODO check if it'd confuse the Penn to put emulator options in the XML file
+  config_frag.str(std::string());
+  this->generate_config_frag_emulator(config_frag);
+  penn_client_->send_config(config_frag.str());
 #endif //!PENN_EMULATOR
 
   // Create a PennDataReceiver instance
@@ -191,27 +197,9 @@ void lbne::PennReceiver::start(void)
 	// Start the data receiver
 	data_receiver_->start();
 
-#ifdef PENN_EMULATOR
-	// Set up parameters in PENN emulator
-	penn_client_->set_param("host",  penn_data_dest_host_, "str");
-	penn_client_->set_param("port",  penn_data_dest_port_, "int");
-	penn_client_->set_param("millislices", penn_data_num_millislices_, "int");
-	penn_client_->set_param("microslices", penn_data_num_microslices_, "int");
-	penn_client_->set_param("repeat_microslices", penn_data_repeat_microslices_, "int"); //emulator can't parse bool correctly
-	penn_client_->set_param("rate",  penn_data_frag_rate_, "float");
-	penn_client_->set_param("payload_mode", penn_data_payload_mode_, "int");
-	penn_client_->set_param("trigger_mode", penn_data_trigger_mode_, "int");
-	penn_client_->set_param("nticks_per_microslice", penn_data_microslice_size_, "int");
-	penn_client_->set_param("fragment_microslice_at_ticks", penn_data_fragment_microslice_at_ticks_, "int");
-	penn_client_->set_param("debug_partial_recv", penn_data_debug_partial_recv_, "int"); //emulator can't parse bool correctly
-
 	// Send start command to PENN
-	penn_client_->send_command("START");
-#else
-
 	penn_client_->send_command("SoftReset");
 	penn_client_->send_command("SetRunState", "Enable");
-#endif //PENN_EMULATOR
 
 }
 
@@ -220,11 +208,7 @@ void lbne::PennReceiver::stop(void)
 	mf::LogInfo("PennReceiver") << "stop() called";
 
 	// Instruct the PENN to stop
-#ifdef PENN_EMULATOR
-	penn_client_->send_command("STOP");
-#else
 	penn_client_->send_command("SetRunState", "Stopped");
-#endif //PENN_EMULATOR
 
 	// Stop the data receiver.
 	data_receiver_->stop();
@@ -466,21 +450,39 @@ uint32_t lbne::PennReceiver::validate_millislice_from_fragment_buffer(uint8_t* d
 
 void lbne::PennReceiver::generate_config_frag(std::ostringstream& config_frag) {
 
-  config_frag << "<RunMode>" << std::endl
-	      << " <Calibrations>" << (penn_mode_calibration_       ? "True" : "False") << "</Calibrations>" << std::endl
-	      << " <ExtTriggers>"  << (penn_mode_external_triggers_ ? "True" : "False") << "</ExtTriggers>"  << std::endl
-	      << " <MuonTriggers>" << (penn_mode_muon_triggers_     ? "True" : "False") << "</MuonTriggers>" << std::endl
-	      << "</RunMode>" << std::endl;
+  config_frag << "<RunMode>" << " "
+	      << " <Calibrations>" << (penn_mode_calibration_       ? "True" : "False") << "</Calibrations>" << " "
+	      << " <ExtTriggers>"  << (penn_mode_external_triggers_ ? "True" : "False") << "</ExtTriggers>"  << " "
+	      << " <MuonTriggers>" << (penn_mode_muon_triggers_     ? "True" : "False") << "</MuonTriggers>" << " "
+	      << "</RunMode>" << " ";
 
-  config_frag << "<MuonTriggers>" << std::endl
-	      << " <HitMaskBSU>" << penn_hit_mask_bsu_ << "</HitMaskBSU>" << std::endl
-	      << " <HitMaskTSU>" << penn_hit_mask_tsu_ << "</HitMaskTSU>" << std::endl
-	      << "</MuonTriggers>" << std::endl;
+  config_frag << "<MuonTriggers>" << " "
+	      << " <HitMaskBSU>" << penn_hit_mask_bsu_ << "</HitMaskBSU>" << " "
+	      << " <HitMaskTSU>" << penn_hit_mask_tsu_ << "</HitMaskTSU>" << " "
+	      << "</MuonTriggers>" << " ";
 
-  config_frag << "<DataBuffer>" << std::endl
-	      << " <DaqHost>" << penn_data_dest_host_ << "</DaqHost>" << std::endl
-	      << " <DaqPort>" << penn_data_dest_port_ << "</DaqPort>" << std::endl
-	      << "</DataBuffer>" << std::endl;
+  config_frag << "<DataBuffer>" << " "
+	      << " <DaqHost>" << penn_data_dest_host_ << "</DaqHost>" << " "
+	      << " <DaqPort>" << penn_data_dest_port_ << "</DaqPort>" << " "
+	      << "</DataBuffer>" << " ";
+
+  config_frag << "<Microslice>" << " "
+	      << " <Duration>" << penn_data_microslice_size_ << "</Duration>" << " "
+	      << "</Microslice>" << " ";
+}
+
+void lbne::PennReceiver::generate_config_frag_emulator(std::ostringstream& config_frag) {
+
+  config_frag << "<Emulator>" << " "
+	      << " <NumMillislices>" << penn_data_num_millislices_ << "</NumMillislices>" << " "
+	      << " <NumMicroslices>" << penn_data_num_microslices_ << "</NumMicroslices>" << " "
+	      << " <SendRate>"       << penn_data_frag_rate_       << "</SendRate>"       << " "
+	      << " <PayloadMode>"    << penn_data_payload_mode_    << "</PayloadMode>"    << " "
+	      << " <TriggerMode>"    << penn_data_trigger_mode_    << "</TriggerMode>"    << " "
+	      << " <FragmentUSlice>" << penn_data_fragment_microslice_at_ticks_ << "</FragmentUSlice>" << " "
+	      << " <SendRepeats>"    << penn_data_repeat_microslices_           << "</SendRepeats>" << " "
+	      << " <SendByByte>"     << penn_data_debug_partial_recv_           << "</SendByByte>" << " "
+	      << "</Emulator>" << " ";
 }
 
 // The following macro is defined in artdaq's GeneratorMacros.hh header

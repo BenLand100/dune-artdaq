@@ -139,6 +139,7 @@ namespace lbne {
 						      uint64_t end_timestamp, uint32_t width_in_ticks, uint32_t overlap_in_ticks);
 
     void generate_config_frag(std::ostringstream& config_frag);
+    void generate_config_frag_emulator(std::ostringstream& config_frag);
 
     std::string instance_name_for_metrics_;
   };
