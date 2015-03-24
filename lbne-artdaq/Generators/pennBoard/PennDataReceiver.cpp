@@ -11,6 +11,7 @@
 #include <unistd.h>
 #include <stdexcept>
 #include <bitset>
+#include <boost/crc.hpp>
 
 #include "lbne-raw-data/Overlays/PennMicroSlice.hh"
 
@@ -569,6 +570,9 @@ void lbne::PennDataReceiver::handle_received_data(std::size_t length)
 	    //and roll back the current_write_ptr_, as to overwrite the Header in the next recv
 	    current_write_ptr_ = (void*)((char*)current_write_ptr_ - sizeof(lbne::PennMicroSlice::Header));
 	    millislice_size_recvd_ -= sizeof(lbne::PennMicroSlice::Header);
+
+	    //copy the microslice header to memory, for checksum tests
+	    memcpy(state_start_ptr_, current_microslice_ptr_, sizeof(lbne::PennMicroSlice::Header));
 #endif
 	    break;
 	  } //case ReceiveMicrosliceHeader
@@ -770,7 +774,7 @@ void lbne::PennDataReceiver::handle_received_data(std::size_t length)
 	    microslices_recvd_++;
 
 #ifdef REBLOCK_PENN_USLICE
-	    //TODO add a better way of getting a start time, to calculate millislice boundaries from
+	    //TODO add a better way of getting a start time, to calculate millislice boundaries from (presumably read the Penn)
 	    if(!run_start_time_) {
 	      run_start_time_ = ntohl(*((uint32_t*)state_start_ptr_))        & 0xFFFFFFF; //lowest 28 bits
 	      boundary_time_  = (run_start_time_ + millislice_size_ - 1)     & 0xFFFFFFF; //lowest 28 bits
@@ -806,6 +810,7 @@ void lbne::PennDataReceiver::handle_received_data(std::size_t length)
 					     true, microslice_size_);
 	    */
 
+	    uint32_t hardware_checksum(0);
 	    std::size_t this_overlap_size(0);
 	    uint8_t* this_overlap_ptr = nullptr;
 	    uint8_t* split_ptr = 
@@ -816,7 +821,25 @@ void lbne::PennDataReceiver::handle_received_data(std::size_t length)
 						  remaining_payloads_recvd_timestamp_, remaining_payloads_recvd_selftest_, remaining_payloads_recvd_checksum_,
 						  overlap_payloads_recvd_, overlap_payloads_recvd_counter_, overlap_payloads_recvd_trigger_,
 						  overlap_payloads_recvd_timestamp_, overlap_payloads_recvd_selftest_, overlap_payloads_recvd_checksum_,
+						  hardware_checksum,
 						  true, microslice_size_);
+
+	    //checksum the microslice we've just received
+	    // first copy the payload to the same location as the header
+	    memcpy(state_start_ptr_, current_microslice_ptr_ + sizeof(lbne::PennMicroSlice::Header), state_nbytes_recvd_);
+	    // then calculate the checksum ourself
+	    boost::crc_32_type crc_checksum;
+	    std::size_t microslice_size_to_checksum = sizeof(lbne::PennMicroSlice::Header) + state_nbytes_recvd_ - sizeof(lbne::PennMicroSlice::Payload_Header) - lbne::PennMicroSlice::payload_size_checksum;
+	    crc_checksum.process_bytes(current_microslice_ptr_, microslice_size_to_checksum);
+	    uint32_t software_checksum = crc_checksum.checksum();
+	    // check they agree
+	    if(hardware_checksum != software_checksum) {
+	      mf::LogError("PennDataReceiver") << "ERROR: Microslice checksum mismatch! Hardware: " << hardware_checksum << " Software: " << software_checksum;
+	      //TODO add error cleanly here
+	    }
+	    else
+	      RECV_DEBUG(4) << "Microslice checksums... Hardware: " << hardware_checksum << " Software: " << software_checksum;
+
 
             if(split_ptr != nullptr) {
 		if(remaining_size_ > lbne::PennDataReceiver::remaining_buffer_size) {
@@ -830,9 +853,9 @@ void lbne::PennDataReceiver::handle_received_data(std::size_t length)
             }
 
 	    if(this_overlap_ptr != nullptr) {
-	      if(overlap_size_ + this_overlap_size > lbne::PennDataReceiver::overlap_buffer_size) {
+	      if(overlap_size_ + this_overlap_size > lbne::PennDataReceiver::overlap_buffer_size_) {
 		mf::LogError("PennDataReceiver") << "ERROR buffer overflow for 'overlap bytes of microslice, after the millislice boundary'";
-		//TODO handle error cleanly here (also find out the largest possible overlap size & set overlap_buffer_size appropriately)
+		//TODO handle error cleanly here (also find out the largest possible overlap size & set overlap_buffer_size_ appropriately)
 	      }
 	      RECV_DEBUG(2) << "Overlap period found within microslice " << microslices_recvd_timestamp_
                             << ". Storing " << overlap_size_ << " bytes for start of next millislice";

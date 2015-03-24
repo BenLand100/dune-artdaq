@@ -5,6 +5,7 @@ import datetime
 import time
 import sys
 import binascii
+import zlib
 from novaTimestamp import NovaTimestamp
 
 def bin_to_char(b):
@@ -89,10 +90,10 @@ class PennMicroslice(object):
         return (struct.calcsize(PennMicroslice.format_payload_header) + struct.calcsize(PennMicroslice.format_payload_checksum )) / struct.calcsize("<c")
 
 
-    def __init__(self, payload_mode = 0, trigger_mode = 0, nticks_per_microslice = 10, sequence = 0, fragment_microslice_at_ticks = -1):
+    def __init__(self, payload_mode = 0, trigger_mode = 0, microslice_size_rollover = 10, sequence = 0, fragment_microslice_at_ticks = -1):
         self.payload_mode = payload_mode
         self.trigger_mode = trigger_mode
-        self.nticks_per_microslice = nticks_per_microslice
+        self.microslice_size_rollover = microslice_size_rollover
         self.fragment_microslice_at_ticks = fragment_microslice_at_ticks
         self.sequence = sequence
         self.packed = False
@@ -174,8 +175,10 @@ class PennMicroslice(object):
         payload = "1"  * PennMicroslice.num_values_selftest
         return self.create_payload_header('l') + bin_to_char(payload)
 
-    def create_payload_checksum(self):
-        payload = "1"  * PennMicroslice.num_values_checksum
+    def create_payload_checksum(self, data, nchar):
+        checksum = zlib.crc32(data) & 0XFFFFFFFF
+        payload  = bin(checksum)[2:].zfill(32)
+        print checksum, payload
         return self.create_payload_header('w') + bin_to_char(payload)
 
     def create_payload_header(self, dtype):
@@ -222,20 +225,19 @@ class PennMicroslice(object):
         nchar = 0
         totalnchar = 0
 
-        #negative nticks_per_microslice means random number of data words
-        nticks = self.nticks_per_microslice
-        if nticks <= 0:
-            nticks = random.randint(1, max(abs(nticks),1))
+        if not self.time:
+            #self.time = NovaTimestamp(None)
+            self.time = NovaTimestamp(None, (1 << 29) - 100) #test the 28-bit rollover
 
         nchar_checksum = int(PennMicroslice.format_payload_checksum[1:-1]) + int(PennMicroslice.format_payload_header[1:-1])
+        i = 0
 
         #get the data words
-        for i in xrange(nticks):
-            if not self.time:
-                #self.time = NovaTimestamp(None)
-                self.time = NovaTimestamp(None, (1 << 29) - 10) #test the 28-bit rollover
-            else:
-                self.time.increment()
+        while True:
+            #increment
+            self.time.increment()
+            i += 1
+
             #add the counter word
             counter, nhits = self.create_payload_counter()
             if counter:
@@ -254,12 +256,12 @@ class PennMicroslice(object):
                 nchar += int(PennMicroslice.format_payload_selftest[1:-1]) + int(PennMicroslice.format_payload_header[1:-1])
 
             #add a header, and reset counters, if we've got too many ticks & have to make a fragmented block (or if a block is too big)
-            if ((self.fragment_microslice_at_ticks > 0 and i > 0 and (i % self.fragment_microslice_at_ticks) == self.fragment_microslice_at_ticks - 1) and i != nticks - 1) or (nchar + int(PennMicroslice.format_header[1:-1]) + 20 >= 65535):
+            if ((self.fragment_microslice_at_ticks > 0 and i > 0 and (i % self.fragment_microslice_at_ticks) == self.fragment_microslice_at_ticks - 1)) or (nchar + int(PennMicroslice.format_header[1:-1]) + 20 >= 65535):
                 #add the header
                 nchar += int(PennMicroslice.format_header[1:-1])
                 data   = self.create_header(nchar + nchar_checksum) + data
                 #add a checksum word
-                data += self.create_payload_checksum()
+                data += self.create_payload_checksum(data[-nchar:], nchar)
                 nchar += int(PennMicroslice.format_payload_checksum[1:-1]) + int(PennMicroslice.format_payload_header[1:-1])
                 #set counters
                 totalnchar += nchar
@@ -267,9 +269,11 @@ class PennMicroslice(object):
                 nchar = 0
                 data  = ''
 
+            #check whether the rollover has happened
+            if not (self.time.timestamp_short & (pow(2, self.microslice_size_rollover) - 1)):
+                break
+
         #finish with the timestamp
-        if not self.time:
-            self.time = NovaTimestamp(None)
         data += self.create_payload_timestamp()
         nchar += int(PennMicroslice.format_payload_timestamp[1:-1]) + int(PennMicroslice.format_payload_header[1:-1])
 
@@ -278,7 +282,7 @@ class PennMicroslice(object):
         data   = self.create_header(nchar + nchar_checksum) + data
 
         #and add a checksum word
-        data += self.create_payload_checksum()
+        data += self.create_payload_checksum(data[-nchar:], nchar)
         nchar += int(PennMicroslice.format_payload_checksum[1:-1]) + int(PennMicroslice.format_payload_header[1:-1])
 
         #account for any possible data from fragmented uslices
@@ -353,13 +357,13 @@ if __name__ == '__main__':
 
     #create a single microslice and print all information
     print "PENN microslice header has a length of", PennMicroslice.length_header(), "chars"
-    uslice = PennMicroslice(payload_mode = 4, trigger_mode = 4, nticks_per_microslice = 100, sequence = 0, fragment_microslice_at_ticks = 0)
+    uslice = PennMicroslice(payload_mode = 4, trigger_mode = 4, microslice_size_rollover = 7, sequence = 0, fragment_microslice_at_ticks = 0)
     packed_uslice = uslice.pack()
     print "Packed microslice has length", len(packed_uslice), "bytes, contents:", binascii.hexlify(packed_uslice)
     uslice.print_microslice(only_header = False)
     #uslice.print_microslice(only_header = True)
 
-    #sys.exit(1)
+    sys.exit(1)
 
     print ""
 
@@ -368,7 +372,7 @@ if __name__ == '__main__':
     while i < 10:
     #while True:
         print "Microslice", i
-        uslice = PennMicroslice(payload_mode = 2, trigger_mode = 2, nticks_per_microslice = -20, sequence = i % 256, fragment_microslice_at_ticks = 10)
+        uslice = PennMicroslice(payload_mode = 2, trigger_mode = 2, microslice_size_rollover = 7, sequence = i % 256, fragment_microslice_at_ticks = 10)
         packed_uslice = uslice.pack()
         uslice.print_microslice(only_header = True)
         i += 1

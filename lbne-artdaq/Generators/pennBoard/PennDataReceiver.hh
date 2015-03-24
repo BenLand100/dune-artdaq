@@ -130,8 +130,8 @@ private:
   bool rate_test_;
 
   size_t           overlap_size_;
-  static const int overlap_buffer_size = 65536;
-  uint8_t          overlap_ptr_[lbne::PennDataReceiver::overlap_buffer_size];
+  static const int overlap_buffer_size_ = 65536;
+  uint8_t          overlap_ptr_[lbne::PennDataReceiver::overlap_buffer_size_];
   uint16_t         millislice_overlap_size_;
 
   lbne::PennMicroSlice::sample_count_t overlap_payloads_recvd_;
@@ -140,6 +140,10 @@ private:
   lbne::PennMicroSlice::sample_count_t overlap_payloads_recvd_timestamp_;
   lbne::PennMicroSlice::sample_count_t overlap_payloads_recvd_selftest_;
   lbne::PennMicroSlice::sample_count_t overlap_payloads_recvd_checksum_;
+
+  size_t           current_microslice_;
+  static const int current_microslice_buffer_size_ = 65536;
+  uint8_t          current_microslice_ptr_[lbne::PennDataReceiver::current_microslice_buffer_size_];
 
 #ifdef REBLOCK_PENN_USLICE
   size_t           remaining_size_;
