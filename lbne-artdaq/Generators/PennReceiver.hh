@@ -42,6 +42,11 @@ namespace lbne {
   public:
     explicit PennReceiver(fhicl::ParameterSet const & ps);
 
+  protected:
+    std::string metricsReportingInstanceName() const {
+      return instance_name_for_metrics_;
+    }
+
   private:
 
     // The "getNext_" function is used to implement user-specific
@@ -134,6 +139,8 @@ namespace lbne {
 						      uint64_t end_timestamp, uint32_t width_in_ticks, uint32_t overlap_in_ticks);
 
     void generate_config_frag(std::ostringstream& config_frag);
+
+    std::string instance_name_for_metrics_;
   };
 
 }

@@ -17,7 +17,6 @@
 #include <iostream>
 #include <sstream>
 #include <thread>
-
 #include <unistd.h>
 
 lbne::PennReceiver::PennReceiver(fhicl::ParameterSet const & ps)
@@ -28,6 +27,8 @@ lbne::PennReceiver::PennReceiver(fhicl::ParameterSet const & ps)
 
   int fragment_id = ps.get<int>("fragment_id");
   fragment_ids_.push_back(fragment_id);
+
+  instance_name_for_metrics_ = "PennReceiver";
 
   ////////////////////////////
   // HARDWARE OPTIONS
