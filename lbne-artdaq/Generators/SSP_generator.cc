@@ -11,6 +11,7 @@
 #include "lbne-raw-data/Overlays/FragmentType.hh"
 #include "fhiclcpp/ParameterSet.h"
 #include "artdaq-core/Utilities/SimpleLookupPolicy.h"
+#include <boost/lexical_cast.hpp>
 
 #include <fstream>
 #include <iomanip>
@@ -25,7 +26,7 @@ lbne::SSP::SSP(fhicl::ParameterSet const & ps)
   fragment_type_(lbne::detail::PHOTON),
   board_id_(ps.get<unsigned int>("board_id",0))
 {
-  
+  instance_name_for_metrics_ = "SSP " + boost::lexical_cast<std::string>(board_id_);
   unsigned int verbosity(ps.get<unsigned int>("verbosity",5));
 
   switch(verbosity){

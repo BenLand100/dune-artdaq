@@ -36,6 +36,8 @@ lbne::TpcRceReceiver::TpcRceReceiver(fhicl::ParameterSet const & ps)
   instance_name_ss << instance_name_ << board_id;
   instance_name_ = instance_name_ss.str();
 
+  instance_name_for_metrics_ = instance_name_;
+
   mf::LogInfo(instance_name_) << "Starting up";
 
   int fragment_id = ps.get<int>("fragment_id");

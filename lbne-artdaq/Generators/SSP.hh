@@ -37,6 +37,11 @@ namespace lbne {
   public:
     explicit SSP(fhicl::ParameterSet const & ps);
 
+  protected:
+    std::string metricsReportingInstanceName() const {
+      return instance_name_for_metrics_;
+    }
+
   private:
 
     // The "getNext_" function is used to implement user-specific
@@ -71,6 +76,8 @@ namespace lbne {
     unsigned long fNNoFragments;
     unsigned long fNFragmentsSent;
     unsigned long fNGetNextCalls;
+
+    std::string instance_name_for_metrics_;
   };
 }
 
