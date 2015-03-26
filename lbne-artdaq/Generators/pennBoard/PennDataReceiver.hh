@@ -21,10 +21,12 @@
 #include <boost/thread.hpp>
 #include <boost/asio/io_service.hpp>
 #include <boost/asio/deadline_timer.hpp>
+
 #include "lbne-artdaq/Generators/RceSupportLib/SafeQueue.hh"
 #include "lbne-artdaq/Generators/pennBoard/PennRawBuffer.hh"
 #include "lbne-raw-data/Overlays/PennMicroSlice.hh"
 #include "lbne-artdaq/Generators/pennBoard/PennCompileOptions.hh"
+#include "messagefacility/MessageLogger/MessageLogger.h"
 
 using boost::asio::ip::tcp;
 
@@ -33,7 +35,7 @@ namespace lbne {
 class PennDataReceiver {
 
 public:
-  PennDataReceiver(int debug_level, uint32_t tick_period_usecs, uint16_t udp_receive_port, uint32_t number_of_microslices_per_millislice, uint16_t overlap_width, bool rate_test);
+  PennDataReceiver(int debug_level, uint32_t tick_period_usecs, uint16_t udp_receive_port, uint32_t millislice_size, uint16_t millislice_overlap_size, bool rate_test);
 	virtual ~PennDataReceiver();
 
 	void start();
@@ -71,7 +73,7 @@ private:
 	uint32_t tick_period_usecs_;
 
 	uint16_t receive_port_;
-  uint32_t number_of_microslices_per_millislice_;
+  uint32_t millislice_size_;
 
 	std::atomic<bool> run_receiver_;
 	std::atomic<bool> suspend_readout_;
@@ -128,9 +130,9 @@ private:
   bool rate_test_;
 
   size_t           overlap_size_;
-  static const int overlap_buffer_size = 65536;
-  uint8_t          overlap_ptr_[lbne::PennDataReceiver::overlap_buffer_size];
-  uint16_t         overlap_width_;
+  static const int overlap_buffer_size_ = 65536;
+  uint8_t          overlap_ptr_[lbne::PennDataReceiver::overlap_buffer_size_];
+  uint16_t         millislice_overlap_size_;
 
   lbne::PennMicroSlice::sample_count_t overlap_payloads_recvd_;
   lbne::PennMicroSlice::sample_count_t overlap_payloads_recvd_counter_;
@@ -138,6 +140,10 @@ private:
   lbne::PennMicroSlice::sample_count_t overlap_payloads_recvd_timestamp_;
   lbne::PennMicroSlice::sample_count_t overlap_payloads_recvd_selftest_;
   lbne::PennMicroSlice::sample_count_t overlap_payloads_recvd_checksum_;
+
+  size_t           current_microslice_;
+  static const int current_microslice_buffer_size_ = 65536;
+  uint8_t          current_microslice_ptr_[lbne::PennDataReceiver::current_microslice_buffer_size_];
 
 #ifdef REBLOCK_PENN_USLICE
   size_t           remaining_size_;
@@ -153,7 +159,6 @@ private:
 
   uint64_t boundary_time_;    //unit is 64MHz NOvA clock ticks
   uint64_t run_start_time_;   //unit is 64MHz NOvA clock ticks
-  uint64_t millislice_width_; //unit is 64MHz NOvA clock ticks
 
   uint64_t overlap_time_; //unit is 64MHz NOvA clock ticks
 #endif //REBLOCK_PENN_USLICE

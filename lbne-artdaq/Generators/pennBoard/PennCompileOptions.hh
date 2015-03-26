@@ -2,6 +2,8 @@
 #define PENNCOMPILEOPTIONS_HH_
 
 //are we using the Penn emulator?
+/// when off, force the sequence id repeat check to be off (safety check)
+/// when on, send a second xml config file with emulator options
 #define PENN_EMULATOR
 
 //does the millislice contain:
@@ -9,14 +11,15 @@
 //or
 //  reblocked in a set time-width
 #ifndef PENN_DONT_REBLOCK_USLICES
+//// WARNING: OFF not been tested for ages
 #define REBLOCK_PENN_USLICE
 #endif
 /// note having REBLOCK_PENN_USLICE turned OFF is not fully implemented including:
 ///   overlap region
 ///   millislice header timing information
+///   
 
-
-//does we request on the data stream:
+//do we request on the data stream:
 //  1) the 4 bytes header
 //  2) a 4 bytes payload header
 //  3) an N bytes payload
@@ -24,8 +27,7 @@
 //or
 //  1) the 4 bytes header
 //  2) the rest of the uslice in one go
+//// WARNING: ON not been tested for ages
 //#define RECV_PENN_USLICE_IN_CHUNKS
-
-//#define NO_PENN_CLIENT
 
 #endif //PENNCOMPILEOPTIONS_HH_

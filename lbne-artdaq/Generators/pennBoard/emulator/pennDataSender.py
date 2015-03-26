@@ -17,7 +17,7 @@ class PennDataSender(object):
         self.num_microslices = 10
         self.payload_mode = 0
         self.trigger_mode = 0
-        self.nticks_per_microslice = 10
+        self.microslice_size_rollover = 10
         self.fragment_microslice_at_ticks = -1
         self.debug_partial_recv = False
         self.repeat_microslices = False
@@ -49,8 +49,8 @@ class PennDataSender(object):
     def set_trigger_mode(self, trigger_mode):
         self.trigger_mode = int(trigger_mode)
         
-    def set_nticks_per_microslice(self, nticks_per_microslice):
-        self.nticks_per_microslice = int(nticks_per_microslice)
+    def set_microslice_size_rollover(self, microslice_size_rollover):
+        self.microslice_size_rollover = int(microslice_size_rollover)
 
     def set_fragment_microslice_at_ticks(self, fragment_microslice_at_ticks):
         self.fragment_microslice_at_ticks = int(fragment_microslice_at_ticks)
@@ -95,7 +95,7 @@ class PennDataSender(object):
 
         send_interval = 1.0 / self.send_rate
 
-        uslice = PennMicroslice(sequence = 0, payload_mode = self.payload_mode, trigger_mode = self.trigger_mode, nticks_per_microslice = self.nticks_per_microslice, fragment_microslice_at_ticks = self.fragment_microslice_at_ticks)
+        uslice = PennMicroslice(sequence = 0, payload_mode = self.payload_mode, trigger_mode = self.trigger_mode, microslice_size_rollover = self.microslice_size_rollover, fragment_microslice_at_ticks = self.fragment_microslice_at_ticks)
         
         start_time = time.time()
 

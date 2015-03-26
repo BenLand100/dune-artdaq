@@ -115,6 +115,9 @@ void lbne::PennMilliSliceDump::analyze(art::Event const & evt)
 	///> Find the width of the millislice overlap period in NOvA clock ticks
 	lbne::PennMilliSlice::Header::ticks_t ms_overlap_in_ticks = msf.overlapTicks();
 
+	///> Find the checksum of the millislice
+	lbne::PennMilliSlice::checksum_t ms_checksum = msf.checksum();
+
 	std::cout << std::endl
 		  << "PennMilliSlice fragment " << frag.fragmentID()
 		  << " with version " << ms_version << " and sequence ID " << ms_sequence_id
@@ -131,7 +134,8 @@ void lbne::PennMilliSliceDump::analyze(art::Event const & evt)
 		  << n_words - n_words_counter - n_words_trigger - n_words_timestamp << " selftest & checksum)"
 		  << std::endl
 		  << " with width " << ms_width_in_ticks << " ticks (excluding overlap of " << ms_overlap_in_ticks
-		  << " ticks) and end timestamp " << ms_end_timestamp
+		  << " ticks) and end timestamp " << ms_end_timestamp << std::endl
+		  << " with checksum " << ms_checksum
 		  << std::endl << std::endl;
 
 #ifdef REBLOCK_PENN_USLICE

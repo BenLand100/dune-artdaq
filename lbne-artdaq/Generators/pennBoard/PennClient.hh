@@ -18,6 +18,7 @@
 #include <boost/lexical_cast.hpp>
 
 #include "lbne-artdaq/Generators/pennBoard/PennCompileOptions.hh"
+#include "messagefacility/MessageLogger/MessageLogger.h"
 
 using boost::asio::ip::tcp;
 

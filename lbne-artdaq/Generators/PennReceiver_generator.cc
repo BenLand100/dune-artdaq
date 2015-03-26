@@ -17,7 +17,6 @@
 #include <iostream>
 #include <sstream>
 #include <thread>
-
 #include <unistd.h>
 
 lbne::PennReceiver::PennReceiver(fhicl::ParameterSet const & ps)
@@ -29,26 +28,20 @@ lbne::PennReceiver::PennReceiver(fhicl::ParameterSet const & ps)
   int fragment_id = ps.get<int>("fragment_id");
   fragment_ids_.push_back(fragment_id);
 
-  // the following parameters are part of faking the hardware readout
-  number_of_microslices_to_generate_ =
-	ps.get<uint32_t>("number_of_microslices_to_generate", 1);
-  number_of_values_to_generate_ =
-	ps.get<uint32_t>("number_of_values_to_generate", 3);
-  simulated_readout_time_usec_ =
-	ps.get<uint32_t>("simulated_readout_time", 100000);
+  instance_name_for_metrics_ = "PennReceiver";
 
-  dpm_client_host_addr_ =
+  ////////////////////////////
+  // HARDWARE OPTIONS
+
+  // config stream connection parameters
+  penn_client_host_addr_ =
 	ps.get<std::string>("penn_client_host_addr", "localhost");
-  dpm_client_host_port_ =
+  penn_client_host_port_ =
 	ps.get<std::string>("penn_client_host_port", "9999");
-  dpm_client_timeout_usecs_ =
+  penn_client_timeout_usecs_ =
 	ps.get<uint32_t>("penn_client_timeout_usecs", 0);
 
-  penn_xml_config_file_ = 
-	ps.get<std::string>("penn_xml_config_file", "config.xml");
-  penn_daq_mode_ =
-	ps.get<std::string>("penn_daq_mode", "Trigger");
-
+  // Penn trigger options
   penn_mode_calibration_ =
     ps.get<bool>("penn_mode_calibration", false);
   penn_mode_external_triggers_ =
@@ -56,44 +49,50 @@ lbne::PennReceiver::PennReceiver(fhicl::ParameterSet const & ps)
   penn_mode_muon_triggers_ =
     ps.get<bool>("penn_mode_muon_triggers", false);
 
+  // Penn hit masks
   penn_hit_mask_bsu_ =
     ps.get<uint64_t>("penn_hit_mask_bsu", 0x0003FFFFFFFFFFFF);
   penn_hit_mask_tsu_ =
     ps.get<uint64_t>("penn_hit_mask_tsu", 0x000000FFFFFFFFFF);
   
+  // Penn microslice duration
+  penn_data_microslice_size_ =
+        ps.get<uint32_t>("penn_data_microslice_size", 7);
+
+  // data stream connection parameters
   penn_data_dest_host_ =
 	ps.get<std::string>("penn_data_dest_host", "127.0.0.1");
   penn_data_dest_port_ =
 	ps.get<uint16_t>("penn_data_dest_port", 8989);
-  penn_data_num_millislices_ =
-	ps.get<uint32_t>("penn_data_num_millislices", 10);
-  penn_data_num_microslices_ =
-	ps.get<uint32_t>("penn_data_num_microslices", 10);
-  penn_data_repeat_microslices_ =
-        ps.get<bool>("penn_data_repeat_microslices", false);
-  penn_data_frag_rate_ =
-	ps.get<float>("penn_data_frag_rate", 10.0);
-  penn_data_payload_mode_ =
-	ps.get<uint16_t>("penn_data_payload_mode", 0);
-  penn_data_trigger_mode_ =
-	ps.get<uint16_t>("penn_data_trigger_mode", 0);
-  penn_data_nticks_per_microslice_ =
-        ps.get<int32_t>("penn_data_nticks_per_microslice", 10);
-  penn_data_fragment_microslice_at_ticks_ =
-        ps.get<int32_t>("penn_data_fragment_microslice_at_ticks", -1);
-  penn_data_debug_partial_recv_ =
-        ps.get<bool>("penn_data_debug_partial_recv", false);
 
-  receive_port_ =
-	ps.get<uint16_t>("receive_port", 9999);
+  ////////////////////////////
+  // BOARDREADER OPTIONS
+
+  // 
+  receiver_tick_period_usecs_ =
+    ps.get<uint32_t>("receiver_tick_period_usecs", 10000);
+
+  // millislice size parameters
+  millislice_size_ =
+	ps.get<uint32_t>("millislice_size", 10);
+  millislice_overlap_size_ = 
+        ps.get<uint16_t>("millislice_overlap_size", 5);
+
+  // boardreader printouts
+  int receiver_debug_level =
+	ps.get<int>("receiver_debug_level", 0);
+  reporting_interval_fragments_ =
+    ps.get<uint32_t>("reporting_interval_fragments", 100);
+  reporting_interval_time_ = 
+    ps.get<uint32_t>("reporting_interval_time", 0);
+
+  // boardreader buffer sizes
   raw_buffer_size_ =
 	ps.get<size_t>("raw_buffer_size", 10000);
   raw_buffer_precommit_ =
 	ps.get<uint32_t>("raw_buffer_precommit", 10);
-
   use_fragments_as_raw_buffer_ =
     ps.get<bool>("use_fragments_as_raw_buffer", true);
-
 #ifdef REBLOCK_PENN_USLICE
   if(use_fragments_as_raw_buffer_ == false) {
     mf::LogError("PennReceiver") << "use_fragments_as_raw_buffer == false has not been implemented";
@@ -101,44 +100,59 @@ lbne::PennReceiver::PennReceiver(fhicl::ParameterSet const & ps)
   }
 #endif
 
-  receiver_tick_period_usecs_ =
-    ps.get<uint32_t>("receiver_tick_period_usecs", 10000);
 
-  int receiver_debug_level =
-	ps.get<int>("receiver_debug_level", 0);
+  ////////////////////////////
+  // EMULATOR OPTIONS
 
-  number_of_microslices_per_millislice_ =
-	ps.get<uint32_t>("number_of_microslices_per_millislice", 10);
+  // amount of data to generate
+  penn_data_num_millislices_ =
+	ps.get<uint32_t>("penn_data_num_millislices", 10);
+  penn_data_num_microslices_ =
+	ps.get<uint32_t>("penn_data_num_microslices", 10);
+  penn_data_frag_rate_ =
+	ps.get<float>("penn_data_frag_rate", 10.0);
 
-  overlap_width_ = 
-        ps.get<uint16_t>("overlap_width", 5);
+  // type of data to generate
+  penn_data_payload_mode_ =
+	ps.get<uint16_t>("penn_data_payload_mode", 0);
+  penn_data_trigger_mode_ =
+	ps.get<uint16_t>("penn_data_trigger_mode", 0);
+  penn_data_fragment_microslice_at_ticks_ =
+        ps.get<int32_t>("penn_data_fragment_microslice_at_ticks", 0);
 
-  reporting_interval_fragments_ =
-    ps.get<uint32_t>("reporting_interval_fragments", 100);
+  // special debug options
+  penn_data_repeat_microslices_ =
+        ps.get<bool>("penn_data_repeat_microslices", false);
+  penn_data_debug_partial_recv_ =
+        ps.get<bool>("penn_data_debug_partial_recv", false);
+
+
 
   // Create an PENN client instance
-#ifndef NO_PENN_CLIENT
-  dpm_client_ = std::unique_ptr<lbne::PennClient>(new lbne::PennClient(
-		  dpm_client_host_addr_, dpm_client_host_port_, dpm_client_timeout_usecs_));
+  penn_client_ = std::unique_ptr<lbne::PennClient>(new lbne::PennClient(
+		  penn_client_host_addr_, penn_client_host_port_, penn_client_timeout_usecs_));
 
-#ifndef PENN_EMULATOR
-  dpm_client_->send_command("HardReset");
+  penn_client_->send_command("HardReset");
   sleep(1);
-  dpm_client_->send_command("ReadXmlFile", penn_xml_config_file_);
   std::ostringstream config_frag;
   this->generate_config_frag(config_frag);
-  dpm_client_->send_config(config_frag.str());
+  penn_client_->send_config(config_frag.str());
+
+#ifndef PENN_EMULATOR
   bool rate_test = false;
 #else
   bool rate_test = penn_data_repeat_microslices_;
-#endif //!PENN_EMULATOR
 
-#endif //!NO_PENN_CLIENT
+  //TODO check if it'd confuse the Penn to put emulator options in the XML file
+  config_frag.str(std::string());
+  this->generate_config_frag_emulator(config_frag);
+  penn_client_->send_config(config_frag.str());
+#endif //!PENN_EMULATOR
 
   // Create a PennDataReceiver instance
   data_receiver_ = 
-    std::unique_ptr<lbne::PennDataReceiver>(new lbne::PennDataReceiver(receiver_debug_level, receiver_tick_period_usecs_, receive_port_,
-								       number_of_microslices_per_millislice_, overlap_width_, rate_test));
+    std::unique_ptr<lbne::PennDataReceiver>(new lbne::PennDataReceiver(receiver_debug_level, receiver_tick_period_usecs_, penn_data_dest_port_,
+								       millislice_size_, millislice_overlap_size_, rate_test));
 
 }
 
@@ -178,35 +192,14 @@ void lbne::PennReceiver::start(void)
 	millislices_received_ = 0;
 	total_bytes_received_ = 0;
 	start_time_ = std::chrono::high_resolution_clock::now();
+	report_time_ = start_time_;
 
 	// Start the data receiver
 	data_receiver_->start();
 
-#ifndef NO_PENN_CLIENT
-
-#ifdef PENN_EMULATOR
-	// Set up parameters in PENN emulator
-	dpm_client_->set_param("host",  penn_data_dest_host_, "str");
-	dpm_client_->set_param("port",  penn_data_dest_port_, "int");
-	dpm_client_->set_param("millislices", penn_data_num_millislices_, "int");
-	dpm_client_->set_param("microslices", penn_data_num_microslices_, "int");
-	dpm_client_->set_param("repeat_microslices", penn_data_repeat_microslices_, "int"); //emulator can't parse bool correctly
-	dpm_client_->set_param("rate",  penn_data_frag_rate_, "float");
-	dpm_client_->set_param("payload_mode", penn_data_payload_mode_, "int");
-	dpm_client_->set_param("trigger_mode", penn_data_trigger_mode_, "int");
-	dpm_client_->set_param("nticks_per_microslice", penn_data_nticks_per_microslice_, "int");
-	dpm_client_->set_param("fragment_microslice_at_ticks", penn_data_fragment_microslice_at_ticks_, "int");
-	dpm_client_->set_param("debug_partial_recv", penn_data_debug_partial_recv_, "int"); //emulator can't parse bool correctly
-
 	// Send start command to PENN
-	dpm_client_->send_command("START");
-#else
-
-	dpm_client_->send_command("SoftReset");
-	dpm_client_->send_command("SetRunState", "Enable");
-#endif //PENN_EMULATOR
-
-#endif //!NO_PENN_CLIENT
+	penn_client_->send_command("SoftReset");
+	penn_client_->send_command("SetRunState", "Enable");
 
 }
 
@@ -215,15 +208,7 @@ void lbne::PennReceiver::stop(void)
 	mf::LogInfo("PennReceiver") << "stop() called";
 
 	// Instruct the PENN to stop
-#ifndef NO_PENN_CLIENT
-
-#ifdef PENN_EMULATOR
-	dpm_client_->send_command("STOP");
-#else
-	dpm_client_->send_command("SetRunState", "Stopped");
-#endif //PENN_EMULATOR
-
-#endif //!NO_PENN_CLIENT
+	penn_client_->send_command("SetRunState", "Stopped");
 
 	// Stop the data receiver.
 	data_receiver_->stop();
@@ -252,6 +237,15 @@ bool lbne::PennReceiver::getNext_(artdaq::FragmentPtrs & frags) {
   do
   {
     buffer_available = data_receiver_->retrieve_filled_buffer(recvd_buffer, 500000);
+    if (reporting_interval_time_ != 0) 
+      {
+	if (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - report_time_).count() >
+	    (reporting_interval_time_ * 1000))
+	  {
+	    report_time_ = std::chrono::high_resolution_clock::now();
+	    mf::LogInfo("PennReceiver") << "Received " << millislices_received_ << " millislices so far";
+	  }
+      }
   }
   while (!buffer_available && !should_stop());
 
@@ -456,21 +450,39 @@ uint32_t lbne::PennReceiver::validate_millislice_from_fragment_buffer(uint8_t* d
 
 void lbne::PennReceiver::generate_config_frag(std::ostringstream& config_frag) {
 
-  config_frag << "<RunMode>" << std::endl
-	      << " <Calibrations>" << (penn_mode_calibration_       ? "True" : "False") << "</Calibrations>" << std::endl
-	      << " <ExtTriggers>"  << (penn_mode_external_triggers_ ? "True" : "False") << "</ExtTriggers>"  << std::endl
-	      << " <MuonTriggers>" << (penn_mode_muon_triggers_     ? "True" : "False") << "</MuonTriggers>" << std::endl
-	      << "</RunMode>" << std::endl;
+  config_frag << "<RunMode>" << " "
+	      << " <Calibrations>" << (penn_mode_calibration_       ? "True" : "False") << "</Calibrations>" << " "
+	      << " <ExtTriggers>"  << (penn_mode_external_triggers_ ? "True" : "False") << "</ExtTriggers>"  << " "
+	      << " <MuonTriggers>" << (penn_mode_muon_triggers_     ? "True" : "False") << "</MuonTriggers>" << " "
+	      << "</RunMode>" << " ";
 
-  config_frag << "<MuonTriggers>" << std::endl
-	      << " <HitMaskBSU>" << penn_hit_mask_bsu_ << "</HitMaskBSU>" << std::endl
-	      << " <HitMaskTSU>" << penn_hit_mask_tsu_ << "</HitMaskTSU>" << std::endl
-	      << "</MuonTriggers>" << std::endl;
+  config_frag << "<MuonTriggers>" << " "
+	      << " <HitMaskBSU>" << penn_hit_mask_bsu_ << "</HitMaskBSU>" << " "
+	      << " <HitMaskTSU>" << penn_hit_mask_tsu_ << "</HitMaskTSU>" << " "
+	      << "</MuonTriggers>" << " ";
 
-  config_frag << "<DataBuffer>" << std::endl
-	      << " <DaqHost>" << penn_data_dest_host_ << "</DaqHost>" << std::endl
-	      << " <DaqPort>" << penn_data_dest_port_ << "</DaqPort>" << std::endl
-	      << "</DataBuffer>" << std::endl;
+  config_frag << "<DataBuffer>" << " "
+	      << " <DaqHost>" << penn_data_dest_host_ << "</DaqHost>" << " "
+	      << " <DaqPort>" << penn_data_dest_port_ << "</DaqPort>" << " "
+	      << "</DataBuffer>" << " ";
+
+  config_frag << "<Microslice>" << " "
+	      << " <Duration>" << penn_data_microslice_size_ << "</Duration>" << " "
+	      << "</Microslice>" << " ";
+}
+
+void lbne::PennReceiver::generate_config_frag_emulator(std::ostringstream& config_frag) {
+
+  config_frag << "<Emulator>" << " "
+	      << " <NumMillislices>" << penn_data_num_millislices_ << "</NumMillislices>" << " "
+	      << " <NumMicroslices>" << penn_data_num_microslices_ << "</NumMicroslices>" << " "
+	      << " <SendRate>"       << penn_data_frag_rate_       << "</SendRate>"       << " "
+	      << " <PayloadMode>"    << penn_data_payload_mode_    << "</PayloadMode>"    << " "
+	      << " <TriggerMode>"    << penn_data_trigger_mode_    << "</TriggerMode>"    << " "
+	      << " <FragmentUSlice>" << penn_data_fragment_microslice_at_ticks_ << "</FragmentUSlice>" << " "
+	      << " <SendRepeats>"    << penn_data_repeat_microslices_           << "</SendRepeats>" << " "
+	      << " <SendByByte>"     << penn_data_debug_partial_recv_           << "</SendByByte>" << " "
+	      << "</Emulator>" << " ";
 }
 
 // The following macro is defined in artdaq's GeneratorMacros.hh header
