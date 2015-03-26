@@ -11,6 +11,7 @@
 //or
 //  reblocked in a set time-width
 #ifndef PENN_DONT_REBLOCK_USLICES
+//// WARNING: OFF not been tested for ages
 #define REBLOCK_PENN_USLICE
 #endif
 /// note having REBLOCK_PENN_USLICE turned OFF is not fully implemented including:
@@ -26,6 +27,7 @@
 //or
 //  1) the 4 bytes header
 //  2) the rest of the uslice in one go
+//// WARNING: ON not been tested for ages
 //#define RECV_PENN_USLICE_IN_CHUNKS
 
 #endif //PENNCOMPILEOPTIONS_HH_

@@ -39,7 +39,8 @@ lbne::PennDataReceiver::PennDataReceiver(int debug_level, uint32_t tick_period_u
 	RECV_DEBUG(1) << "lbne::PennDataReceiver constructor";
 
 #ifdef REBLOCK_PENN_USLICE
-	if(millislice_size_ > lbne::PennMicroSlice::ROLLOVER_LOW_VALUE) {
+	//in this instance millislice_size_ is the number of bits that need to rollover to start a new microslice
+	if((pow(millislice_size_, 2) - 1) > lbne::PennMicroSlice::ROLLOVER_LOW_VALUE) {
 	  RECV_DEBUG(0) << "lbne::PennDataReceiver WARNING millislice_size_ " << millislice_size_
 			<< " is greater than lbne::PennMicroSlice::ROLLOVER_LOW_VALUE " << (uint32_t)lbne::PennMicroSlice::ROLLOVER_LOW_VALUE
 			<< " 28-bit timestamp rollover will not be handled correctly";
@@ -572,7 +573,7 @@ void lbne::PennDataReceiver::handle_received_data(std::size_t length)
 	    millislice_size_recvd_ -= sizeof(lbne::PennMicroSlice::Header);
 
 	    //copy the microslice header to memory, for checksum tests
-	    memcpy(state_start_ptr_, current_microslice_ptr_, sizeof(lbne::PennMicroSlice::Header));
+	    memcpy(current_microslice_ptr_, state_start_ptr_, sizeof(lbne::PennMicroSlice::Header));
 #endif
 	    break;
 	  } //case ReceiveMicrosliceHeader
@@ -824,9 +825,11 @@ void lbne::PennDataReceiver::handle_received_data(std::size_t length)
 						  hardware_checksum,
 						  true, microslice_size_);
 
+	    //WARNING this assumes that the last 64 bytes of a microslice is always a payload header & a checksum word
+	    //TODO change the size if the checksum format changes
 	    //checksum the microslice we've just received
 	    // first copy the payload to the same location as the header
-	    memcpy(state_start_ptr_, current_microslice_ptr_ + sizeof(lbne::PennMicroSlice::Header), state_nbytes_recvd_);
+	    memcpy(current_microslice_ptr_ + sizeof(lbne::PennMicroSlice::Header), state_start_ptr_, state_nbytes_recvd_);
 	    // then calculate the checksum ourself
 	    boost::crc_32_type crc_checksum;
 	    std::size_t microslice_size_to_checksum = sizeof(lbne::PennMicroSlice::Header) + state_nbytes_recvd_ - sizeof(lbne::PennMicroSlice::Payload_Header) - lbne::PennMicroSlice::payload_size_checksum;
@@ -840,11 +843,32 @@ void lbne::PennDataReceiver::handle_received_data(std::size_t length)
 	    else
 	      RECV_DEBUG(4) << "Microslice checksums... Hardware: " << hardware_checksum << " Software: " << software_checksum;
 
+	    //make sure to remove the microslice checksum word from the millislice (it is useless without the header)
+	    //TODO tweak this logic more - some microslice checksum words are still getting into the millislice
+	    current_write_ptr_ = (void*)((char*)current_write_ptr_ - sizeof(lbne::PennMicroSlice::Payload_Header) - lbne::PennMicroSlice::payload_size_checksum);
+	    millislice_size_recvd_ -= (sizeof(lbne::PennMicroSlice::Payload_Header) + lbne::PennMicroSlice::payload_size_checksum);
+	    n_checksum_words--;
+	    n_words--;
+	    if(split_ptr != nullptr) {
+	      if(remaining_payloads_recvd_checksum_) {
+		remaining_size_   -= sizeof(lbne::PennMicroSlice::Payload_Header) - lbne::PennMicroSlice::payload_size_checksum;
+		remaining_payloads_recvd_ -= remaining_payloads_recvd_checksum_;
+		remaining_payloads_recvd_checksum_ = 0;
+	      }
+	    }
+	    if(this_overlap_ptr != nullptr) {
+	      if(overlap_payloads_recvd_checksum_) {
+		this_overlap_size -= sizeof(lbne::PennMicroSlice::Payload_Header) - lbne::PennMicroSlice::payload_size_checksum;
+		overlap_payloads_recvd_ -= overlap_payloads_recvd_checksum_;
+		overlap_payloads_recvd_checksum_ = 0;
+	      }
+	    }
 
+	    //stash the microslice data that's for the next millislice
             if(split_ptr != nullptr) {
 		if(remaining_size_ > lbne::PennDataReceiver::remaining_buffer_size) {
 		  mf::LogError("PennDataReceiver") << "ERROR buffer overflow for 'remaining bytes of microslice, after the millislice boundary'";
-		  //TODO handle error cleanly here (also find out the largest possible microslice size & set remaining_buffer_size appropriately)
+		  //TODO handle error cleanly here (also find out the largest possible microslice size (multiple-fragments) & set remaining_buffer_size appropriately)
 		}
               RECV_DEBUG(2) << "Millislice boundary found within microslice " << microslices_recvd_timestamp_
                             << ". Storing " << remaining_size_ << " bytes for next millislice";
@@ -852,6 +876,7 @@ void lbne::PennDataReceiver::handle_received_data(std::size_t length)
               millislice_size_recvd_ -= remaining_size_;
             }
 
+	    //stash the microslice data that's for the overlap period at the start of the next millislice
 	    if(this_overlap_ptr != nullptr) {
 	      if(overlap_size_ + this_overlap_size > lbne::PennDataReceiver::overlap_buffer_size_) {
 		mf::LogError("PennDataReceiver") << "ERROR buffer overflow for 'overlap bytes of microslice, after the millislice boundary'";
@@ -859,7 +884,7 @@ void lbne::PennDataReceiver::handle_received_data(std::size_t length)
 	      }
 	      RECV_DEBUG(2) << "Overlap period found within microslice " << microslices_recvd_timestamp_
                             << ". Storing " << overlap_size_ << " bytes for start of next millislice";
-	      memmove(overlap_ptr_ + overlap_size_, this_overlap_ptr, this_overlap_size);
+	      memcpy(overlap_ptr_ + overlap_size_, this_overlap_ptr, this_overlap_size);
 	      overlap_size_ += this_overlap_size;
 	    }
 
