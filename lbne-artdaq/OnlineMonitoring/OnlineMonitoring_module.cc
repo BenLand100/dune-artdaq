@@ -1,3 +1,10 @@
+////////////////////////////////////////////////////////////////////////
+//
+// art module to produce online monitoring plots from raw artdaq data
+// April 2015, M Wallbank (m.wallbank@sheffield.ac.uk)
+//
+////////////////////////////////////////////////////////////////////////
+
 #include "art/Framework/Core/EDAnalyzer.h"
 #include "art/Framework/Core/ModuleMacros.h"
 #include "art/Framework/Principal/Event.h"
@@ -12,6 +19,7 @@
 #include <map>
 #include <iostream>
 #include <numeric>
+#include <bitset>
 
 #include <TH1.h>
 #include <TH2.h>
@@ -32,12 +40,14 @@ public:
   virtual ~OnlineMonitoring();
 
   void analyze(art::Event const &event);
-  void analyzeTPC(art::Handle<artdaq::Fragments> rawTPC);
+  void analyzeRCE(art::Handle<artdaq::Fragments> rawRCE);
   void analyzeSSP(art::Handle<artdaq::Fragments> rawSSP);
   void beginJob();
-  void monitoringTPC();
+  void monitoringRCE();
   void monitoringSSP();
   void endJob();
+  void reset();
+  void windowingRCE();
 
 private:
 
@@ -48,28 +58,77 @@ private:
   std::map<unsigned int, unsigned int> tpcFragmentMap;
   std::map<unsigned int, unsigned int> sspFragmentMap;
 
+  int fThreshold = 10;
+
+  // Vectors to hold all information
+  // channelvector<tickvector<ADC>>
   std::vector<std::vector<int> > fADC;
   std::vector<std::vector<int> > fWaveform;
 
-  // Monitoring histograms
-  TH2D *hAvADCChannelEvent;
-  TH2D *hAvWaveformChannelEvent;
-  TProfile2D *hADCTickChannel;
-  TProfile2D *hTPCDNoiseTickChannel;
-  TProfile2D *hWaveformTickChannel;
-  TProfile2D *hSSPDNoiseTickChannel;
+  // Windowing
+  std::vector<std::vector<short> > fWindowingBlockBegin;
+  std::vector<std::vector<short> > fWindowingBlockSize;
+  std::vector<int> fWindowingNumBlocks;
+  const int fWindowingZeroThresholdSigned = 10;
+  int fWindowingNearestNeighbour = 4;
 
+  // Variables for monitoring
+  int fTotalADC, fTotalWaveform;
+  int fTotalRCEHitsEvent, fTotalSSPHitsEvent;
+  std::map<int,int> fTotalRCEHitsChannel, fTotalSSPHitsChannel;
+  int fTimesADCGoesOverThreshold, fTimesWaveformGoesOverThreshold;
+
+  // -----------------------------------------
+  // Monitoring histograms
+
+  // RCE
+  TH2D *hAvADCChannelEvent;
+  TProfile2D *hADCTickChannel;
+  TProfile *hRCEDNoiseChannel;
+  TH1I *hTotalADCEvent;
+  TH1I *hTotalRCEHitsEvent;
+  TH1I *hTotalRCEHitsChannel;
+  TH1I *hTimesADCGoesOverThreshold;
+  TProfile *hAsymmetry;
+  std::map<int,TH2I*> hADCBits;
+  std::map<int,TH1I*> hADCChannel;
+
+  // SSP
+  TH2D *hAvWaveformChannelEvent;
+  TProfile2D *hWaveformTickChannel;
+  TProfile *hSSPDNoiseChannel;
+  TH1I *hTotalWaveformEvent;
+  TH1I *hTotalSSPHitsEvent;
+  TH1I *hTotalSSPHitsChannel;
+  TH1I *hTimesWaveformGoesOverThreshold;
+  std::map<int,TH1I*> hWaveformChannel;
+
+  // Canvases
   TCanvas *cAvADCChannelEvent;
   TCanvas *cAvWaveformChannelEvent;
   TCanvas *cADCTickChannel;
-  TCanvas *cTPCDNoiseTickChannel;
+  TCanvas *cRCEDNoiseChannel;
   TCanvas *cWaveformTickChannel;
-  TCanvas *cSSPDNoiseTickChannel;
+  TCanvas *cSSPDNoiseChannel;
+  TCanvas *cTotalADCEvent;
+  TCanvas *cTotalWaveformEvent;
+  TCanvas *cTotalRCEHitsEvent;
+  TCanvas *cTotalSSPHitsEvent;
+  TCanvas *cTotalRCEHitsChannel;
+  TCanvas *cTotalSSPHitsChannel;
+  TCanvas *cTimesADCGoesOverThreshold;
+  TCanvas *cTimesWaveformGoesOverThreshold;
+  TCanvas *cADCBits;
+  TCanvas *cAsymmetry;
+
+  // -----------------------------------------
 
   bool _verbose = false;
 
-  bool fIsTPC = true;
+  bool fIsRCE = true;
   bool fIsSSP = true;
+
+  bool fIsInduction = true;
 
 };
 
@@ -82,13 +141,39 @@ lbne::OnlineMonitoring::~OnlineMonitoring() {
 void lbne::OnlineMonitoring::beginJob() {
   gStyle->SetOptStat(0);
 
+  // RCE hists
   hAvADCChannelEvent = new TH2D("hAvADCChannelEvent",";Event;Channel",100,0,99,2048,0,2047);
   hADCTickChannel = new TProfile2D("hADCTickChannel",";Channel;Tick",2048,0,2047,3200,0,3199);
-  hTPCDNoiseTickChannel = new TProfile2D("hTPCDNoiseTickChannel",";Channel;Tick",2048,0,2047,3200,0,3199);
+  hRCEDNoiseChannel = new TProfile("hRCEDNoiseChannel",";Channel;DNoise",2048,0,2047);
+  hTotalADCEvent = new TH1I("hTotalADCEvent",";Total ADC;",100,0,100);
+  hTotalRCEHitsEvent = new TH1I("hTotalRCEHits",";Total RCE Hits;",100,0,1000);
+  hTotalRCEHitsChannel = new TH1I("hTotalRCEHitsChannel",";Channel;Total RCE Hits;",2048,0,2047);
+  hTimesADCGoesOverThreshold = new TH1I("hTimesADCGoesOverThreshold",";Times ADC Goes Over Threshold;",100,0,1000);
+  hAsymmetry = new TProfile("hAsymmetry",";Channel;Asymmetry",2048,0,2047);
+  std::stringstream nameRCE;
+  for (unsigned int channel = 0; channel < 2048; channel++) {
+    nameRCE.str(""); nameRCE << "ADCChannel"; nameRCE << channel;
+    hADCChannel[channel] = new TH1I(nameRCE.str().c_str(),";Tick;",3200,0,3199);
+  }
+  std::stringstream nameADCBit;
+  for (int chanPart = 0; chanPart < 4; chanPart++) {
+    nameADCBit.str(""); nameADCBit << "hADCBits" << chanPart;
+    hADCBits[chanPart] = new TH2I(nameADCBit.str().c_str(),";Channel;Bit",512,(chanPart*512),(((chanPart+1)*512)-1),16,0,15);
+  }
 
-  hAvWaveformChannelEvent = new TH2D("hAvWaveformChannelEvent",";Event;Waveform",100,0,99,96,0,95);
+  // SSP hists
+  hAvWaveformChannelEvent = new TH2D("hAvWaveformChannelEvent",";Event;Channel",100,0,99,96,0,95);
   hWaveformTickChannel = new TProfile2D("hWaveformTickChannel",";Channel;Tick",96,0,95,500,0,499);
-  hSSPDNoiseTickChannel = new TProfile2D("hSSPDNoiseTickChannel",";Channel;Tick",96,0,95,500,0,499);
+  hSSPDNoiseChannel = new TProfile("hSSPDNoiseChannel",";Channel;DNoise",96,0,95);
+  hTotalWaveformEvent = new TH1I("hTotalWaveformEvent",";Total Waveform;",100,0,100);
+  hTotalSSPHitsEvent = new TH1I("hTotalSSPHits",";Total SSP Hits;",100,0,1000);
+  hTotalSSPHitsChannel = new TH1I("hTotalSSPHitsChannel",";Channel;Total SSP Hits;",96,0,95);
+  hTimesWaveformGoesOverThreshold = new TH1I("hTimesWaveformGoesOverThreshold",";Time Waveform Goes Over Threshold;",100,0,1000);
+  std::stringstream nameSSP;
+  for (unsigned int channel = 0; channel < 96; channel++) {
+    nameSSP.str(""); nameSSP << "WaveformChannel"; nameSSP << channel;
+    hWaveformChannel[channel] = new TH1I(nameSSP.str().c_str(),";Tick;",500,0,499);
+  }
 }
 
 void lbne::OnlineMonitoring::analyze(art::Event const &evt) {
@@ -97,46 +182,162 @@ void lbne::OnlineMonitoring::analyze(art::Event const &evt) {
   fRun = evt.run();
   fSubrun = evt.subRun();
 
-  // Look for TPC millislice fragments
-  art::Handle<artdaq::Fragments> rawTPC;
-  evt.getByLabel("daq","TPC",rawTPC);
+  if (_verbose)
+    std::cout << "Event number " << fEventNumber << std::endl;
 
+  // Look for RCE millislice fragments
+  art::Handle<artdaq::Fragments> rawRCE;
+  evt.getByLabel("daq","TPC",rawRCE);
+ 
   // Look for SSP data
   art::Handle<artdaq::Fragments> rawSSP;
   evt.getByLabel("daq","PHOTON",rawSSP);
 
   // Check the data exists before continuing
-  try { rawTPC->size(); }
-  catch(std::exception e) { fIsTPC = false; }
+  try { rawRCE->size(); }
+  catch(std::exception e) { fIsRCE = false; }
   try { rawSSP->size(); }
   catch(std::exception e) { fIsSSP = false; }
 
-  fADC.clear();
-  fWaveform.clear();
-
-  //fIsSSP = false;
+  reset();
 
   // Analyse data separately
-  if (fIsTPC) {
-    analyzeTPC(rawTPC);
-    monitoringTPC();
+  if (fIsRCE) {
+    analyzeRCE(rawRCE);
+    windowingRCE();
+    if (fADC.size()) monitoringRCE();
   }
   if (fIsSSP) {
     analyzeSSP(rawSSP);
-    monitoringSSP();
+    if (fWaveform.size()) monitoringSSP();
   }
 
 }
 
-void lbne::OnlineMonitoring::analyzeTPC(art::Handle<artdaq::Fragments> rawTPC) {
+void lbne::OnlineMonitoring::monitoringRCE() {
+  // Function called to fill all histograms
+
+  for (unsigned int channel = 0; channel < fADC.size(); channel++) {
+
+    bool peak = false;
+
+    // Find the mean ADC for this channel
+    double sum = std::accumulate(fADC.at(channel).begin(),fADC.at(channel).end(),0.0);
+    double mean = sum / fADC.at(channel).size();
+
+    // Asymmetry variables
+    double asymmetry = 0;
+    double ADCsum = 0, ADCdiff = 0;
+
+    for (unsigned int tick = 0; tick < fADC.at(channel).size(); tick++) {
+
+      // Fill hists for tick
+      hADCChannel[channel]->Fill(fADC.at(channel).at(tick));      
+      hADCTickChannel->Fill(channel,tick,fADC.at(channel).at(tick));
+      if (channel) hRCEDNoiseChannel->Fill(channel,fADC.at(channel).at(tick)-fADC.at(channel-1).at(tick));
+
+      // Increase variables
+      fTotalADC += fADC.at(channel).at(tick);
+      if (fADC.at(channel).at(tick) > fThreshold) {
+	fTotalRCEHitsChannel[channel]++;
+	fTotalRCEHitsEvent++;
+      }
+
+      // Times over threshold
+      if ( (fADC.at(channel).at(tick) > fThreshold) && !peak ) {
+	fTimesADCGoesOverThreshold++;
+	peak = true;
+      }
+      if ( tick && (fADC.at(channel).at(tick) < fADC.at(channel).at(tick-1)) && peak ) peak = false;
+
+      // Bit check - would like to write as class variable and not define each time but can't...
+      std::bitset<16> bits(fADC.at(channel).at(tick));
+      for (int bit = 0; bit < 16; bit++)
+	hADCBits[(int) (channel/512)]->Fill(channel,bit,bits[bit]);
+
+    }
+
+    // Fill hists for channel
+    hAvADCChannelEvent->Fill(fEventNumber,channel,mean);
+    hTotalRCEHitsChannel->Fill(channel+1,fTotalRCEHitsChannel[channel]);
+
+    // Loop over blocks to look at the asymmetry
+    for (int block = 0; block < fWindowingNumBlocks.at(channel); block++) {
+      // Loop over the ticks within the block
+      for (int tick = fWindowingBlockBegin.at(channel).at(block); tick < fWindowingBlockBegin.at(channel).at(block)+fWindowingBlockSize.at(channel).at(block); tick++) {
+	if (fIsInduction) {
+	  ADCdiff += fADC.at(channel).at(tick);
+	  ADCsum += abs(fADC.at(channel).at(tick));
+	}
+      } // End of tick loop
+    } // End of block loop
+
+    if (fIsInduction && ADCsum) asymmetry = (double)ADCdiff / (double)ADCsum;
+    hAsymmetry->Fill(channel+1,asymmetry);
+
+  }
+
+  // Fill hists for event
+  hTotalADCEvent->Fill(fTotalADC);
+  hTotalRCEHitsEvent->Fill(fTotalRCEHitsEvent);
+  hTimesADCGoesOverThreshold->Fill(fTimesADCGoesOverThreshold);
+
+}
+
+void lbne::OnlineMonitoring::monitoringSSP() {
+  // Function called to fill all histograms
+
+  for (unsigned int channel = 0; channel < fWaveform.size(); channel++) {
+
+    bool peak = false;
+
+    // Find the mean Waveform for this channel
+    double sum = std::accumulate(fWaveform.at(channel).begin(),fWaveform.at(channel).end(),0.0);
+    double mean = sum / fWaveform.at(channel).size();
+
+    for (unsigned int tick = 0; tick < fWaveform.at(channel).size(); tick++) {
+
+      // Fill hists for tick
+      hWaveformChannel[channel]->Fill(fWaveform.at(channel).at(tick));
+      hWaveformTickChannel->Fill(channel,tick,fWaveform.at(channel).at(tick));
+      if (channel) hSSPDNoiseChannel->Fill(channel,fWaveform.at(channel).at(tick)-fWaveform.at(channel-1).at(tick));
+
+      // Increase variables
+      fTotalWaveform += fWaveform.at(channel).at(tick);
+      fTotalSSPHitsEvent++;
+      fTotalSSPHitsChannel[channel]++;
+
+      // Times over threshold
+      if ( (fWaveform.at(channel).at(tick) > fThreshold) && !peak ) {
+	fTimesWaveformGoesOverThreshold++;
+	peak = true;
+      }
+      if ( tick && (fWaveform.at(channel).at(tick) < fWaveform.at(channel).at(tick-1)) && peak ) peak = false;
+
+    }
+
+    // Fill hists for channel
+    hAvWaveformChannelEvent->Fill(fEventNumber,channel,mean);
+    hTotalSSPHitsChannel->Fill(channel+1,fTotalSSPHitsChannel[channel]);
+    
+  }
+
+  // Fill hists for event
+  hTotalWaveformEvent->Fill(fTotalWaveform);
+  hTotalSSPHitsEvent->Fill(fTotalSSPHitsEvent);
+  hTimesWaveformGoesOverThreshold->Fill(fTimesWaveformGoesOverThreshold);
+
+}
+
+void lbne::OnlineMonitoring::analyzeRCE(art::Handle<artdaq::Fragments> rawRCE) {
 
   if (_verbose)
-    std::cout << "%%DQM----- Run " << fRun << ", subrun " << fSubrun << ", event " << fEventNumber << " has " << rawTPC->size() << " fragment(s) of type TPC" << std::endl;
+    std::cout << "%%DQM----- Run " << fRun << ", subrun " << fSubrun << ", event " << fEventNumber << " has " << rawRCE->size() << " fragment(s) of type RCE" << std::endl;
 
   // Loop over fragments to make a map to save the order the frags are saved in
   tpcFragmentMap.clear();
-  for (unsigned int fragIt = 0; fragIt < rawTPC->size(); fragIt++) {
-    const artdaq::Fragment &fragment = ((*rawTPC)[fragIt]);
+  for (unsigned int fragIt = 0; fragIt < rawRCE->size(); fragIt++) {
+    const artdaq::Fragment &fragment = ((*rawRCE)[fragIt]);
     unsigned int fragmentID = fragment.fragmentID();
     tpcFragmentMap.insert(std::pair<unsigned int, unsigned int>(fragmentID,fragIt));
   }
@@ -161,7 +362,7 @@ void lbne::OnlineMonitoring::analyzeTPC(art::Handle<artdaq::Fragments> rawTPC) {
     unsigned int fragIndex = tpcFragmentMap[fragmentID];
 
     // Get the millislice fragment
-    const artdaq::Fragment &frag = ((*rawTPC)[fragIndex]);
+    const artdaq::Fragment &frag = ((*rawRCE)[fragIndex]);
     lbne::TpcMilliSliceFragment millisliceFragment(frag);
 
     // Number of microslices in millislice fragments
@@ -275,41 +476,66 @@ void lbne::OnlineMonitoring::analyzeSSP(art::Handle<artdaq::Fragments> rawSSP) {
 
 }
 
-void lbne::OnlineMonitoring::monitoringTPC() {
-  // Function called to fill all histograms
+void lbne::OnlineMonitoring::windowingRCE() {
 
   for (unsigned int channel = 0; channel < fADC.size(); channel++) {
 
-    // Find the mean ADC for this channel
-    double sum = std::accumulate(fADC.at(channel).begin(),fADC.at(channel).end(),0.0);
-    double mean = sum / fADC.at(channel).size();
+    // Define variables for the windowing
+    std::vector<short> tmpBlockBegin((fADC.at(channel).size()/2)+1);
+    std::vector<short> tmpBlockSize((fADC.at(channel).size()/2)+1);
+    int tmpNumBlocks = 0;
+    int blockstartcheck = 0;
+    int endofblockcheck = 0;
 
-    hAvADCChannelEvent->Fill(fEventNumber,channel,mean);
+    for (int tick = 0; tick < (int)fADC.at(channel).size(); tick++) {
+      // Windowing code (taken from raw.cxx::ZeroSuppression)
+      if (blockstartcheck == 0) {
+	if (fADC.at(channel).at(tick) > fWindowingZeroThresholdSigned) {
+	  if (tmpNumBlocks > 0) {
+	    if (tick-fWindowingNearestNeighbour <= tmpBlockBegin[tmpNumBlocks-1] + tmpBlockSize[tmpNumBlocks-1]+1) {
+	      tmpNumBlocks--;
+	      tmpBlockSize[tmpNumBlocks] = tick - tmpBlockBegin[tmpNumBlocks] + 1;
+	      blockstartcheck = 1;
+	    }
+	    else {
+	      tmpBlockBegin[tmpNumBlocks] = (tick - fWindowingNearestNeighbour > 0) ? tick - fWindowingNearestNeighbour : 0;
+	      tmpBlockSize[tmpNumBlocks] = tick - tmpBlockBegin[tmpNumBlocks] + 1;
+	      blockstartcheck = 1;
+	    }
+	  }
+	  else {
+	    tmpBlockBegin[tmpNumBlocks] = (tick - fWindowingNearestNeighbour > 0) ? tick - fWindowingNearestNeighbour : 0;
+	    tmpBlockSize[tmpNumBlocks] = tick - tmpBlockBegin[tmpNumBlocks] + 1;
+	    blockstartcheck = 1;	    
+	  }
+	}
+      }
+      else if (blockstartcheck == 1) {
+	if (fADC.at(channel).at(tick) > fWindowingZeroThresholdSigned) {
+	  tmpBlockSize[tmpNumBlocks]++;
+	  endofblockcheck = 0;
+	}
+	else {
+	  if (endofblockcheck < fWindowingNearestNeighbour) {
+	    endofblockcheck++;
+	    tmpBlockSize[tmpNumBlocks]++;
+	  }
+	  //block has ended
+	  else if ( std::abs(fADC.at(channel).at(tick+1)) <= fWindowingZeroThresholdSigned || std::abs(fADC.at(channel).at(tick+2)) <= fWindowingZeroThresholdSigned) {  
+	    endofblockcheck = 0;
+	    blockstartcheck = 0;
+	    tmpNumBlocks++;	    
+	  }
+	}
+      }
 
-    for (unsigned int tick = 0; tick < fADC.at(channel).size(); tick++) {
-      hADCTickChannel->Fill(channel,tick,fADC.at(channel).at(tick));
-      if (tick) hTPCDNoiseTickChannel->Fill(channel,tick,fADC.at(channel).at(tick-1));
-    }
-  }
-  
-}
+    } // tick
 
-void lbne::OnlineMonitoring::monitoringSSP() {
-  // Function called to fill all histograms
+    fWindowingBlockBegin.push_back(tmpBlockBegin);
+    fWindowingBlockSize.push_back(tmpBlockSize);
+    fWindowingNumBlocks.push_back(tmpNumBlocks);
 
-  for (unsigned int channel = 0; channel < fWaveform.size(); channel++) {
-
-    // Find the mean Waveform for this channel
-    double sum = std::accumulate(fWaveform.at(channel).begin(),fWaveform.at(channel).end(),0.0);
-    double mean = sum / fWaveform.at(channel).size();
-
-    hAvWaveformChannelEvent->Fill(fEventNumber,channel,mean);
-
-    for (unsigned int tick = 0; tick < fWaveform.at(channel).size(); tick++) {
-      hWaveformTickChannel->Fill(channel,tick,fWaveform.at(channel).at(tick));
-      if (tick) hSSPDNoiseTickChannel->Fill(channel,tick,fWaveform.at(channel).at(tick-1));
-    }
-  }
+  } // channel
 
 }
 
@@ -322,9 +548,9 @@ void lbne::OnlineMonitoring::endJob() {
   hADCTickChannel->Draw("colz");
   cADCTickChannel->SaveAs("ADCTickChannel.png");
 
-  cTPCDNoiseTickChannel = new TCanvas("cTPCDNoiseTickChannel","",800,600);
-  hTPCDNoiseTickChannel->Draw("colz");
-  cTPCDNoiseTickChannel->SaveAs("TPCDNoiseTickChannel.png");
+  cRCEDNoiseChannel = new TCanvas("cRCEDNoiseChannel","",800,600);
+  hRCEDNoiseChannel->Draw("colz");
+  cRCEDNoiseChannel->SaveAs("RCEDNoiseChannel.png");
 
   cAvWaveformChannelEvent = new TCanvas("cAvWaveformChannelEvent","",800,600);
   hAvWaveformChannelEvent->Draw("colz");
@@ -334,9 +560,77 @@ void lbne::OnlineMonitoring::endJob() {
   hWaveformTickChannel->Draw("colz");
   cWaveformTickChannel->SaveAs("WaveformTickChannel.png");
 
-  cSSPDNoiseTickChannel = new TCanvas("cSSPDNoiseTickChannel","",800,600);
-  hSSPDNoiseTickChannel->Draw("colz");
-  cSSPDNoiseTickChannel->SaveAs("SSPDNoiseTickChannel.png");
+  cSSPDNoiseChannel = new TCanvas("cSSPDNoiseChannel","",800,600);
+  hSSPDNoiseChannel->Draw("colz");
+  cSSPDNoiseChannel->SaveAs("SSPDNoiseChannel.png");
+
+  cTotalADCEvent = new TCanvas("cTotalADCEvent","",800,600);
+  hTotalADCEvent->Draw("colz");
+  cTotalADCEvent->SaveAs("TotalADCEvent.png");
+
+  cTotalWaveformEvent = new TCanvas("cTotalWaveformEvent","",800,600);
+  hTotalWaveformEvent->Draw("colz");
+  cTotalWaveformEvent->SaveAs("TotalWaveformEvent.png");
+
+  cTotalRCEHitsEvent = new TCanvas("cTotalRCEHitsEvent","",800,600);
+  hTotalRCEHitsEvent->Draw("colz");
+  cTotalRCEHitsEvent->SaveAs("TotalRCEHitsEvent.png");
+
+  cTotalSSPHitsEvent = new TCanvas("cTotalSSPHitsEvent","",800,600);
+  hTotalSSPHitsEvent->Draw("colz");
+  cTotalSSPHitsEvent->SaveAs("TotalSSPHitsEvent.png");
+
+  cTotalRCEHitsChannel = new TCanvas("cTotalRCEHitsChannel","",800,600);
+  hTotalRCEHitsChannel->Draw("colz");
+  cTotalRCEHitsChannel->SaveAs("TotalRCEHitsChannel.png");
+
+  cTotalSSPHitsChannel = new TCanvas("cTotalSSPHitsCharge","",800,600);
+  hTotalSSPHitsChannel->Draw("colz");
+  cTotalSSPHitsChannel->SaveAs("TotalSSPHitsChannel.png");
+
+  cTimesADCGoesOverThreshold = new TCanvas("cTimesADCGoesOverThreshold","",800,600);
+  hTimesADCGoesOverThreshold->Draw("colz");
+  cTimesADCGoesOverThreshold->SaveAs("TimesADCGoesOverThreshold.png");
+
+  cTimesWaveformGoesOverThreshold = new TCanvas("cTimesWaveformGoesOverThreshold","",800,600);
+  hTimesWaveformGoesOverThreshold->Draw("colz");
+  cTimesWaveformGoesOverThreshold->SaveAs("TimesWaveformGoesOverThreshold.png");
+
+  cADCBits = new TCanvas("cADCBits","",1600,1200);
+  cADCBits->Divide(1,4);
+  for (int chanPart = 0; chanPart < 4; chanPart++) {
+    cADCBits->cd(4-chanPart);
+    hADCBits[chanPart]->Draw();
+  }
+  // fADCBits = cADCBits.DrawFrame(0.,0.,1.,1.);
+  // fADCBits->SetXTitle("Channel");
+  // fADCBits->SetYTitle("Bit");
+  // cADCBits.Modified();
+  cADCBits->SaveAs("ADCBits.png");
+
+  cAsymmetry = new TCanvas("cAsymmetry","",800,600);
+  hAsymmetry->Draw();
+  cAsymmetry->SaveAs("Asymmetry.png");
+
 }
 
+void lbne::OnlineMonitoring::reset() {
+
+  fADC.clear();
+  fWaveform.clear();
+
+  fTotalADC = 0;
+  fTotalWaveform = 0;
+
+  fTotalRCEHitsEvent = 0;
+  fTotalSSPHitsEvent = 0;
+
+  fTotalRCEHitsChannel.clear();
+  fTotalSSPHitsChannel.clear();
+
+  fTimesADCGoesOverThreshold = 0;
+  fTimesWaveformGoesOverThreshold = 0;
+
+}
+ 
 DEFINE_ART_MODULE(lbne::OnlineMonitoring)
