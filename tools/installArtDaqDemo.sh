@@ -92,7 +92,13 @@ function install_package {
 
 install_package artdaq-core v1_04_10 e6 s6
 install_package lbne-raw-data v1_03_02 e6 s6
-install_package artdaq v1_12_08 e6 s6 eth
+
+# JCF, 4/15/15
+
+# Commit hash 9cb... corresponds to Kurt's removal of the perfid code
+# which caused crashes to occur after a couple million events in a run
+
+install_package artdaq 9cbf64f136333b0104d98f774a556946de205691 e6 s6 eth
 
 setup_qualifier="e6"
 
