@@ -91,6 +91,8 @@ private:
   TH1I *hTimesADCGoesOverThreshold;
   TProfile *hAsymmetry;
   std::map<int,TH2I*> hADCBits;
+  std::map<int,TH2I*> hADCBitsAnd;
+  std::map<int,TH2I*> hADCBitsOr;
   std::map<int,TH1I*> hADCChannel;
 
   // SSP
@@ -119,6 +121,8 @@ private:
   TCanvas *cTimesADCGoesOverThreshold;
   TCanvas *cTimesWaveformGoesOverThreshold;
   TCanvas *cADCBits;
+  TCanvas *cADCBitsAnd;
+  TCanvas *cADCBitsOr;
   TCanvas *cAsymmetry;
 
   // -----------------------------------------
@@ -155,10 +159,14 @@ void lbne::OnlineMonitoring::beginJob() {
     nameRCE.str(""); nameRCE << "ADCChannel"; nameRCE << channel;
     hADCChannel[channel] = new TH1I(nameRCE.str().c_str(),";Tick;",3200,0,3199);
   }
-  std::stringstream nameADCBit;
+  std::stringstream nameADCBit, nameADCBitAnd, nameADCBitOr;
   for (int chanPart = 0; chanPart < 4; chanPart++) {
     nameADCBit.str(""); nameADCBit << "hADCBits" << chanPart;
     hADCBits[chanPart] = new TH2I(nameADCBit.str().c_str(),";Channel;Bit",512,(chanPart*512),(((chanPart+1)*512)-1),16,0,15);
+    nameADCBitAnd.str(""); nameADCBitAnd << "hADCBitsAnd" << chanPart;
+    hADCBitsAnd[chanPart] = new TH2I(nameADCBitAnd.str().c_str(),";Channel;Bit",512,(chanPart*512),(((chanPart+1)*512)-1),16,0,15);
+    nameADCBitOr.str(""); nameADCBitOr << "hADCBitsOr" << chanPart;
+    hADCBitsOr[chanPart] = new TH2I(nameADCBitOr.str().c_str(),";Channel;Bit",512,(chanPart*512),(((chanPart+1)*512)-1),16,0,15);
   }
 
   // SSP hists
@@ -232,7 +240,7 @@ void lbne::OnlineMonitoring::monitoringRCE() {
     for (unsigned int tick = 0; tick < fADC.at(channel).size(); tick++) {
 
       // Fill hists for tick
-      hADCChannel[channel]->Fill(fADC.at(channel).at(tick));      
+      hADCChannel[channel]->Fill(tick,fADC.at(channel).at(tick));      
       hADCTickChannel->Fill(channel,tick,fADC.at(channel).at(tick));
       if (channel) hRCEDNoiseChannel->Fill(channel,fADC.at(channel).at(tick)-fADC.at(channel-1).at(tick));
 
@@ -252,8 +260,11 @@ void lbne::OnlineMonitoring::monitoringRCE() {
 
       // Bit check - would like to write as class variable and not define each time but can't...
       std::bitset<16> bits(fADC.at(channel).at(tick));
-      for (int bit = 0; bit < 16; bit++)
+      for (int bit = 0; bit < 16; bit++) {
 	hADCBits[(int) (channel/512)]->Fill(channel,bit,bits[bit]);
+	hADCBitsAnd[(int) (channel/512)]->Fill(channel,bit,( (hADCBitsAnd[(int)(channel/512)]->GetBinContent(channel,bit)) && bits[bit] ));
+	hADCBitsOr[(int) (channel/512)]->Fill(channel,bit,( (hADCBitsOr[(int)(channel/512)]->GetBinContent(channel,bit)) || bits[bit] ));
+      }
 
     }
 
@@ -298,7 +309,7 @@ void lbne::OnlineMonitoring::monitoringSSP() {
     for (unsigned int tick = 0; tick < fWaveform.at(channel).size(); tick++) {
 
       // Fill hists for tick
-      hWaveformChannel[channel]->Fill(fWaveform.at(channel).at(tick));
+      hWaveformChannel[channel]->Fill(tick,fWaveform.at(channel).at(tick));
       hWaveformTickChannel->Fill(channel,tick,fWaveform.at(channel).at(tick));
       if (channel) hSSPDNoiseChannel->Fill(channel,fWaveform.at(channel).at(tick)-fWaveform.at(channel-1).at(tick));
 
@@ -338,7 +349,7 @@ void lbne::OnlineMonitoring::analyzeRCE(art::Handle<artdaq::Fragments> rawRCE) {
   tpcFragmentMap.clear();
   for (unsigned int fragIt = 0; fragIt < rawRCE->size(); fragIt++) {
     const artdaq::Fragment &fragment = ((*rawRCE)[fragIt]);
-    unsigned int fragmentID = fragment.fragmentID();
+    unsigned int fragmentID = fragment.fragmentID() + 100;
     tpcFragmentMap.insert(std::pair<unsigned int, unsigned int>(fragmentID,fragIt));
   }
 
@@ -385,6 +396,8 @@ void lbne::OnlineMonitoring::analyzeRCE(art::Handle<artdaq::Fragments> rawRCE) {
 	// Get the ADC value
 	uint16_t adc = std::numeric_limits<uint16_t>::max();
 	bool success = microslice->nanosliceSampleValue(nanoIt, sample, adc);
+
+	std::cout << "adc... " << adc << std::endl;
 
 	if (success)
 	  adcVector.push_back((int)adc);
@@ -600,13 +613,41 @@ void lbne::OnlineMonitoring::endJob() {
   cADCBits->Divide(1,4);
   for (int chanPart = 0; chanPart < 4; chanPart++) {
     cADCBits->cd(4-chanPart);
-    hADCBits[chanPart]->Draw();
+    hADCBits[chanPart]->GetXaxis()->SetLabelSize(0.1);
+    hADCBits[chanPart]->GetYaxis()->SetLabelSize(0.1);
+    hADCBits[chanPart]->GetXaxis()->SetTitleSize(0.06);
+    hADCBits[chanPart]->GetYaxis()->SetTitleSize(0.06);
+    hADCBits[chanPart]->Draw("colz");
   }
   // fADCBits = cADCBits.DrawFrame(0.,0.,1.,1.);
   // fADCBits->SetXTitle("Channel");
   // fADCBits->SetYTitle("Bit");
   // cADCBits.Modified();
   cADCBits->SaveAs("ADCBits.png");
+
+  cADCBitsAnd = new TCanvas("cADCBitsAnd","",1600,1200);
+  cADCBitsAnd->Divide(1,4);
+  for (int chanPart = 0; chanPart < 4; chanPart++) {
+    cADCBitsAnd->cd(4-chanPart);
+    hADCBitsAnd[chanPart]->GetXaxis()->SetLabelSize(0.1);
+    hADCBitsAnd[chanPart]->GetYaxis()->SetLabelSize(0.1);
+    hADCBitsAnd[chanPart]->GetXaxis()->SetTitleSize(0.06);
+    hADCBitsAnd[chanPart]->GetYaxis()->SetTitleSize(0.06);
+    hADCBitsAnd[chanPart]->Draw();
+  }
+  cADCBitsAnd->SaveAs("ADCBitsAnd.png");
+
+  cADCBitsOr = new TCanvas("cADCBitsOr","",1600,1200);
+  cADCBitsOr->Divide(1,4);
+  for (int chanPart = 0; chanPart < 4; chanPart++) {
+    cADCBitsOr->cd(4-chanPart);
+    hADCBitsOr[chanPart]->GetXaxis()->SetLabelSize(0.1);
+    hADCBitsOr[chanPart]->GetYaxis()->SetLabelSize(0.1);
+    hADCBitsOr[chanPart]->GetXaxis()->SetTitleSize(0.06);
+    hADCBitsOr[chanPart]->GetYaxis()->SetTitleSize(0.06);
+    hADCBitsOr[chanPart]->Draw();
+  }
+  cADCBitsOr->SaveAs("ADCBitsOr.png");
 
   cAsymmetry = new TCanvas("cAsymmetry","",800,600);
   hAsymmetry->Draw();
