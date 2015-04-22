@@ -16,7 +16,7 @@ art_make_library( LIBRARY_NAME lbne-artdaq_I3JSON
 
 
 
-simple_plugin("rcreporter" "metric"
+simple_plugin("RCReporter" "metric"
   ${FHICLCPP}
   ${CETLIB}
   ${ZEROMQLIB}
