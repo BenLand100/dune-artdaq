@@ -77,6 +77,7 @@ private:
   int fTotalRCEHitsEvent, fTotalSSPHitsEvent;
   std::map<int,int> fTotalRCEHitsChannel, fTotalSSPHitsChannel;
   int fTimesADCGoesOverThreshold, fTimesWaveformGoesOverThreshold;
+  int fNumSubDetectorsPresent;
 
   // -----------------------------------------
   // Monitoring histograms
@@ -88,6 +89,7 @@ private:
   TH1I *hTotalADCEvent;
   TH1I *hTotalRCEHitsEvent;
   TH1I *hTotalRCEHitsChannel;
+  TH1I *hNumMicroslicesInMillislice;
   TH1I *hTimesADCGoesOverThreshold;
   TProfile *hAsymmetry;
   std::map<int,TH2I*> hADCBits;
@@ -104,6 +106,10 @@ private:
   TH1I *hTotalSSPHitsChannel;
   TH1I *hTimesWaveformGoesOverThreshold;
   std::map<int,TH1I*> hWaveformChannel;
+
+  // General
+  TH1I *hNumSubDetectorsPresent;
+  TH1I *hEventsDifferentNumOfSubDetectors;
 
   // Canvases
   TCanvas *cAvADCChannelEvent;
@@ -124,10 +130,12 @@ private:
   TCanvas *cADCBitsAnd;
   TCanvas *cADCBitsOr;
   TCanvas *cAsymmetry;
+  TCanvas *cNumSubDetectorsPresent;
 
   // -----------------------------------------
 
-  bool _verbose = false;
+  bool _verbose = true;
+  bool _daqtest = false;
 
   bool fIsRCE = true;
   bool fIsSSP = true;
@@ -146,42 +154,47 @@ void lbne::OnlineMonitoring::beginJob() {
   gStyle->SetOptStat(0);
 
   // RCE hists
-  hAvADCChannelEvent = new TH2D("hAvADCChannelEvent",";Event;Channel",100,0,99,2048,0,2047);
-  hADCTickChannel = new TProfile2D("hADCTickChannel",";Channel;Tick",2048,0,2047,3200,0,3199);
-  hRCEDNoiseChannel = new TProfile("hRCEDNoiseChannel",";Channel;DNoise",2048,0,2047);
+  hAvADCChannelEvent = new TH2D("hAvADCChannelEvent",";Event;Channel",100,0,100,2048,0,2048);
+  hADCTickChannel = new TProfile2D("hADCTickChannel",";Channel;Tick",2048,0,2048,10000,0,10000);
+  hRCEDNoiseChannel = new TProfile("hRCEDNoiseChannel",";Channel;DNoise",2048,0,2048);
   hTotalADCEvent = new TH1I("hTotalADCEvent",";Total ADC;",100,0,100);
   hTotalRCEHitsEvent = new TH1I("hTotalRCEHits",";Total RCE Hits;",100,0,1000);
-  hTotalRCEHitsChannel = new TH1I("hTotalRCEHitsChannel",";Channel;Total RCE Hits;",2048,0,2047);
+  hTotalRCEHitsChannel = new TH1I("hTotalRCEHitsChannel",";Channel;Total RCE Hits;",2048,0,2048);
+  hNumMicroslicesInMillislice = new TH1I("hNumMicroslicesInMillislice",";Millislice;Number of Microslices;",16,100,116);
   hTimesADCGoesOverThreshold = new TH1I("hTimesADCGoesOverThreshold",";Times ADC Goes Over Threshold;",100,0,1000);
-  hAsymmetry = new TProfile("hAsymmetry",";Channel;Asymmetry",2048,0,2047);
+  hAsymmetry = new TProfile("hAsymmetry",";Channel;Asymmetry",2048,0,2048);
   std::stringstream nameRCE;
   for (unsigned int channel = 0; channel < 2048; channel++) {
     nameRCE.str(""); nameRCE << "ADCChannel"; nameRCE << channel;
-    hADCChannel[channel] = new TH1I(nameRCE.str().c_str(),";Tick;",3200,0,3199);
+    hADCChannel[channel] = new TH1I(nameRCE.str().c_str(),";Tick;",10000,0,10000);
   }
   std::stringstream nameADCBit, nameADCBitAnd, nameADCBitOr;
   for (int chanPart = 0; chanPart < 4; chanPart++) {
     nameADCBit.str(""); nameADCBit << "hADCBits" << chanPart;
-    hADCBits[chanPart] = new TH2I(nameADCBit.str().c_str(),";Channel;Bit",512,(chanPart*512),(((chanPart+1)*512)-1),16,0,15);
+    hADCBits[chanPart] = new TH2I(nameADCBit.str().c_str(),";Channel;Bit",512,(chanPart*512),((chanPart+1)*512),16,0,16);
     nameADCBitAnd.str(""); nameADCBitAnd << "hADCBitsAnd" << chanPart;
-    hADCBitsAnd[chanPart] = new TH2I(nameADCBitAnd.str().c_str(),";Channel;Bit",512,(chanPart*512),(((chanPart+1)*512)-1),16,0,15);
+    hADCBitsAnd[chanPart] = new TH2I(nameADCBitAnd.str().c_str(),";Channel;Bit",512,(chanPart*512),((chanPart+1)*512),16,0,16);
     nameADCBitOr.str(""); nameADCBitOr << "hADCBitsOr" << chanPart;
-    hADCBitsOr[chanPart] = new TH2I(nameADCBitOr.str().c_str(),";Channel;Bit",512,(chanPart*512),(((chanPart+1)*512)-1),16,0,15);
+    hADCBitsOr[chanPart] = new TH2I(nameADCBitOr.str().c_str(),";Channel;Bit",512,(chanPart*512),((chanPart+1)*512),16,0,16);
   }
 
   // SSP hists
-  hAvWaveformChannelEvent = new TH2D("hAvWaveformChannelEvent",";Event;Channel",100,0,99,96,0,95);
-  hWaveformTickChannel = new TProfile2D("hWaveformTickChannel",";Channel;Tick",96,0,95,500,0,499);
-  hSSPDNoiseChannel = new TProfile("hSSPDNoiseChannel",";Channel;DNoise",96,0,95);
+  hAvWaveformChannelEvent = new TH2D("hAvWaveformChannelEvent",";Event;Channel",100,0,100,96,0,96);
+  hWaveformTickChannel = new TProfile2D("hWaveformTickChannel",";Channel;Tick",96,0,96,500,0,500);
+  hSSPDNoiseChannel = new TProfile("hSSPDNoiseChannel",";Channel;DNoise",96,0,96);
   hTotalWaveformEvent = new TH1I("hTotalWaveformEvent",";Total Waveform;",100,0,100);
   hTotalSSPHitsEvent = new TH1I("hTotalSSPHits",";Total SSP Hits;",100,0,1000);
-  hTotalSSPHitsChannel = new TH1I("hTotalSSPHitsChannel",";Channel;Total SSP Hits;",96,0,95);
+  hTotalSSPHitsChannel = new TH1I("hTotalSSPHitsChannel",";Channel;Total SSP Hits;",96,0,96);
   hTimesWaveformGoesOverThreshold = new TH1I("hTimesWaveformGoesOverThreshold",";Time Waveform Goes Over Threshold;",100,0,1000);
   std::stringstream nameSSP;
   for (unsigned int channel = 0; channel < 96; channel++) {
     nameSSP.str(""); nameSSP << "WaveformChannel"; nameSSP << channel;
-    hWaveformChannel[channel] = new TH1I(nameSSP.str().c_str(),";Tick;",500,0,499);
+    hWaveformChannel[channel] = new TH1I(nameSSP.str().c_str(),";Tick;",500,0,500);
   }
+
+  // General
+  hNumSubDetectorsPresent = new TH1I("hNumSubDetectorsPresent",";Number of Subdetectors;",25,0,25);
+  hEventsDifferentNumOfSubDetectors = new TH1I("hEventsDifferentNumOfSubDetectors",";Events w/ Different Number of Subdetectors;",10,0,10);
 }
 
 void lbne::OnlineMonitoring::analyze(art::Event const &evt) {
@@ -220,6 +233,8 @@ void lbne::OnlineMonitoring::analyze(art::Event const &evt) {
     if (fWaveform.size()) monitoringSSP();
   }
 
+  // General histograms
+  hNumSubDetectorsPresent->Fill(fNumSubDetectorsPresent);
 }
 
 void lbne::OnlineMonitoring::monitoringRCE() {
@@ -258,13 +273,13 @@ void lbne::OnlineMonitoring::monitoringRCE() {
       }
       if ( tick && (fADC.at(channel).at(tick) < fADC.at(channel).at(tick-1)) && peak ) peak = false;
 
-      // Bit check - would like to write as class variable and not define each time but can't...
-      std::bitset<16> bits(fADC.at(channel).at(tick));
-      for (int bit = 0; bit < 16; bit++) {
-	hADCBits[(int) (channel/512)]->Fill(channel,bit,bits[bit]);
-	hADCBitsAnd[(int) (channel/512)]->Fill(channel,bit,( (hADCBitsAnd[(int)(channel/512)]->GetBinContent(channel,bit)) && bits[bit] ));
-	hADCBitsOr[(int) (channel/512)]->Fill(channel,bit,( (hADCBitsOr[(int)(channel/512)]->GetBinContent(channel,bit)) || bits[bit] ));
-      }
+      // // Bit check - would like to write as class variable and not define each time but can't...
+      // std::bitset<16> bits(fADC.at(channel).at(tick));
+      // for (int bit = 0; bit < 16; bit++) {
+      // 	hADCBits[(int) (channel/512)]->Fill(channel,bit,bits[bit]);
+      // 	hADCBitsAnd[(int) (channel/512)]->Fill(channel,bit,( (hADCBitsAnd[(int)(channel/512)]->GetBinContent(channel,bit)) && bits[bit] ));
+      // 	hADCBitsOr[(int) (channel/512)]->Fill(channel,bit,( (hADCBitsOr[(int)(channel/512)]->GetBinContent(channel,bit)) || bits[bit] ));
+      // }
 
     }
 
@@ -345,11 +360,13 @@ void lbne::OnlineMonitoring::analyzeRCE(art::Handle<artdaq::Fragments> rawRCE) {
   if (_verbose)
     std::cout << "%%DQM----- Run " << fRun << ", subrun " << fSubrun << ", event " << fEventNumber << " has " << rawRCE->size() << " fragment(s) of type RCE" << std::endl;
 
+  fNumSubDetectorsPresent += rawRCE->size();
+
   // Loop over fragments to make a map to save the order the frags are saved in
   tpcFragmentMap.clear();
   for (unsigned int fragIt = 0; fragIt < rawRCE->size(); fragIt++) {
     const artdaq::Fragment &fragment = ((*rawRCE)[fragIt]);
-    unsigned int fragmentID = fragment.fragmentID() + 100;
+    unsigned int fragmentID = fragment.fragmentID(); //+ 100;
     tpcFragmentMap.insert(std::pair<unsigned int, unsigned int>(fragmentID,fragIt));
   }
 
@@ -388,6 +405,9 @@ void lbne::OnlineMonitoring::analyzeRCE(art::Handle<artdaq::Fragments> rawRCE) {
       std::unique_ptr <const lbne::TpcMicroSlice> microslice = millisliceFragment.microSlice(microIt);
       auto nNanoSlices = microslice->nanoSliceCount();
 
+      if (_daqtest)
+	if (nNanoSlices > 0) std::cout << "Number of nanoslices... " << nNanoSlices << std::endl;
+
       if (_verbose)
 	std::cout << "%%DQM-------------------- TpcMicroSlice " << microIt << " contains " << nNanoSlices << " nanoslices" << std::endl;
 
@@ -397,10 +417,11 @@ void lbne::OnlineMonitoring::analyzeRCE(art::Handle<artdaq::Fragments> rawRCE) {
 	uint16_t adc = std::numeric_limits<uint16_t>::max();
 	bool success = microslice->nanosliceSampleValue(nanoIt, sample, adc);
 
-	std::cout << "adc... " << adc << std::endl;
-
-	if (success)
+	if (success) {
+	  if (_daqtest)
+	    if (adc > 0) std::cout << "adc = " << adc << std::endl;
 	  adcVector.push_back((int)adc);
+	}
 
       } // nanoslice loop
 
@@ -416,6 +437,8 @@ void lbne::OnlineMonitoring::analyzeSSP(art::Handle<artdaq::Fragments> rawSSP) {
 
   if (_verbose)
     std::cout << "%%DQM----- Run " << fRun << ", subrun " << fSubrun << ", event " << fEventNumber << " has " << rawSSP->size() << " fragment(s) of type PHOTON" << std::endl;
+
+  fNumSubDetectorsPresent += rawSSP->size();
 
   // Loop over fragments to make a map to save the order the frags are saved in
   sspFragmentMap.clear();
@@ -653,6 +676,11 @@ void lbne::OnlineMonitoring::endJob() {
   hAsymmetry->Draw();
   cAsymmetry->SaveAs("Asymmetry.png");
 
+  cNumSubDetectorsPresent = new TCanvas("cNumSubDetectorsPresent","",800,600);
+  hNumSubDetectorsPresent->Draw();
+  cNumSubDetectorsPresent->SetLogy();
+  cNumSubDetectorsPresent->SaveAs("NumSubDetectorsPresent.png");
+
 }
 
 void lbne::OnlineMonitoring::reset() {
@@ -671,6 +699,8 @@ void lbne::OnlineMonitoring::reset() {
 
   fTimesADCGoesOverThreshold = 0;
   fTimesWaveformGoesOverThreshold = 0;
+
+  fNumSubDetectorsPresent = 0;
 
 }
  
