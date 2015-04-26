@@ -1,12 +1,12 @@
-// RCReporter.h: RunControl Metric Plugin
+// RCReporter_metric.cc: RunControl Metric Plugin
 // Author: John Freeman
-// Last Modified: Apr-2-2015
 //
 // An implementation of artdaq's MetricPlugin for RunControl reporting
 
+#include "lbne-artdaq/RCConnection/RCConnection.hh"
+
 #include "artdaq/Plugins/MetricMacros.hh"
 #include "fhiclcpp/ParameterSet.h"
-#include "zmq.hpp"
 #include "I3JSON.hh"
 
 #include <fstream>
@@ -24,32 +24,8 @@ namespace lbne {
   public:
     RCReporter(fhicl::ParameterSet ps) : 
       artdaq::MetricPlugin(ps),
-      runcontrol_socket_address_(ps.get<std::string>("runcontrol_socket_address", "tcp://192.168.100.1:5000")),
       stopped_(true)
     {
-
-      try {
-	context_.reset( new zmq::context_t(1) );
-      } catch (const zmq::error_t& errt) {
-	std::cerr << "Caught exception in zmq::context_t construction; rethrowing" << std::endl;
-	throw errt;
-      }
-      
-      try {
-	socket_.reset( new zmq::socket_t( *context_, ZMQ_PUSH));
-      } catch (const zmq::error_t& errt) {
-	std::cerr << "Caught exception in zmq::socket_t construction; rethrowing" << std::endl;
-	throw errt;
-      }
-
-      try {
-	socket_->connect(runcontrol_socket_address_.c_str());
-      } catch (const zmq::error_t& errt) {
-	std::cerr << "Caught exception attempting 0MQ connection to " << \
-	  runcontrol_socket_address_ << "; rethrowing" << std::endl;
-	throw errt;
-      }
-
       startMetrics();
     }
 
@@ -96,16 +72,8 @@ namespace lbne {
       	std::ostringstream json_msg_oss;
       	json_msg_oss << json_msg;
 
-	zmq::message_t zmq_msg(json_msg_oss.str().length());
-
-      	memcpy( zmq_msg.data(), json_msg_oss.str().c_str(), json_msg_oss.str().length());
-
-	try {
-	  socket_->send(zmq_msg, 0);
-	} catch (const zmq::error_t& errt) {
-	  std::cerr << "Caught exception attempting to send 0MQ message; rethrowing" << std::endl;
-	  throw errt;
-	}
+	RCConnection& myconnection = RCConnection::Get();
+	myconnection.Send( json_msg_oss.str());
       }
     }
 
@@ -132,12 +100,7 @@ namespace lbne {
 
   private:
 
-    std::string runcontrol_socket_address_; 
-
     bool stopped_;
-
-    std::unique_ptr<zmq::context_t> context_;
-    std::unique_ptr<zmq::socket_t> socket_;
   };
 
 } //End namespace lbne
