@@ -33,6 +33,7 @@
 #include <TSystemFile.h>
 #include <TObjArray.h>
 #include <TList.h>
+#include <TROOT.h>
 
 namespace lbne {
   class OnlineMonitoring;
@@ -117,6 +118,7 @@ private:
   // General
   TH1I *hNumSubDetectorsPresent;
   TH1I *hSizeOfFiles;
+  TH1D *hSizeOfFilesPerEvent;
 
   // Canvases
   TCanvas *cAvADCChannelEvent;
@@ -137,6 +139,7 @@ private:
   TCanvas *cAsymmetry;
   TCanvas *cNumSubDetectorsPresent;
   TCanvas *cSizeOfFiles;
+  TCanvas *cSizeOfFilesPerEvent;
 
   // -----------------------------------------
 
@@ -199,6 +202,7 @@ void lbne::OnlineMonitoring::beginJob() {
   // General
   hNumSubDetectorsPresent = new TH1I("hNumSubDetectorsPresent",";Number of Subdetectors;",25,0,25);
   hSizeOfFiles = new TH1I("hSizeOfFiles",";Run&Subrun;Size (bytes);",20,0,20);
+  hSizeOfFilesPerEvent = new TH1D("hSizeOfFilesPerEvent",";Run&Subrun;Size (bytes/event);",20,0,20);
 }
 
 void lbne::OnlineMonitoring::analyze(art::Event const &evt) {
@@ -246,7 +250,7 @@ void lbne::OnlineMonitoring::monitoringGeneral() {
 
   // Size of files
   if (fEventNumber == 1) {
-    std::multimap<Long_t,std::pair<TString,Long_t>,std::greater<Long_t> > fileMap;
+    std::multimap<Long_t,std::pair<std::vector<TString>,Long_t>,std::greater<Long_t> >fileMap;
     const TString delimiter("_");
 
     TSystemDirectory dataDir("dataDir",fDataDirName);
@@ -259,38 +263,28 @@ void lbne::OnlineMonitoring::monitoringGeneral() {
       while ( (file = (TSystemFile*)next()) ) {
 	fileName = file->GetName();
     	if ( !file->IsDirectory() && fileName.EndsWith(".root") && !fileName.BeginsWith("lbne_r-") ) {
-	  const TString path = fDataDirName+"/"+TString(file->GetName());
+	  const TString path = fDataDirName+TString(file->GetName());
     	  gSystem->GetPathInfo(path.Data(),&id,&size,&flags,&modified);
 	  TObjArray *splitName = path.Tokenize(delimiter);
 	  if (splitName->GetEntriesFast() == 1)
 	    continue;
-	  TString name = TString(splitName->At(1)->GetName())+TString(splitName->At(2)->GetName());
-	  fileMap.insert(std::pair<Long_t,std::pair<TString,Long_t> >(modified,std::pair<TString,Long_t>(name,size)));
+	  std::vector<TString> name = {path,TString(splitName->At(1)->GetName()),TString(splitName->At(2)->GetName())};
+	  fileMap.insert(std::pair<Long_t,std::pair<std::vector<TString>,Long_t> >(modified,std::pair<std::vector<TString>,Long_t>(name,size)));
     	}
       }
     }
-    // // other method
-    // void *dataDir = gSystem->OpenDirectory(fDataDirName);
-    // Char_t *file;
-    // while ((file = const_cast<Char_t*>(gSystem->GetDirEntry(dataDir)))) {
-    //   const TString path = fDataDirName+"/"+file;
-    //   Long_t id,modified,size,flags;
-    //   gSystem->GetPathInfo(path.Data(),&id,&size,&flags,&modified);
-    //   if (02 & flags) continue;
-    //   TObjArray *splitName = path.Tokenize(delimiter);
-    //   if (splitName->GetEntriesFast() == 1)
-    // 	continue;
-    //   TString name(splitName->At(1)->GetName()); name.Append(splitName->At(2)->GetName());
-    //   fileMap.insert(std::pair<Long_t,std::pair<TString,Long_t> >(modified,std::pair<TString,Long_t>(name,size)));
-    // }
-
     int i = 0;
-    for(std::multimap<Long_t,std::pair<TString,Long_t> >::iterator mapIt = fileMap.begin(); mapIt != fileMap.end(); ++mapIt) {
+    for(std::multimap<Long_t,std::pair<std::vector<TString>,Long_t> >::iterator mapIt = fileMap.begin(); mapIt != fileMap.end(); ++mapIt) {
+      TString name = mapIt->second.first.at(1)+mapIt->second.first.at(2);
       if (_verbose)
-	std::cout << "File: modified... " << mapIt->first << ", run " <<  mapIt->second.first << " and size: " << mapIt->second.second << std::endl;
+	std::cout << "File: modified... " << mapIt->first << ", run " << name << " and size: " << mapIt->second.second << std::endl;
       ++i;
-      hSizeOfFiles->GetXaxis()->SetBinLabel(i,mapIt->second.first);
-      hSizeOfFiles->Fill(mapIt->second.first,mapIt->second.second);
+      std::stringstream cmd; cmd << "TFile::Open(\"" << mapIt->second.first.at(0) << "\"); Events->GetEntriesFast()";
+      Int_t entries = gROOT->ProcessLine(cmd.str().c_str());
+      hSizeOfFiles->GetXaxis()->SetBinLabel(i,name);
+      hSizeOfFilesPerEvent->GetXaxis()->SetBinLabel(i,name);
+      hSizeOfFiles->Fill(name,mapIt->second.second);
+      hSizeOfFilesPerEvent->Fill(name,(double)((double)mapIt->second.second/(double)entries));
       if (i == 20) break;
     }
   }
@@ -638,55 +632,55 @@ void lbne::OnlineMonitoring::windowingRCE() {
 }
 
 void lbne::OnlineMonitoring::endJob() {
-  cAvADCChannelEvent = new TCanvas("cAvADCChannelEvent","",800,600);
+  cAvADCChannelEvent = new TCanvas("cAvADCChannelEvent","Average RCE ADC Value",800,600);
   hAvADCChannelEvent->Draw("colz");
   cAvADCChannelEvent->SaveAs("AvADCChannelEvent.png");
 
-  cRCEDNoiseChannel = new TCanvas("cRCEDNoiseChannel","",800,600);
+  cRCEDNoiseChannel = new TCanvas("cRCEDNoiseChannel","RCE DNoise",800,600);
   hRCEDNoiseChannel->Draw("colz");
   cRCEDNoiseChannel->SaveAs("RCEDNoiseChannel.png");
 
-  cAvWaveformChannelEvent = new TCanvas("cAvWaveformChannelEvent","",800,600);
+  cAvWaveformChannelEvent = new TCanvas("cAvWaveformChannelEvent","Average SSP ADC Value",800,600);
   hAvWaveformChannelEvent->Draw("colz");
   cAvWaveformChannelEvent->SaveAs("AvWaveformChannelEvent.png");
 
-  cSSPDNoiseChannel = new TCanvas("cSSPDNoiseChannel","",800,600);
+  cSSPDNoiseChannel = new TCanvas("cSSPDNoiseChannel","SSP DNoise",800,600);
   hSSPDNoiseChannel->Draw("colz");
   cSSPDNoiseChannel->SaveAs("SSPDNoiseChannel.png");
 
-  cTotalADCEvent = new TCanvas("cTotalADCEvent","",800,600);
+  cTotalADCEvent = new TCanvas("cTotalADCEvent","Total RCE ADC",800,600);
   hTotalADCEvent->Draw("colz");
   cTotalADCEvent->SaveAs("TotalADCEvent.png");
 
-  cTotalWaveformEvent = new TCanvas("cTotalWaveformEvent","",800,600);
+  cTotalWaveformEvent = new TCanvas("cTotalWaveformEvent","Total SSP ADC",800,600);
   hTotalWaveformEvent->Draw("colz");
   cTotalWaveformEvent->SaveAs("TotalWaveformEvent.png");
 
-  cTotalRCEHitsEvent = new TCanvas("cTotalRCEHitsEvent","",800,600);
+  cTotalRCEHitsEvent = new TCanvas("cTotalRCEHitsEvent","Total RCE Hits",800,600);
   hTotalRCEHitsEvent->Draw("colz");
   cTotalRCEHitsEvent->SaveAs("TotalRCEHitsEvent.png");
 
-  cTotalSSPHitsEvent = new TCanvas("cTotalSSPHitsEvent","",800,600);
+  cTotalSSPHitsEvent = new TCanvas("cTotalSSPHitsEvent","Total SSP Hits",800,600);
   hTotalSSPHitsEvent->Draw("colz");
   cTotalSSPHitsEvent->SaveAs("TotalSSPHitsEvent.png");
 
-  cTotalRCEHitsChannel = new TCanvas("cTotalRCEHitsChannel","",800,600);
+  cTotalRCEHitsChannel = new TCanvas("cTotalRCEHitsChannel","Total RCE Hits by Channel",800,600);
   hTotalRCEHitsChannel->Draw("colz");
   cTotalRCEHitsChannel->SaveAs("TotalRCEHitsChannel.png");
 
-  cTotalSSPHitsChannel = new TCanvas("cTotalSSPHitsCharge","",800,600);
+  cTotalSSPHitsChannel = new TCanvas("cTotalSSPHitsCharge","Total SSP Hits by Channel",800,600);
   hTotalSSPHitsChannel->Draw("colz");
   cTotalSSPHitsChannel->SaveAs("TotalSSPHitsChannel.png");
 
-  cTimesADCGoesOverThreshold = new TCanvas("cTimesADCGoesOverThreshold","",800,600);
+  cTimesADCGoesOverThreshold = new TCanvas("cTimesADCGoesOverThreshold","Times RCE ADC Over Threshold",800,600);
   hTimesADCGoesOverThreshold->Draw("colz");
   cTimesADCGoesOverThreshold->SaveAs("TimesADCGoesOverThreshold.png");
 
-  cTimesWaveformGoesOverThreshold = new TCanvas("cTimesWaveformGoesOverThreshold","",800,600);
+  cTimesWaveformGoesOverThreshold = new TCanvas("cTimesWaveformGoesOverThreshold","Times SSP ADC Over Threshold",800,600);
   hTimesWaveformGoesOverThreshold->Draw("colz");
   cTimesWaveformGoesOverThreshold->SaveAs("TimesWaveformGoesOverThreshold.png");
 
-  cADCBits = new TCanvas("cADCBits","",1600,1200);
+  cADCBits = new TCanvas("cADCBits","RCE ADC Bits Set",1600,1200);
   cADCBits->Divide(1,4);
   for (int chanPart = 0; chanPart < 4; chanPart++) {
     cADCBits->cd(4-chanPart);
@@ -702,7 +696,7 @@ void lbne::OnlineMonitoring::endJob() {
   // cADCBits.Modified();
   cADCBits->SaveAs("ADCBits.png");
 
-  cADCBitsAnd = new TCanvas("cADCBitsAnd","",1600,1200);
+  cADCBitsAnd = new TCanvas("cADCBitsAnd","RCE ADC Bits Stuck Off",1600,1200);
   cADCBitsAnd->Divide(1,4);
   for (int chanPart = 0; chanPart < 4; chanPart++) {
     cADCBitsAnd->cd(4-chanPart);
@@ -714,7 +708,7 @@ void lbne::OnlineMonitoring::endJob() {
   }
   cADCBitsAnd->SaveAs("ADCBitsAnd.png");
 
-  cADCBitsOr = new TCanvas("cADCBitsOr","",1600,1200);
+  cADCBitsOr = new TCanvas("cADCBitsOr","RCE ADC Bits Stuck On",1600,1200);
   cADCBitsOr->Divide(1,4);
   for (int chanPart = 0; chanPart < 4; chanPart++) {
     cADCBitsOr->cd(4-chanPart);
@@ -726,18 +720,22 @@ void lbne::OnlineMonitoring::endJob() {
   }
   cADCBitsOr->SaveAs("ADCBitsOr.png");
 
-  cAsymmetry = new TCanvas("cAsymmetry","",800,600);
+  cAsymmetry = new TCanvas("cAsymmetry","Asymmetry of Bipolar Induction Pulse",800,600);
   hAsymmetry->Draw();
   cAsymmetry->SaveAs("Asymmetry.png");
 
-  cNumSubDetectorsPresent = new TCanvas("cNumSubDetectorsPresent","",800,600);
+  cNumSubDetectorsPresent = new TCanvas("cNumSubDetectorsPresent","Number of Subdetectors",800,600);
   hNumSubDetectorsPresent->Draw();
   cNumSubDetectorsPresent->SetLogy();
   cNumSubDetectorsPresent->SaveAs("NumSubDetectorsPresent.png");
 
-  cSizeOfFiles = new TCanvas("cSizeOfFiles","",800,600);
+  cSizeOfFiles = new TCanvas("cSizeOfFiles","Data File Sizes",800,600);
   hSizeOfFiles->Draw();
   cSizeOfFiles->SaveAs("SizeOfFiles.png");
+
+  cSizeOfFiles = new TCanvas("cSizeOfFilesPerEvent","Data File Size Per Event",800,600);
+  hSizeOfFilesPerEvent->Draw();
+  cSizeOfFiles->SaveAs("SizeOfFilesPerEvent.png");
 
 }
 
