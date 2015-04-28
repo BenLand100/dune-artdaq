@@ -14,6 +14,7 @@
 #include "lbne-raw-data/Overlays/TpcMilliSliceFragment.hh"
 #include "lbne-raw-data/Overlays/SSPFragment.hh"
 #include "artdaq-core/Data/Fragments.hh"
+#include "tools/monitoringHistsStyle.C"
 
 #include <vector>
 #include <map>
@@ -50,10 +51,11 @@ public:
   void analyzeRCE(art::Handle<artdaq::Fragments> rawRCE);
   void analyzeSSP(art::Handle<artdaq::Fragments> rawSSP);
   void beginJob();
+  void endJob();
+  void eventDisplay();
   void monitoringGeneral();
   void monitoringRCE();
   void monitoringSSP();
-  void endJob();
   void reset();
   void windowingRCE();
 
@@ -161,6 +163,10 @@ lbne::OnlineMonitoring::~OnlineMonitoring() {
 
 void lbne::OnlineMonitoring::beginJob() {
   gStyle->SetOptStat(0);
+  //gStyle->SetOptTitle(1);
+  //gROOT->ProcessLine(".x tools/monitoringHistsStyle.C");
+  //monitoringHistsStyle();
+  //gROOT->SetStyle(histStyle);
 
   // RCE hists
   hAvADCChannelEvent = new TH2D("hAvADCChannelEvent",";Event;Channel",100,0,100,2048,0,2048);
@@ -241,6 +247,10 @@ void lbne::OnlineMonitoring::analyze(art::Event const &evt) {
     if (fWaveform.size()) monitoringSSP();
   }
   monitoringGeneral();
+
+  // Event display -- every 500 events (8 s)
+  if (fEventNumber % 500 == 0)
+    eventDisplay();
 
 }
 
@@ -406,6 +416,15 @@ void lbne::OnlineMonitoring::monitoringSSP() {
   hTotalWaveformEvent->Fill(fTotalWaveform);
   hTotalSSPHitsEvent->Fill(fTotalSSPHitsEvent);
   hTimesWaveformGoesOverThreshold->Fill(fTimesWaveformGoesOverThreshold);
+
+}
+
+void lbne::OnlineMonitoring::eventDisplay() {
+
+  // Called every set number of events to display more detailed information about
+  // the events being looked at
+
+  
 
 }
 
@@ -733,9 +752,10 @@ void lbne::OnlineMonitoring::endJob() {
   hSizeOfFiles->Draw();
   cSizeOfFiles->SaveAs("SizeOfFiles.png");
 
-  cSizeOfFiles = new TCanvas("cSizeOfFilesPerEvent","Data File Size Per Event",800,600);
+  cSizeOfFilesPerEvent = new TCanvas("cSizeOfFilesPerEvent","Data File Size Per Event",800,600);
   hSizeOfFilesPerEvent->Draw();
-  cSizeOfFiles->SaveAs("SizeOfFilesPerEvent.png");
+  cSizeOfFilesPerEvent->SetTitle("Data File Size Per Event");
+  cSizeOfFilesPerEvent->SaveAs("SizeOfFilesPerEvent.png");
 
 }
 
