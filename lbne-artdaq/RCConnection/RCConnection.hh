@@ -6,16 +6,16 @@
 // RCConnection is a singleton class (i.e., it's only possible to
 // create one instance of it in a process) which contains the ZeroMQ
 // connection to lbne35t RunControl, and through which all messages to
-// RunControl in lbne-artdaq must be sent.
+// RunControl in an lbne-artdaq process must be sent.
 
-// Since its constructor is private, access is done by the following:
-
-// RCConnection& myconnection = RCConnection::Get();
+// Since its constructor is private, access is done by calling the
+// RCConnection::Get() function
 
 #include "zmq.hpp"
 
 #include <string>
 #include <memory>
+#include <mutex>
 
 namespace lbne {
 
@@ -28,7 +28,7 @@ public:
     return connection;
   }
 
-  void Send(const std::string msg);
+  void Send(const std::string& source, const std::string& msg);
 
 private:
   RCConnection();  // Guarantee the class completely controls its own
@@ -40,6 +40,8 @@ private:
   bool connection_opened_;
   std::unique_ptr<zmq::context_t> context_;
   std::unique_ptr<zmq::socket_t> socket_;
+  std::mutex mutex_;
+
 };
 
 }

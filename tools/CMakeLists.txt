@@ -1,13 +1,3 @@
 cet_script(setupDemoEnvironment.sh DemoControl.rb startSspSystem.sh manageSspSystem.sh start2x2System.sh manage2x2System.sh start2x2x2System.sh manage2x2x2System.sh CreateNewFragmentGenerator.rb  generateEventBuilderMain.rb  generateWFViewer.rb generateEventBuilder.rb generateSSP.rb generateTpc.rb demo_utilities.rb generateToy.rb generateAggregator.rb generateAggregatorMain.rb generateBoardReaderMain.rb RunDriver.rb startSystem.sh startRceSystem.sh manageRceSystem.sh startTriggerSystem.sh manageTriggerSystem.sh generateTrigger.rb startPennSystem.sh managePennSystem.sh generatePenn.rb start2RceSystem.sh start8RceSystem.sh manage2RceSystem.sh manage8RceSystem.sh)
 
-art_make_exec(driver
-  LIBRARIES
-  ${ARTDAQ_APPLICATION}
-  ${ARTDAQ_DAQRATE}
-  ${ARTDAQ-CORE_UTILITIES}
-  ${ART_FRAMEWORK_ART}
-  ${FHICLCPP}
-  ${Boost_PROGRAM_OPTIONS_LIBRARY}
-  ${MPI_C_LIBRARIES}
-  )
   

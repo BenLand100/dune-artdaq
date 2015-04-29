@@ -1,5 +1,6 @@
 
 #include "RCConnection.hh"
+#include "I3JSON.hh"
 
 #include "zmq.hpp"
 
@@ -14,15 +15,23 @@ namespace lbne {
   {
   }
 
-  void RCConnection::Send(const std::string msg) {
+  void RCConnection::Send(const std::string& source, const std::string& msg) {
+
+    std::string json_msg = MsgToRCJSON(source, msg);
+
+    // 0MQ sockets are not thread safe, so make sure only one thread
+    // is calling the "Send" function (and thereby using the
+    // zmq::socket_t object) at a time
+
+    std::unique_lock<std::mutex> lock(mutex_);
    
     if (!connection_opened_) {
       InitConnection();
     }
     
-    zmq::message_t zmq_msg(msg.length());
+    zmq::message_t zmq_msg(json_msg.length());
 
-    memcpy( zmq_msg.data(), msg.c_str(), msg.length());
+    memcpy( zmq_msg.data(), json_msg.c_str(), json_msg.length());
 
     try {
       socket_->send(zmq_msg, 0);
@@ -34,8 +43,6 @@ namespace lbne {
   }
 
   void RCConnection::InitConnection() {
-
-    // Will probably need to lock this...
 
     try {
       context_.reset( new zmq::context_t(1) );

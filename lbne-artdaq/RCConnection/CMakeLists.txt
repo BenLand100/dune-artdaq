@@ -7,23 +7,17 @@
 FIND_LIBRARY(ZEROMQLIB zmq /usr/lib64)
 include_directories(/usr/include)
 
-#art_make_library( LIBRARY_NAME lbne-artdaq_I3JSON
-#		  SOURCE
-#		  I3JSON.cc
-#        LIBRARIES
-#        ${CETLIB}
-#        )
+art_make_library( LIBRARY_NAME lbne-artdaq_I3JSON
+		  SOURCE
+		  I3JSON.cc
+		  LIBRARIES
+		  ${CETLIB}
+		  )
 
 art_make_library( LIBRARY_NAME lbne-artdaq_RCConnection
 		  SOURCE
 		  RCConnection.cc
 		  LIBRARIES
 		  ${ZEROMQLIB}
+		  lbne-artdaq_I3JSON
 )
-
-#simple_plugin("RCReporter" "metric"
-#  ${FHICLCPP}
-#  ${CETLIB}
-#  ${ZEROMQLIB}
-#  lbne-artdaq_I3JSON
-#)

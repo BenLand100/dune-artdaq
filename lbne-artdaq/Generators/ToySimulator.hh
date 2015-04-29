@@ -25,6 +25,7 @@
 #include "lbne-raw-data/Overlays/ToyFragment.hh"
 #include "lbne-raw-data/Overlays/FragmentType.hh"
 
+
 #include <random>
 #include <vector>
 #include <atomic>
@@ -51,6 +52,8 @@ namespace lbne {
     FragmentType const fragment_type_; // Type of fragment (see FragmentType.hh)
     std::size_t const throttle_usecs_;
     
+    bool throw_exception_;
+
     // Members needed to generate the simulated data
 
     std::mt19937 engine_;
