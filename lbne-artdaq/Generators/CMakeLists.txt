@@ -29,6 +29,8 @@ simple_plugin(ToySimulator "generator"
   ${ART_UTILITIES}
   ${FHICLCPP}
   ${CETLIB}
+  ${MF_MESSAGELOGGER}
+  ${MF_UTILITIES}
   )
 
   add_subdirectory(anlBoard)

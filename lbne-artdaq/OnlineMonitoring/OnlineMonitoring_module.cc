@@ -14,7 +14,7 @@
 #include "lbne-raw-data/Overlays/TpcMilliSliceFragment.hh"
 #include "lbne-raw-data/Overlays/SSPFragment.hh"
 #include "artdaq-core/Data/Fragments.hh"
-#include "tools/monitoringHistsStyle.C"
+//#include "tools/monitoringHistsStyle.C"
 
 #include <vector>
 #include <map>
@@ -35,6 +35,8 @@
 #include <TObjArray.h>
 #include <TList.h>
 #include <TROOT.h>
+#include <TPaveText.h>
+#include <TPaveLabel.h>
 
 namespace lbne {
   class OnlineMonitoring;
@@ -68,8 +70,8 @@ private:
   std::map<unsigned int, unsigned int> tpcFragmentMap;
   std::map<unsigned int, unsigned int> sspFragmentMap;
 
-  //const char *fDataDirName="/lbne/data2/users/wallbank/";
-  const TString fDataDirName="/lbne/data2/users/wallbank/";
+  //const TString fDataDirName = "/lbne/data2/users/wallbank/";
+  const TString fDataDirName = "/data/lbnedaq/data/";
 
   int fThreshold = 10;
 
@@ -142,6 +144,7 @@ private:
   TCanvas *cNumSubDetectorsPresent;
   TCanvas *cSizeOfFiles;
   TCanvas *cSizeOfFilesPerEvent;
+  TPaveText *pTitle = new TPaveText(0.05,0.92,0.4,0.98,"brNDC");
 
   // -----------------------------------------
 
@@ -699,7 +702,7 @@ void lbne::OnlineMonitoring::endJob() {
   hTimesWaveformGoesOverThreshold->Draw("colz");
   cTimesWaveformGoesOverThreshold->SaveAs("TimesWaveformGoesOverThreshold.png");
 
-  cADCBits = new TCanvas("cADCBits","RCE ADC Bits Set",1600,1200);
+  cADCBits = new TCanvas("cADCBits","RCE ADC Bits Set",800,600);
   cADCBits->Divide(1,4);
   for (int chanPart = 0; chanPart < 4; chanPart++) {
     cADCBits->cd(4-chanPart);
@@ -715,7 +718,7 @@ void lbne::OnlineMonitoring::endJob() {
   // cADCBits.Modified();
   cADCBits->SaveAs("ADCBits.png");
 
-  cADCBitsAnd = new TCanvas("cADCBitsAnd","RCE ADC Bits Stuck Off",1600,1200);
+  cADCBitsAnd = new TCanvas("cADCBitsAnd","RCE ADC Bits Stuck Off",800,600);
   cADCBitsAnd->Divide(1,4);
   for (int chanPart = 0; chanPart < 4; chanPart++) {
     cADCBitsAnd->cd(4-chanPart);
@@ -727,7 +730,7 @@ void lbne::OnlineMonitoring::endJob() {
   }
   cADCBitsAnd->SaveAs("ADCBitsAnd.png");
 
-  cADCBitsOr = new TCanvas("cADCBitsOr","RCE ADC Bits Stuck On",1600,1200);
+  cADCBitsOr = new TCanvas("cADCBitsOr","RCE ADC Bits Stuck On",800,600);
   cADCBitsOr->Divide(1,4);
   for (int chanPart = 0; chanPart < 4; chanPart++) {
     cADCBitsOr->cd(4-chanPart);
@@ -754,7 +757,9 @@ void lbne::OnlineMonitoring::endJob() {
 
   cSizeOfFilesPerEvent = new TCanvas("cSizeOfFilesPerEvent","Data File Size Per Event",800,600);
   hSizeOfFilesPerEvent->Draw();
-  cSizeOfFilesPerEvent->SetTitle("Data File Size Per Event");
+  pTitle->DeleteText();
+  pTitle->AddText("Size of Files Per Event");
+  pTitle->Draw();
   cSizeOfFilesPerEvent->SaveAs("SizeOfFilesPerEvent.png");
 
 }

@@ -8,6 +8,7 @@
 #include "lbne-raw-data/Overlays/FragmentType.hh"
 #include "fhiclcpp/ParameterSet.h"
 #include "artdaq-core/Utilities/SimpleLookupPolicy.h"
+#include "messagefacility/MessageLogger/MessageLogger.h"
 
 #include <fstream>
 #include <iomanip>
@@ -122,6 +123,15 @@ bool lbne::ToySimulator::getNext_(artdaq::FragmentPtrs & frags) {
   newfrag.fastVerify( metadata.num_adc_bits );
 
   ev_counter_inc();
+
+  if (ev_counter() % 100 == 0) {
+
+    mf::LogError("ToySimulator") << "This isn't a real error, it's just a test of the messagefacility package's LogError function";
+
+    if(metricMan_ != nullptr) {
+      metricMan_->sendMetric("Fragments Sent",ev_counter(), "Fragments", 0);
+    }
+  }
 
   return true;
 }

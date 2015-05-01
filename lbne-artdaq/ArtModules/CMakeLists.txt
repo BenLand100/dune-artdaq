@@ -28,6 +28,15 @@ simple_plugin(SSPDump "module" lbne-raw-data_Overlays
 
 simple_plugin(ToyDump "module")
 
+simple_plugin(BasicMetrics "module"
+  ${ART_FRAMEWORK_SERVICES_REGISTRY}
+  ${ART_FRAMEWORK_SERVICES_OPTIONAL}
+  artdaq_DAQrate
+  ${MF_MESSAGELOGGER}
+  ${MF_UTILITIES}
+  ${FHICLCPP}
+)
+
 # Subdirectories.
 add_subdirectory(DQM)
 

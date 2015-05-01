@@ -6,4 +6,6 @@ add_subdirectory(ArtModules)
 add_subdirectory(Generators)
 add_subdirectory(BuildInfo)
 add_subdirectory(Triggers)
+add_subdirectory(Plugins)
 add_subdirectory(OnlineMonitoring)
+

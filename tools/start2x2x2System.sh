@@ -20,6 +20,8 @@ mkdir -p -m 0777 ${logroot}/boardreader
 mkdir -p -m 0777 ${logroot}/eventbuilder
 mkdir -p -m 0777 ${logroot}/aggregator
 
+logfhicl=${LBNEARTDAQ_REPO}/tools/fcl/messagefacility.fcl
+
 # start PMT
-pmt.rb -p ${LBNEARTDAQ_PMT_PORT} -d $tempFile --logpath ${logroot} --display ${DISPLAY}
+pmt.rb -p ${LBNEARTDAQ_PMT_PORT} -d $tempFile --logpath ${logroot} --logfhicl ${logfhicl} --display ${DISPLAY}
 rm $tempFile
