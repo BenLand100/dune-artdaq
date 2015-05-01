@@ -21,6 +21,8 @@
 #include <cmath>
 #include <sstream>
 #include <iomanip>
+#include <chrono>
+#include <ctime>
 
 #include "cetlib/exception.h"
 
@@ -115,6 +117,48 @@ ostream& operator<<(ostream& os, const value_t& value)
   
   return(os);
 }
+
+  std::string MsgToRCJSON(const std::string& label, const std::string& msg) {
+
+    object_t json_msg;
+    json_msg["msg"] = msg.c_str();
+    json_msg["source"] = label.c_str();
+
+    // JCF, 4/29/15
+
+    // Getting the time formatted just the way I wanted it (including
+    // fractions of a second) is surprisingly nontrivial; the
+    // following code is repurposed from
+    // http://stackoverflow.com/questions/15845505/how-to-get-higher-precision-fractions-of-a-second-in-a-printout-of-current-tim
+    // (The truncation in the URL above is not a typo, btw)
+    // also, http://stackoverflow.com/questions/12835577/how-to-convert-stdchronotime-point-to-calendar-datetime-string-with-fraction
+
+    auto now(std::chrono::system_clock::now());
+    auto seconds_since_epoch(
+			     std::chrono::duration_cast<std::chrono::seconds>(now.time_since_epoch()));
+    auto microseconds_since_epoch(
+			     std::chrono::duration_cast<std::chrono::microseconds>(now.time_since_epoch()));
+
+    // Construct time_t using 'seconds_since_epoch' rather than 'now' since it is
+    // implementation-defined whether the value is rounded or truncated.
+    
+    std::time_t now_t(
+		      std::chrono::system_clock::to_time_t(
+							   std::chrono::system_clock::time_point(seconds_since_epoch)));
+
+    char seconds_precision[100];
+    if (!std::strftime(seconds_precision, 100, "%Y-%m-%d %H:%M:%S.", std::gmtime(&now_t))) {
+      throw cet::exception("I3JSON") << "Failed call to std::strftime in formatting timestring";
+    }
+      
+    json_msg["t"] = std::string(seconds_precision) +
+      std::to_string(microseconds_since_epoch.count() % 1000000);
+
+    std::ostringstream json_msg_oss;
+    json_msg_oss << json_msg;
+
+    return json_msg_oss.str();
+  }
 
 }
 

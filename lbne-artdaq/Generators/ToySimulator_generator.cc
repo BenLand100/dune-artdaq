@@ -1,4 +1,5 @@
 #include "lbne-artdaq/Generators/ToySimulator.hh"
+#include "lbne-artdaq/DAQLogger/DAQLogger.hh"
 
 #include "art/Utilities/Exception.h"
 #include "artdaq/Application/GeneratorMacros.hh"
@@ -48,6 +49,7 @@ lbne::ToySimulator::ToySimulator(fhicl::ParameterSet const & ps)
   nADCcounts_(ps.get<size_t>("nADCcounts", 600000)),
   fragment_type_(toFragmentType(ps.get<std::string>("fragment_type"))),
   throttle_usecs_(ps.get<size_t>("throttle_usecs", 0)),
+  throw_exception_(ps.get<bool>("throw_exception", false)),
   engine_(ps.get<int64_t>("random_seed", 314159)),
   uniform_distn_(new std::uniform_int_distribution<int>(0, pow(2, typeToADC( fragment_type_ ) ) - 1 ))
 {
@@ -126,10 +128,17 @@ bool lbne::ToySimulator::getNext_(artdaq::FragmentPtrs & frags) {
 
   if (ev_counter() % 100 == 0) {
 
-    mf::LogError("ToySimulator") << "This isn't a real error, it's just a test of the messagefacility package's LogError function";
-
     if(metricMan_ != nullptr) {
       metricMan_->sendMetric("Fragments Sent",ev_counter(), "Fragments", 0);
+    }
+
+    DAQLogger::LogWarning("ToySimulator") << "This is a test of the DAQLogger's LogWarning function";
+    DAQLogger::LogInfo("ToySimulator") << "This is a test of the DAQLogger's LogInfo function";
+    DAQLogger::LogDebug("ToySimulator") << "This is a test of the DAQLogger's LogDebug function";
+    DAQLogger::LogTrace("ToySimulator") << "This is a test of the DAQLogger's LogTrace function";
+
+    if (throw_exception_) {
+      DAQLogger::LogError("ToySimulator") << "This isn't a real error, it's just a test of the DAQLogger's LogError function; note that the call to LogError should throw an exception ending datataking";
     }
   }
 

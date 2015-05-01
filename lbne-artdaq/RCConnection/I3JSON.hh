@@ -96,6 +96,15 @@ namespace lbne
   }
 
 std::ostream& operator<<(std::ostream& os, const value_t& value);
+
+  // JCF, 4/29/15
+
+  // I've added this function, MsgToRCJSON, so its users can specify a
+  // message (with a label) but not have to worry about details of
+  // packaging it up into a JSON string for RunControl's consumption
+
+  std::string MsgToRCJSON(const std::string& label, const std::string& msg);
+
 }
 
 
