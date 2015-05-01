@@ -31,6 +31,8 @@ simple_plugin(ToySimulator "generator"
   ${CETLIB}
   ${MF_MESSAGELOGGER}
   ${MF_UTILITIES}
+  lbne-artdaq_RCConnection
+  lbne-artdaq_I3JSON
   )
 
   add_subdirectory(anlBoard)
