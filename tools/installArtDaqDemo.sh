@@ -93,13 +93,14 @@ function install_package {
 install_package artdaq-core v1_04_10 e6 s6
 install_package lbne-raw-data v1_03_02 e6 s6
 
-# JCF, 4/16/15
+# JCF, 5/1/15
 
-# Commit hash d4abb... refers to a commit of artdaq code which
-# supports filtering of messagefacility messages by level of severity
-# via an optional FHiCL document
+# Commit hash 81d12... refers to a commit of artdaq code which, among
+# other things, supports printing the contents of any exception
+# classes thrown from CommandableFragmentGenerator::getNext_() that
+# derive from std::exception, cet::exception, or boost::exception
 
-install_package artdaq d4abb255bbec3048f721b785b3fe607d89d6b901 e6 s6 eth
+install_package artdaq 81d1245462f7e93db3093506fe0cb193af617c5a e6 s6 eth
 
 setup_qualifier="e6"
 
