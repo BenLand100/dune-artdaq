@@ -147,7 +147,7 @@ ostream& operator<<(ostream& os, const value_t& value)
 							   std::chrono::system_clock::time_point(seconds_since_epoch)));
 
     char seconds_precision[100];
-    if (!std::strftime(seconds_precision, 100, "%Y-%m-%d %H:%M:%S.", std::localtime(&now_t))) {
+    if (!std::strftime(seconds_precision, 100, "%Y-%m-%d %H:%M:%S.", std::gmtime(&now_t))) {
       throw cet::exception("I3JSON") << "Failed call to std::strftime in formatting timestring";
     }
       

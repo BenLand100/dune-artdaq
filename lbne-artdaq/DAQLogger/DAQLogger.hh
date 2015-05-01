@@ -70,7 +70,8 @@ namespace lbne {
 
   private:
 
-    // This is the exception class which is automatically thrown on calls to DAQLogger::LogError()
+    // This is the exception class which is automatically thrown on
+    // calls to DAQLogger::LogError()
 
     class ExceptClass : public std::exception {
     public:

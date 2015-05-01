@@ -128,8 +128,6 @@ bool lbne::ToySimulator::getNext_(artdaq::FragmentPtrs & frags) {
 
   if (ev_counter() % 100 == 0) {
 
-    //    mf::LogError("ToySimulator") << "This isn't a real error, it's just a test of the messagefacility package's LogError function";
-
     if(metricMan_ != nullptr) {
       metricMan_->sendMetric("Fragments Sent",ev_counter(), "Fragments", 0);
     }
