@@ -90,17 +90,19 @@ function install_package {
 
 . $products_dir/setup
 
-install_package artdaq-core v1_04_10 e6 s6
-install_package lbne-raw-data v1_03_02 e6 s6
+install_package artdaq-core v1_04_11 e6 s6
+install_package lbne-raw-data v1_03_03 e6 s6
 
-# JCF, 5/1/15
+# JCF, 5/5/15
 
-# Commit hash 81d12... refers to a commit of artdaq code which, among
-# other things, supports printing the contents of any exception
-# classes thrown from CommandableFragmentGenerator::getNext_() that
-# derive from std::exception, cet::exception, or boost::exception
+# artdaq v1_12_09's features include support for printing the contents
+# of any exception classes thrown from
+# CommandableFragmentGenerator::getNext_() that derive from
+# std::exception, cet::exception, or boost::exception, as well as
+# enabling greater user flexibility in specifying where
+# messagefacility messages are sent
 
-install_package artdaq 81d1245462f7e93db3093506fe0cb193af617c5a e6 s6 eth
+install_package artdaq v1_12_09 e6 s6 eth
 
 setup_qualifier="e6"
 
