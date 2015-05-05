@@ -14,7 +14,6 @@ basequal=${2}
 build_type=${3}  # "prof" or "debug"
 
 basequal2=`echo ${basequal} | sed -e s/:eth//`
-basequal3=${basequal2+$basequal2:}s5
 
 starttime=`date`
 
@@ -22,17 +21,17 @@ cd ${productdir}
 
 prods="\
 mpich v3_1_2a -f Linux64bit+2.6-2.12 -z ${productdir} -q ${basequal2}:${build_type}
-xmlrpc_c v1_25_30 -f Linux64bit+2.6-2.12 -z ${productdir} -q ${basequal2}:${build_type}"
+xmlrpc_c v1_25_30a -f Linux64bit+2.6-2.12 -z ${productdir} -q ${basequal2}:${build_type}"
 
 # Some tarfiles have names that deviate from the standard "template",
 # so we can't use the download function's algorithm
 
 prods2="\
 smc_compiler/v6_1_0/smc_compiler-6.1.0-noarch.tar.bz2
-TRACE/v3_03_03/TRACE-3.03.03-slf6.tar.bz2
-cetbuildtools/v4_07_03/cetbuildtools-4.07.03-noarch.tar.bz2
-cmake/v3_1_2/cmake-3.1.2-slf6-x86_64.tar.bz2
-cetpkgsupport/v1_08_04/cetpkgsupport-1.08.04-noarch.tar.bz2
+TRACE/v3_05_00/TRACE-3.05.00-slf6.tar.bz2
+cetbuildtools/v4_09_02/cetbuildtools-4.09.02-noarch.tar.bz2
+cmake/v3_2_1/cmake-3.2.1-slf6-x86_64.tar.bz2
+cetpkgsupport/v1_08_05/cetpkgsupport-1.08.05-noarch.tar.bz2
 "
 
 # $1=prod_area $2="prod_lines"
