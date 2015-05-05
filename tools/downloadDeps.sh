@@ -28,7 +28,7 @@ xmlrpc_c v1_25_30a -f Linux64bit+2.6-2.12 -z ${productdir} -q ${basequal2}:${bui
 
 prods2="\
 smc_compiler/v6_1_0/smc_compiler-6.1.0-noarch.tar.bz2
-TRACE/v3_05_00/TRACE-3.05.00-slf6.tar.bz2
+TRACE/v3_05_00/TRACE-3.05.00-slf6-x86_64-${basequal2}.tar.bz2
 cetbuildtools/v4_09_02/cetbuildtools-4.09.02-noarch.tar.bz2
 cmake/v3_2_1/cmake-3.2.1-slf6-x86_64.tar.bz2
 cetpkgsupport/v1_08_05/cetpkgsupport-1.08.05-noarch.tar.bz2
