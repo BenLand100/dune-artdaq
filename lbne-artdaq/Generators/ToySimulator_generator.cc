@@ -132,13 +132,14 @@ bool lbne::ToySimulator::getNext_(artdaq::FragmentPtrs & frags) {
       metricMan_->sendMetric("Fragments Sent",ev_counter(), "Fragments", 0);
     }
 
-    DAQLogger::LogWarning("ToySimulator") << "This is a test of the DAQLogger's LogWarning function";
-    DAQLogger::LogInfo("ToySimulator") << "This is a test of the DAQLogger's LogInfo function";
-    DAQLogger::LogDebug("ToySimulator") << "This is a test of the DAQLogger's LogDebug function";
-    DAQLogger::LogTrace("ToySimulator") << "This is a test of the DAQLogger's LogTrace function";
+    DAQLogger::LogWarning("ToySimulator") << "On fragment " << ev_counter() << ", this is a test of the DAQLogger's LogWarning function";
+    DAQLogger::LogInfo("ToySimulator") << "On fragment " << ev_counter() << ", this is a test of the DAQLogger's LogInfo function";
+    DAQLogger::LogDebug("ToySimulator") << "On fragment " << ev_counter() << ", this is a test of the DAQLogger's LogDebug function";
+
 
     if (throw_exception_) {
-      DAQLogger::LogError("ToySimulator") << "This isn't a real error, it's just a test of the DAQLogger's LogError function; note that the call to LogError should throw an exception ending datataking";
+      DAQLogger::LogError("ToySimulator") << "On fragment " << ev_counter() << ", this is a test of the DAQLogger's LogError function";
+
     }
   }
 

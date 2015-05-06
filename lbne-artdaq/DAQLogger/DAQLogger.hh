@@ -7,10 +7,12 @@
 
 #include <stdexcept>
 #include <string>
+#include <memory>
 
-// JCF, 4/29/15
+// JCF, 5/6/15
 
-// The DAQLogger class is designed to allow users to make calls such as
+// The DAQLogger namespace contains a set of classes designed to allow
+// users to make calls such as
 
 // DAQLogger::LogError("mymodule") << "My error message";
 
@@ -18,125 +20,145 @@
 
 // mf::LogError("mymodule") << "My error message";
 
-// However, note that what DAQLogger::LogError(), etc., do is actually
-// return a static member struct which contains an overload of the
-// "<<" operator -- in the case of the LogError() call, it will return
-// a struct which overloads "<<" such that it will call mf::LogError()
-// with the error message, send the error message up to RunControl via
-// the RCConnection singleton class, and throw an exception of type
-// DAQLogger::ExceptClass, which inherits from std::exception and
-// includes the error message. Similarly for the other LogXXXXX()
-// calls, though the difference being that in their overloads of "<<"
-// they will not throw an exception.
+// For more documentation, please see
+// https://cdcvs.fnal.gov/redmine/projects/lbne-artdaq/wiki/Info_on_Using_DAQLogger
+
 
 namespace lbne {
 
-  class DAQLogger {
+  namespace DAQLogger {
 
-    // All data in DAQLogger is static, i.e., there's no reason to declare an instance of it
-    DAQLogger() = delete; 
+    // MessagingBase contains the functionality common to all its
+    // inheriting LogXXXXX classes -- including storage of a label
+    // passed by the caller, as well as the ability to stream objects
+    // in a manner similar to the ostream class
     
-    struct Error;
-    struct Warning;
-    struct Info;
-    struct Debug;
-    struct Trace;
-
-  public:
-    static Error LogError(const std::string& caller_name) {
-      caller_name_ = caller_name;
-      return error_;
-    }
-
-    static Warning LogWarning(const std::string& caller_name) {
-      caller_name_ = caller_name;
-      return warning_;
-    }
-
-    static Info LogInfo(const std::string& caller_name) {
-      caller_name_ = caller_name;
-      return info_;
-    }
-
-    static Debug LogDebug(const std::string& caller_name) {
-      caller_name_ = caller_name;
-      return debug_;
-    }
-
-    static Trace LogTrace(const std::string& caller_name) {
-      caller_name_ = caller_name;
-      return trace_;
-    }
-
-  private:
-
-    // This is the exception class which is automatically thrown on
-    // calls to DAQLogger::LogError()
-
-    class ExceptClass : public std::exception {
+    class MessagingBase {
+    
     public:
-      ExceptClass(const std::string& exceptstr) :
-	exceptstr_(exceptstr) {}
 
-      virtual const char* what() const noexcept {
-	return exceptstr_.c_str();
+      template <class T>
+      MessagingBase& operator<<(const T& t )
+      {
+	*msgstream_ << t;
+	return *this;
       }
 
+      MessagingBase& operator<<(std::ostream&(*f)(std::ostream&))
+      {
+	*msgstream_ << f;
+	return *this;
+      }
+
+      MessagingBase& operator<<(std::ios_base&(*f)(std::ios_base&))
+      {
+	*msgstream_ << f;
+	return *this;
+      }
+      
+    protected:
+
+      // Declaring the constructor and destructor protected
+      // effectively means users can't accidentally employ
+      // MessagingBase directly
+
+      MessagingBase(const std::string& caller_name) : 
+	caller_name_(caller_name),
+	msgstream_(new std::ostringstream)
+      {
+      }
+
+      // The functionality of the derived classes should all be
+      // defined in overrides of this do-nothing destructor
+      virtual ~MessagingBase() noexcept(false) {};
+
+      const std::string CallerName() { return caller_name_; }
+      const std::string Msg() { return msgstream_->str(); }
+
     private:
-      std::string exceptstr_;
+
+      const std::string caller_name_;
+      std::unique_ptr<std::ostringstream> msgstream_;
+
     };
+  
+    // JCF, 5/6/15
 
-    struct Error {
-      void operator<<(const std::string& msg) {
+    // As a guideline, it's usually a bad idea to create a macro --
+    // however, in this namespace I'm going to be declaring four
+    // structs inheriting from the MessagingBase class, each of which
+    // overrides MessagingBase's destructor with special code that
+    // executes whenever an instance of the class is destroyed. Three
+    // of the four destructors have almost exactly the same form (for
+    // LogWarning, LogInfo, and LogDebug), so a lot of potential
+    // typo-based errors and hassle can be prevented by this macro
 
-	mf::LogError(caller_name_) << msg;
+#define GENERATE_NONERROR_LOGSTRUCT(NAME, REPORT)         	\
+    struct NAME : public MessagingBase {			\
+								\
+      NAME(const std::string& caller_name) :			\
+	MessagingBase(caller_name)				\
+      {								\
+      }								\
+								\
+								\
+      virtual ~NAME() noexcept(false) {				\
+								\
+	mf::NAME(CallerName()) << Msg();			\
+								\
+        if (REPORT) {						\
+	  RCConnection::Get().Send( CallerName(), Msg() );	\
+	}							\
+      }								\
+};								
 
-	RCConnection::Get().Send( caller_name_, msg );
+GENERATE_NONERROR_LOGSTRUCT(LogWarning, true)
+GENERATE_NONERROR_LOGSTRUCT(LogInfo, false)
+GENERATE_NONERROR_LOGSTRUCT(LogDebug, false)
+
+#undef GENERATE_NONERROR_LOGSTRUCT
+
+// LogError has a sufficiently complex destructor (i.e., one that
+// directly throws an intended exception) that it gets its own
+// implementation, rather than a macro
+
+    struct LogError : public MessagingBase {
+
+      class ExceptClass;
+
+      // This is the exception class which is automatically thrown on
+      // calls to DAQLogger::LogError()
+
+      class ExceptClass : public std::exception {
+      public:
+	ExceptClass(const std::string& exceptstr) :
+	  exceptstr_(exceptstr) {}
+
+	virtual const char* what() const noexcept {
+	  return exceptstr_.c_str();
+	}
+
+      private:
+	std::string exceptstr_;
+      };
+
+      LogError(const std::string& caller_name) : 
+	MessagingBase(caller_name)
+      {
+      }
+
+      virtual ~LogError() noexcept(false) {
+
+	mf::LogError(CallerName()) << Msg();
+
+	RCConnection::Get().Send( CallerName(), Msg() );
 	
-	ExceptClass myexcept( msg );
+	ExceptClass myexcept( Msg() );
 	throw myexcept;
       }
     };
 
-    // JCF, 4/29/15
-
-    // As a guideline, it's usually a bad idea to create a macro --
-    // however, here I'm going to be declaring four structs, each of
-    // which defines its own stream operator "<<", so users can employ
-    // DAQLogger::LogWarning(), etc., much like they can employ
-    // mf::LogWarning(), etc., and each struct has the same form, so a
-    // lot of potential typo-based errors and hassle can be prevented
-    // by this macro
-
-#define GENERATE_NONERROR_STREAMSTRUCT(NAME)               \
-    struct NAME {                                          \
-                                                           \
-      void operator<<(const std::string& msg) {            \
-                                                           \
-	mf::Log ## NAME(caller_name_) << msg;              \
-                                                           \
-	RCConnection::Get().Send( caller_name_, msg );     \
-      }                                                    \
-    };                                                     \
-
-    GENERATE_NONERROR_STREAMSTRUCT(Warning)
-    GENERATE_NONERROR_STREAMSTRUCT(Info)
-    GENERATE_NONERROR_STREAMSTRUCT(Debug)
-    GENERATE_NONERROR_STREAMSTRUCT(Trace)
-
-#undef GENERATE_NONERROR_STREAMSTRUCT
-
-    static Error error_;
-    static Warning warning_;
-    static Info info_;
-    static Debug debug_;
-    static Trace trace_;
-    
-    static std::string caller_name_;
-  };
-
-  std::string DAQLogger::caller_name_ = "";
-
-}
+    } // End namespace DAQLogger
+} // End namespace lbne
 
 #endif /* lbne_artdaq_DAQLogger_DAQLogger_hh */
