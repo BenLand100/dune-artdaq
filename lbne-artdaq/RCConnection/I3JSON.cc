@@ -118,11 +118,13 @@ ostream& operator<<(ostream& os, const value_t& value)
   return(os);
 }
 
-  std::string MsgToRCJSON(const std::string& label, const std::string& msg) {
+  std::string MsgToRCJSON(const std::string& label, const std::string& msg,
+			  const std::string& severity) {
 
     object_t json_msg;
     json_msg["msg"] = msg.c_str();
     json_msg["source"] = label.c_str();
+    json_msg["severity"] = severity.c_str();
 
     // JCF, 4/29/15
 

@@ -93,28 +93,28 @@ namespace lbne {
     // LogWarning, LogInfo, and LogDebug), so a lot of potential
     // typo-based errors and hassle can be prevented by this macro
 
-#define GENERATE_NONERROR_LOGSTRUCT(NAME, REPORT)         	\
-    struct NAME : public MessagingBase {			\
-								\
-      NAME(const std::string& caller_name) :			\
-	MessagingBase(caller_name)				\
-      {								\
-      }								\
-								\
-								\
-      virtual ~NAME() noexcept(false) {				\
-								\
-	mf::NAME(CallerName()) << Msg();			\
-								\
-        if (REPORT) {						\
-	  RCConnection::Get().Send( CallerName(), Msg() );	\
-	}							\
-      }								\
+#define GENERATE_NONERROR_LOGSTRUCT(NAME, REPORT)                	\
+    struct Log ## NAME : public MessagingBase {		         	\
+								        \
+      Log ## NAME(const std::string& caller_name) :      		\
+	MessagingBase(caller_name)			         	\
+      {						         		\
+      }							         	\
+					            			\
+						        		\
+      virtual ~Log ## NAME() noexcept(false) {		        	\
+							        	\
+	mf::Log ## NAME(CallerName()) << Msg();	         		\
+							        	\
+        if (REPORT) {				        		\
+	  RCConnection::Get().Send( CallerName(), Msg(), # NAME );	\
+	}						         	\
+      }							         	\
 };								
 
-GENERATE_NONERROR_LOGSTRUCT(LogWarning, true)
-GENERATE_NONERROR_LOGSTRUCT(LogInfo, false)
-GENERATE_NONERROR_LOGSTRUCT(LogDebug, false)
+GENERATE_NONERROR_LOGSTRUCT(Warning, true)
+GENERATE_NONERROR_LOGSTRUCT(Info, false)
+GENERATE_NONERROR_LOGSTRUCT(Debug, false)
 
 #undef GENERATE_NONERROR_LOGSTRUCT
 
@@ -151,7 +151,7 @@ GENERATE_NONERROR_LOGSTRUCT(LogDebug, false)
 
 	mf::LogError(CallerName()) << Msg();
 
-	RCConnection::Get().Send( CallerName(), Msg() );
+	RCConnection::Get().Send( CallerName(), Msg(), "Error" );
 	
 	ExceptClass myexcept( Msg() );
 	throw myexcept;
