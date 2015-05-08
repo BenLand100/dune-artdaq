@@ -28,7 +28,7 @@ public:
     return connection;
   }
 
-  void Send(const std::string& source, const std::string& msg);
+  void Send(const std::string& source, const std::string& msg, const std::string& severity);
 
 private:
   RCConnection();  // Guarantee the class completely controls its own

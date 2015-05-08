@@ -15,9 +15,10 @@ namespace lbne {
   {
   }
 
-  void RCConnection::Send(const std::string& source, const std::string& msg) {
+  void RCConnection::Send(const std::string& source, const std::string& msg, 
+			  const std::string& severity) {
 
-    std::string json_msg = MsgToRCJSON(source, msg);
+    std::string json_msg = MsgToRCJSON(source, msg, severity);
 
     // 0MQ sockets are not thread safe, so make sure only one thread
     // is calling the "Send" function (and thereby using the
