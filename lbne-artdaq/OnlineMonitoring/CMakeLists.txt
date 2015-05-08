@@ -16,7 +16,9 @@ simple_plugin(OnlineMonitoring "module" lbne-raw-data_Overlays
   ${ART_PERSISTENCY_PROVENANCE}
   ${ART_UTILITIES}
   ${MF_MESSAGELOGGER}
-  ${MF_UTILITIES}	
+  ${MF_UTILITIES}
   ${CETLIB}
   ${ROOT_BASIC_LIB_LIST}
+  lbne-artdaq_RCConnection
+  lbne-artdaq_I3JSON
 )
