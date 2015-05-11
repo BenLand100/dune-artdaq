@@ -1,6 +1,6 @@
 # The parent line must be the first non-comment line in the file
 # This line defines the product name and version
-parent lbne_artdaq	v1_01_06
+parent lbne_artdaq	v1_01_05
 defaultqual	e6
 
 # These optional lines define the installed directories where
@@ -33,8 +33,8 @@ end_product_list
 # -nq- here means there is no qualifier
 # a "-" here means the dependent product is not required by the parent and will not be setup
 qualifier    	       	artdaq                  	lbne_raw_data  
-e6:prof 		e6:s7:eth:prof   		e6:s7:prof     
-e6:debug 		e6:s7:eth:debug   		e6:s7:debug     
+e6:prof 		e6:s6:eth:prof   		e6:s6:prof     
+e6:debug 		e6:s6:eth:debug   		e6:s6:debug     
 end_qualifier_list
 
 # Preserve tabs and formatting in emacs and vi / vim:
