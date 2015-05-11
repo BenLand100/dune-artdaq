@@ -90,8 +90,8 @@ function install_package {
 
 . $products_dir/setup
 
-install_package artdaq-core v1_04_11 e6 s6
-install_package lbne-raw-data v1_03_03 e6 s6
+install_package artdaq-core v1_04_11 e6 s7
+install_package lbne-raw-data v1_03_03 e6 s7
 
 # JCF, 5/5/15
 
@@ -102,7 +102,7 @@ install_package lbne-raw-data v1_03_03 e6 s6
 # enabling greater user flexibility in specifying where
 # messagefacility messages are sent
 
-install_package artdaq v1_12_09 e6 s6 eth
+install_package artdaq v1_12_09 e6 s7 eth
 
 setup_qualifier="e6"
 
