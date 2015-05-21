@@ -129,12 +129,25 @@ if [ -z "$root" ];then
     echo the root is $root
 fi
 
+if [[ "$HOSTNAME" != "lbne35t-gateway01.fnal.gov" ]]; then
+    echo "Make sure you have C++ bindings for ZeroMQ installed on your system"
+    echo 'Try the command "locate zmq.hpp" or contact jcfree@fnal.gov to find this out'
+fi
+
 test -d "$root" || mkdir -p "$root"
 cd $root
 
+free_disk_needed=0
+
+if [[ "$HOSTNAME" == "lbne35t-gateway01.fnal.gov" ]]; then
+    free_disk_needed=1
+else
+    free_disk_needed=5
+fi
+
 free_disk_G=`df -B1G . | awk '/[0-9]%/{print$(NF-2)}'`
-if [ -z "${opt_skip_check-}" -a "$free_disk_G" -lt 15 ];then
-    echo "Error: insufficient free disk space ($free_disk_G). Min. require = 15"
+if [ -z "${opt_skip_check-}" -a "$free_disk_G" -lt $free_disk_needed ];then
+    echo "Error: insufficient free disk space ($free_disk_G). Min. require = $free_disk_needed"
     echo "Use the --skip-check option to skip free space check."
     exit 1
 fi
