@@ -130,8 +130,10 @@ if [ -z "$root" ];then
 fi
 
 if [[ "$HOSTNAME" != "lbne35t-gateway01.fnal.gov" ]]; then
+    echo
     echo "Make sure you have C++ bindings for ZeroMQ installed on your system"
     echo 'Try the command "locate zmq.hpp" or contact jcfree@fnal.gov to find this out'
+    echo
 fi
 
 test -d "$root" || mkdir -p "$root"
