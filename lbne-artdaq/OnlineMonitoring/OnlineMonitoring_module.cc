@@ -25,6 +25,8 @@
 #include <bitset>
 #include <cmath>
 #include <typeinfo>
+#include <thread>
+#include <stdio.h>
 
 #include <TH1.h>
 #include <TH2.h>
@@ -44,6 +46,32 @@
 
 namespace lbne {
   class OnlineMonitoring;
+  class EventDisplay;
+}
+
+class lbne::EventDisplay {
+
+public:
+
+  explicit EventDisplay();
+  virtual ~EventDisplay();
+
+  void printThings();
+
+private:
+
+  int var=100;
+
+};
+
+lbne::EventDisplay::EventDisplay() { }
+
+lbne::EventDisplay::~EventDisplay() { }
+
+void lbne::EventDisplay::printThings() {
+  for (int i = 0; i < var; ++i) {
+    std::cout << i << std::endl;
+  }
 }
 
 class lbne::OnlineMonitoring : public art::EDAnalyzer {
@@ -61,6 +89,7 @@ public:
   void beginSubRun(const art::SubRun &sr);
   void endSubRun(const art::SubRun &sr);
   void eventDisplay();
+  void monitoring();
   void monitoringGeneral();
   void monitoringRCE();
   void monitoringSSP();
@@ -116,6 +145,7 @@ private:
   TCanvas *fCanvas;
 
   TH1I *hTotalADCEvent, *hTotalRCEHitsEvent, *hTotalRCEHitsChannel, *hTimesADCGoesOverThreshold,  *hNumMicroslicesInMillislice, *hNumNanoslicesInMicroslice, *hNumNanoslicesInMillislice;
+  TH2I *hBitCheckAnd, *hBitCheckOr;
   TH2D *hAvADCChannelEvent;
   TProfile *hADCMeanChannel, *hADCRMSChannel, *hRCEDNoiseChannel, *hAsymmetry;
 
@@ -125,8 +155,6 @@ private:
 
   TH1I *hNumSubDetectorsPresent, *hSizeOfFiles;
   TH1D *hSizeOfFilesPerEvent;
-
-  TH1I* test;
 
 };
 
@@ -170,6 +198,8 @@ void lbne::OnlineMonitoring::beginSubRun(const art::SubRun &sr) {
   hNumNanoslicesInMillislice  = new TH1I("NumNanoslicesInMillislice","Number of Nanoslices in Millislice_\"colz\"_logy;Number of Nanoslices;",1000,0,11000);
   hTimesADCGoesOverThreshold  = new TH1I("TimesADCGoesOverThreshold","Times RCE ADC Over Threshold_\"colz\"_none;Times ADC Goes Over Threshold;",100,0,1000);
   hAsymmetry                  = new TProfile("Asymmetry","Asymmetry of Bipolar Pulse_\"colz\"_none;Channel;Asymmetry",2048,0,2048);
+  hBitCheckAnd                = new TH2I("BitCheckAnd","ADC Bits Always On_\"colz\"_none;Channel;Bit",2048,0,2048,16,0,16);
+  hBitCheckOr                 = new TH2I("BitCheckOr","ADC Bits Always Off_\"colz\"_none;Channel;Bit",2048,0,2048,16,0,16);
 
   // SSP hists
   hWaveformMeanChannel            = new TProfile("WaveformMeanChannel","SSP ADC Mean_\"histl\"_none;Channel;SSP ADC Mean",96,0,96);
@@ -213,10 +243,6 @@ void lbne::OnlineMonitoring::analyze(art::Event const &evt) {
 
   reset();
 
-  // Event display -- every 500 events (8 s)
-  if (fEventNumber % 500 == 0)
-    eventDisplay();
-
   // Format the data to channel/tick vectors
   if (fIsRCE) {
     analyzeRCE(rawRCE);
@@ -224,11 +250,32 @@ void lbne::OnlineMonitoring::analyze(art::Event const &evt) {
   }    
   if (fIsSSP) analyzeSSP(rawSSP);
 
-  // Monitoring
+  monitoring();
+
+  // // Event display -- every 500 events (8 s)
+  // if (fEventNumber % 1000 == 0) {
+  //   EventDisplay display;
+  //   std::thread t(&EventDisplay::printThings,&display);
+  // }
+
+  // // Monitoring
+  // std::thread t(&OnlineMonitoring::monitoring,this);
+  // t.join();
+
+  // std::thread tRCE(&OnlineMonitoring::monitoringRCE,this);
+  // std::thread tSSP(&OnlineMonitoring::monitoringSSP,this);
+  // std::thread tGen(&OnlineMonitoring::monitoringGeneral,this);
+
+  // tRCE.join();
+  // tSSP.join();
+  // tGen.join();
+
+}
+
+void lbne::OnlineMonitoring::monitoring() {
   if (fADC.size()) monitoringRCE();
   if (fWaveform.size()) monitoringSSP();
   monitoringGeneral();
-
 }
 
 void lbne::OnlineMonitoring::monitoringGeneral() {
@@ -285,16 +332,16 @@ void lbne::OnlineMonitoring::monitoringRCE() {
     if (!fADC.at(channel).size())
       continue;
 
+    // Variables for channel
     bool peak = false;
     int tTotalRCEHitsChannel = 0;
+    bool tBitCheckAnd = 0xFFFF, tBitCheckOr = 0;
+    double tAsymmetry = 0;
+    double tADCsum = 0, tADCdiff = 0;
 
     // Find the mean and RMS of ADCs for this channel
     double mean = TMath::Mean(fADC.at(channel).begin(),fADC.at(channel).end());
     double rms  = TMath::RMS (fADC.at(channel).begin(),fADC.at(channel).end());
-
-    // Asymmetry variables
-    double asymmetry = 0;
-    double ADCsum = 0, ADCdiff = 0;
 
     for (unsigned int tick = 0; tick < fADC.at(channel).size(); tick++) {
 
@@ -315,33 +362,43 @@ void lbne::OnlineMonitoring::monitoringRCE() {
       }
       if ( tick && (fADC.at(channel).at(tick) < fADC.at(channel).at(tick-1)) && peak ) peak = false;
 
+      // Bit check
+      tBitCheckAnd &= fADC.at(channel).at(tick);
+      tBitCheckOr  |= fADC.at(channel).at(tick);
+
     }
 
     // Fill hists for channel
-    hADCMeanChannel->Fill(channel,mean);
-    hADCRMSChannel->Fill(channel,rms);
-    hAvADCChannelEvent->Fill(fEventNumber,channel,mean);
+    hADCMeanChannel     ->Fill(channel,mean);
+    hADCRMSChannel      ->Fill(channel,rms);
+    hAvADCChannelEvent  ->Fill(fEventNumber,channel,mean);
     hTotalRCEHitsChannel->Fill(channel+1,tTotalRCEHitsChannel);
+    int tbit = 1;
+    for (int bitIt = 0; bitIt < 16; ++bitIt) {
+      hBitCheckAnd->Fill(channel,bitIt,(tBitCheckAnd & tbit));
+      hBitCheckOr ->Fill(channel,bitIt,(tBitCheckOr & tbit));
+      tbit <<= 1;
+    }
 
     // Loop over blocks to look at the asymmetry
     for (int block = 0; block < fWindowingNumBlocks.at(channel); block++) {
       // Loop over the ticks within the block
       for (int tick = fWindowingBlockBegin.at(channel).at(block); tick < fWindowingBlockBegin.at(channel).at(block)+fWindowingBlockSize.at(channel).at(block); tick++) {
 	if (fIsInduction) {
-	  ADCdiff += fADC.at(channel).at(tick);
-	  ADCsum += abs(fADC.at(channel).at(tick));
+	  tADCdiff += fADC.at(channel).at(tick);
+	  tADCsum += abs(fADC.at(channel).at(tick));
 	}
       } // End of tick loop
     } // End of block loop
 
-    if (fIsInduction && ADCsum) asymmetry = (double)ADCdiff / (double)ADCsum;
-    hAsymmetry->Fill(channel+1,asymmetry);
+    if (fIsInduction && tADCsum) tAsymmetry = (double)tADCdiff / (double)tADCsum;
+    hAsymmetry->Fill(channel+1,tAsymmetry);
 
   }
 
   // Fill hists for event
-  hTotalADCEvent->Fill(fTotalADC);
-  hTotalRCEHitsEvent->Fill(fTotalRCEHitsEvent);
+  hTotalADCEvent            ->Fill(fTotalADC);
+  hTotalRCEHitsEvent        ->Fill(fTotalRCEHitsEvent);
   hTimesADCGoesOverThreshold->Fill(fTimesADCGoesOverThreshold);
 
 }
@@ -396,12 +453,9 @@ void lbne::OnlineMonitoring::monitoringSSP() {
 }
 
 void lbne::OnlineMonitoring::eventDisplay() {
-
-  // Called every set number of events to display more detailed information about
-  // the events being looked at
-
-  
-
+  for (int i = 0; i < 10000; ++i) {
+    std::cout << i << std::endl;
+  }
 }
 
 void lbne::OnlineMonitoring::analyzeRCE(art::Handle<artdaq::Fragments> rawRCE) {
@@ -640,9 +694,9 @@ void lbne::OnlineMonitoring::endSubRun(art::SubRun const &sr) {
     TH1 *_h = (TH1*)fHistArray.At(histIt);
     TObjArray *histTitle = TString(_h->GetTitle()).Tokenize(fPathDelimiter);
     _h->Draw((char*)histTitle->At(1)->GetName());
-    TPaveText *title = new TPaveText(0.05,0.92,0.4,0.98,"brNDC");
-    title->AddText(histTitle->At(0)->GetName());
-    title->Draw();
+    TPaveText *canvTitle = new TPaveText(0.05,0.92,0.6,0.98,"brNDC");
+    canvTitle->AddText((std::string(histTitle->At(0)->GetName())+": Run "+std::to_string(fRun)+", SubRub "+std::to_string(fSubrun)).c_str());
+    canvTitle->Draw();
     if (strstr(histTitle->At(2)->GetName(),"logy")) fCanvas->SetLogy(1);
     else fCanvas->SetLogy(0);
     fCanvas->Modified();
@@ -679,6 +733,7 @@ void lbne::OnlineMonitoring::addHists() {
   fHistArray.Add(hNumMicroslicesInMillislice); fHistArray.Add(hRCEDNoiseChannel); fHistArray.Add(hADCMeanChannel); fHistArray.Add(hADCRMSChannel); fHistArray.Add(hAvADCChannelEvent); fHistArray.Add(hTotalRCEHitsChannel);
   fHistArray.Add(hAsymmetry); fHistArray.Add(hTotalADCEvent); fHistArray.Add(hTotalRCEHitsEvent); fHistArray.Add(hTimesADCGoesOverThreshold);
   fHistArray.Add(hNumSubDetectorsPresent); fHistArray.Add(hSizeOfFiles); fHistArray.Add(hSizeOfFilesPerEvent);
+  fHistArray.Add(hBitCheckAnd); fHistArray.Add(hBitCheckOr);
 }
  
 DEFINE_ART_MODULE(lbne::OnlineMonitoring)
