@@ -93,16 +93,16 @@ function install_package {
 install_package artdaq-core v1_04_11 e6 s6
 install_package lbne-raw-data v1_03_03 e6 s6
 
-# JCF, 5/5/15
+# JCF, 5/29/15
 
-# artdaq v1_12_09's features include support for printing the contents
-# of any exception classes thrown from
-# CommandableFragmentGenerator::getNext_() that derive from
-# std::exception, cet::exception, or boost::exception, as well as
-# enabling greater user flexibility in specifying where
-# messagefacility messages are sent
+# artdaq commit #847e518e43ef243d5663342a1df57a4dcaa61dff is the
+# result of Kurt's merge of the feature/inRunError branch into the
+# develop branch; this will make it possible to query artdaq processes
+# as to whether an exception has been thrown in their code, and
+# appropriate action to be taken (that action will probably be to
+# return the DAQ to its stopped state):
 
-install_package artdaq v1_12_09 e6 s6 eth
+install_package artdaq 847e518e43ef243d5663342a1df57a4dcaa61dff e6 s6 eth
 
 setup_qualifier="e6"
 
