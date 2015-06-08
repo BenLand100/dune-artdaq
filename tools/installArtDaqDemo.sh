@@ -90,21 +90,22 @@ function install_package {
 
 . $products_dir/setup
 
-install_package artdaq-core v1_04_11 e6 s6
-install_package lbne-raw-data v1_03_03 e6 s6
+install_package artdaq-core v1_04_13 e7 s11
+install_package lbne-raw-data v1_03_04 e7 s11
 
-# JCF, 5/29/15
+# JCF, 6/8/15
 
-# artdaq commit #847e518e43ef243d5663342a1df57a4dcaa61dff is the
-# result of Kurt's merge of the feature/inRunError branch into the
-# develop branch; this will make it possible to query artdaq processes
-# as to whether an exception has been thrown in their code, and
-# appropriate action to be taken (that action will probably be to
-# return the DAQ to its stopped state):
+# artdaq version 1_12_10 is based off of art v1_14_02 (via artdaq-core
+# v1_04_13) and among other things includes the result of Kurt's merge
+# of the feature/inRunError branch into the develop branch; this will
+# make it possible to query artdaq processes as to whether an
+# exception has been thrown in their code, and appropriate action to
+# be taken (that action will probably be to return the DAQ to its
+# stopped state):
 
-install_package artdaq 847e518e43ef243d5663342a1df57a4dcaa61dff e6 s6 eth
+install_package artdaq v1_12_10 e7 s11 eth
 
-setup_qualifier="e6"
+setup_qualifier="e7"
 
 
 if [[ "$HOSTNAME" != "lbne35t-gateway01.fnal.gov" ]] ; then
