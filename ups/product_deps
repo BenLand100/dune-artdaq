@@ -33,8 +33,6 @@ end_product_list
 # -nq- here means there is no qualifier
 # a "-" here means the dependent product is not required by the parent and will not be setup
 qualifier    	       	artdaq                  	lbne_raw_data  
-e6:prof 		e6:s6:eth:prof   		e6:s6:prof     
-e6:debug 		e6:s6:eth:debug   		e6:s6:debug     
 e7:prof 		e7:s11:eth:prof   		e7:s11:prof     
 e7:debug 		e7:s11:eth:debug   		e7:s11:debug     
 end_qualifier_list
