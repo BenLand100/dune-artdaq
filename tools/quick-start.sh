@@ -141,11 +141,11 @@ cd $root
 
 free_disk_needed=0
 
-if [[ "$HOSTNAME" == "lbne35t-gateway01.fnal.gov" ]]; then
-    free_disk_needed=1
-else
+#if [[ "$HOSTNAME" == "lbne35t-gateway01.fnal.gov" ]]; then
+#    free_disk_needed=1
+#else
     free_disk_needed=5
-fi
+#fi
 
 free_disk_G=`df -B1G . | awk '/[0-9]%/{print$(NF-2)}'`
 if [ -z "${opt_skip_check-}" -a "$free_disk_G" -lt $free_disk_needed ];then
@@ -169,7 +169,8 @@ else
     build_type="prof"
 fi
 
-if [[ ! -d products || ! -d download ]] && [[ "$HOSTNAME" != "lbne35t-gateway01.fnal.gov" ]] ;then
+#if [[ ! -d products || ! -d download ]] && [[ "$HOSTNAME" != "lbne35t-gateway01.fnal.gov" ]] ;then
+if [[ ! -d products || ! -d download ]] ;then
     echo "Are you sure you want to download and install the artdaq demo dependent products in `pwd`? [y/n]"
     read response
     if [[ "$response" != "y" ]]; then
