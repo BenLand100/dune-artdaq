@@ -90,20 +90,25 @@ function install_package {
 
 . $products_dir/setup
 
-install_package artdaq-core v1_04_13 e7 s11
+# JCF, 6/9/15
+
+# artdaq-core commit dc0c2461a042ae39cd4612c649fc3cec479efd2b contains
+# the ExceptionHandler module, which allows for more informative
+# exception handling in catch blocks (this feature is used by artdaq,
+# below)
+
+install_package artdaq-core dc0c2461a042ae39cd4612c649fc3cec479efd2b e7 s11
 install_package lbne-raw-data v1_03_04 e7 s11
 
-# JCF, 6/8/15
+# JCF, 6/9/15
 
-# artdaq version 1_12_10 is based off of art v1_14_02 (via artdaq-core
-# v1_04_13) and among other things includes the result of Kurt's merge
-# of the feature/inRunError branch into the develop branch; this will
-# make it possible to query artdaq processes as to whether an
-# exception has been thrown in their code, and appropriate action to
-# be taken (that action will probably be to return the DAQ to its
-# stopped state):
+# artdaq commit c3e9457cfff2c0feaa85888a2ae3bdee3a0471e6 includes
+# improved exception handling (specifically, whereas earlier versions
+# of artdaq contained try-catch blocks where all exceptions were
+# swallowed and a generic warning or error message appeared, this
+# commit will try to print out the contents of the exception object)
 
-install_package artdaq v1_12_10 e7 s11 eth
+install_package artdaq c3e9457cfff2c0feaa85888a2ae3bdee3a0471e6 e7 s11 eth
 
 setup_qualifier="e7"
 
