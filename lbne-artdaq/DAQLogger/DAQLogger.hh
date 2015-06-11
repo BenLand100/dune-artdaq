@@ -107,7 +107,7 @@ namespace lbne {
 	mf::Log ## NAME(CallerName()) << Msg();	         		\
 							        	\
         if (REPORT) {				        		\
-	  RCConnection::Get().Send( CallerName(), Msg(), # NAME );	\
+	  RCConnection::Get().SendMessage( CallerName(), Msg(), # NAME ); \
 	}						         	\
       }							         	\
 };								
@@ -151,7 +151,7 @@ GENERATE_NONERROR_LOGSTRUCT(Debug, false)
 
 	mf::LogError(CallerName()) << Msg();
 
-	RCConnection::Get().Send( CallerName(), Msg(), "Error" );
+	RCConnection::Get().SendMessage( CallerName(), Msg(), "Error" );
 	
 	ExceptClass myexcept( Msg() );
 	throw myexcept;

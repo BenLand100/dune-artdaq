@@ -18,6 +18,8 @@ art_make_library( LIBRARY_NAME lbne-artdaq_RCConnection
 		  SOURCE
 		  RCConnection.cc
 		  LIBRARIES
+		  ${MF_MESSAGELOGGER}
+		  ${MF_UTILITIES}
 		  ${ZEROMQLIB}
 		  lbne-artdaq_I3JSON
 )

@@ -100,12 +100,20 @@ std::ostream& operator<<(std::ostream& os, const value_t& value);
   // JCF, 4/29/15
 
   // I've added this function, MsgToRCJSON, so its users can specify a
-  // message (with a label) but not have to worry about details of
-  // packaging it up into a JSON string for RunControl's consumption
+  // message (with a label and a string indicating severity level) but
+  // not have to worry about details of packaging it up into a JSON
+  // string for RunControl's consumption
 
-  std::string MsgToRCJSON(const std::string& label, const std::string& msg, 
-			  const std::string& severity);
+  std::string MsgToRCJSON(const std::string& label, const std::string& msg,
+			  const std::string& severity); 
 
+  // JCF, 6/11/15
+
+  // MetricToRCJSON is similar to MsgToRCJSON except that rather than
+  // a message with a severity level, there's a key-value pair
+
+  std::string MetricToRCJSON(const std::string& label, const std::string& varname,
+			     const std::string& value);
 }
 
 
