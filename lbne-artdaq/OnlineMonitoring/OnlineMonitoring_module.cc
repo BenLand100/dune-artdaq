@@ -43,6 +43,7 @@
 #include <TROOT.h>
 #include <TPaveText.h>
 #include <TMath.h>
+#include <TFile.h>
 
 typedef std::vector<std::vector<int> > DQMvector;
 
@@ -116,6 +117,7 @@ private:
   TH2I *hBitCheckAnd, *hBitCheckOr;
   TH2D *hAvADCChannelEvent;
   TProfile *hADCMeanChannel, *hADCRMSChannel, *hRCEDNoiseChannel, *hAsymmetry;
+  std::map<int,TProfile*> hADCChannelMap;
 
   TH1I *hTotalWaveformEvent, *hTotalSSPHitsEvent, *hTotalSSPHitsChannel, *hTimesWaveformGoesOverThreshold;
   TH2D *hAvWaveformChannelEvent;
@@ -159,6 +161,8 @@ void lbne::OnlineMonitoring::beginSubRun(const art::SubRun &sr) {
   hAsymmetry                  = new TProfile("Asymmetry","Asymmetry of Bipolar Pulse_\"colz\"_none;Channel;Asymmetry",2048,0,2048);
   hBitCheckAnd                = new TH2I("BitCheckAnd","ADC Bits Always On_\"colz\"_none;Channel;Bit",2048,0,2048,16,0,16);
   hBitCheckOr                 = new TH2I("BitCheckOr","ADC Bits Always Off_\"colz\"_none;Channel;Bit",2048,0,2048,16,0,16);
+  for (unsigned int channel = 0; channel < 2048; ++channel)
+    hADCChannelMap[channel]   = new TProfile("ADCChannel"+TString(std::to_string(channel)),"ADC v Tick for Channel "+TString(std::to_string(channel))+";Tick;ADC;",5000,0,5000);
 
   // SSP hists
   hWaveformMeanChannel            = new TProfile("WaveformMeanChannel","SSP ADC Mean_\"histl\"_none;Channel;SSP ADC Mean",96,0,96);
@@ -294,6 +298,7 @@ void lbne::OnlineMonitoring::monitoringRCE(DQMvector ADCs) {
     for (unsigned int tick = 0; tick < ADCs.at(channel).size(); tick++) {
 
       // Fill hists for tick
+      hADCChannelMap.at(channel)->Fill(tick,ADCs.at(channel).at(tick));
       if (channel) hRCEDNoiseChannel->Fill(channel,ADCs.at(channel).at(tick)-ADCs.at(channel-1).at(tick));
 
       // Increase variables
@@ -664,7 +669,10 @@ void lbne::OnlineMonitoring::endSubRun(art::SubRun const &sr) {
   // Write the html for the web pages
   ofstream imageHTML((fHistSavePath+TString("index.html").Data()));
 
-  // Save all the histograms as images
+  // Make a root file with all the histograms in
+  TFile *outFile = TFile::Open(fHistSavePath+TString("monitoringHistograms.root"),"RECREATE");
+
+  // Save all the histograms as images and write to file
   for (int histIt = 0; histIt < fHistArray.GetEntriesFast(); ++histIt) {
     fCanvas->cd();
     TH1 *_h = (TH1*)fHistArray.At(histIt);
@@ -678,9 +686,16 @@ void lbne::OnlineMonitoring::endSubRun(art::SubRun const &sr) {
     fCanvas->Modified();
     fCanvas->Update();
     fCanvas->SaveAs(fHistSavePath+TString(_h->GetName())+fHistSaveType);
+    outFile->cd();
+    _h->Write();
     imageHTML << "<img src=\"" << (TString(_h->GetName())+fHistSaveType).Data() << "\">" << std::endl;
   }
-  mf::LogInfo("Monitoring") << "Saved histograms for run " << sr.run() << ", subRun " << sr.subRun() << " in " << fHistSavePath;
+
+  // Write other histograms
+  for (unsigned int channel = 0; channel < 2048; ++channel)
+    hADCChannelMap.at(channel)->Write();
+
+  mf::LogInfo("Monitoring") << "Saved monitoring for run " << sr.run() << ", subRun " << sr.subRun() << " in " << fHistSavePath;
 
   // Copy the images over to the web server
   std::ostringstream cmd;
