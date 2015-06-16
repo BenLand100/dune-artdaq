@@ -115,9 +115,11 @@ private:
 
   TH1I *hTotalADCEvent, *hTotalRCEHitsEvent, *hTotalRCEHitsChannel, *hTimesADCGoesOverThreshold,  *hNumMicroslicesInMillislice, *hNumNanoslicesInMicroslice, *hNumNanoslicesInMillislice;
   TH2I *hBitCheckAnd, *hBitCheckOr;
+  TH1D *hAvADCAllMillislice;
   TH2D *hAvADCChannelEvent;
   TProfile *hADCMeanChannel, *hADCRMSChannel, *hRCEDNoiseChannel, *hAsymmetry;
-  std::map<int,TProfile*> hADCChannelMap;
+  std::map<int,TProfile*> hADCChannel;
+  std::map<int,TH1D*> hAvADCMillislice;
 
   TH1I *hTotalWaveformEvent, *hTotalSSPHitsEvent, *hTotalSSPHitsChannel, *hTimesWaveformGoesOverThreshold;
   TH2D *hAvWaveformChannelEvent;
@@ -147,22 +149,25 @@ void lbne::OnlineMonitoring::beginSubRun(const art::SubRun &sr) {
   // Nomenclature: Name is used to save the histogram, Title has format : histogramTitle_histDrawOptions_canvasOptions;x-title;y-title;z-title
 
   // RCE hists
-  hADCMeanChannel             = new TProfile("ADCMeanChannel","RCE ADC Mean_\"histl\"_none;Channel;RCE ADC Mean",2048,0,2048);
-  hADCRMSChannel              = new TProfile("ADCRMSChannel","RCE ADC RMS_\"histl\"_none;Channel;RCE ADC RMS",2048,0,2048);
-  hAvADCChannelEvent          = new TH2D("AvADCChannelEvent","Average RCE ADC Value_\"colz\"_none;Event;Channel",100,0,100,2048,0,2048);
-  hRCEDNoiseChannel           = new TProfile("RCEDNoiseChannel","RCE DNoise_\"colz\"_none;Channel;DNoise",2048,0,2048);
-  hTotalADCEvent              = new TH1I("TotalADCEvent","Total RCE ADC_\"colz\"_logy;Total ADC;",100,0,1000000000);
-  hTotalRCEHitsEvent          = new TH1I("TotalRCEHitsEvent","Total RCE Hits in Event_\"colz\"_logy;Total RCE Hits;",100,0,10000000);
-  hTotalRCEHitsChannel        = new TH1I("TotalRCEHitsChannel","Total RCE Hits by Channel_\"colz\"_none;Channel;Total RCE Hits;",2048,0,2048);
-  hNumMicroslicesInMillislice = new TH1I("NumMicroslicesInMillislice","Number of Microslices in Millislice_\"colz\"_none;Millislice;Number of Microslices;",16,100,116);
-  hNumNanoslicesInMicroslice  = new TH1I("NumNanoslicesInMicroslice","Number of Nanoslices in Microslice_\"colz\"_logy;Number of Nanoslices;",1000,0,1100);
-  hNumNanoslicesInMillislice  = new TH1I("NumNanoslicesInMillislice","Number of Nanoslices in Millislice_\"colz\"_logy;Number of Nanoslices;",1000,0,11000);
-  hTimesADCGoesOverThreshold  = new TH1I("TimesADCGoesOverThreshold","Times RCE ADC Over Threshold_\"colz\"_none;Times ADC Goes Over Threshold;",100,0,1000);
-  hAsymmetry                  = new TProfile("Asymmetry","Asymmetry of Bipolar Pulse_\"colz\"_none;Channel;Asymmetry",2048,0,2048);
-  hBitCheckAnd                = new TH2I("BitCheckAnd","ADC Bits Always On_\"colz\"_none;Channel;Bit",2048,0,2048,16,0,16);
-  hBitCheckOr                 = new TH2I("BitCheckOr","ADC Bits Always Off_\"colz\"_none;Channel;Bit",2048,0,2048,16,0,16);
+  hADCMeanChannel                = new TProfile("ADCMeanChannel","RCE ADC Mean_\"histl\"_none;Channel;RCE ADC Mean",2048,0,2048);
+  hADCRMSChannel                 = new TProfile("ADCRMSChannel","RCE ADC RMS_\"histl\"_none;Channel;RCE ADC RMS",2048,0,2048);
+  hAvADCChannelEvent             = new TH2D("AvADCChannelEvent","Average RCE ADC Value_\"colz\"_none;Event;Channel",100,0,100,2048,0,2048);
+  hRCEDNoiseChannel              = new TProfile("RCEDNoiseChannel","RCE DNoise_\"colz\"_none;Channel;DNoise",2048,0,2048);
+  hTotalADCEvent                 = new TH1I("TotalADCEvent","Total RCE ADC_\"colz\"_logy;Total ADC;",100,0,1000000000);
+  hTotalRCEHitsEvent             = new TH1I("TotalRCEHitsEvent","Total RCE Hits in Event_\"colz\"_logy;Total RCE Hits;",100,0,10000000);
+  hTotalRCEHitsChannel           = new TH1I("TotalRCEHitsChannel","Total RCE Hits by Channel_\"colz\"_none;Channel;Total RCE Hits;",2048,0,2048);
+  hNumMicroslicesInMillislice    = new TH1I("NumMicroslicesInMillislice","Number of Microslices in Millislice_\"colz\"_none;Millislice;Number of Microslices;",16,100,116);
+  hNumNanoslicesInMicroslice     = new TH1I("NumNanoslicesInMicroslice","Number of Nanoslices in Microslice_\"colz\"_logy;Number of Nanoslices;",1000,0,1100);
+  hNumNanoslicesInMillislice     = new TH1I("NumNanoslicesInMillislice","Number of Nanoslices in Millislice_\"colz\"_logy;Number of Nanoslices;",1000,0,11000);
+  hTimesADCGoesOverThreshold     = new TH1I("TimesADCGoesOverThreshold","Times RCE ADC Over Threshold_\"colz\"_none;Times ADC Goes Over Threshold;",100,0,1000);
+  hAsymmetry                     = new TProfile("Asymmetry","Asymmetry of Bipolar Pulse_\"colz\"_none;Channel;Asymmetry",2048,0,2048);
+  hBitCheckAnd                   = new TH2I("BitCheckAnd","ADC Bits Always On_\"colz\"_none;Channel;Bit",2048,0,2048,16,0,16);
+  hBitCheckOr                    = new TH2I("BitCheckOr","ADC Bits Always Off_\"colz\"_none;Channel;Bit",2048,0,2048,16,0,16);
+  hAvADCAllMillislice            = new TH1D("AvADCAllMillislice","Av ADC for all Millislices_\"colz\"_none;Event;Av ADC",10000,0,10000);
   for (unsigned int channel = 0; channel < 2048; ++channel)
-    hADCChannelMap[channel]   = new TProfile("ADCChannel"+TString(std::to_string(channel)),"ADC v Tick for Channel "+TString(std::to_string(channel))+";Tick;ADC;",5000,0,5000);
+    hADCChannel[channel]         = new TProfile("ADCChannel"+TString(std::to_string(channel)),"ADC v Tick for Channel "+TString(std::to_string(channel))+";Tick;ADC;",5000,0,5000);
+  for (unsigned int millislice = 0; millislice < 16; ++millislice)
+    hAvADCMillislice[millislice] = new TH1D("AvADCMillislice"+TString(std::to_string(millislice)),"Av ADC for Millislice "+TString(std::to_string(millislice))+";Event;Av ADC;",10000,0,10000);
 
   // SSP hists
   hWaveformMeanChannel            = new TProfile("WaveformMeanChannel","SSP ADC Mean_\"histl\"_none;Channel;SSP ADC Mean",96,0,96);
@@ -298,7 +303,7 @@ void lbne::OnlineMonitoring::monitoringRCE(DQMvector ADCs) {
     for (unsigned int tick = 0; tick < ADCs.at(channel).size(); tick++) {
 
       // Fill hists for tick
-      hADCChannelMap.at(channel)->Fill(tick,ADCs.at(channel).at(tick));
+      hADCChannel.at(channel)->Fill(tick,ADCs.at(channel).at(tick));
       if (channel) hRCEDNoiseChannel->Fill(channel,ADCs.at(channel).at(tick)-ADCs.at(channel-1).at(tick));
 
       // Increase variables
@@ -353,6 +358,18 @@ void lbne::OnlineMonitoring::monitoringRCE(DQMvector ADCs) {
   hTotalADCEvent            ->Fill(fTotalADC);
   hTotalRCEHitsEvent        ->Fill(fTotalRCEHitsEvent);
   hTimesADCGoesOverThreshold->Fill(fTimesADCGoesOverThreshold);
+
+  // Find average ADCs for each millislice
+  for (unsigned int millislice = 0; millislice < ADCs.size()/128; ++millislice) {
+    std::vector<int> millisliceADCs;
+    for (unsigned int channel = millislice*128; channel < (millislice*128)+127; ++channel)
+      if (ADCs.at(channel).size())
+	millisliceADCs.push_back(TMath::Mean(ADCs.at(channel).begin(),ADCs.at(channel).end()));
+    if (!millisliceADCs.size()) continue;
+    double mean = TMath::Mean(millisliceADCs.begin(),millisliceADCs.end());
+    hAvADCMillislice.at(millislice)->Fill(fEventNumber, mean);
+    hAvADCAllMillislice            ->Fill(fEventNumber, mean);
+  }
 
 }
 
@@ -679,7 +696,7 @@ void lbne::OnlineMonitoring::endSubRun(art::SubRun const &sr) {
     TObjArray *histTitle = TString(_h->GetTitle()).Tokenize(fPathDelimiter);
     _h->Draw((char*)histTitle->At(1)->GetName());
     TPaveText *canvTitle = new TPaveText(0.05,0.92,0.6,0.98,"brNDC");
-    canvTitle->AddText((std::string(histTitle->At(0)->GetName())+": Run "+std::to_string(fRun)+", SubRub "+std::to_string(fSubrun)).c_str());
+    canvTitle->AddText((std::string(histTitle->At(0)->GetName())+": Run "+std::to_string(fRun)+", SubRun "+std::to_string(fSubrun)).c_str());
     canvTitle->Draw();
     if (strstr(histTitle->At(2)->GetName(),"logy")) fCanvas->SetLogy(1);
     else fCanvas->SetLogy(0);
@@ -692,8 +709,10 @@ void lbne::OnlineMonitoring::endSubRun(art::SubRun const &sr) {
   }
 
   // Write other histograms
+  for (unsigned int millislice = 0; millislice < 16; ++millislice)
+    hAvADCMillislice.at(millislice)->Write();
   for (unsigned int channel = 0; channel < 2048; ++channel)
-    hADCChannelMap.at(channel)->Write();
+    hADCChannel.at(channel)->Write();
 
   mf::LogInfo("Monitoring") << "Saved monitoring for run " << sr.run() << ", subRun " << sr.subRun() << " in " << fHistSavePath;
 
@@ -721,6 +740,7 @@ void lbne::OnlineMonitoring::reset() {
 
 // Add histograms to histogram array
 void lbne::OnlineMonitoring::addHists() {
+  fHistArray.Add(hAvADCAllMillislice);
   fHistArray.Add(hSSPDNoiseChannel); fHistArray.Add(hWaveformMeanChannel); fHistArray.Add(hWaveformRMSChannel); fHistArray.Add(hAvWaveformChannelEvent); fHistArray.Add(hTotalSSPHitsChannel);
   fHistArray.Add(hTimesWaveformGoesOverThreshold); fHistArray.Add(hTotalWaveformEvent); fHistArray.Add(hTotalSSPHitsEvent);
   fHistArray.Add(hNumMicroslicesInMillislice); fHistArray.Add(hRCEDNoiseChannel); fHistArray.Add(hADCMeanChannel); fHistArray.Add(hADCRMSChannel); fHistArray.Add(hAvADCChannelEvent); fHistArray.Add(hTotalRCEHitsChannel);
