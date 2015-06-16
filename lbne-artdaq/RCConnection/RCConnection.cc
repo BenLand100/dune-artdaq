@@ -1,4 +1,6 @@
 
+#include "messagefacility/MessageLogger/MessageLogger.h"
+
 #include "RCConnection.hh"
 #include "I3JSON.hh"
 
@@ -6,6 +8,7 @@
 
 #include <string>
 #include <iostream>
+#include <algorithm>
 
 namespace lbne {
 
@@ -14,11 +17,8 @@ namespace lbne {
     connection_opened_(false)
   {
   }
-
-  void RCConnection::Send(const std::string& source, const std::string& msg, 
-			  const std::string& severity) {
-
-    std::string json_msg = MsgToRCJSON(source, msg, severity);
+  
+  void RCConnection::Send(const std::string& json_msg) {
 
     // 0MQ sockets are not thread safe, so make sure only one thread
     // is calling the "Send" function (and thereby using the
@@ -37,11 +37,27 @@ namespace lbne {
     try {
       socket_->send(zmq_msg, 0);
     } catch (const zmq::error_t& errt) {
-      std::cerr << "Error in RCConnection: Caught exception attempting to send " << 
-	"0MQ message \"" << msg << "\" to RunControl; rethrowing" << std::endl;
+      mf::LogWarning("RCConnection") << "Caught exception attempting to send " << 
+	"JSON object via 0MQ to RunControl; rethrowing. Object was \"" << json_msg << "\"";
       throw errt;
     }
   }
+
+  void RCConnection::SendMessage(const std::string& service, const std::string& msg, 
+				 const std::string& severity) {
+    std::string json_msg = MsgToRCJSON(service, msg, severity);
+    Send(json_msg);
+  }
+
+  void RCConnection::SendMetric(const std::string& service, const std::string& varname, 
+				const std::string& value) {
+
+    std::string varname_nospaces = varname;
+    std::replace( varname_nospaces.begin(), varname_nospaces.end(), ' ', '.');
+    std::string json_msg = MetricToRCJSON(service, varname_nospaces, value);
+    Send(json_msg);
+  }
+
 
   void RCConnection::InitConnection() {
 

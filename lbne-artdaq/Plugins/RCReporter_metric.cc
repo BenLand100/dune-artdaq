@@ -36,17 +36,25 @@ namespace lbne {
 
     virtual std::string getLibName() { return "RCReporter"; }
 
-    virtual void sendMetric(std::string name, std::string value, std::string unit ) 
-    {
+    // JCF, 6/11/15
 
+    // For now, at least, the "unit" argument to sendMetric (whose
+    // signature is defined in artdaq) will be ignored (though I may
+    // later add an additional field including the unit), so I'll
+    // locally turn off the ensuing warning
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-parameter"
+
+
+    virtual void sendMetric(std::string name, std::string value, std::string unit) 
+    {
       if (!stopped_) {
 
-      	std::ostringstream metric_msg_oss;
-      	metric_msg_oss << name << ": " << value << " == " << unit << std::endl;
-
-	RCConnection::Get().Send( getLibName(), metric_msg_oss.str(), "Info");
+	RCConnection::Get().SendMetric( getLibName(), name, value);
       }
     }
+#pragma GCC diagnostic pop
 
     virtual void sendMetric(std::string name, int value, std::string unit ) 
     { 

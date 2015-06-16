@@ -28,13 +28,19 @@ public:
     return connection;
   }
 
-  void Send(const std::string& source, const std::string& msg, const std::string& severity);
+  void SendMessage(const std::string& service, const std::string& msg, 
+		   const std::string& severity);
+
+  void SendMetric(const std::string& service, const std::string& varname, 
+		  const std::string& value);
 
 private:
   RCConnection();  // Guarantee the class completely controls its own
 		   // creation; necessary for a singleton
 
   void InitConnection();
+
+  void Send(const std::string& json_msg);
 
   const std::string runcontrol_socket_address_;
   bool connection_opened_;

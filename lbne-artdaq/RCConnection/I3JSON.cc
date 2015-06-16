@@ -118,13 +118,7 @@ ostream& operator<<(ostream& os, const value_t& value)
   return(os);
 }
 
-  std::string MsgToRCJSON(const std::string& label, const std::string& msg,
-			  const std::string& severity) {
-
-    object_t json_msg;
-    json_msg["msg"] = msg.c_str();
-    json_msg["source"] = label.c_str();
-    json_msg["severity"] = severity.c_str();
+  std::string Timestamp() {
 
     // JCF, 4/29/15
 
@@ -139,7 +133,7 @@ ostream& operator<<(ostream& os, const value_t& value)
     auto seconds_since_epoch(
 			     std::chrono::duration_cast<std::chrono::seconds>(now.time_since_epoch()));
     auto microseconds_since_epoch(
-			     std::chrono::duration_cast<std::chrono::microseconds>(now.time_since_epoch()));
+				  std::chrono::duration_cast<std::chrono::microseconds>(now.time_since_epoch()));
 
     // Construct time_t using 'seconds_since_epoch' rather than 'now' since it is
     // implementation-defined whether the value is rounded or truncated.
@@ -153,8 +147,37 @@ ostream& operator<<(ostream& os, const value_t& value)
       throw cet::exception("I3JSON") << "Failed call to std::strftime in formatting timestring";
     }
       
-    json_msg["t"] = std::string(seconds_precision) +
+    return std::string(seconds_precision) +
       std::to_string(microseconds_since_epoch.count() % 1000000);
+  }
+
+  std::string MsgToRCJSON(const std::string& label, const std::string& msg,
+			  const std::string& severity) { 
+
+    object_t json_msg;
+
+    json_msg["type"] = "message";
+    json_msg["service"] = label.c_str();
+    json_msg["msg"] = msg.c_str();
+    json_msg["severity"] = severity.c_str();
+    json_msg["t"] = Timestamp();
+
+    std::ostringstream json_msg_oss;
+    json_msg_oss << json_msg;
+
+    return json_msg_oss.str();
+  }
+
+  std::string MetricToRCJSON(const std::string& label, const std::string& varname,
+			     const std::string& value) { 
+
+    object_t json_msg;
+
+    json_msg["type"] = "moni";
+    json_msg["service"] = label.c_str();
+    json_msg["varname"] = varname.c_str();
+    json_msg["value"] = value.c_str();
+    json_msg["t"] = Timestamp();
 
     std::ostringstream json_msg_oss;
     json_msg_oss << json_msg;
