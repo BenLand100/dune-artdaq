@@ -116,6 +116,7 @@ private:
   TH1I *hTotalADCEvent, *hTotalRCEHitsEvent, *hTotalRCEHitsChannel, *hTimesADCGoesOverThreshold,  *hNumMicroslicesInMillislice, *hNumNanoslicesInMicroslice, *hNumNanoslicesInMillislice;
   TH2I *hBitCheckAnd, *hBitCheckOr;
   TH1D *hAvADCAllMillislice;
+  //std::unique_ptr<TH1D> hAvADCAllMillislice;
   TH2D *hAvADCChannelEvent;
   TProfile *hADCMeanChannel, *hADCRMSChannel, *hRCEDNoiseChannel, *hAsymmetry;
   std::map<int,TProfile*> hADCChannel;
@@ -163,6 +164,7 @@ void lbne::OnlineMonitoring::beginSubRun(const art::SubRun &sr) {
   hAsymmetry                     = new TProfile("Asymmetry","Asymmetry of Bipolar Pulse_\"colz\"_none;Channel;Asymmetry",2048,0,2048);
   hBitCheckAnd                   = new TH2I("BitCheckAnd","ADC Bits Always On_\"colz\"_none;Channel;Bit",2048,0,2048,16,0,16);
   hBitCheckOr                    = new TH2I("BitCheckOr","ADC Bits Always Off_\"colz\"_none;Channel;Bit",2048,0,2048,16,0,16);
+  //hAvADCAllMillislice            = (std::unique_ptr<TH1D>) new TH1D("AvADCAllMillislice","Av ADC for all Millislices_\"colz\"_none;Event;Av ADC",10000,0,10000);
   hAvADCAllMillislice            = new TH1D("AvADCAllMillislice","Av ADC for all Millislices_\"colz\"_none;Event;Av ADC",10000,0,10000);
   for (unsigned int channel = 0; channel < 2048; ++channel)
     hADCChannel[channel]         = new TProfile("ADCChannel"+TString(std::to_string(channel)),"ADC v Tick for Channel "+TString(std::to_string(channel))+";Tick;ADC;",5000,0,5000);
@@ -721,6 +723,8 @@ void lbne::OnlineMonitoring::endSubRun(art::SubRun const &sr) {
   cmd << fHistSavePath.Data() << "monitoringJob.sh " << sr.run() << " " << sr.subRun() << " " << fHistSavePath.Data() << " &";
   system(cmd.str().c_str());
 
+  // Free the memory for the histograms
+  fHistArray.Delete();
 }
 
 void lbne::OnlineMonitoring::reset() {
@@ -740,6 +744,8 @@ void lbne::OnlineMonitoring::reset() {
 
 // Add histograms to histogram array
 void lbne::OnlineMonitoring::addHists() {
+
+  // The order the histograms are added will be the order they're displayed on the web!
   fHistArray.Add(hAvADCAllMillislice);
   fHistArray.Add(hSSPDNoiseChannel); fHistArray.Add(hWaveformMeanChannel); fHistArray.Add(hWaveformRMSChannel); fHistArray.Add(hAvWaveformChannelEvent); fHistArray.Add(hTotalSSPHitsChannel);
   fHistArray.Add(hTimesWaveformGoesOverThreshold); fHistArray.Add(hTotalWaveformEvent); fHistArray.Add(hTotalSSPHitsEvent);
