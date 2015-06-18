@@ -27,6 +27,7 @@
 #include <typeinfo>
 #include <thread>
 #include <stdio.h>
+#include <sys/stat.h>
 
 #include <TH1.h>
 #include <TH2.h>
@@ -78,7 +79,7 @@ private:
 
   // File directories and paths
   const TString fDataDirName   = "/data/lbnedaq/data/";
-  const TString fHistSavePath  = "/data/lbnedaq/scratch/wallbank/monitoring/";
+  const TString fHistSavePath  = "/data/lbnedaq/monitoring/";
   const TString fHistSaveType  = ".png";
   const TString fPathDelimiter = "_";
 
@@ -685,11 +686,21 @@ void lbne::OnlineMonitoring::endSubRun(art::SubRun const &sr) {
   // Add all histograms to the array for saving
   addHists();
 
-  // Write the html for the web pages
-  ofstream imageHTML((fHistSavePath+TString("index.html").Data()));
+  // Get directory for this run
+  std::ostringstream directory;
+  directory << fHistSavePath << "Run" << sr.run() << "Subrun" << sr.subRun() << "/";
+  TString HistSaveDirectory(directory.str());
+
+  // Make the directory to save the files
+  std::ostringstream cmd;
+  cmd << "touch " << directory.str() << "; rm -rf " << directory.str() << "; mkdir " << directory.str();
+  system(cmd.str().c_str());
 
   // Make a root file with all the histograms in
-  TFile *outFile = TFile::Open(fHistSavePath+TString("monitoringHistograms.root"),"RECREATE");
+  TFile *outFile = TFile::Open(HistSaveDirectory+TString("monitoringHistograms.root"),"RECREATE");
+
+  // Make the html for the web pages
+  ofstream imageHTML((HistSaveDirectory+TString("index.html").Data()));
 
   // Save all the histograms as images and write to file
   for (int histIt = 0; histIt < fHistArray.GetEntriesFast(); ++histIt) {
@@ -704,24 +715,28 @@ void lbne::OnlineMonitoring::endSubRun(art::SubRun const &sr) {
     else fCanvas->SetLogy(0);
     fCanvas->Modified();
     fCanvas->Update();
-    fCanvas->SaveAs(fHistSavePath+TString(_h->GetName())+fHistSaveType);
+    fCanvas->SaveAs(HistSaveDirectory+TString(_h->GetName())+fHistSaveType);
     outFile->cd();
     _h->Write();
     imageHTML << "<img src=\"" << (TString(_h->GetName())+fHistSaveType).Data() << "\">" << std::endl;
   }
 
+  imageHTML.close();
+
   // Write other histograms
+  outFile->cd();
   for (unsigned int millislice = 0; millislice < 16; ++millislice)
     hAvADCMillislice.at(millislice)->Write();
   for (unsigned int channel = 0; channel < 2048; ++channel)
     hADCChannel.at(channel)->Write();
+  outFile->Close();
 
-  mf::LogInfo("Monitoring") << "Saved monitoring for run " << sr.run() << ", subRun " << sr.subRun() << " in " << fHistSavePath;
+  // Add run file
+  ofstream tmp((HistSaveDirectory+TString("run").Data()));
+  tmp << sr.run() << " " << sr.subRun();
+  tmp.close();
 
-  // Copy the images over to the web server
-  std::ostringstream cmd;
-  cmd << fHistSavePath.Data() << "monitoringJob.sh " << sr.run() << " " << sr.subRun() << " " << fHistSavePath.Data() << " &";
-  system(cmd.str().c_str());
+  mf::LogInfo("Monitoring") << "Monitoring for run " << sr.run() << ", subRun " << sr.subRun() << " is viewable at http://lbne-dqm.fnal.gov/OnlineMonitoring/Run" << sr.run() << "Subrun" << sr.subRun();
 
   // Free the memory for the histograms
   fHistArray.Delete();
