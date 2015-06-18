@@ -11,8 +11,9 @@ do
 	# Get run/subrun
 	read -r runsubrun < ${directory}/run
 	rm -f $directory/run
-	run=${runsubrun[0]}
-	subrun=${runsubrun[1]}
+	rsr=( ${runsubrun} )
+	run=${rsr[0]}
+	subrun=${rsr[1]}
 
 	# Copy the directory to the server
 	scp -r $directory ${host}:/web/sites/lbne-dqm.fnal.gov/htdocs/OnlineMonitoring
