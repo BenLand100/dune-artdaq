@@ -1,4 +1,4 @@
-#!bin/bash
+#!/bin/bash
 
 host=wallbank@lbnegpvm01.fnal.gov
 

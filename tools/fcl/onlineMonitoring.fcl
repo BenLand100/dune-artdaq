@@ -25,3 +25,4 @@ physics:
   end_paths: [ analysis ]
 }
 
+physics.analyzers.monitoring.MakeTree: "true"
