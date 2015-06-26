@@ -87,10 +87,6 @@ private:
   const TString fPathDelimiter = "_";
   TString fHistSaveDirectory;
 
-  // Run options
-  bool _verbose = false;
-  bool _daqtest = false;
-
   // SubRun flags
   bool fIsRCE, fIsSSP, receivedData, checkedFileSizes;
 
@@ -133,6 +129,7 @@ private:
 
   // Histograms
   TObjArray fHistArray;
+  std::map<std::string,std::string> fFigureCaptions;
   TCanvas *fCanvas;
 
   TH1I *hTotalADCEvent, *hTotalRCEHitsEvent, *hTotalRCEHitsChannel, *hTimesADCGoesOverThreshold,  *hNumMicroslicesInMillislice, *hNumNanoslicesInMicroslice, *hNumNanoslicesInMillislice;
@@ -151,6 +148,14 @@ private:
   TH1I *hNumSubDetectorsPresent, *hSizeOfFiles;
   TH1D *hSizeOfFilesPerEvent;
 
+  // Debug ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  // Run options
+  bool _verbose = false;
+  bool _daqtest = false;
+  // bool _interestingchannelsfilled = false;
+  // std::vector<int> fInterestingChannels;
+  // std::map<int,TH1D*> hDebugChannels;
+
 };
 
 lbne::OnlineMonitoring::OnlineMonitoring(fhicl::ParameterSet const &pset) : EDAnalyzer(pset) {
@@ -162,6 +167,7 @@ lbne::OnlineMonitoring::OnlineMonitoring(fhicl::ParameterSet const &pset) : EDAn
 
 void lbne::OnlineMonitoring::reconfigure(fhicl::ParameterSet const &p) {
   fMakeTree = p.get<bool>("MakeTree");
+  // fInterestingChannels = {24,25,52,152,153,180};
 }
 
 void lbne::OnlineMonitoring::beginSubRun(const art::SubRun &sr) {
@@ -171,7 +177,7 @@ void lbne::OnlineMonitoring::beginSubRun(const art::SubRun &sr) {
   // Set up new subrun
   fHistArray.Clear();
   fCanvas = new TCanvas("canv","",800,600);
-  receivedData = false; checkedFileSizes = false; fIsRCE = true; fIsSSP = true;
+  receivedData = false; checkedFileSizes = false; fIsRCE = true; fIsSSP = true; //_interestingchannelsfilled = false;
 
   // Get directory for this run
   std::ostringstream directory;
@@ -220,6 +226,8 @@ void lbne::OnlineMonitoring::beginSubRun(const art::SubRun &sr) {
     hAvADCMillislice[millislice]        = new TH1D("AvADCMillislice"+TString(std::to_string(millislice)),"Av ADC for Millislice "+TString(std::to_string(millislice))+";Event;Av ADC;",10000,0,10000);
     hAvADCMillisliceChannel[millislice] = new TH1D("AvADCMillisliceChannel"+TString(std::to_string(millislice)),"Av ADC v Channel for Millislice "+TString(std::to_string(millislice))+";Channel;Av ADC;",128,0,128);
   }
+  // for (unsigned int interestingchannel = 0; interestingchannel < fInterestingChannels.size(); ++interestingchannel)
+  //   hDebugChannels[fInterestingChannels.at(interestingchannel)] = new TH1D("Channel"+TString(std::to_string(fInterestingChannels.at(interestingchannel)))+"SingleEvent","Channel "+TString(std::to_string(fInterestingChannels.at(interestingchannel)))+" for Single Event",5000,0,5000);
 
   // SSP hists
   hWaveformMeanChannel            = new TProfile("WaveformMeanChannel","SSP ADC Mean_\"histl\"_none;Channel;SSP ADC Mean",fNSSPChannels,0,fNSSPChannels);
@@ -354,8 +362,10 @@ void lbne::OnlineMonitoring::monitoringRCE(DQMvector ADCs) {
     for (unsigned int tick = 0; tick < ADCs.at(channel).size(); tick++) {
 
       // Fill hists for tick
+      // if (!_interestingchannelsfilled && std::find(fInterestingChannels.begin(), fInterestingChannels.end(), channel) != fInterestingChannels.end())
+      // 	hDebugChannels.at(channel)->Fill(tick,ADCs.at(channel).at(tick));
       hADCChannel.at(channel)->Fill(tick,ADCs.at(channel).at(tick));
-      if (channel) hRCEDNoiseChannel->Fill(channel,ADCs.at(channel).at(tick)-ADCs.at(channel-1).at(tick));
+      if (channel && !ADCs.at(channel-1).empty()) hRCEDNoiseChannel->Fill(channel,ADCs.at(channel).at(tick)-ADCs.at(channel-1).at(tick));
 
       // Increase variables
       fTotalADC += ADCs.at(channel).at(tick);
@@ -423,6 +433,8 @@ void lbne::OnlineMonitoring::monitoringRCE(DQMvector ADCs) {
     double mean = TMath::Mean(millisliceADCs.begin(),millisliceADCs.end());
     hAvADCMillislice.at(millislice)->Fill(fEventNumber, mean);
     hAvADCAllMillislice            ->Fill(fEventNumber, mean);
+
+    // _interestingchannelsfilled = true;
   }
 
 }
@@ -524,56 +536,58 @@ DQMvector lbne::OnlineMonitoring::analyzeRCE(art::Handle<artdaq::Fragments> rawR
     unsigned int fragmentID = (unsigned int)((chanIt/128)+100);
     unsigned int sample = (unsigned int)(chanIt%128);
 
-    if (tpcFragmentMap.find(fragmentID) == tpcFragmentMap.end() )
-      continue;
-
-    if (_verbose)
-      std::cout << "%%DQM---------- Channel " << chanIt << ", fragment " << fragmentID << " and sample " << sample << std::endl;
-
-    // Find the millislice fragment this channel lives in
-    unsigned int fragIndex = tpcFragmentMap[fragmentID];
-
-    // Get the millislice fragment
-    const artdaq::Fragment &frag = ((*rawRCE)[fragIndex]);
-    lbne::TpcMilliSliceFragment millisliceFragment(frag);
-
-    // Number of microslices in millislice fragments
-    auto nMicroSlices = millisliceFragment.microSliceCount();
-
-    hNumMicroslicesInMillislice->SetBinContent(fragmentID,nMicroSlices);
-
-    if (_verbose)
-      std::cout << "%%DQM--------------- TpcMilliSlice fragment " << fragmentID << " contains " << nMicroSlices << " microslices" << std::endl;
-
-    for (unsigned int microIt = 0; microIt < nMicroSlices; microIt++) {
-
-      // Get the microslice
-      std::unique_ptr <const lbne::TpcMicroSlice> microslice = millisliceFragment.microSlice(microIt);
-      auto nNanoSlices = microslice->nanoSliceCount();
-
-      if (_daqtest)
-	if (nNanoSlices > 0) std::cout << "Number of nanoslices... " << nNanoSlices << std::endl;
+    // Analyse this fragment if it exists
+    if (tpcFragmentMap.find(fragmentID) != tpcFragmentMap.end() ) {
 
       if (_verbose)
-	std::cout << "%%DQM-------------------- TpcMicroSlice " << microIt << " contains " << nNanoSlices << " nanoslices" << std::endl;
+	std::cout << "%%DQM---------- Channel " << chanIt << ", fragment " << fragmentID << " and sample " << sample << std::endl;
 
-      for (unsigned int nanoIt = 0; nanoIt < nNanoSlices; nanoIt++) {
+      // Find the millislice fragment this channel lives in
+      unsigned int fragIndex = tpcFragmentMap.at(fragmentID);
 
-	receivedData = true;
+      // Get the millislice fragment
+      const artdaq::Fragment &frag = ((*rawRCE)[fragIndex]);
+      lbne::TpcMilliSliceFragment millisliceFragment(frag);
 
-	// Get the ADC value
-	uint16_t adc = std::numeric_limits<uint16_t>::max();
-	bool success = microslice->nanosliceSampleValue(nanoIt, sample, adc);
+      // Number of microslices in millislice fragments
+      auto nMicroSlices = millisliceFragment.microSliceCount();
 
-	if (success) {
-	  if (_daqtest)
-	    if (adc > 0) std::cout << "adc = " << adc << std::endl;
-	  adcVector.push_back((int)adc);
-	}
+      hNumMicroslicesInMillislice->SetBinContent(fragmentID,nMicroSlices);
 
-      } // nanoslice loop
+      if (_verbose)
+	std::cout << "%%DQM--------------- TpcMilliSlice fragment " << fragmentID << " contains " << nMicroSlices << " microslices" << std::endl;
 
-    } // microslice loop
+      for (unsigned int microIt = 0; microIt < nMicroSlices; microIt++) {
+
+	// Get the microslice
+	std::unique_ptr <const lbne::TpcMicroSlice> microslice = millisliceFragment.microSlice(microIt);
+	auto nNanoSlices = microslice->nanoSliceCount();
+
+	if (_daqtest)
+	  if (nNanoSlices > 0) std::cout << "Number of nanoslices... " << nNanoSlices << std::endl;
+
+	if (_verbose)
+	  std::cout << "%%DQM-------------------- TpcMicroSlice " << microIt << " contains " << nNanoSlices << " nanoslices" << std::endl;
+
+	for (unsigned int nanoIt = 0; nanoIt < nNanoSlices; nanoIt++) {
+
+	  receivedData = true;
+
+	  // Get the ADC value
+	  uint16_t adc = std::numeric_limits<uint16_t>::max();
+	  bool success = microslice->nanosliceSampleValue(nanoIt, sample, adc);
+
+	  if (success) {
+	    if (_daqtest)
+	      if (adc > 0) std::cout << "adc = " << adc << std::endl;
+	    adcVector.push_back((int)adc);
+	  }
+
+	} // nanoslice loop
+
+      } // microslice loop
+
+    } // analyse fragment loop
 
     ADCs.push_back(adcVector);
 
@@ -739,6 +753,8 @@ void lbne::OnlineMonitoring::endSubRun(art::SubRun const &sr) {
 
   // Make the html for the web pages
   ofstream imageHTML((fHistSaveDirectory+TString("index.html").Data()));
+  imageHTML << "<head><link rel=\"stylesheet\" type=\"text/css\" href=\"../../style/style.css\"></head>" << std::endl << "<body><div class=\"bannertop\"></div>";
+  imageHTML << "<h1 align=center>Monitoring for Run " << sr.run() << ", Subrun " << sr.subRun() << "</h1>" << std::endl;
 
   fDataFile->cd();
 
@@ -761,7 +777,7 @@ void lbne::OnlineMonitoring::endSubRun(art::SubRun const &sr) {
     fCanvas->SaveAs(fHistSaveDirectory+TString(_h->GetName())+fHistSaveType);
     fDataFile->cd();
     _h->Write();
-    imageHTML << "<img src=\"" << (TString(_h->GetName())+fHistSaveType).Data() << "\">" << std::endl;
+    imageHTML << "<figure><img src=\"" << (TString(_h->GetName())+fHistSaveType).Data() << "\" width=\"650\"><figcaption>" << fFigureCaptions.at(_h->GetName()) << "</figcaption></figure>" << std::endl;
   }
 
   TCanvas *mslicecanv = new TCanvas("mslicecanv","",800,600);
@@ -778,16 +794,25 @@ void lbne::OnlineMonitoring::endSubRun(art::SubRun const &sr) {
   mslicecanv->cd();
   l->Draw("same");
   mslicecanv->SaveAs(fHistSaveDirectory+TString("AvADCMillisliceChannel")+fHistSaveType);
-  imageHTML << "<img src=\"AvADCMillisliceChannel.png>" << std::endl;
+  imageHTML << "<figure><img src=\"AvADCMillisliceChannel.png\" width=\"650\"><figcaption>" << "Average ADC count across the channels read out by each millislice present in the data." << "</figcaption></figure>" << std::endl;
 
+  imageHTML << "<div class=\"bannerbottom\"></div></body>" << std::endl;
   imageHTML.close();
 
   // Write other histograms
   fDataFile->cd();
-  for (unsigned int millislice = 0; millislice < fNRCEMillislices; ++millislice)
+  // for (unsigned int interestingchannel = 0; interestingchannel < fInterestingChannels.size(); ++interestingchannel) {
+  //   hDebugChannels.at(fInterestingChannels.at(interestingchannel))->Write();
+  //   hDebugChannels.at(fInterestingChannels.at(interestingchannel))->Delete();
+  // }
+  for (unsigned int millislice = 0; millislice < fNRCEMillislices; ++millislice) {
     hAvADCMillislice.at(millislice)->Write();
-  for (unsigned int channel = 0; channel < fNRCEChannels; ++channel)
+    hAvADCMillislice.at(millislice)->Delete();
+  }
+  for (unsigned int channel = 0; channel < fNRCEChannels; ++channel) {
     hADCChannel.at(channel)->Write();
+    hADCChannel.at(channel)->Delete();
+  }
   fDataFile->Close();
 
   // Add run file
@@ -823,13 +848,47 @@ void lbne::OnlineMonitoring::reset() {
 void lbne::OnlineMonitoring::addHists() {
 
   // The order the histograms are added will be the order they're displayed on the web!
-  fHistArray.Add(hAvADCAllMillislice);
-  fHistArray.Add(hSSPDNoiseChannel); fHistArray.Add(hWaveformMeanChannel); fHistArray.Add(hWaveformRMSChannel); fHistArray.Add(hAvWaveformChannelEvent); fHistArray.Add(hTotalSSPHitsChannel);
-  fHistArray.Add(hTimesWaveformGoesOverThreshold); fHistArray.Add(hTotalWaveformEvent); fHistArray.Add(hTotalSSPHitsEvent);
-  fHistArray.Add(hNumMicroslicesInMillislice); fHistArray.Add(hRCEDNoiseChannel); fHistArray.Add(hADCMeanChannel); fHistArray.Add(hADCRMSChannel); fHistArray.Add(hAvADCChannelEvent); fHistArray.Add(hTotalRCEHitsChannel);
-  fHistArray.Add(hAsymmetry); fHistArray.Add(hTotalADCEvent); fHistArray.Add(hTotalRCEHitsEvent); fHistArray.Add(hTimesADCGoesOverThreshold);
-  fHistArray.Add(hNumSubDetectorsPresent); fHistArray.Add(hSizeOfFiles); fHistArray.Add(hSizeOfFilesPerEvent);
+  fHistArray.Add(hADCMeanChannel); fHistArray.Add(hADCRMSChannel);
+  fHistArray.Add(hAvADCAllMillislice); fHistArray.Add(hRCEDNoiseChannel);
+  fHistArray.Add(hAvADCChannelEvent); fHistArray.Add(hTotalRCEHitsChannel);
+  fHistArray.Add(hTotalADCEvent); fHistArray.Add(hTotalRCEHitsEvent);
+  fHistArray.Add(hAsymmetry); fHistArray.Add(hTimesADCGoesOverThreshold);
   fHistArray.Add(hBitCheckAnd); fHistArray.Add(hBitCheckOr);
+  fHistArray.Add(hNumMicroslicesInMillislice); 
+
+  fHistArray.Add(hAvWaveformChannelEvent);
+  fHistArray.Add(hWaveformMeanChannel); fHistArray.Add(hWaveformRMSChannel);
+  fHistArray.Add(hSSPDNoiseChannel); fHistArray.Add(hTotalSSPHitsChannel);
+  fHistArray.Add(hTotalWaveformEvent); fHistArray.Add(hTotalSSPHitsEvent);
+  fHistArray.Add(hTimesWaveformGoesOverThreshold);
+
+  fHistArray.Add(hSizeOfFiles); fHistArray.Add(hSizeOfFilesPerEvent);
+  fHistArray.Add(hNumSubDetectorsPresent);
+
+  fFigureCaptions["ADCMeanChannel"] = "Mean ADC values for each channel read out by the RCEs (profiled over all events read)";
+  fFigureCaptions["ADCRMSChannel"] = "RMS of the ADC values for each channel read out by the RCEs (profiled over all events read)";
+  fFigureCaptions["AvADCAllMillislice"] = "Average RCE ADC across an entire millislice for the first 10000 events (one entry per millislice in each event)";
+  fFigureCaptions["RCEDNoiseChannel"] = "DNoise (difference in ADC between neighbouring channels for the same tick) for the RCE ADCs (profiled over all events read)";
+  fFigureCaptions["AvADCChannelEvent"] = "Average RCE ADC across a channel for an event, shown for the first 100 events";
+  fFigureCaptions["TotalRCEHitsChannel"] = "Total number of RCE hits in each channel across all events";
+  fFigureCaptions["TotalADCEvent"] = "Total RCE ADC recorded for an event across all channels (one entry per event)";
+  fFigureCaptions["TotalRCEHitsEvent"] = "Total number of hits recorded on the RCEs per event (one entry per event)";
+  fFigureCaptions["Asymmetry"] = "Asymmetry of the bipolar pulse measured on the induction planes, by channel (profiled across all events). Zero means completely symmetric pulse";
+  fFigureCaptions["TimesADCGoesOverThreshold"] = "Number of times an RCE hit goes over a set ADC threshold";
+  fFigureCaptions["BitCheckAnd"] = "Check for stuck bits: bits which are always on";
+  fFigureCaptions["BitCheckOr"] = "Check for stuck bits: bits which are always off";
+  fFigureCaptions["NumMicroslicesInMillislice"] = "Number of microslices in a millislice in this run";
+  fFigureCaptions["AvWaveformChannelEvent"] = "Average SSP ADC across a channel for an event, shown for the first 100 events";
+  fFigureCaptions["WaveformMeanChannel"] = "Mean ADC values for each channel read out by the SSPs (profiled over all events read)";
+  fFigureCaptions["WaveformRMSChannel"] = "RMS of the ADC values for each channel read out by the SSPs (profiled over all events read)";
+  fFigureCaptions["SSPDNoiseChannel"] = "DNoise (difference in ADC between neighbouring channels for the same tick) for the RCE ADCs (profiled over all events read)";
+  fFigureCaptions["TotalSSPHitsChannel"] = "Total number of SSP hits in each channel across all events";
+  fFigureCaptions["TotalWaveformEvent"] = "Total SSP ADC recorded for an event across all channels (one entry per event)";
+  fFigureCaptions["TotalSSPHitsEvent"] = "Total number of hits recorded on the SSPs per event (one entry per event)";
+  fFigureCaptions["TimesWaveformGoesOverThreshold"] = "Number of times an SSP hit goes over a set ADC threshold";
+  fFigureCaptions["SizeOfFiles"] = "Size of the data files made by the DAQ for the last 20 runs";
+  fFigureCaptions["SizeOfFilesPerEvent"] = "Size of event in each of the last 20 data files made by the DAQ (size of file / number of events in file)";
+  fFigureCaptions["NumSubDetectorsPresent"] = "Number of subdetectors present in each event in the data (one entry per event)";
 }
  
 DEFINE_ART_MODULE(lbne::OnlineMonitoring)
