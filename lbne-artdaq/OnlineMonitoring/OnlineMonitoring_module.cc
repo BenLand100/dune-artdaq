@@ -777,7 +777,7 @@ void lbne::OnlineMonitoring::endSubRun(art::SubRun const &sr) {
     fCanvas->SaveAs(fHistSaveDirectory+TString(_h->GetName())+fHistSaveType);
     fDataFile->cd();
     _h->Write();
-    imageHTML << "<figure><img src=\"" << (TString(_h->GetName())+fHistSaveType).Data() << "\" width=\"650\"><figcaption>" << fFigureCaptions.at(_h->GetName()) << "</figcaption></figure>" << std::endl;
+    imageHTML << "<figure><a href=\"" << (TString(_h->GetName())+fHistSaveType).Data() << "\"><img src=\"" << (TString(_h->GetName())+fHistSaveType).Data() << "\" width=\"650\"></a><figcaption>" << fFigureCaptions.at(_h->GetName()) << "</figcaption></figure>" << std::endl;
   }
 
   TCanvas *mslicecanv = new TCanvas("mslicecanv","",800,600);
@@ -794,7 +794,7 @@ void lbne::OnlineMonitoring::endSubRun(art::SubRun const &sr) {
   mslicecanv->cd();
   l->Draw("same");
   mslicecanv->SaveAs(fHistSaveDirectory+TString("AvADCMillisliceChannel")+fHistSaveType);
-  imageHTML << "<figure><img src=\"AvADCMillisliceChannel.png\" width=\"650\"><figcaption>" << "Average ADC count across the channels read out by each millislice present in the data." << "</figcaption></figure>" << std::endl;
+  imageHTML << "<figure><a href=\"AvADCMillisliceChannel.png\"><img src=\"AvADCMillisliceChannel.png\" width=\"650\"></a><figcaption>" << "Average ADC count across the channels read out by each millislice present in the data." << "</figcaption></figure>" << std::endl;
 
   imageHTML << "<div class=\"bannerbottom\"></div></body>" << std::endl;
   imageHTML.close();
