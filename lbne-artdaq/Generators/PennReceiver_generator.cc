@@ -41,29 +41,8 @@ lbne::PennReceiver::PennReceiver(fhicl::ParameterSet const & ps)
   penn_client_timeout_usecs_ =
 	ps.get<uint32_t>("penn_client_timeout_usecs", 0);
 
-  // Penn trigger options
-  penn_mode_calibration_ =
-    ps.get<bool>("penn_mode_calibration", false);
-  penn_mode_external_triggers_ =
-    ps.get<bool>("penn_mode_external_triggers", false);
-  penn_mode_muon_triggers_ =
-    ps.get<bool>("penn_mode_muon_triggers", false);
 
-  // Penn hit masks
-  penn_hit_mask_bsu_ =
-    ps.get<uint64_t>("penn_hit_mask_bsu", 0x0003FFFFFFFFFFFF);
-  penn_hit_mask_tsu_ =
-    ps.get<uint64_t>("penn_hit_mask_tsu", 0x000000FFFFFFFFFF);
-  
-  // Penn microslice duration
-  penn_data_microslice_size_ =
-        ps.get<uint32_t>("penn_data_microslice_size", 7);
 
-  // data stream connection parameters
-  penn_data_dest_host_ =
-	ps.get<std::string>("penn_data_dest_host", "127.0.0.1");
-  penn_data_dest_port_ =
-	ps.get<uint16_t>("penn_data_dest_port", 8989);
 
   ////////////////////////////
   // BOARDREADER OPTIONS
@@ -126,12 +105,75 @@ lbne::PennReceiver::PennReceiver(fhicl::ParameterSet const & ps)
   penn_data_debug_partial_recv_ =
         ps.get<bool>("penn_data_debug_partial_recv", false);
 
+  ///
+  /// Penn board options
+  ///
+
+  // -- data stream connection parameters
+  penn_data_dest_host_ =
+  ps.get<std::string>("penn_data_buffer.daq_host", "127.0.0.1");
+  penn_data_dest_port_ =
+  ps.get<uint16_t>("penn_data_buffer.daq_port", 8989);
+  // Penn microslice duration
+  penn_data_microslice_size_ =
+        ps.get<uint32_t>("penn_data_buffer.daq_microslice_size", 7);
+
+
+  // -- Channel masks
+  penn_channel_mask_bsu_ =
+    ps.get<uint64_t>("channel_mask.BSU", 0x0003FFFFFFFFFFFF);
+  penn_channel_mask_tsu_ =
+    ps.get<uint64_t>("channel_mask.BSU", 0x000000FFFFFFFFFF);
+
+  // -- How to deal with external triggers
+  penn_ext_triggers_mask_ = ps.get<uint8_t>("external_triggers.mask",0x1F);
+  penn_ext_triggers_echo_ = ps.get<bool>("external_triggers.echo_triggers",true);
+  penn_ext_triggers_echo_width_ = ps.get<uint8_t>("external_triggers.echo_width",2);
+
+  // -- Calibrations
+  penn_calib_period_ = ps.get<uint16_t>("calibration.period",10);
+  penn_calib_channel_mask_ = ps.get<uint8_t>("calibration.channel_mask",0xF);
+  penn_calib_pulse_width_ = ps.get<uint8_t>("calibration.pulse_width",2);
+
+  // -- Muon triggers
+  // This is the more elaborated part:
+  // First grab the global parameters
+  penn_muon_num_triggers_ = ps.get<uint32_t>("muon_triggers.num_triggers",4);
+  penn_trig_out_pulse_width_ = ps.get<uint8_t>("muon_triggers.trig_out_width",2);
+  penn_trig_in_window_ = ps.get<uint8_t>("muon_triggers.trig_window",3);
+  penn_trig_lockdown_window_ = ps.get<uint8_t>("muon_triggers.trig_lockdown",3);
+
+  // And now grab the individual trigger mask configuration
+  for (uint32_t i = 0; i < penn_muon_num_triggers_; ++i) {
+    TriggerMaskConfig mask;
+    std::ostringstream trig_name = "muon_triggers.trigger_";
+    trig_name << i;
+    mask.id           = ps.get<std::string>(trig_name.str() + ".id");
+    mask.id_mask      = ps.get<std::string>(trig_name.str() + ".id_mask");
+    mask.prescale     = ps.get<uint8_t>(trig_name.str() + ".prescale");
+    mask.logic        = ps.get<uint8_t>(trig_name.str() + ".logic");
+    mask.g1_logic     = ps.get<uint8_t>(trig_name.str() + ".group1.logic");
+    mask.g1_mask_bsu  = ps.get<uint64_t>(trig_name.str() + ".group1.BSU");
+    mask.g1_mask_tsu  = ps.get<uint64_t>(trig_name.str() + ".group1.TSU");
+    mask.g2_logic     = ps.get<uint8_t>(trig_name.str() + ".group2.logic");
+    mask.g2_mask_bsu  = ps.get<uint64_t>(trig_name.str() + ".group2.BSU");
+    mask.g2_mask_tsu  = ps.get<uint64_t>(trig_name.str() + ".group2.TSU");
+
+    muon_triggers_.push_back(mask);
+
+  }
+
+
+   ///
+   /// -- Configuration loaded.
+   ///
 
 
   // Create an PENN client instance
   penn_client_ = std::unique_ptr<lbne::PennClient>(new lbne::PennClient(
 		  penn_client_host_addr_, penn_client_host_port_, penn_client_timeout_usecs_));
 
+  // What does this actually do? FLushes the registers?
   penn_client_->send_command("HardReset");
   sleep(1);
   std::ostringstream config_frag;
@@ -449,26 +491,49 @@ uint32_t lbne::PennReceiver::validate_millislice_from_fragment_buffer(uint8_t* d
 }
 
 void lbne::PennReceiver::generate_config_frag(std::ostringstream& config_frag) {
+  // I don't understand what is going on here. Has to be
+  // restructured for the configuration currently being used in the PTBreader software
 
-  config_frag << "<RunMode>" << " "
-	      << " <Calibrations>" << (penn_mode_calibration_       ? "True" : "False") << "</Calibrations>" << " "
-	      << " <ExtTriggers>"  << (penn_mode_external_triggers_ ? "True" : "False") << "</ExtTriggers>"  << " "
-	      << " <MuonTriggers>" << (penn_mode_muon_triggers_     ? "True" : "False") << "</MuonTriggers>" << " "
-	      << "</RunMode>" << " ";
+  // The config wrapper is added by the PennClient class just prior to send.
+ // config_frag << "<config>";
 
-  config_frag << "<MuonTriggers>" << " "
-	      << " <HitMaskBSU>" << penn_hit_mask_bsu_ << "</HitMaskBSU>" << " "
-	      << " <HitMaskTSU>" << penn_hit_mask_tsu_ << "</HitMaskTSU>" << " "
-	      << "</MuonTriggers>" << " ";
+  // -- DataBuffer section. Controls the reader itself
+  config_frag << "<DataBuffer>"
+      << "<DaqHost>" << penn_data_dest_host_ << "</DaqHost>"
+      << "<DaqPort>" << penn_data_dest_port_ << "</DaqPortt>"
+      // FIXME: Add missing variables
+      // Should we have a rollover or just use a microslice size for time?
+      << "<RollOver>" << penn_data_dest_rollover_ << "</RollOver>"
+      << "<MicroSliceDuration>" << penn_data_microslice_size_ << "</MicroSliceDuration>"
+      << "</DataBuffer>";
 
-  config_frag << "<DataBuffer>" << " "
-	      << " <DaqHost>" << penn_data_dest_host_ << "</DaqHost>" << " "
-	      << " <DaqPort>" << penn_data_dest_port_ << "</DaqPort>" << " "
-	      << "</DataBuffer>" << " ";
+  // -- Channel masks section. Controls the reader itself
+  config_frag << "<ChannelMask>"
+      << "<BSU>0x" << std::hex << penn_channel_mask_bsu_ << std::dec << "</BSU>"
+      << "<TSU>0x" << std::hex << penn_channel_mask_tsu_ << std::dec << "</TSU>"
+      << "</ChannelMask>";
 
-  config_frag << "<Microslice>" << " "
-	      << " <Duration>" << penn_data_microslice_size_ << "</Duration>" << " "
-	      << "</Microslice>" << " ";
+  config_frag << "<MuonTriggers num_triggers=\"" << penn_muon_num_triggers_ << "\">"
+      << "<TrigOutWidth>0x" << std::hex << penn_trig_out_pulse_width_  << std::dec << "</TrigOutWidth>"
+      << "<TriggerWindow>0x" << std::hex << penn_trig_in_window_  << std::dec << "</TriggerWindow>"
+      << "<LockdownWindow>0x" << std::hex << penn_trig_lockdown_window_  << std::dec << "</LockdownWindow>";
+  for (size_t i = 0; i < penn_muon_num_triggers_; ++i) {
+    // I would rather put masks as hex strings to be easier to understand
+    config_frag << "<TriggerMask id=\"" << muon_triggers_.at(i).id << "\" mask=\"" <<muon_triggers_.at(i).id_mask <<  "\">"
+        << "<ExtLogic>0x" << std::hex << muon_triggers_.at(i).logic << std::dec << "</ExtLogic>"
+        << "<Prescale>" << muon_triggers_.at(i).prescale << "</Prescale>"
+        << "<group1><Logic>0x" << std::hex << muon_triggers_.at(i).g1_logic << std::dec << "</Logic>"
+        << "<BSU>0x" << std::hex << muon_triggers_.at(i).g1_mask_bsu << std::dec << "</BSU>"
+        << "<TSU>0x" << std::hex << muon_triggers_.at(i).g1_mask_tsu << std::dec << "</TSU></group1>"
+        << "<group2><Logic>0x" << std::hex << muon_triggers_.at(i).g2_logic << std::dec << "</Logic>"
+        << "<BSU>0x" << std::hex << muon_triggers_.at(i).g2_mask_bsu << std::dec << "</BSU>"
+        << "<TSU>0x" << std::hex << muon_triggers_.at(i).g2_mask_tsu << std::dec << "</TSU></group2>"
+        << "</TriggerMask>";
+  }
+
+  // And finally close the tag
+  //config_frag << "</config>";
+
 }
 
 void lbne::PennReceiver::generate_config_frag_emulator(std::ostringstream& config_frag) {
