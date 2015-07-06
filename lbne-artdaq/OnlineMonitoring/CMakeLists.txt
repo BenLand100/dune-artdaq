@@ -19,6 +19,6 @@ simple_plugin(OnlineMonitoring "module" lbne-raw-data_Overlays
   ${MF_UTILITIES}
   ${CETLIB}
   ${ROOT_BASIC_LIB_LIST}
-  lbne-artdaq_RCConnection
-  lbne-artdaq_I3JSON
+#  lbne-artdaq_RCConnection
+#  lbne-artdaq_I3JSON
 )
