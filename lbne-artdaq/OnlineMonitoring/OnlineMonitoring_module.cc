@@ -152,9 +152,9 @@ private:
   // Run options
   bool _verbose = false;
   bool _daqtest = false;
-  // bool _interestingchannelsfilled = false;
-  // std::vector<int> fInterestingChannels;
-  // std::map<int,TH1D*> hDebugChannels;
+  bool _interestingchannelsfilled = false;
+  std::vector<int> fInterestingChannels;
+  std::map<int,TH1D*> hDebugChannels;
 
 };
 
@@ -167,7 +167,7 @@ lbne::OnlineMonitoring::OnlineMonitoring(fhicl::ParameterSet const &pset) : EDAn
 
 void lbne::OnlineMonitoring::reconfigure(fhicl::ParameterSet const &p) {
   fMakeTree = p.get<bool>("MakeTree");
-  // fInterestingChannels = {24,25,52,152,153,180};
+  fInterestingChannels = {24,25,52,152,153,180};
 }
 
 void lbne::OnlineMonitoring::beginSubRun(const art::SubRun &sr) {
@@ -177,7 +177,7 @@ void lbne::OnlineMonitoring::beginSubRun(const art::SubRun &sr) {
   // Set up new subrun
   fHistArray.Clear();
   fCanvas = new TCanvas("canv","",800,600);
-  receivedData = false; checkedFileSizes = false; fIsRCE = true; fIsSSP = true; //_interestingchannelsfilled = false;
+  receivedData = false; checkedFileSizes = false; fIsRCE = true; fIsSSP = true; _interestingchannelsfilled = false;
 
   // Get directory for this run
   std::ostringstream directory;
@@ -226,8 +226,8 @@ void lbne::OnlineMonitoring::beginSubRun(const art::SubRun &sr) {
     hAvADCMillislice[millislice]        = new TH1D("AvADCMillislice"+TString(std::to_string(millislice)),"Av ADC for Millislice "+TString(std::to_string(millislice))+";Event;Av ADC;",10000,0,10000);
     hAvADCMillisliceChannel[millislice] = new TH1D("AvADCMillisliceChannel"+TString(std::to_string(millislice)),"Av ADC v Channel for Millislice "+TString(std::to_string(millislice))+";Channel;Av ADC;",128,0,128);
   }
-  // for (unsigned int interestingchannel = 0; interestingchannel < fInterestingChannels.size(); ++interestingchannel)
-  //   hDebugChannels[fInterestingChannels.at(interestingchannel)] = new TH1D("Channel"+TString(std::to_string(fInterestingChannels.at(interestingchannel)))+"SingleEvent","Channel "+TString(std::to_string(fInterestingChannels.at(interestingchannel)))+" for Single Event",5000,0,5000);
+  for (unsigned int interestingchannel = 0; interestingchannel < fInterestingChannels.size(); ++interestingchannel)
+    hDebugChannels[fInterestingChannels.at(interestingchannel)] = new TH1D("Channel"+TString(std::to_string(fInterestingChannels.at(interestingchannel)))+"SingleEvent","Channel "+TString(std::to_string(fInterestingChannels.at(interestingchannel)))+" for Single Event",5000,0,5000);
 
   // SSP hists
   hWaveformMeanChannel            = new TProfile("WaveformMeanChannel","SSP ADC Mean_\"histl\"_none;Channel;SSP ADC Mean",fNSSPChannels,0,fNSSPChannels);
@@ -362,8 +362,8 @@ void lbne::OnlineMonitoring::monitoringRCE(DQMvector ADCs) {
     for (unsigned int tick = 0; tick < ADCs.at(channel).size(); tick++) {
 
       // Fill hists for tick
-      // if (!_interestingchannelsfilled && std::find(fInterestingChannels.begin(), fInterestingChannels.end(), channel) != fInterestingChannels.end())
-      // 	hDebugChannels.at(channel)->Fill(tick,ADCs.at(channel).at(tick));
+      if (!_interestingchannelsfilled && std::find(fInterestingChannels.begin(), fInterestingChannels.end(), channel) != fInterestingChannels.end())
+      	hDebugChannels.at(channel)->Fill(tick,ADCs.at(channel).at(tick));
       hADCChannel.at(channel)->Fill(tick,ADCs.at(channel).at(tick));
       if (channel && !ADCs.at(channel-1).empty()) hRCEDNoiseChannel->Fill(channel,ADCs.at(channel).at(tick)-ADCs.at(channel-1).at(tick));
 
@@ -434,7 +434,7 @@ void lbne::OnlineMonitoring::monitoringRCE(DQMvector ADCs) {
     hAvADCMillislice.at(millislice)->Fill(fEventNumber, mean);
     hAvADCAllMillislice            ->Fill(fEventNumber, mean);
 
-    // _interestingchannelsfilled = true;
+    _interestingchannelsfilled = true;
   }
 
 }
@@ -753,7 +753,7 @@ void lbne::OnlineMonitoring::endSubRun(art::SubRun const &sr) {
 
   // Make the html for the web pages
   ofstream imageHTML((fHistSaveDirectory+TString("index.html").Data()));
-  imageHTML << "<head><link rel=\"stylesheet\" type=\"text/css\" href=\"../../style/style.css\"></head>" << std::endl << "<body><div class=\"bannertop\"></div>";
+  imageHTML << "<head><link rel=\"stylesheet\" type=\"text/css\" href=\"../../style/style.css\"><title>35t: Run " << sr.run() << ", Subrun " << sr.subRun() <<"</title></head>" << std::endl << "<body><div class=\"bannertop\"></div>";
   imageHTML << "<h1 align=center>Monitoring for Run " << sr.run() << ", Subrun " << sr.subRun() << "</h1>" << std::endl;
 
   fDataFile->cd();
@@ -801,10 +801,10 @@ void lbne::OnlineMonitoring::endSubRun(art::SubRun const &sr) {
 
   // Write other histograms
   fDataFile->cd();
-  // for (unsigned int interestingchannel = 0; interestingchannel < fInterestingChannels.size(); ++interestingchannel) {
-  //   hDebugChannels.at(fInterestingChannels.at(interestingchannel))->Write();
-  //   hDebugChannels.at(fInterestingChannels.at(interestingchannel))->Delete();
-  // }
+  for (unsigned int interestingchannel = 0; interestingchannel < fInterestingChannels.size(); ++interestingchannel) {
+    hDebugChannels.at(fInterestingChannels.at(interestingchannel))->Write();
+    hDebugChannels.at(fInterestingChannels.at(interestingchannel))->Delete();
+  }
   for (unsigned int millislice = 0; millislice < fNRCEMillislices; ++millislice) {
     hAvADCMillislice.at(millislice)->Write();
     hAvADCMillislice.at(millislice)->Delete();
