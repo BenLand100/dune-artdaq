@@ -35,9 +35,9 @@ lbne::PennReceiver::PennReceiver(fhicl::ParameterSet const & ps)
 
   // config stream connection parameters
   penn_client_host_addr_ =
-	ps.get<std::string>("penn_client_host_addr", "localhost");
+	ps.get<std::string>("penn_client_host_addr", "192.168.1.2");
   penn_client_host_port_ =
-	ps.get<std::string>("penn_client_host_port", "9999");
+	ps.get<std::string>("penn_client_host_port", "8992");
   penn_client_timeout_usecs_ =
 	ps.get<uint32_t>("penn_client_timeout_usecs", 0);
 
@@ -111,9 +111,9 @@ lbne::PennReceiver::PennReceiver(fhicl::ParameterSet const & ps)
 
   // -- data stream connection parameters
   penn_data_dest_host_ =
-  ps.get<std::string>("penn_data_buffer.daq_host", "127.0.0.1");
+  ps.get<std::string>("penn_data_buffer.daq_host", "lbnedaq5");
   penn_data_dest_port_ =
-  ps.get<uint16_t>("penn_data_buffer.daq_port", 8989);
+  ps.get<uint16_t>("penn_data_buffer.daq_port", 8992);
   // Penn microslice duration
   penn_data_microslice_size_ =
         ps.get<uint32_t>("penn_data_buffer.daq_microslice_size", 7);
@@ -123,7 +123,7 @@ lbne::PennReceiver::PennReceiver(fhicl::ParameterSet const & ps)
   penn_channel_mask_bsu_ =
     ps.get<uint64_t>("channel_mask.BSU", 0x0003FFFFFFFFFFFF);
   penn_channel_mask_tsu_ =
-    ps.get<uint64_t>("channel_mask.BSU", 0x000000FFFFFFFFFF);
+    ps.get<uint64_t>("channel_mask.TSU", 0x000000FFFFFFFFFF);
 
   // -- How to deal with external triggers
   penn_ext_triggers_mask_ = ps.get<uint8_t>("external_triggers.mask",0x1F);
@@ -192,7 +192,7 @@ lbne::PennReceiver::PennReceiver(fhicl::ParameterSet const & ps)
 #endif //!PENN_EMULATOR
 
   // Create a PennDataReceiver instance
-  data_receiver_ = 
+  data_receiver_ =
     std::unique_ptr<lbne::PennDataReceiver>(new lbne::PennDataReceiver(receiver_debug_level, receiver_tick_period_usecs_, penn_data_dest_port_,
 								       millislice_size_, millislice_overlap_size_, rate_test));
 
