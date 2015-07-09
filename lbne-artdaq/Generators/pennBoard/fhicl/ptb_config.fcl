@@ -6,7 +6,7 @@
     first_event_builder_rank: 1
     event_builder_count: 2
 
-        generator: PennReceiver
+    generator: PennReceiver
     fragment_type: PENN
     fragment_id: 0
     board_id: 0
@@ -55,86 +55,86 @@
  	# PTB configuration options
  	#
  	
- 	penn_data_buffer {
+ 	penn_data_buffer : {
  		daq_host 		: "localhost"
  		daq_port 		: 999
  		daq_rollover 	: 80 			# Number of packets before the slice is considered ready. Probably not needed.
  		daq_microslice_size	: 7			# There are (2^x)-1 clock ticks per microslice. This is a time based rollover
  	}
 
-	channel_mask {
+	channel_mask : {
 		BSU				: 0x1FFFFFFFFFFFF		# All 49 channels are ON
 		TSU 			: 0xFFFFFFFFFFFF		# All 48 channels are ON 
 	}
 
-	muon_triggers {
+	muon_triggers : {
 		trig_out_width	: 2						# Number of clock ticks that the trigger out pulse is high
 		trig_window		: 3						# Number of clock ticks that the input signal is stretched to account for time offsets between panels
 		trig_lockdown	: 11					# Number of clock ticks that the input signal is locked low after being high. Accounts for reflections.
 		num_triggers	: 4						# Number of different trigger masks
 
-		trigger_0 {
+		trigger_0 : {
 			id			: "A"					# Just something for debugging purposes
 			id_mask		: "1000"				# Not used at the moment. Same ID as the IP in the PL
 			logic		: 0						# Logic to be applied between groups (0: AND, 1: OR, 2: XOR) 
 			prescale	: 0						# Number of triggers that are ignored after a successful trigger
-			group1 {
+			group1 : {
 				logic	: 2						# XOR
 				BSU		: 0xFFFF				# BSU mask (RM 1-16)
 				TSU		: 0x0					# TSU mask
 			}
-			group2 {
+			group2 : {
 				logic	: 2						# AND
 				BSU		: 0x7F7E000000			# BSU mask (CL 1-13)
 				TSU		: 0x0					# TSU mask
 			}			    
 		}
 		
-		trigger_1 {
+		trigger_1 : {
 			id			: "B"					# Just something for debugging purposes
 			id_mask		: "0100"				# Not used at the moment. Same ID as the IP in the PL
 			logic		: 0						# Logic to be applied between groups (0: AND, 1: OR, 2: XOR) 
 			prescale	: 0						# Number of triggers that are ignored after a successful trigger
-			group1 {
+			group1 : {
 				logic	: 1						# XOR
 				BSU		: 0x0					# BSU mask
 				TSU		: 0x3F000000			# TSU mask (NU 1-6)
 			}
-			group2 {
+			group2 : {
 				logic	: 1						# AND
 				BSU		: 0x0					# BSU mask
 				TSU		: 0xFC0000000			# TSU mask (SL 1-6)
 			}			    
 		}
 
-		trigger_2 {
+		trigger_2 : {
 			id			: "C"					# Just something for debugging purposes
 			id_mask		: "0010"				# Not used at the moment. Same ID as the IP in the PL
 			logic		: 0						# Logic to be applied between groups (0: AND, 1: OR, 2: XOR) 
 			prescale	: 0						# Number of triggers that are ignored after a successful trigger
-			group1 {
+			group1 : {
 				logic	: 1						# XOR
 				BSU		: 0x0					# BSU mask
 				TSU		: 0xFC0000000000		# TSU mask (SU 1-6)
 			}
-			group2 {
+			group2 : {
 				logic	: 1						# AND
 				BSU		: 0x0					# BSU mask
 				TSU		: 0x3F000000000			# TSU mask (NL 1-6)
 			}			    
 		}
 			
-		trigger_3 {
+		trigger_3 : {
 			id			: "D"					# Just something for debugging purposes
 			id_mask		: "0001"				# Not used at the moment. Same ID as the IP in the PL
 			logic		: 0						# Logic to be applied between groups (0: AND, 1: OR, 2: XOR) 
 			prescale	: 0						# Number of triggers that are ignored after a successful trigger
-			group1 {
+			group1 : {
 				logic	: 1						# XOR
 				BSU		: 0x0					# BSU mask
 				TSU		: 0x7FE00				# TSU mask (EL 1-10)
 			}
-			group2 {
+			group2 : {
 				logic	: 1						# AND
 				BSU		: 0x0					# BSU mask
 				TSU		: 0x1FF					# TSU mask (WU 1-10)
@@ -143,13 +143,13 @@
 
 	}
 	
-	external_triggers {
+	external_triggers : {
 		mask			: 0x1F					# Mask the external triggers (receiving). There are 4 independent + 8 ored (total of 5 bits) 
 		echo_triggers	: true					# Should a trigger be sent back to the other systems?
 		echo_width		: 2						# Number of clock ticks the pulse should be high
 	}	
 	
-	calibration {
+	calibration : {
 		period			: 10					# Number of clock ticks between calibration pulse
 		channel_mask	: 0xF					# There are 4 independent channels. Which should receive the calibration pulse?
 		pulse_width		: 2						# Number of clock ticks the pulse should be high

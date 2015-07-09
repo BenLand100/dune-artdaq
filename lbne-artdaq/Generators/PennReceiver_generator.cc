@@ -500,7 +500,7 @@ void lbne::PennReceiver::generate_config_frag(std::ostringstream& config_frag) {
   // -- DataBuffer section. Controls the reader itself
   config_frag << "<DataBuffer>"
       << "<DaqHost>" << penn_data_dest_host_ << "</DaqHost>"
-      << "<DaqPort>" << penn_data_dest_port_ << "</DaqPortt>"
+      << "<DaqPort>" << penn_data_dest_port_ << "</DaqPort>"
       // FIXME: Add missing variables
       // Should we have a rollover or just use a microslice size for time?
       << "<RollOver>" << penn_data_dest_rollover_ << "</RollOver>"
