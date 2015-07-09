@@ -147,9 +147,7 @@ void lbne::PennClient::send_xml(std::string const & xml_frag)
 
 	// Wrap the XML fragment for this request in the root system tags
 	std::ostringstream xml_cmd;
-	xml_cmd << "<system>";
 	xml_cmd << xml_frag ;
-	xml_cmd << "</system>\n\f";
 
 	// Send the XML request to the PENNcomman
 	this->send(xml_cmd.str());

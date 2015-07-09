@@ -146,7 +146,7 @@ lbne::PennReceiver::PennReceiver(fhicl::ParameterSet const & ps)
   // And now grab the individual trigger mask configuration
   for (uint32_t i = 0; i < penn_muon_num_triggers_; ++i) {
     TriggerMaskConfig mask;
-    std::ostringstream trig_name = "muon_triggers.trigger_";
+    std::ostringstream trig_name("muon_triggers.trigger_");
     trig_name << i;
     mask.id           = ps.get<std::string>(trig_name.str() + ".id");
     mask.id_mask      = ps.get<std::string>(trig_name.str() + ".id_mask");
@@ -241,7 +241,7 @@ void lbne::PennReceiver::start(void)
 
 	// Send start command to PENN
 	penn_client_->send_command("SoftReset");
-	penn_client_->send_command("SetRunState", "Enable");
+	penn_client_->send_command("StartRun");
 
 }
 
@@ -250,7 +250,7 @@ void lbne::PennReceiver::stop(void)
 	mf::LogInfo("PennReceiver") << "stop() called";
 
 	// Instruct the PENN to stop
-	penn_client_->send_command("SetRunState", "Stopped");
+	penn_client_->send_command("StopRun");
 
 	// Stop the data receiver.
 	data_receiver_->stop();
