@@ -25,7 +25,9 @@ lbne::PennReceiver::PennReceiver(fhicl::ParameterSet const & ps)
   run_receiver_(false)
 {
 
+  mf::LogInfo("PennReceiver") << "JCF: OK before_id";
   int fragment_id = ps.get<int>("fragment_id");
+  mf::LogInfo("PennReceiver") << "JCF: OK after fragment_id";
   fragment_ids_.push_back(fragment_id);
 
   instance_name_for_metrics_ = "PennReceiver";
@@ -41,7 +43,7 @@ lbne::PennReceiver::PennReceiver(fhicl::ParameterSet const & ps)
   penn_client_timeout_usecs_ =
 	ps.get<uint32_t>("penn_client_timeout_usecs", 0);
 
-
+  mf::LogInfo("PennReceiver") << "JCF: OK after hardware options";
 
 
   ////////////////////////////
@@ -57,6 +59,8 @@ lbne::PennReceiver::PennReceiver(fhicl::ParameterSet const & ps)
   millislice_overlap_size_ = 
         ps.get<uint16_t>("millislice_overlap_size", 5);
 
+  mf::LogInfo("PennReceiver") << "JCF: OK after millislice size parameters";
+
   // boardreader printouts
   int receiver_debug_level =
 	ps.get<int>("receiver_debug_level", 0);
@@ -64,6 +68,8 @@ lbne::PennReceiver::PennReceiver(fhicl::ParameterSet const & ps)
     ps.get<uint32_t>("reporting_interval_fragments", 100);
   reporting_interval_time_ = 
     ps.get<uint32_t>("reporting_interval_time", 0);
+
+  mf::LogInfo("PennReceiver") << "JCF: OK after boardreader printouts";
 
   // boardreader buffer sizes
   raw_buffer_size_ =
@@ -79,7 +85,7 @@ lbne::PennReceiver::PennReceiver(fhicl::ParameterSet const & ps)
   }
 #endif
 
-
+  mf::LogInfo("PennReceiver") << "JCF: OK after boardreader buffer sizes";
   ////////////////////////////
   // EMULATOR OPTIONS
 
@@ -91,6 +97,8 @@ lbne::PennReceiver::PennReceiver(fhicl::ParameterSet const & ps)
   penn_data_frag_rate_ =
 	ps.get<float>("penn_data_frag_rate", 10.0);
 
+  mf::LogInfo("PennReceiver") << "JCF: OK after amount of data to generate";
+
   // type of data to generate
   penn_data_payload_mode_ =
 	ps.get<uint16_t>("penn_data_payload_mode", 0);
@@ -99,11 +107,15 @@ lbne::PennReceiver::PennReceiver(fhicl::ParameterSet const & ps)
   penn_data_fragment_microslice_at_ticks_ =
         ps.get<int32_t>("penn_data_fragment_microslice_at_ticks", 0);
 
+  mf::LogInfo("PennReceiver") << "JCF: OK after type of data to generate";
+
   // special debug options
   penn_data_repeat_microslices_ =
         ps.get<bool>("penn_data_repeat_microslices", false);
   penn_data_debug_partial_recv_ =
         ps.get<bool>("penn_data_debug_partial_recv", false);
+
+  mf::LogInfo("PennReceiver") << "JCF: OK after special debug options";
 
   ///
   /// Penn board options
@@ -114,6 +126,9 @@ lbne::PennReceiver::PennReceiver(fhicl::ParameterSet const & ps)
   ps.get<std::string>("penn_data_buffer.daq_host", "127.0.0.1");
   penn_data_dest_port_ =
   ps.get<uint16_t>("penn_data_buffer.daq_port", 8989);
+
+  mf::LogInfo("PennReceiver") << "JCF: OK after data stream connection parameters";
+
   // Penn microslice duration
   penn_data_microslice_size_ =
         ps.get<uint32_t>("penn_data_buffer.daq_microslice_size", 7);
@@ -123,17 +138,23 @@ lbne::PennReceiver::PennReceiver(fhicl::ParameterSet const & ps)
   penn_channel_mask_bsu_ =
     ps.get<uint64_t>("channel_mask.BSU", 0x0003FFFFFFFFFFFF);
   penn_channel_mask_tsu_ =
-    ps.get<uint64_t>("channel_mask.BSU", 0x000000FFFFFFFFFF);
+    ps.get<uint64_t>("channel_mask.TSU", 0x000000FFFFFFFFFF);
+
+  mf::LogInfo("PennReceiver") << "JCF: OK after channel masks";
 
   // -- How to deal with external triggers
   penn_ext_triggers_mask_ = ps.get<uint8_t>("external_triggers.mask",0x1F);
   penn_ext_triggers_echo_ = ps.get<bool>("external_triggers.echo_triggers",true);
   penn_ext_triggers_echo_width_ = ps.get<uint8_t>("external_triggers.echo_width",2);
 
+  mf::LogInfo("PennReceiver") << "JCF: OK after external triggers";
+
   // -- Calibrations
   penn_calib_period_ = ps.get<uint16_t>("calibration.period",10);
   penn_calib_channel_mask_ = ps.get<uint8_t>("calibration.channel_mask",0xF);
   penn_calib_pulse_width_ = ps.get<uint8_t>("calibration.pulse_width",2);
+
+  mf::LogInfo("PennReceiver") << "JCF: OK after calibrations";
 
   // -- Muon triggers
   // This is the more elaborated part:
@@ -143,11 +164,19 @@ lbne::PennReceiver::PennReceiver(fhicl::ParameterSet const & ps)
   penn_trig_in_window_ = ps.get<uint8_t>("muon_triggers.trig_window",3);
   penn_trig_lockdown_window_ = ps.get<uint8_t>("muon_triggers.trig_lockdown",3);
 
+  mf::LogInfo("PennReceiver") << "JCF: OK after muon triggers";
+
   // And now grab the individual trigger mask configuration
   for (uint32_t i = 0; i < penn_muon_num_triggers_; ++i) {
     TriggerMaskConfig mask;
-    std::ostringstream trig_name("muon_triggers.trigger_");
+    std::ostringstream trig_name;
+    trig_name << "muon_triggers.trigger_";
     trig_name << i;
+
+    std::string first_param = trig_name.str() + ".id";
+    
+    mf::LogInfo("PennReceiver") << "JCF: first muon trigger parameter is " << first_param;
+
     mask.id           = ps.get<std::string>(trig_name.str() + ".id");
     mask.id_mask      = ps.get<std::string>(trig_name.str() + ".id_mask");
     mask.prescale     = ps.get<uint8_t>(trig_name.str() + ".prescale");
@@ -160,6 +189,8 @@ lbne::PennReceiver::PennReceiver(fhicl::ParameterSet const & ps)
     mask.g2_mask_tsu  = ps.get<uint64_t>(trig_name.str() + ".group2.TSU");
 
     muon_triggers_.push_back(mask);
+
+    mf::LogInfo("PennReceiver") << "JCF: OK after muon trigger #" << i;
 
   }
 
@@ -509,25 +540,25 @@ void lbne::PennReceiver::generate_config_frag(std::ostringstream& config_frag) {
 
   // -- Channel masks section. Controls the reader itself
   config_frag << "<ChannelMask>"
-      << "<BSU>0x" << std::hex << penn_channel_mask_bsu_ << std::dec << "</BSU>"
-      << "<TSU>0x" << std::hex << penn_channel_mask_tsu_ << std::dec << "</TSU>"
+	      << "<BSU>0x" << std::hex << static_cast<int>(penn_channel_mask_bsu_) << std::dec << "</BSU>"
+	      << "<TSU>0x" << std::hex << static_cast<int>(penn_channel_mask_tsu_) << std::dec << "</TSU>"
       << "</ChannelMask>";
 
   config_frag << "<MuonTriggers num_triggers=\"" << penn_muon_num_triggers_ << "\">"
-      << "<TrigOutWidth>0x" << std::hex << penn_trig_out_pulse_width_  << std::dec << "</TrigOutWidth>"
-      << "<TriggerWindow>0x" << std::hex << penn_trig_in_window_  << std::dec << "</TriggerWindow>"
-      << "<LockdownWindow>0x" << std::hex << penn_trig_lockdown_window_  << std::dec << "</LockdownWindow>";
+	      << "<TrigOutWidth>0x" << std::hex << static_cast<int>(penn_trig_out_pulse_width_)  << std::dec << "</TrigOutWidth>"
+	      << "<TriggerWindow>0x" << std::hex << static_cast<int>(penn_trig_in_window_)  << std::dec << "</TriggerWindow>"
+	      << "<LockdownWindow>0x" << std::hex << static_cast<int>(penn_trig_lockdown_window_)  << std::dec << "</LockdownWindow>";
   for (size_t i = 0; i < penn_muon_num_triggers_; ++i) {
     // I would rather put masks as hex strings to be easier to understand
-    config_frag << "<TriggerMask id=\"" << muon_triggers_.at(i).id << "\" mask=\"" <<muon_triggers_.at(i).id_mask <<  "\">"
-        << "<ExtLogic>0x" << std::hex << muon_triggers_.at(i).logic << std::dec << "</ExtLogic>"
-        << "<Prescale>" << muon_triggers_.at(i).prescale << "</Prescale>"
-        << "<group1><Logic>0x" << std::hex << muon_triggers_.at(i).g1_logic << std::dec << "</Logic>"
-        << "<BSU>0x" << std::hex << muon_triggers_.at(i).g1_mask_bsu << std::dec << "</BSU>"
-        << "<TSU>0x" << std::hex << muon_triggers_.at(i).g1_mask_tsu << std::dec << "</TSU></group1>"
-        << "<group2><Logic>0x" << std::hex << muon_triggers_.at(i).g2_logic << std::dec << "</Logic>"
-        << "<BSU>0x" << std::hex << muon_triggers_.at(i).g2_mask_bsu << std::dec << "</BSU>"
-        << "<TSU>0x" << std::hex << muon_triggers_.at(i).g2_mask_tsu << std::dec << "</TSU></group2>"
+    config_frag << "<TriggerMask id=\"" << muon_triggers_.at(i).id << "\" mask=\"" << muon_triggers_.at(i).id_mask <<  "\">"
+		<< "<ExtLogic>0x" << std::hex << static_cast<int>(muon_triggers_.at(i).logic) << std::dec << "</ExtLogic>"
+		<< "<Prescale>" << static_cast<int>(muon_triggers_.at(i).prescale) << "</Prescale>"
+		<< "<group1><Logic>0x" << std::hex << static_cast<int>(muon_triggers_.at(i).g1_logic) << std::dec << "</Logic>"
+		<< "<BSU>0x" << std::hex << static_cast<int>(muon_triggers_.at(i).g1_mask_bsu) << std::dec << "</BSU>"
+		<< "<TSU>0x" << std::hex << static_cast<int>(muon_triggers_.at(i).g1_mask_tsu) << std::dec << "</TSU></group1>"
+		<< "<group2><Logic>0x" << std::hex << static_cast<int>(muon_triggers_.at(i).g2_logic) << std::dec << "</Logic>"
+		<< "<BSU>0x" << std::hex << static_cast<int>(muon_triggers_.at(i).g2_mask_bsu) << std::dec << "</BSU>"
+		<< "<TSU>0x" << std::hex << static_cast<int>(muon_triggers_.at(i).g2_mask_tsu) << std::dec << "</TSU></group2>"
         << "</TriggerMask>";
   }
 

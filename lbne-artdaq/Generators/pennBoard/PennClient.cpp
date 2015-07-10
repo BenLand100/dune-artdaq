@@ -127,7 +127,7 @@ void lbne::PennClient::send_command(std::string const & command)
 
 	// Build the XML fragment with command as empty closed tag
 	std::ostringstream xml_frag;
-	xml_frag << "<command><" << command << "/></command>";
+	xml_frag << "<command>" << command << "</command>";
 
 	// Send it
 	this->send_xml(xml_frag.str());
@@ -162,7 +162,8 @@ void lbne::PennClient::send_xml(std::string const & xml_frag)
 
 	while ( retries++ < max_retries) {
 	  response = this->receive();
-	  doc = xmlReadMemory(response.c_str(), response.length()-1, "noname.xml", NULL, 0);
+	  //	  doc = xmlReadMemory(response.c_str(), response.length()-1, "noname.xml", NULL, 0);
+	  doc = xmlReadMemory(response.c_str(), response.length(), "noname.xml", NULL, 0);
 	  if(doc != NULL) {
 	    break;
 	  }
