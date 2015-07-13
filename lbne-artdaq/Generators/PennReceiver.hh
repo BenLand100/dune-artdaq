@@ -96,7 +96,7 @@ typedef struct TriggerMaskConfig {
     // Number max number of frames in each microslice
     // FIXME: Check if it is necessary.
     // Probably going to be removed
-    uint16_t    penn_data_dest_rollover_;
+    uint32_t    penn_data_dest_rollover_;
 
     /// Channel masks
     uint64_t    penn_channel_mask_bsu_;

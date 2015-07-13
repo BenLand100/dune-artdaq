@@ -127,12 +127,16 @@ lbne::PennReceiver::PennReceiver(fhicl::ParameterSet const & ps)
   penn_data_dest_port_ =
   ps.get<uint16_t>("penn_data_buffer.daq_port", 8992);
 
+  penn_data_dest_rollover_ = 
+    ps.get<uint32_t>("penn_data_buffer.daq_rollover",80);
+
   mf::LogInfo("PennReceiver") << "JCF: OK after data stream connection parameters";
 
   // Penn microslice duration
   penn_data_microslice_size_ =
         ps.get<uint32_t>("penn_data_buffer.daq_microslice_size", 7);
 
+  
 
   // -- Channel masks
   penn_channel_mask_bsu_ =
