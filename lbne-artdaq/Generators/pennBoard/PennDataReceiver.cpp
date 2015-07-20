@@ -15,7 +15,15 @@
 
 #include "lbne-raw-data/Overlays/PennMicroSlice.hh"
 
-#define RECV_DEBUG(level) if (level <= debug_level_) mf::LogDebug("PennDataReceiver")
+// JCF, Jul-14-2015: I promoted mf::LogDebug up to mf::LogInfo here
+
+#define RECV_DEBUG(level) if (level <= debug_level_) mf::LogInfo("PennDataReceiver")
+
+namespace {
+
+  void lbne_display_bits(int identifier, void* memstart, size_t nbytes);
+
+}
 
 lbne::PennDataReceiver::PennDataReceiver(int debug_level, uint32_t tick_period_usecs,
 					 uint16_t receive_port, uint32_t millislice_size, 
@@ -118,6 +126,7 @@ void lbne::PennDataReceiver::start(void)
 	state_start_ptr_ = 0;
 
 #ifdef REBLOCK_PENN_USLICE
+	
 	// Clear the times used for calculating millislice boundaries
 	run_start_time_ = 0;
 	boundary_time_  = 0;
@@ -131,6 +140,7 @@ void lbne::PennDataReceiver::start(void)
 	remaining_payloads_recvd_timestamp_ = 0;
 	remaining_payloads_recvd_selftest_ = 0;
 	remaining_payloads_recvd_checksum_ = 0;
+
 #endif //REBLOCK_PENN_USLICE
 
         // Clear the counters used for the overlap period
@@ -454,18 +464,24 @@ void lbne::PennDataReceiver::do_read(void)
 void lbne::PennDataReceiver::handle_received_data(std::size_t length)
 {
 
-	if(debug_level_ > 6) {
-	  std::stringstream bitstr;
-	  bitstr << "Bits received: ";
-	  for(unsigned int i = 0; i < length; i++)
-	    bitstr << std::bitset<8>(*((reinterpret_cast<uint8_t*>(current_write_ptr_))+i)) << " ";
-	  RECV_DEBUG(6) << bitstr.str();
-	}
-
 	//update size of uslice component, uslice & mslice
 	state_nbytes_recvd_    += length;
 	microslice_size_recvd_ += length;
 	millislice_size_recvd_ += length;
+
+	// JCF, Jul-18-2015
+
+	// The four-byte chunks appear to be coming in in reverse
+	// order from the ptb_reader program, thus the calls to ntohl
+
+	for (decltype(length) i_l = 0; i_l < length/sizeof(uint32_t) ; ++i_l) {
+	  *(static_cast<uint32_t*>(current_write_ptr_)+i_l) = ntohl(*(static_cast<uint32_t*>(current_write_ptr_)+i_l));
+	}
+
+
+	lbne_display_bits(static_cast<int>(next_receive_state_), 
+			  current_write_ptr_,
+			  length);
 
 	//make pointer to the start of the current object (Header, Payload_Header, Payload*)
 	if(!state_start_ptr_)
@@ -492,12 +508,21 @@ void lbne::PennDataReceiver::handle_received_data(std::size_t length)
 	case ReceiveMicrosliceHeader:
 	  {
 
-	    //byte swap the block_size before we create the Header
-	    *((uint16_t*)state_start_ptr_ + 1) = ntohs(*((uint16_t*)state_start_ptr_ + 1));
+	    RECV_DEBUG(2) << "JCF: at start of \"case ReceiveMicrosliceHeader\"";
+	    
+	    // JCF, Jul-19-2015
+
+	    // x86 systems use Little Endian, so byte swap the
+	    // block_size before we create the Header
+
+	    *(static_cast<uint16_t*>(state_start_ptr_)+1) = ntohs(*(static_cast<uint16_t*>(state_start_ptr_)+1));
+
+	    // lbne_display_bits(static_cast<int>(next_receive_state_), 
+	    // static_cast<void*>(state_start_ptr_),
+	    // length);
 
 	    // Capture the microslice version, length and sequence ID from the header
-	    lbne::PennMicroSlice::Header* header;
-	    header = reinterpret_cast<lbne::PennMicroSlice::Header*>(state_start_ptr_);
+	    lbne::PennMicroSlice::Header* header = reinterpret_cast_checked<lbne::PennMicroSlice::Header*>( state_start_ptr_ );
 
 	    lbne::PennMicroSlice::Header::format_version_t microslice_version;
 	    lbne::PennMicroSlice::Header::sequence_id_t    sequence_id;
@@ -509,7 +534,7 @@ void lbne::PennDataReceiver::handle_received_data(std::size_t length)
 			  << " with size " << (unsigned int)microslice_size_
 			  << " sequence ID " << (unsigned int)sequence_id;
 
-	    RECV_DEBUG(5) << "Header bits: " << std::bitset<8>(microslice_version) << " " << std::bitset<8>(sequence_id) << " " << std::bitset<16>(microslice_size_);
+	    //	    RECV_DEBUG(4) << "Header bits: " << std::bitset<8>(microslice_version) << " " << std::bitset<8>(sequence_id) << " " << std::bitset<16>(microslice_size_);
 
 	    // Validate the version - it shouldn't change!
 	    if(microslice_version_initialised_ && (microslice_version != last_microslice_version_)) {
@@ -575,6 +600,7 @@ void lbne::PennDataReceiver::handle_received_data(std::size_t length)
 	    //copy the microslice header to memory, for checksum tests
 	    memcpy(current_microslice_ptr_, state_start_ptr_, sizeof(lbne::PennMicroSlice::Header));
 #endif
+	    RECV_DEBUG(2) << "JCF: about to reach end of \"case ReceiveMicrosliceHeader\"";
 	    break;
 	  } //case ReceiveMicrosliceHeader
 
@@ -587,8 +613,8 @@ void lbne::PennDataReceiver::handle_received_data(std::size_t length)
             *((uint32_t*)state_start_ptr_) = ntohl(*((uint32_t*)state_start_ptr_));
 
 	    // Capture the microslice payload type & timestamp from the payload header
-	    lbne::PennMicroSlice::Payload_Header* payload_header;
-	    payload_header = reinterpret_cast<lbne::PennMicroSlice::Payload_Header*>(state_start_ptr_);
+
+	    lbne::PennMicroSlice::Payload_Header* payload_header = reinterpret_cast_checked<lbne::PennMicroSlice::Payload_Header*>( state_start_ptr_);
 	    uint8_t  type      = payload_header->data_packet_type;
 	    uint32_t timestamp = payload_header->short_nova_timestamp;
 
@@ -814,6 +840,13 @@ void lbne::PennDataReceiver::handle_received_data(std::size_t length)
 	    uint32_t hardware_checksum(0);
 	    std::size_t this_overlap_size(0);
 	    uint8_t* this_overlap_ptr = nullptr;
+
+	    // JCF, Jul-19-2015
+
+	    // I set the second-to-last argument to false, telling
+	    // sampleTimeSplitAndCountTwice NOT to reverse the bytes
+	    // in the header - because I've added this feature already
+
 	    uint8_t* split_ptr = 
 	      uslice.sampleTimeSplitAndCountTwice(boundary_time_, remaining_size_,
 						  overlap_time_,  this_overlap_size, this_overlap_ptr,
@@ -823,7 +856,8 @@ void lbne::PennDataReceiver::handle_received_data(std::size_t length)
 						  overlap_payloads_recvd_, overlap_payloads_recvd_counter_, overlap_payloads_recvd_trigger_,
 						  overlap_payloads_recvd_timestamp_, overlap_payloads_recvd_selftest_, overlap_payloads_recvd_checksum_,
 						  hardware_checksum,
-						  true, microslice_size_);
+						  false, microslice_size_);
+
 
 	    //WARNING this assumes that the last 64 bytes of a microslice is always a payload header & a checksum word
 	    //TODO change the size if the checksum format changes
@@ -926,6 +960,7 @@ void lbne::PennDataReceiver::handle_received_data(std::size_t length)
 	    next_receive_state_ = ReceiveMicrosliceHeader;
 	    next_receive_size_ = sizeof(lbne::PennMicroSlice::Header);
 
+	    RECV_DEBUG(2) << "JCF: at end of \"case ReceiveMicroslicePayload\"";
             break;
 	  }//case ReceiveMicroslicePayload
 #endif //RECV_PENN_USLICE_IN_CHUNKS
@@ -1117,4 +1152,20 @@ std::size_t lbne::PennDataReceiver::nextReceiveStateToExpectedBytes(NextReceiveS
       return 0;
       break;
     }
+}
+
+namespace {
+
+void lbne_display_bits(int identifier, void* memstart, size_t nbytes) {
+
+  std::stringstream bitstr;
+  bitstr << "JCF: Identifier is " << identifier << ", " << nbytes << "-byte chunk is: ";
+
+  for(unsigned int i = 0; i < nbytes; i++) {
+    bitstr << std::bitset<8>(*((lbne::reinterpret_cast_checked<uint8_t*>(memstart))+i)) << " ";
+  }
+  
+  mf::LogInfo("PennDataReceiver") << bitstr.str();
+}
+
 }

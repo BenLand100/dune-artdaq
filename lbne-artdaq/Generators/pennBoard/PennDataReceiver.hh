@@ -164,6 +164,29 @@ private:
 #endif //REBLOCK_PENN_USLICE
 };
 
+  // JCF, Jul-16-2015
+
+  // reinterpret_cast_checked will double check that the pointer we
+  // cast to actually points to the same location in memory as the
+  // pointer we cast from. This almost certainly is the case, but it's
+  // not an ironclad guarantee in the C++ standard, unfortunately.
+
+  template <typename S, typename T>
+  S reinterpret_cast_checked(T inptr) {
+    
+    S outptr = reinterpret_cast<S>( inptr );
+
+    void* inptr_void = static_cast<void*>( inptr );
+    void* outptr_void = static_cast<void*>( outptr );
+
+    if ( inptr_void != outptr_void ) {
+      mf::LogError("PennReceiver") << "Error: reinterpret_cast didn't do what you wanted it to => results can't be trusted";
+    }
+
+    return outptr;
+  }
+
+
 } /* namespace lbne */
 
 #endif /* PENNDATARECEIVER_HH_ */
