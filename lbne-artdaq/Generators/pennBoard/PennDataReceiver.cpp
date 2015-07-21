@@ -14,16 +14,12 @@
 #include <boost/crc.hpp>
 
 #include "lbne-raw-data/Overlays/PennMicroSlice.hh"
+#include "lbne-raw-data/Overlays/Utilities.hh"
 
 // JCF, Jul-14-2015: I promoted mf::LogDebug up to mf::LogInfo here
 
 #define RECV_DEBUG(level) if (level <= debug_level_) mf::LogInfo("PennDataReceiver")
 
-namespace {
-
-  void lbne_display_bits(int identifier, void* memstart, size_t nbytes);
-
-}
 
 lbne::PennDataReceiver::PennDataReceiver(int debug_level, uint32_t tick_period_usecs,
 					 uint16_t receive_port, uint32_t millislice_size, 
@@ -46,7 +42,6 @@ lbne::PennDataReceiver::PennDataReceiver(int debug_level, uint32_t tick_period_u
 {
 	RECV_DEBUG(1) << "lbne::PennDataReceiver constructor";
 
-#ifdef REBLOCK_PENN_USLICE
 	//in this instance millislice_size_ is the number of bits that need to rollover to start a new microslice
 	if((pow(millislice_size_, 2) - 1) > lbne::PennMicroSlice::ROLLOVER_LOW_VALUE) {
 	  RECV_DEBUG(0) << "lbne::PennDataReceiver WARNING millislice_size_ " << millislice_size_
@@ -54,7 +49,6 @@ lbne::PennDataReceiver::PennDataReceiver(int debug_level, uint32_t tick_period_u
 			<< " 28-bit timestamp rollover will not be handled correctly";
 	  //TODO handle error cleanly
 	}
-#endif
 
 	// Initialise and start the persistent deadline actor that handles socket operation
 	// timeouts. Timeout is set to zero (no timeout) to start
@@ -125,8 +119,6 @@ void lbne::PennDataReceiver::start(void)
 	state_nbytes_recvd_ = 0;
 	state_start_ptr_ = 0;
 
-#ifdef REBLOCK_PENN_USLICE
-	
 	// Clear the times used for calculating millislice boundaries
 	run_start_time_ = 0;
 	boundary_time_  = 0;
@@ -140,8 +132,6 @@ void lbne::PennDataReceiver::start(void)
 	remaining_payloads_recvd_timestamp_ = 0;
 	remaining_payloads_recvd_selftest_ = 0;
 	remaining_payloads_recvd_checksum_ = 0;
-
-#endif //REBLOCK_PENN_USLICE
 
         // Clear the counters used for the overlap period
         overlap_size_ = 0;
@@ -375,8 +365,6 @@ void lbne::PennDataReceiver::do_read(void)
                           overlap_payloads_recvd_checksum_  = 0;
                         }
 
-
-#ifdef REBLOCK_PENN_USLICE
 			//add any remains of the previous microslice (due to millislice boundary occuring within it) to the start of this millislice
 			if(remaining_size_) {
 			  //TODO if the microslice time is wider than the millislice time, need to split the remains up, finalise a millislice, and call do_read() again (UNLIKELY)
@@ -407,7 +395,6 @@ void lbne::PennDataReceiver::do_read(void)
 			  remaining_payloads_recvd_selftest_  = 0;
 			  remaining_payloads_recvd_checksum_  = 0;
 			}
-#endif //REBLOCK_PENN_USLICE
 		}
 		else
 		{
@@ -478,10 +465,8 @@ void lbne::PennDataReceiver::handle_received_data(std::size_t length)
 	  *(static_cast<uint32_t*>(current_write_ptr_)+i_l) = ntohl(*(static_cast<uint32_t*>(current_write_ptr_)+i_l));
 	}
 
-
-	lbne_display_bits(static_cast<int>(next_receive_state_), 
-			  current_write_ptr_,
-			  length);
+	
+	display_bits(current_write_ptr_, length, "PennDataReceiver");
 
 	//make pointer to the start of the current object (Header, Payload_Header, Payload*)
 	if(!state_start_ptr_)
@@ -517,9 +502,7 @@ void lbne::PennDataReceiver::handle_received_data(std::size_t length)
 
 	    *(static_cast<uint16_t*>(state_start_ptr_)+1) = ntohs(*(static_cast<uint16_t*>(state_start_ptr_)+1));
 
-	    // lbne_display_bits(static_cast<int>(next_receive_state_), 
-	    // static_cast<void*>(state_start_ptr_),
-	    // length);
+	    display_bits( static_cast<void*>(state_start_ptr_), length, "PennDataReceiver");
 
 	    // Capture the microslice version, length and sequence ID from the header
 	    lbne::PennMicroSlice::Header* header = reinterpret_cast_checked<lbne::PennMicroSlice::Header*>( state_start_ptr_ );
@@ -580,228 +563,40 @@ void lbne::PennDataReceiver::handle_received_data(std::size_t length)
 
 	    //update states ready to be for next call
 	    millislice_state_ = MicrosliceIncomplete;
-#ifdef RECV_PENN_USLICE_IN_CHUNKS
-	    next_receive_state_ = ReceiveMicroslicePayloadHeader;
-	    next_receive_size_  = sizeof(lbne::PennMicroSlice::Payload_Header);
-#else
+
 	    next_receive_state_ = ReceiveMicroslicePayload;
 	    next_receive_size_  = microslice_size_ - sizeof(lbne::PennMicroSlice::Header);
-#endif
 
 	    //reset this since we're in a new uslice now
 	    microslice_seen_timestamp_word_ = false;
 	    last_microslice_was_fragment_ = false;
 
-#ifdef REBLOCK_PENN_USLICE
 	    //and roll back the current_write_ptr_, as to overwrite the Header in the next recv
 	    current_write_ptr_ = (void*)((char*)current_write_ptr_ - sizeof(lbne::PennMicroSlice::Header));
 	    millislice_size_recvd_ -= sizeof(lbne::PennMicroSlice::Header);
 
 	    //copy the microslice header to memory, for checksum tests
 	    memcpy(current_microslice_ptr_, state_start_ptr_, sizeof(lbne::PennMicroSlice::Header));
-#endif
+
 	    RECV_DEBUG(2) << "JCF: about to reach end of \"case ReceiveMicrosliceHeader\"";
 	    break;
 	  } //case ReceiveMicrosliceHeader
 
-#ifdef RECV_PENN_USLICE_IN_CHUNKS
-	case ReceiveMicroslicePayloadHeader:
-	  {
-	    RECV_DEBUG(2) << "Got microslice payload header length " << state_nbytes_recvd_;
-	    
-	    //byte swap the data before we create the Payload_Header
-            *((uint32_t*)state_start_ptr_) = ntohl(*((uint32_t*)state_start_ptr_));
-
-	    // Capture the microslice payload type & timestamp from the payload header
-
-	    lbne::PennMicroSlice::Payload_Header* payload_header = reinterpret_cast_checked<lbne::PennMicroSlice::Payload_Header*>( state_start_ptr_);
-	    uint8_t  type      = payload_header->data_packet_type;
-	    uint32_t timestamp = payload_header->short_nova_timestamp;
-
-	    RECV_DEBUG(2) << "Got header for microslice payload with type 0x" << std::hex << (unsigned int)type << std::dec 
-			  << " and timestamp " << timestamp;
-	    
-	    RECV_DEBUG(5) << "Payload header bits: " << std::bitset<4>(type) << " " << std::bitset<28>(timestamp);
-
-#ifdef REBLOCK_PENN_USLICE
-            //TODO add a better way of getting a start time, to calculate millislice boundaries from
-            if(!run_start_time_) {
-              run_start_time_ = timestamp                                   & 0xFFFFFFF; //lowest 28 bits
-              boundary_time_  = (run_start_time_ + millislice_size_ - 1)    & 0xFFFFFFF; //lowest 28 bits
-	      overlap_time_   = (boundary_time_ - millislice_overlap_size_) & 0xFFFFFFF; //lowest 28 bits
-            }
-
-	    //check the timestamp against the millislice boundary time
-	    if(timestamp > boundary_time_) {
-	      //need to be careful and make sure that boundary_time_ hasn't overflowed the 28 bits
-	      //do this by checking whether timestamp isn't very large AND boundary_time_ isn't very small
-	      //TODO a better way to catch rollovers?
-	      if(!((boundary_time_ < lbne::PennMicroSlice::ROLLOVER_LOW_VALUE) && (timestamp > lbne::PennMicroSlice::ROLLOVER_HIGH_VALUE))) {
-
-		//set the payload counters
-		remaining_payloads_recvd_++;
-		payloads_recvd_--;
-		switch(type)
-		  {
-		  case lbne::PennMicroSlice::DataTypeCounter:
-		    remaining_payloads_recvd_counter_++;
-		    payloads_recvd_counter_--;
-		    break;
-		  case lbne::PennMicroSlice::DataTypeTrigger:
-		    remaining_payloads_recvd_trigger_++;
-		    payloads_recvd_trigger_--;
-		    break;
-		  case lbne::PennMicroSlice::DataTypeTimestamp:
-		    remaining_payloads_recvd_timestamp_++;
-		    payloads_recvd_timestamp_--;
-		    break;
-		  case lbne::PennMicroSlice::DataTypeSelftest:
-		    remaining_payloads_recvd_selftest_++;
-		    payloads_recvd_selftest_--;
-		    break;
-		  case lbne::PennMicroSlice::DataTypeChecksum:
-		    remaining_payloads_recvd_checksum_++;
-		    payloads_recvd_checksum_--;
-		    break;
-		  default:
-		    break;
-		  }//switch(type)
-
-		//stash the Payload_Header for use later
-		remaining_size_ = sizeof(lbne::PennMicroSlice::Payload_Header);
-		memmove(remaining_ptr_, state_start_ptr_, remaining_size_);
-		millislice_size_recvd_ -= remaining_size_;
-	      }
-	    }//boundary_time_ check
-	    //check the timestamp against the overlap time
-	    // (only need to do this if it's not already in the 'next' millislice)
-	    else if(timestamp > overlap_time_) {
-              //need to be careful and make sure that overlap_time_ hasn't overflowed the 28 bits
-              //do this by checking whether timestamp isn't very large AND overlap_time_ isn't very small
-              //TODO a better way to catch rollovers?
-              if(!((overlap_time_ < lbne::PennMicroSlice::ROLLOVER_LOW_VALUE) && (timestamp > lbne::PennMicroSlice::ROLLOVER_HIGH_VALUE))) {
-		//set the payload counters
-                overlap_payloads_recvd_++;
-		switch(type)
-                  {
-                  case lbne::PennMicroSlice::DataTypeCounter:
-                    overlap_payloads_recvd_counter_++;
-                    break;
-                  case lbne::PennMicroSlice::DataTypeTrigger:
-                    overlap_payloads_recvd_trigger_++;
-                    break;
-                  case lbne::PennMicroSlice::DataTypeTimestamp:
-                    overlap_payloads_recvd_timestamp_++;
-                    break;
-                  case lbne::PennMicroSlice::DataTypeSelftest:
-                    overlap_payloads_recvd_selftest_++;
-                    break;
-                  case lbne::PennMicroSlice::DataTypeChecksum:
-                    overlap_payloads_recvd_checksum_++;
-                    break;
-                  default:
-                    break;
-                  }//switch(type)
-                //stash the Payload_Header for use later
-		std::size_t this_overlap_size = sizeof(lbne::PennMicroSlice::Payload_Header);
-                memmove(overlap_ptr_ + overlap_size_, state_start_ptr_, this_overlap_size);
-		overlap_size_ += this_overlap_size;
-	      }
-	    }//overlap_time_check_
-#endif
-
-            //update states ready to be for next call
-	    switch(type)
-	      {
-	      case lbne::PennMicroSlice::DataTypeCounter:
-		next_receive_state_ = ReceiveMicroslicePayloadCounter;
-		next_receive_size_  = lbne::PennMicroSlice::payload_size_counter;
-		payloads_recvd_counter_++;
-		break;
-	      case lbne::PennMicroSlice::DataTypeTrigger:
-		next_receive_state_ = ReceiveMicroslicePayloadTrigger;
-		next_receive_size_  = lbne::PennMicroSlice::payload_size_trigger;
-		payloads_recvd_trigger_++;
-		break;
-	      case lbne::PennMicroSlice::DataTypeTimestamp:
-		next_receive_state_ = ReceiveMicroslicePayloadTimestamp;
-		next_receive_size_  = lbne::PennMicroSlice::payload_size_timestamp;
-		payloads_recvd_timestamp_++;
-		break;
-	      case lbne::PennMicroSlice::DataTypeSelftest:
-		next_receive_state_ = ReceiveMicroslicePayloadSelftest;
-		next_receive_size_  = lbne::PennMicroSlice::payload_size_selftest;
-		payloads_recvd_selftest_++;
-		break;
-	      case lbne::PennMicroSlice::DataTypeChecksum:
-		next_receive_state_ = ReceiveMicroslicePayloadChecksum;
-		next_receive_size_  = lbne::PennMicroSlice::payload_size_checksum;
-		payloads_recvd_checksum_++;
-		break;
-	      default:
-		RECV_DEBUG(1) << "WARNING: Unknown payload type 0x" << std::hex << (unsigned int)type << std::dec;
-		break;
-		//TODO handle error cleanly here
-	      }//switch(type)
-	    payloads_recvd_++;
-	    millislice_state_ = MicrosliceIncomplete;
-	    
-	    break;
-	  } //case ReceiveMicroslicePayloadHeader
-	  
-	case ReceiveMicroslicePayloadTimestamp:
-	  microslice_seen_timestamp_word_ = true;
-	case ReceiveMicroslicePayloadCounter:
-	case ReceiveMicroslicePayloadTrigger:
-	  {
-	    RECV_DEBUG(2) << "Got microslice payload length " << state_nbytes_recvd_;
-	    
-	    if(overlap_size_) {
-	      //stash the Payload for use later
-	      std::size_t this_overlap_size = state_nbytes_recvd_;
-	      memmove(overlap_ptr_ + overlap_size_, state_start_ptr_, this_overlap_size);
-	      overlap_size_ += this_overlap_size;
-	    }
-	  
-	    if (microslice_size_recvd_ == microslice_size_)
-	      //got a full microslice
-	      {
-		RECV_DEBUG(2) << "Complete payload received for microslice " << microslices_recvd_;
-		microslices_recvd_++;
-		if(microslice_seen_timestamp_word_) {
-		  microslices_recvd_timestamp_++;
-		}
-		else {
-		  last_microslice_was_fragment_ = true;
-		}
-		microslice_size_recvd_ = 0;
-		millislice_state_ = MillisliceIncomplete;
-		next_receive_state_ = ReceiveMicrosliceHeader;
-		next_receive_size_ = sizeof(lbne::PennMicroSlice::Header);
-	      }
-	    else
-	      //the microslice isn't yet complete. go get another payload header
-	      {
-		RECV_DEBUG(2) << "Incomplete payload received for microslice " << microslices_recvd_
-			      << " (got " << microslice_size_recvd_
-			      << " expected " << microslice_size_ << " bytes)";
-		millislice_state_ = MicrosliceIncomplete;
-		next_receive_state_ = ReceiveMicroslicePayloadHeader;
-		next_receive_size_ = sizeof(lbne::PennMicroSlice::Payload_Header);
-	      }
-
-	    break;
-	  }//case ReceiveMicroslicePayload[Counter,Trigger,Timestamp]
-
-#else
 	case ReceiveMicroslicePayload:
 	  {
 	    //got a full microslice (complete size checks already done)
 	    RECV_DEBUG(2) << "Complete payload received for microslice " << microslices_recvd_ << " length " << state_nbytes_recvd_;
 	    microslices_recvd_++;
 
-#ifdef REBLOCK_PENN_USLICE
 	    //TODO add a better way of getting a start time, to calculate millislice boundaries from (presumably read the Penn)
+	    
+	    // JCF, Jul-21-2015
+
+	    // Please check to see what the address of the
+	    // state_start_ptr_ is here. The broader question being,
+	    // what's meant by the run_start_time_, and why is it
+	    // measured in units of size?
+
 	    if(!run_start_time_) {
 	      run_start_time_ = ntohl(*((uint32_t*)state_start_ptr_))        & 0xFFFFFFF; //lowest 28 bits
 	      boundary_time_  = (run_start_time_ + millislice_size_ - 1)     & 0xFFFFFFF; //lowest 28 bits
@@ -810,9 +605,6 @@ void lbne::PennDataReceiver::handle_received_data(std::size_t length)
 
 	    //form a microslice & check for the timestamp word to see if we're in a fragmented microslice
 	    lbne::PennMicroSlice uslice(((uint8_t*)state_start_ptr_));
-#else
-	    lbne::PennMicroSlice uslice(((uint8_t*)state_start_ptr_) - sizeof(lbne::PennMicroSlice::Header));
-#endif
 
 	    //count the number of different types of payload word
 	    lbne::PennMicroSlice::sample_count_t n_counter_words(0);
@@ -822,20 +614,7 @@ void lbne::PennDataReceiver::handle_received_data(std::size_t length)
 	    lbne::PennMicroSlice::sample_count_t n_checksum_words(0);
 	    lbne::PennMicroSlice::sample_count_t n_words(0);
 
-#ifdef REBLOCK_PENN_USLICE
 	    //also check to see if the millislice boundary is inside this microslice
-
-	    //n_words = uslice.sampleCount(n_counter_words, n_trigger_words, n_timestamp_words, n_selftest_words, n_checksum_words, true, microslice_size_);
-	    //uint8_t* split_ptr = uslice.sampleTimeSplit(boundary_time_, remaining_size_, false, microslice_size_);
-
-	    /*
-	    uint8_t* split_ptr = 
-	      uslice.sampleTimeSplitAndCount(boundary_time_, remaining_size_, 
-					     n_words, n_counter_words, n_trigger_words, n_timestamp_words, n_selftest_words, n_checksum_words,
-					     remaining_payloads_recvd_, remaining_payloads_recvd_counter_, remaining_payloads_recvd_trigger_,
-					     remaining_payloads_recvd_timestamp_, remaining_payloads_recvd_selftest_, remaining_payloads_recvd_checksum_,
-					     true, microslice_size_);
-	    */
 
 	    uint32_t hardware_checksum(0);
 	    std::size_t this_overlap_size(0);
@@ -922,10 +701,6 @@ void lbne::PennDataReceiver::handle_received_data(std::size_t length)
 	      overlap_size_ += this_overlap_size;
 	    }
 
-#else
-	    n_words = uslice.sampleCount(n_counter_words, n_trigger_words, n_timestamp_words, n_selftest_words, n_checksum_words, true);
-#endif
-
 	    RECV_DEBUG(2) << "Payload contains " << n_words
 			  << " total words ("    << n_counter_words
 			  << " counter + "       << n_trigger_words
@@ -933,11 +708,7 @@ void lbne::PennDataReceiver::handle_received_data(std::size_t length)
 			  << " timestamp + "     << n_selftest_words
 			  << " selftest + "      << n_checksum_words
 			  << "checksum)"
-#ifdef REBLOCK_PENN_USLICE
 			  << " before the millislice boundary";
-#else
-	    ;
-#endif
 
 	    //check if we're inside a fragmented microslice
 	    if(n_timestamp_words) {
@@ -963,7 +734,6 @@ void lbne::PennDataReceiver::handle_received_data(std::size_t length)
 	    RECV_DEBUG(2) << "JCF: at end of \"case ReceiveMicroslicePayload\"";
             break;
 	  }//case ReceiveMicroslicePayload
-#endif //RECV_PENN_USLICE_IN_CHUNKS
 
 	default:
 	  {
@@ -979,11 +749,8 @@ void lbne::PennDataReceiver::handle_received_data(std::size_t length)
 	state_start_ptr_    = 0;
 
 	// If correct number of microslices (with timestamps) have been received, flag millislice as complete
-#ifdef REBLOCK_PENN_USLICE
+
 	if(remaining_size_)
-#else
-	if (microslices_recvd_timestamp_ == millislice_size_)
-#endif //REBLOCK_PENN_USLICE
 	{
 		RECV_DEBUG(1) << "Millislice " << millislices_recvd_
 			      << " complete with " << microslices_recvd_timestamp_
@@ -1004,9 +771,7 @@ void lbne::PennDataReceiver::handle_received_data(std::size_t length)
 	if (millislice_state_ == MillisliceComplete)
 	{
 		current_raw_buffer_->setSize(millislice_size_recvd_);
-#ifndef REBLOCK_PENN_USLICE
 		current_raw_buffer_->setCount(microslices_recvd_);
-#endif
 		current_raw_buffer_->setSequenceID(millislices_recvd_ & 0xFFFF); //lowest 16 bits
 		current_raw_buffer_->setCountPayload(payloads_recvd_);
 		current_raw_buffer_->setCountPayloadCounter(payloads_recvd_counter_);
@@ -1018,11 +783,9 @@ void lbne::PennDataReceiver::handle_received_data(std::size_t length)
 		current_raw_buffer_->setFlags(0);
 
 		//update the times
-#ifdef REBLOCK_PENN_USLICE
+
 		boundary_time_ = (boundary_time_ + millislice_size_)         & 0xFFFFFFF; //lowest 28 bits
 		overlap_time_  = (boundary_time_ - millislice_overlap_size_) & 0xFFFFFFF; //lowest 28 bits
-#endif
-
 		filled_buffer_queue_.push(std::move(current_raw_buffer_));
 		millislice_state_ = MillisliceEmpty;
 	}
@@ -1152,20 +915,4 @@ std::size_t lbne::PennDataReceiver::nextReceiveStateToExpectedBytes(NextReceiveS
       return 0;
       break;
     }
-}
-
-namespace {
-
-void lbne_display_bits(int identifier, void* memstart, size_t nbytes) {
-
-  std::stringstream bitstr;
-  bitstr << "JCF: Identifier is " << identifier << ", " << nbytes << "-byte chunk is: ";
-
-  for(unsigned int i = 0; i < nbytes; i++) {
-    bitstr << std::bitset<8>(*((lbne::reinterpret_cast_checked<uint8_t*>(memstart))+i)) << " ";
-  }
-  
-  mf::LogInfo("PennDataReceiver") << bitstr.str();
-}
-
 }
