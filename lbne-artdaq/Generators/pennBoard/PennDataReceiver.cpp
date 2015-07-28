@@ -455,16 +455,6 @@ void lbne::PennDataReceiver::handle_received_data(std::size_t length)
 	state_nbytes_recvd_    += length;
 	microslice_size_recvd_ += length;
 	millislice_size_recvd_ += length;
-
-	// JCF, Jul-18-2015
-
-	// The four-byte chunks appear to be coming in in reverse
-	// order from the ptb_reader program, thus the calls to ntohl
-
-	for (decltype(length) i_l = 0; i_l < length/sizeof(uint32_t) ; ++i_l) {
-	  *(static_cast<uint32_t*>(current_write_ptr_)+i_l) = ntohl(*(static_cast<uint32_t*>(current_write_ptr_)+i_l));
-	}
-
 	
 	display_bits(current_write_ptr_, length, "PennDataReceiver");
 
@@ -494,13 +484,6 @@ void lbne::PennDataReceiver::handle_received_data(std::size_t length)
 	  {
 
 	    RECV_DEBUG(2) << "JCF: at start of \"case ReceiveMicrosliceHeader\"";
-	    
-	    // JCF, Jul-19-2015
-
-	    // x86 systems use Little Endian, so byte swap the
-	    // block_size before we create the Header
-
-	    *(static_cast<uint16_t*>(state_start_ptr_)+1) = ntohs(*(static_cast<uint16_t*>(state_start_ptr_)+1));
 
 	    display_bits( static_cast<void*>(state_start_ptr_), length, "PennDataReceiver");
 
@@ -590,13 +573,6 @@ void lbne::PennDataReceiver::handle_received_data(std::size_t length)
 
 	    //TODO add a better way of getting a start time, to calculate millislice boundaries from (presumably read the Penn)
 	    
-	    // JCF, Jul-21-2015
-
-	    // Please check to see what the address of the
-	    // state_start_ptr_ is here. The broader question being,
-	    // what's meant by the run_start_time_, and why is it
-	    // measured in units of size?
-
 	    if(!run_start_time_) {
 	      run_start_time_ = ntohl(*((uint32_t*)state_start_ptr_))        & 0xFFFFFFF; //lowest 28 bits
 	      boundary_time_  = (run_start_time_ + millislice_size_ - 1)     & 0xFFFFFFF; //lowest 28 bits
@@ -626,6 +602,10 @@ void lbne::PennDataReceiver::handle_received_data(std::size_t length)
 	    // sampleTimeSplitAndCountTwice NOT to reverse the bytes
 	    // in the header - because I've added this feature already
 
+	    // JCF, Jul-28-2015
+
+	    // TODO: I need to look back into what to do with the second-to-last argument
+
 	    uint8_t* split_ptr = 
 	      uslice.sampleTimeSplitAndCountTwice(boundary_time_, remaining_size_,
 						  overlap_time_,  this_overlap_size, this_overlap_ptr,
@@ -637,6 +617,12 @@ void lbne::PennDataReceiver::handle_received_data(std::size_t length)
 						  hardware_checksum,
 						  false, microslice_size_);
 
+
+	    // JCF, Jul-28-2015
+
+	    // TODO: I believe that there's no longer a payload header
+	    // for the checksum word, so I'll need to adjust the code
+	    // accordingly
 
 	    //WARNING this assumes that the last 64 bytes of a microslice is always a payload header & a checksum word
 	    //TODO change the size if the checksum format changes
@@ -893,24 +879,9 @@ std::size_t lbne::PennDataReceiver::nextReceiveStateToExpectedBytes(NextReceiveS
     case ReceiveMicrosliceHeader:
       return sizeof(lbne::PennMicroSlice::Header);
       break;
-#ifndef RECV_PENN_USLICE_IN_CHUNKS
     case ReceiveMicroslicePayload:
       return microslice_size_ - sizeof(lbne::PennMicroSlice::Header);
       break;
-#else
-    case ReceiveMicroslicePayloadHeader:
-      return sizeof(lbne::PennMicroSlice::Payload_Header);
-      break;
-    case ReceiveMicroslicePayloadCounter:
-      return (std::size_t)lbne::PennMicroSlice::payload_size_counter;
-      break;
-    case ReceiveMicroslicePayloadTrigger:
-      return (std::size_t)lbne::PennMicroSlice::payload_size_trigger;
-      break;
-    case ReceiveMicroslicePayloadTimestamp:
-      return (std::size_t)lbne::PennMicroSlice::payload_size_timestamp;
-      break;
-#endif
     default:
       return 0;
       break;
