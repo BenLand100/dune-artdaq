@@ -252,6 +252,15 @@ void lbne::PennDataReceiver::run_service(void)
 
 void lbne::PennDataReceiver::do_accept(void)
 {
+  // JCF, Jul-29-2015
+
+  // The "Timeout on async_accept" message appears many, many times --
+  // O(1000) -- before the connection is made; to reduce clutter, I'm
+  // only going to have it display every nth_timeout times
+
+  const size_t print_nth_timeout = 200;
+  static size_t nth_timeout = 0;
+
 	// Suspend readout and cleanup any incomplete millislices if stop has been called
 	if (suspend_readout_.load())
 	{
@@ -280,7 +289,11 @@ void lbne::PennDataReceiver::do_accept(void)
 			{
 				if (ec == boost::asio::error::operation_aborted)
 				{
+				  if (nth_timeout % print_nth_timeout == 0) {
 					RECV_DEBUG(3) << "Timeout on async_accept";
+				  }
+
+				  nth_timeout++;
 				}
 				else
 				{
@@ -522,9 +535,9 @@ void lbne::PennDataReceiver::handle_received_data(std::size_t length)
 
 	uint8_t* byte_ptr = reinterpret_cast_checked<uint8_t*>(state_start_ptr_);
 
-	RECV_DEBUG(4) << "JCF: current value of checksum is " << software_checksum <<
-	  ", will look at " << bytes_to_check << " bytes starting at " << 
-	  static_cast<void*>(byte_ptr) << " in the checksum calculation";
+	//	RECV_DEBUG(4) << "JCF: current value of checksum is " << software_checksum <<
+	//	  ", will look at " << bytes_to_check << " bytes starting at " << 
+	//	  static_cast<void*>(byte_ptr) << " in the checksum calculation";
 
 	for (size_t i_byte = 0; i_byte < bytes_to_check; ++i_byte) {
 	  software_checksum = (software_checksum >> 1) + ((software_checksum & 0x1) << 15) ;
@@ -636,8 +649,8 @@ void lbne::PennDataReceiver::handle_received_data(std::size_t length)
 	      uint32_t payload_header = *( static_cast<uint32_t*>(state_start_ptr_) );
 	      run_start_time_ = (payload_header >> 1) & 0x1FFFFFFF ;
 	      
-	      boundary_time_  = (run_start_time_ + millislice_size_ - 1)     & 0x1FFFFFFF; //lowest 28 bits
-	      overlap_time_   = (boundary_time_  - millislice_overlap_size_) & 0x1FFFFFFF; //lowest 28 bits
+	      boundary_time_  = (run_start_time_ + millislice_size_ - 1)     & 0xFFFFFFF; //lowest 28 bits
+	      overlap_time_   = (boundary_time_  - millislice_overlap_size_) & 0xFFFFFFF; //lowest 28 bits
 	    }
 
 	    //form a microslice & check for the timestamp word to see if we're in a fragmented microslice
