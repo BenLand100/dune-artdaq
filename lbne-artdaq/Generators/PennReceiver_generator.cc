@@ -1,4 +1,5 @@
 #include "lbne-artdaq/Generators/PennReceiver.hh"
+#include "lbne-artdaq/DAQLogger/DAQLogger.hh"
 
 #include "lbne-raw-data/Overlays/PennMilliSliceWriter.hh"
 #include "lbne-raw-data/Overlays/PennMilliSliceFragment.hh"
@@ -25,9 +26,7 @@ lbne::PennReceiver::PennReceiver(fhicl::ParameterSet const & ps)
   run_receiver_(false)
 {
 
-  mf::LogInfo("PennReceiver") << "JCF: OK before_id";
   int fragment_id = ps.get<int>("fragment_id");
-  mf::LogInfo("PennReceiver") << "JCF: OK after fragment_id";
   fragment_ids_.push_back(fragment_id);
 
   instance_name_for_metrics_ = "PennReceiver";
@@ -43,8 +42,6 @@ lbne::PennReceiver::PennReceiver(fhicl::ParameterSet const & ps)
   penn_client_timeout_usecs_ =
 	ps.get<uint32_t>("penn_client_timeout_usecs", 0);
 
-  mf::LogInfo("PennReceiver") << "JCF: OK after hardware options";
-
 
   ////////////////////////////
   // BOARDREADER OPTIONS
@@ -59,8 +56,6 @@ lbne::PennReceiver::PennReceiver(fhicl::ParameterSet const & ps)
   millislice_overlap_size_ = 
         ps.get<uint16_t>("millislice_overlap_size", 5);
 
-  mf::LogInfo("PennReceiver") << "JCF: OK after millislice size parameters";
-
   // boardreader printouts
   int receiver_debug_level =
 	ps.get<int>("receiver_debug_level", 0);
@@ -68,8 +63,6 @@ lbne::PennReceiver::PennReceiver(fhicl::ParameterSet const & ps)
     ps.get<uint32_t>("reporting_interval_fragments", 100);
   reporting_interval_time_ = 
     ps.get<uint32_t>("reporting_interval_time", 0);
-
-  mf::LogInfo("PennReceiver") << "JCF: OK after boardreader printouts";
 
   // boardreader buffer sizes
   raw_buffer_size_ =
@@ -80,12 +73,11 @@ lbne::PennReceiver::PennReceiver(fhicl::ParameterSet const & ps)
     ps.get<bool>("use_fragments_as_raw_buffer", true);
 #ifdef REBLOCK_PENN_USLICE
   if(use_fragments_as_raw_buffer_ == false) {
-    mf::LogError("PennReceiver") << "use_fragments_as_raw_buffer == false has not been implemented";
+    DAQLogger::LogError("PennReceiver") << "use_fragments_as_raw_buffer == false has not been implemented";
     //TODO handle error cleanly here    
   }
 #endif
 
-  mf::LogInfo("PennReceiver") << "JCF: OK after boardreader buffer sizes";
   ////////////////////////////
   // EMULATOR OPTIONS
 
@@ -97,8 +89,6 @@ lbne::PennReceiver::PennReceiver(fhicl::ParameterSet const & ps)
   penn_data_frag_rate_ =
 	ps.get<float>("penn_data_frag_rate", 10.0);
 
-  mf::LogInfo("PennReceiver") << "JCF: OK after amount of data to generate";
-
   // type of data to generate
   penn_data_payload_mode_ =
 	ps.get<uint16_t>("penn_data_payload_mode", 0);
@@ -107,15 +97,11 @@ lbne::PennReceiver::PennReceiver(fhicl::ParameterSet const & ps)
   penn_data_fragment_microslice_at_ticks_ =
         ps.get<int32_t>("penn_data_fragment_microslice_at_ticks", 0);
 
-  mf::LogInfo("PennReceiver") << "JCF: OK after type of data to generate";
-
   // special debug options
   penn_data_repeat_microslices_ =
         ps.get<bool>("penn_data_repeat_microslices", false);
   penn_data_debug_partial_recv_ =
         ps.get<bool>("penn_data_debug_partial_recv", false);
-
-  mf::LogInfo("PennReceiver") << "JCF: OK after special debug options";
 
   ///
   /// Penn board options
@@ -130,8 +116,6 @@ lbne::PennReceiver::PennReceiver(fhicl::ParameterSet const & ps)
   penn_data_dest_rollover_ = 
     ps.get<uint32_t>("penn_data_buffer.daq_rollover",80);
 
-  mf::LogInfo("PennReceiver") << "JCF: OK after data stream connection parameters";
-
   // Penn microslice duration
   penn_data_microslice_size_ =
         ps.get<uint32_t>("penn_data_buffer.daq_microslice_size", 7);
@@ -144,21 +128,15 @@ lbne::PennReceiver::PennReceiver(fhicl::ParameterSet const & ps)
   penn_channel_mask_tsu_ =
     ps.get<uint64_t>("channel_mask.TSU", 0x000000FFFFFFFFFF);
 
-  mf::LogInfo("PennReceiver") << "JCF: OK after channel masks";
-
   // -- How to deal with external triggers
   penn_ext_triggers_mask_ = ps.get<uint8_t>("external_triggers.mask",0x1F);
   penn_ext_triggers_echo_ = ps.get<bool>("external_triggers.echo_triggers",true);
   penn_ext_triggers_echo_width_ = ps.get<uint8_t>("external_triggers.echo_width",2);
 
-  mf::LogInfo("PennReceiver") << "JCF: OK after external triggers";
-
   // -- Calibrations
   penn_calib_period_ = ps.get<uint16_t>("calibration.period",10);
   penn_calib_channel_mask_ = ps.get<uint8_t>("calibration.channel_mask",0xF);
   penn_calib_pulse_width_ = ps.get<uint8_t>("calibration.pulse_width",2);
-
-  mf::LogInfo("PennReceiver") << "JCF: OK after calibrations";
 
   // -- Muon triggers
   // This is the more elaborated part:
@@ -167,8 +145,6 @@ lbne::PennReceiver::PennReceiver(fhicl::ParameterSet const & ps)
   penn_trig_out_pulse_width_ = ps.get<uint8_t>("muon_triggers.trig_out_width",2);
   penn_trig_in_window_ = ps.get<uint8_t>("muon_triggers.trig_window",3);
   penn_trig_lockdown_window_ = ps.get<uint8_t>("muon_triggers.trig_lockdown",3);
-
-  mf::LogInfo("PennReceiver") << "JCF: OK after muon triggers";
 
   // And now grab the individual trigger mask configuration
   for (uint32_t i = 0; i < penn_muon_num_triggers_; ++i) {
@@ -179,8 +155,6 @@ lbne::PennReceiver::PennReceiver(fhicl::ParameterSet const & ps)
 
     std::string first_param = trig_name.str() + ".id";
     
-    mf::LogInfo("PennReceiver") << "JCF: first muon trigger parameter is " << first_param;
-
     mask.id           = ps.get<std::string>(trig_name.str() + ".id");
     mask.id_mask      = ps.get<std::string>(trig_name.str() + ".id_mask");
     mask.prescale     = ps.get<uint8_t>(trig_name.str() + ".prescale");
@@ -193,8 +167,6 @@ lbne::PennReceiver::PennReceiver(fhicl::ParameterSet const & ps)
     mask.g2_mask_tsu  = ps.get<uint64_t>(trig_name.str() + ".group2.TSU");
 
     muon_triggers_.push_back(mask);
-
-    mf::LogInfo("PennReceiver") << "JCF: OK after muon trigger #" << i;
 
   }
 
@@ -235,7 +207,7 @@ lbne::PennReceiver::PennReceiver(fhicl::ParameterSet const & ps)
 
 void lbne::PennReceiver::start(void)
 {
-	mf::LogDebug("PennReceiver") << "start() called";
+	DAQLogger::LogDebug("PennReceiver") << "start() called";
 
 	// Tell the data receiver to drain any unused buffers from the empty queue
 	data_receiver_->release_empty_buffers();
@@ -247,7 +219,7 @@ void lbne::PennReceiver::start(void)
 	raw_to_frag_map_.clear();
 
 	// Pre-commit buffers to the data receiver object - creating either fragments or raw buffers depending on raw buffer mode
-	mf::LogDebug("PennReceiver") << "Pre-committing " << raw_buffer_precommit_ << " buffers of size " << raw_buffer_size_ << " to receiver";
+	DAQLogger::LogDebug("PennReceiver") << "Pre-committing " << raw_buffer_precommit_ << " buffers of size " << raw_buffer_size_ << " to receiver";
 	empty_buffer_low_mark_ = 0;
 	for (unsigned int i = 0; i < raw_buffer_precommit_; i++)
 	{
@@ -260,7 +232,7 @@ void lbne::PennReceiver::start(void)
 		{
 			raw_buffer = lbne::PennRawBufferPtr(new PennRawBuffer(raw_buffer_size_));
 		}
-		mf::LogDebug("PennReceiver") << "Pre-commiting raw buffer " << i << " at address " << (void*)(raw_buffer->dataPtr());
+		DAQLogger::LogDebug("PennReceiver") << "Pre-commiting raw buffer " << i << " at address " << (void*)(raw_buffer->dataPtr());
 		data_receiver_->commit_empty_buffer(raw_buffer);
 		empty_buffer_low_mark_++;
 	}
@@ -282,7 +254,7 @@ void lbne::PennReceiver::start(void)
 
 void lbne::PennReceiver::stop(void)
 {
-	mf::LogInfo("PennReceiver") << "stop() called";
+  DAQLogger::LogInfo("PennReceiver") << "stop() called";
 
 	// Instruct the PENN to stop
 	penn_client_->send_command("StopRun");
@@ -290,14 +262,14 @@ void lbne::PennReceiver::stop(void)
 	// Stop the data receiver.
 	data_receiver_->stop();
 
-	mf::LogInfo("PennReceiver") << "Low water mark on empty buffer queue is " << empty_buffer_low_mark_;
+	DAQLogger::LogInfo("PennReceiver") << "Low water mark on empty buffer queue is " << empty_buffer_low_mark_;
 
 	auto elapsed_msecs = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - start_time_).count();
 	double elapsed_secs = ((double)elapsed_msecs) / 1000;
 	double rate = ((double)millislices_received_) / elapsed_secs;
 	double data_rate_mbs = ((double)total_bytes_received_) / ((1024*1024) * elapsed_secs);
 
-	mf::LogInfo("PennReceiver") << "Received " << millislices_received_ << " millislices in "
+	DAQLogger::LogInfo("PennReceiver") << "Received " << millislices_received_ << " millislices in "
 			      << elapsed_secs << " seconds, rate "
 			      << rate << " Hz, total data " << total_bytes_received_ << " bytes, rate " << data_rate_mbs << " MB/s";
 
@@ -320,7 +292,7 @@ bool lbne::PennReceiver::getNext_(artdaq::FragmentPtrs & frags) {
 	    (reporting_interval_time_ * 1000))
 	  {
 	    report_time_ = std::chrono::high_resolution_clock::now();
-	    mf::LogInfo("PennReceiver") << "Received " << millislices_received_ << " millislices so far";
+	    DAQLogger::LogInfo("PennReceiver") << "Received " << millislices_received_ << " millislices so far";
 	  }
       }
   }
@@ -332,11 +304,11 @@ bool lbne::PennReceiver::getNext_(artdaq::FragmentPtrs & frags) {
 
 		if( data_receiver_->filled_buffers_available() > 0)
 		{
-			mf::LogWarning("PennRecevier") << "getNext_ stopping while there were still filled buffers available";
+		  DAQLogger::LogWarning("PennRecevier") << "getNext_ stopping while there were still filled buffers available";
 		}
 		else
 		{
-		        mf::LogInfo("PennReceiver") << "No unprocessed filled buffers available at end of run";
+		  DAQLogger::LogInfo("PennReceiver") << "No unprocessed filled buffers available at end of run";
 		}
 
 	return false;
@@ -347,7 +319,7 @@ bool lbne::PennReceiver::getNext_(artdaq::FragmentPtrs & frags) {
   // an empty list
   if (recvd_buffer->size() == 0)
   {
-	  mf::LogWarning("PennReceiver") << "getNext_ : no data received in raw buffer";
+	  DAQLogger::LogWarning("PennReceiver") << "getNext_ : no data received in raw buffer";
 	  return true;
   }
 
@@ -384,7 +356,7 @@ bool lbne::PennReceiver::getNext_(artdaq::FragmentPtrs & frags) {
 	  }
 	  else
 	  {
-		  mf::LogError("PennReciver") << "Cannot map raw buffer with data address" << (void*)recvd_buffer->dataPtr() << " back onto fragment";
+		  DAQLogger::LogError("PennReciver") << "Cannot map raw buffer with data address" << (void*)recvd_buffer->dataPtr() << " back onto fragment";
 		  return true;
 	  }
   }
@@ -414,7 +386,7 @@ bool lbne::PennReceiver::getNext_(artdaq::FragmentPtrs & frags) {
 	  auto elapsed_msecs = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - start_time_).count();
 	  double elapsed_secs = ((double)elapsed_msecs)/1000;
 
-	  mf::LogInfo("PennReceiver") << "Received " << millislices_received_ << " millislices, "
+	  DAQLogger::LogInfo("PennReceiver") << "Received " << millislices_received_ << " millislices, "
 			  << float(total_bytes_received_)/(1024*1024) << " MB in " << elapsed_secs << " seconds";
   }
 
@@ -475,7 +447,7 @@ uint32_t lbne::PennReceiver::format_millislice_from_raw_buffer(uint16_t* src_add
   for (uint32_t udx = 0; udx < number_of_microslices_to_generate_; ++udx) {
     microslice_writer_ptr = millislice_writer.reserveMicroSlice(MICROSLICE_BUFFER_SIZE);
     if (microslice_writer_ptr.get() == 0) {
-      mf::LogError("PennReceiver")
+      DAQLogger::LogError("PennReceiver")
         << "Unable to create microslice number " << udx;
     }
     else {
@@ -493,7 +465,7 @@ uint32_t lbne::PennReceiver::format_millislice_from_raw_buffer(uint16_t* src_add
   // Check if we have overrun the end of the raw buffer
   if (sample_addr > (src_addr + src_size))
   {
-	  mf::LogError("PennReceiver")
+	  DAQLogger::LogError("PennReceiver")
 	  	  << "Raw buffer overrun during millislice formatting by " << ((src_addr + src_size) - sample_addr);
   }
   millislice_writer.finalize();

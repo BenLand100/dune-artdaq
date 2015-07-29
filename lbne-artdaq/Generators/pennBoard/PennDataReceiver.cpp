@@ -705,6 +705,11 @@ void lbne::PennDataReceiver::handle_received_data(std::size_t length)
 	    //TODO tweak this logic more - some microslice checksum words are still getting into the millislice
 	    current_write_ptr_ = (void*)((char*)current_write_ptr_ - sizeof(lbne::PennMicroSlice::Payload_Header) - lbne::PennMicroSlice::payload_size_checksum);
 	    millislice_size_recvd_ -= (sizeof(lbne::PennMicroSlice::Payload_Header) + lbne::PennMicroSlice::payload_size_checksum);
+
+	    if (n_checksum_words == 0 || n_words == 0) {
+	      DAQLogger::LogError("PennDataReceiver") << "Code is about to try to decrement a uint32_t variable which has a value of 0";
+	    }
+
 	    n_checksum_words--;
 	    n_words--;
 	    if(split_ptr != nullptr) {

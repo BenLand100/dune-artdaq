@@ -71,7 +71,13 @@ lbne::PennClient::PennClient(const std::string& host_name, const std::string& po
 			else if (error)
 			{
 				socket_.close();
-				DAQLogger::LogError("PennClient") << "Error establishing connection to PENN at " << endpoint << " : " << error.message();
+
+				// JCF, Jul-29-2015
+
+				// Swallow exception thrown; does not necessarily prevent datataking
+				try {
+				  DAQLogger::LogError("PennClient") << "Error establishing connection to PENN at " << endpoint << " : " << error.message();
+				} catch (...) {} // Swallow
 			}
 		}
 		if (socket_.is_open() == false)
@@ -173,7 +179,15 @@ void lbne::PennClient::send_xml(std::string const & xml_frag)
 
 	// Traverse the DOM of the XML response and determine if any of the child elements are error.
 	if (doc == NULL) {
-	  DAQLogger::LogError("PennClient") << "Failed to parse XML response: " << response <<  " (length " << response.length() << ")";
+
+	  // JCF, Jul-29-2015
+
+	  // I'm swallowing the exception thrown by LogError here --
+	  // in my experience, this issue doesn't prevent datataking
+
+	  try { 
+	    DAQLogger::LogError("PennClient") << "Failed to parse XML response: " << response <<  " (length " << response.length() << ")";
+	  } catch (...) {} // Swallow
 	}
 	else {
 	  /*Get the root element node */
