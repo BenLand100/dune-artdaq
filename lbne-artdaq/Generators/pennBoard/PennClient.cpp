@@ -6,6 +6,8 @@
  */
 
 #include "PennClient.hh"
+#include "lbne-artdaq/DAQLogger/DAQLogger.hh"
+
 #include <iostream>
 #include <sstream>
 #include <boost/algorithm/string.hpp>
@@ -17,7 +19,7 @@ lbne::PennClient::PennClient(const std::string& host_name, const std::string& po
 	deadline_(io_service_),
 	timeout_usecs_(timeout_usecs)
 {
-  mf::LogDebug("PennClient") << "lbne::PennClient constructor";
+  DAQLogger::LogDebug("PennClient") << "lbne::PennClient constructor";
 
 	// Initialise deadline timer to positive infinity so that no action will be taken until a
 	// deadline is set
@@ -38,7 +40,7 @@ lbne::PennClient::PennClient(const std::string& host_name, const std::string& po
 		while ((endpoint_iter != end) && (socket_.is_open() == false))
 		{
 			tcp::endpoint endpoint = *endpoint_iter++;
-			mf::LogInfo("PennClient") << "Connecting to PENN at " << endpoint;
+			DAQLogger::LogInfo("PennClient") << "Connecting to PENN at " << endpoint;
 
 			// If a client timeout is specified, set the deadline timer appropriately
 			this->set_deadline();
@@ -62,19 +64,19 @@ lbne::PennClient::PennClient(const std::string& host_name, const std::string& po
 			if (error == boost::asio::error::operation_aborted)
 			{
 				socket_.close();
-				mf::LogError("PennClient") << "Timeout establishing client connection to PENN at " << endpoint;
+				DAQLogger::LogError("PennClient") << "Timeout establishing client connection to PENN at " << endpoint;
 				// TODO replace with exception
 			}
 			// If another error occurred during connect - throw an exception
 			else if (error)
 			{
 				socket_.close();
-				mf::LogError("PennClient") << "Error establishing connection to PENN at " << endpoint << " : " << error.message();
+				DAQLogger::LogError("PennClient") << "Error establishing connection to PENN at " << endpoint << " : " << error.message();
 			}
 		}
 		if (socket_.is_open() == false)
 		{
-			mf::LogError("PennClient") << "Failed to open connection to PENN";
+			DAQLogger::LogError("PennClient") << "Failed to open connection to PENN";
 		} else {
 
 			// Flush the socket of any stale aysnc update data from PENN
@@ -84,13 +86,13 @@ lbne::PennClient::PennClient(const std::string& host_name, const std::string& po
 			  data = this->receive();
 			  bytesFlushed += data.length();
 			} while (data.length() > 0);
-			mf::LogInfo("PennClient") << "Flushed " << bytesFlushed << " bytes of stale data from client socket";
+			DAQLogger::LogInfo("PennClient") << "Flushed " << bytesFlushed << " bytes of stale data from client socket";
 		  
 		}
 	}
 	catch (boost::system::system_error& e)
 	{
-		mf::LogError("PennClient") << "Exception caught opening connection to PENN: " << e.what();
+		DAQLogger::LogError("PennClient") << "Exception caught opening connection to PENN: " << e.what();
 	}
 
 }
@@ -102,14 +104,14 @@ lbne::PennClient::~PennClient()
 	}
 	catch (boost::system::system_error& e)
 	{
-		mf::LogError("PennClient") << "Exception caught closing PennClient connection:" << e.what();
+		DAQLogger::LogError("PennClient") << "Exception caught closing PennClient connection:" << e.what();
 	}
 }
 
 void lbne::PennClient::send_command(std::string const & command, std::string const & param)
 {
 
-	mf::LogInfo("PennClient") << "Sending command: " << command << " with param: " << param;
+	DAQLogger::LogInfo("PennClient") << "Sending command: " << command << " with param: " << param;
 	
 	// Build XML fragment containing command enclosing the parameter
 	std::ostringstream xml_frag;
@@ -123,7 +125,7 @@ void lbne::PennClient::send_command(std::string const & command, std::string con
 
 void lbne::PennClient::send_command(std::string const & command)
 {
-	mf::LogInfo("PennClient") << "Sending command: " << command;
+	DAQLogger::LogInfo("PennClient") << "Sending command: " << command;
 
 	// Build the XML fragment with command as empty closed tag
 	std::ostringstream xml_frag;
@@ -135,7 +137,7 @@ void lbne::PennClient::send_command(std::string const & command)
 
 void lbne::PennClient::send_config(std::string const & config)
 {
-	mf::LogInfo("PennClient") << "Sending config: " << config;
+	DAQLogger::LogInfo("PennClient") << "Sending config: " << config;
 	std::ostringstream config_frag;
 	config_frag << "<config>" << config << "</config>";
 
@@ -171,7 +173,7 @@ void lbne::PennClient::send_xml(std::string const & xml_frag)
 
 	// Traverse the DOM of the XML response and determine if any of the child elements are error.
 	if (doc == NULL) {
-	  mf::LogError("PennClient") << "Failed to parse XML response: " << response <<  " (length " << response.length() << ")";
+	  DAQLogger::LogError("PennClient") << "Failed to parse XML response: " << response <<  " (length " << response.length() << ")";
 	}
 	else {
 	  /*Get the root element node */
@@ -184,9 +186,9 @@ void lbne::PennClient::send_xml(std::string const & xml_frag)
 		//xmlNode* error_node = cur_node->children;
 		xmlChar* errorContent = xmlNodeGetContent(cur_node);
 		if (errorContent) {
-		  mf::LogError("PennClient") << "Got error response from PENN: " << errorContent;
+		  DAQLogger::LogError("PennClient") << "Got error response from PENN: " << errorContent;
 		} else {
-		  mf::LogError("PennClient") << "Got error response from PENN but cannot parse content";
+		  DAQLogger::LogError("PennClient") << "Got error response from PENN but cannot parse content";
 		}
 		xmlFree(errorContent);
 	      }
@@ -269,20 +271,20 @@ std::size_t lbne::PennClient::send(std::string const & send_str)
 	if (error == boost::asio::error::eof)
 	{
 		// Connection closed by peer
-		mf::LogError("PennClient") << "Connection closed by PENN";
+		DAQLogger::LogError("PennClient") << "Connection closed by PENN";
 	}
 	else if (error == boost::asio::error::operation_aborted)
 	{
 		// Timeout signalled by deadline actor
-		mf::LogError("PennClient") << "Timeout sending message to PENN";
+		DAQLogger::LogError("PennClient") << "Timeout sending message to PENN";
 	}
 	else if (error)
 	{
-		mf::LogError("PennClient") << "Error sending message to PENN: " << error.message();
+		DAQLogger::LogError("PennClient") << "Error sending message to PENN: " << error.message();
 	}
 	else if (send_len != send_str.size())
 	{
-		mf::LogError("PennClient") << "Size mismatch when sending transaction: wrote " << send_len << " expected " << send_str.size();
+		DAQLogger::LogError("PennClient") << "Size mismatch when sending transaction: wrote " << send_len << " expected " << send_str.size();
 	}
 
 	return send_len;
@@ -350,7 +352,7 @@ void lbne::PennClient::set_param_(std::string const & name, std::string const & 
 	// Parse the response to ensure the command was acknowledged
 	if (!response_is_ack(response, "SET"))
 	{
-	  mf::LogError("PennClient") << "SET command failed: " << response;
+	  DAQLogger::LogError("PennClient") << "SET command failed: " << response;
 	}
 
 }
