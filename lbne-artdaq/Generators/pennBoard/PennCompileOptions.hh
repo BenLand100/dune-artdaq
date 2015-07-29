@@ -1,6 +1,14 @@
 #ifndef PENNCOMPILEOPTIONS_HH_
 #define PENNCOMPILEOPTIONS_HH_
 
+// JCF, Jul-29-2015
+
+// As of this writing, the Penn boardreader code is only designed to
+// support REBLOCK_PENN_USLICE being defined (i.e.,
+// PENN_DONT_REBLOCK_USLICES being undefined), and
+// RECV_PENN_USLICE_IN_CHUNKS being undefined
+
+
 //are we using the Penn emulator?
 /// when off, force the sequence id repeat check to be off (safety check)
 /// when on, send a second xml config file with emulator options

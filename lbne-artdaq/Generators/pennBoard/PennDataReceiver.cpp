@@ -43,7 +43,18 @@ lbne::PennDataReceiver::PennDataReceiver(int debug_level, uint32_t tick_period_u
 	RECV_DEBUG(1) << "lbne::PennDataReceiver constructor";
 
 	//in this instance millislice_size_ is the number of bits that need to rollover to start a new microslice
-	if((pow(millislice_size_, 2) - 1) > lbne::PennMicroSlice::ROLLOVER_LOW_VALUE) {
+
+	// JCF, Jul-29-2015                                                                                        
+	// In other sections of the code, it looks as if
+	// millislice_size_ was intended to be the length itself, in
+	// timestamp units, of a millislice - as opposed to the length
+	// being millislice_size_ . Until I figure out what was
+	// intended, for now the "pow()" expression below is commented
+	// out
+
+	//	if((pow(millislice_size_, 2) - 1) > lbne::PennMicroSlice::ROLLOVER_LOW_VALUE) {
+	if (millislice_size_ > lbne::PennMicroSlice::ROLLOVER_LOW_VALUE) {
+
 	  RECV_DEBUG(0) << "lbne::PennDataReceiver WARNING millislice_size_ " << millislice_size_
 			<< " is greater than lbne::PennMicroSlice::ROLLOVER_LOW_VALUE " << (uint32_t)lbne::PennMicroSlice::ROLLOVER_LOW_VALUE
 			<< " 28-bit timestamp rollover will not be handled correctly";
@@ -478,14 +489,55 @@ void lbne::PennDataReceiver::handle_received_data(std::size_t length)
 	  return;
 	}
 
+	// JCF, Jul-28-2015
+	
+	// I've replaced Tom Dealtry's use of the
+	// boost::crc_32_type calculation for the checksum with
+	// Nuno's BSD method
+	// (https://en.wikipedia.org/wiki/BSD_checksum),
+	// implemented in the ptb_runner program
+
+	// Note this code relies on the only two possible receive
+	// states being "ReceiveMicrosliceHeader" and
+	// "ReceiveMicroslicePayload"
+
+	static uint16_t software_checksum = 0; // "static" means this
+					       // is the same variable
+					       // across calls to this
+					       // function
+
+	size_t bytes_to_check = 0;
+
+	// Reset the checksum to zero when we're expecting a new
+	// microslice, and if we're looking at the microslice payload,
+	// don't factor the contents of the checksum word into the
+	// checksum itself
+
+	if (next_receive_state_ == ReceiveMicrosliceHeader) {
+	  software_checksum = 0; 
+	  bytes_to_check = length;
+	} else {
+	  bytes_to_check = length - sizeof(uint32_t);
+	}
+
+	uint8_t* byte_ptr = reinterpret_cast_checked<uint8_t*>(state_start_ptr_);
+
+	RECV_DEBUG(4) << "JCF: current value of checksum is " << software_checksum <<
+	  ", will look at " << bytes_to_check << " bytes starting at " << 
+	  static_cast<void*>(byte_ptr) << " in the checksum calculation";
+
+	for (size_t i_byte = 0; i_byte < bytes_to_check; ++i_byte) {
+	  software_checksum = (software_checksum >> 1) + ((software_checksum & 0x1) << 15) ;
+	  software_checksum += *(byte_ptr + i_byte);
+	  software_checksum &= 0xFFFF;
+	}
+	    
 	switch (next_receive_state_)
 	{
 	case ReceiveMicrosliceHeader:
 	  {
 
 	    RECV_DEBUG(2) << "JCF: at start of \"case ReceiveMicrosliceHeader\"";
-
-	    display_bits( static_cast<void*>(state_start_ptr_), length, "PennDataReceiver");
 
 	    // Capture the microslice version, length and sequence ID from the header
 	    lbne::PennMicroSlice::Header* header = reinterpret_cast_checked<lbne::PennMicroSlice::Header*>( state_start_ptr_ );
@@ -574,9 +626,18 @@ void lbne::PennDataReceiver::handle_received_data(std::size_t length)
 	    //TODO add a better way of getting a start time, to calculate millislice boundaries from (presumably read the Penn)
 	    
 	    if(!run_start_time_) {
-	      run_start_time_ = ntohl(*((uint32_t*)state_start_ptr_))        & 0xFFFFFFF; //lowest 28 bits
-	      boundary_time_  = (run_start_time_ + millislice_size_ - 1)     & 0xFFFFFFF; //lowest 28 bits
-	      overlap_time_   = (boundary_time_  - millislice_overlap_size_) & 0xFFFFFFF; //lowest 28 bits
+
+	      // JCF, Jul-28-15
+
+	      // I had to fix the code which gets the 28-bit timestamp
+	      // from the payload header; note that this is still not
+	      // the optimal solution
+
+	      uint32_t payload_header = *( static_cast<uint32_t*>(state_start_ptr_) );
+	      run_start_time_ = (payload_header >> 1) & 0x1FFFFFFF ;
+	      
+	      boundary_time_  = (run_start_time_ + millislice_size_ - 1)     & 0x1FFFFFFF; //lowest 28 bits
+	      overlap_time_   = (boundary_time_  - millislice_overlap_size_) & 0x1FFFFFFF; //lowest 28 bits
 	    }
 
 	    //form a microslice & check for the timestamp word to see if we're in a fragmented microslice
@@ -604,7 +665,8 @@ void lbne::PennDataReceiver::handle_received_data(std::size_t length)
 
 	    // JCF, Jul-28-2015
 
-	    // TODO: I need to look back into what to do with the second-to-last argument
+	    // The argument remains set to "false", although in fact
+	    // it turns out the bytes didn't need to be reversed
 
 	    uint8_t* split_ptr = 
 	      uslice.sampleTimeSplitAndCountTwice(boundary_time_, remaining_size_,
@@ -617,23 +679,6 @@ void lbne::PennDataReceiver::handle_received_data(std::size_t length)
 						  hardware_checksum,
 						  false, microslice_size_);
 
-
-	    // JCF, Jul-28-2015
-
-	    // TODO: I believe that there's no longer a payload header
-	    // for the checksum word, so I'll need to adjust the code
-	    // accordingly
-
-	    //WARNING this assumes that the last 64 bytes of a microslice is always a payload header & a checksum word
-	    //TODO change the size if the checksum format changes
-	    //checksum the microslice we've just received
-	    // first copy the payload to the same location as the header
-	    memcpy(current_microslice_ptr_ + sizeof(lbne::PennMicroSlice::Header), state_start_ptr_, state_nbytes_recvd_);
-	    // then calculate the checksum ourself
-	    boost::crc_32_type crc_checksum;
-	    std::size_t microslice_size_to_checksum = sizeof(lbne::PennMicroSlice::Header) + state_nbytes_recvd_ - sizeof(lbne::PennMicroSlice::Payload_Header) - lbne::PennMicroSlice::payload_size_checksum;
-	    crc_checksum.process_bytes(current_microslice_ptr_, microslice_size_to_checksum);
-	    uint32_t software_checksum = crc_checksum.checksum();
 	    // check they agree
 	    if(hardware_checksum != software_checksum) {
 	      mf::LogError("PennDataReceiver") << "ERROR: Microslice checksum mismatch! Hardware: " << hardware_checksum << " Software: " << software_checksum;
@@ -649,6 +694,8 @@ void lbne::PennDataReceiver::handle_received_data(std::size_t length)
 	    n_checksum_words--;
 	    n_words--;
 	    if(split_ptr != nullptr) {
+	      RECV_DEBUG(2) << "split_ptr is non-null with value " << static_cast<void*>(split_ptr);
+
 	      if(remaining_payloads_recvd_checksum_) {
 		remaining_size_   -= sizeof(lbne::PennMicroSlice::Payload_Header) - lbne::PennMicroSlice::payload_size_checksum;
 		remaining_payloads_recvd_ -= remaining_payloads_recvd_checksum_;
@@ -656,6 +703,8 @@ void lbne::PennDataReceiver::handle_received_data(std::size_t length)
 	      }
 	    }
 	    if(this_overlap_ptr != nullptr) {
+	      RECV_DEBUG(2) << "this_overlap_ptr is non-null with value " << static_cast<void*>(this_overlap_ptr);
+
 	      if(overlap_payloads_recvd_checksum_) {
 		this_overlap_size -= sizeof(lbne::PennMicroSlice::Payload_Header) - lbne::PennMicroSlice::payload_size_checksum;
 		overlap_payloads_recvd_ -= overlap_payloads_recvd_checksum_;
