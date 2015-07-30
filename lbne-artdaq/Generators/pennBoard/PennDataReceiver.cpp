@@ -56,9 +56,13 @@ lbne::PennDataReceiver::PennDataReceiver(int debug_level, uint32_t tick_period_u
 	//	if((pow(millislice_size_, 2) - 1) > lbne::PennMicroSlice::ROLLOVER_LOW_VALUE) {
 	if (millislice_size_ > lbne::PennMicroSlice::ROLLOVER_LOW_VALUE) {
 
-	  RECV_DEBUG(0) << "lbne::PennDataReceiver WARNING millislice_size_ " << millislice_size_
-			<< " is greater than lbne::PennMicroSlice::ROLLOVER_LOW_VALUE " << (uint32_t)lbne::PennMicroSlice::ROLLOVER_LOW_VALUE
-			<< " 28-bit timestamp rollover will not be handled correctly";
+	  // JCF, Jul-30-2015
+
+	  // I've upgraded this from a warning to an error
+
+	  DAQLogger::LogError("PennDataReceiver") << "lbne::PennDataReceiver ERROR millislice_size_ " << millislice_size_
+					       << " is greater than lbne::PennMicroSlice::ROLLOVER_LOW_VALUE " << (uint32_t)lbne::PennMicroSlice::ROLLOVER_LOW_VALUE
+					       << " 28-bit timestamp rollover will not be handled correctly";
 	  //TODO handle error cleanly
 	}
 
@@ -430,13 +434,13 @@ void lbne::PennDataReceiver::do_read(void)
 
 	}
 
-	RECV_DEBUG(3) << "RECV: state "     << (unsigned int)next_receive_state_ << " " << nextReceiveStateToString(next_receive_state_)
-		      << " mslice state "   << (unsigned int)millislice_state_   << " " << millisliceStateToString(millislice_state_)
-		      << " uslice "         << microslices_recvd_
-		      << " uslice size "    << microslice_size_recvd_
-		      << " mslice size "    << millislice_size_recvd_
-		      << " addr "           << current_write_ptr_
-		      << " next recv size " << next_receive_size_;
+	RECV_DEBUG(3) << "\nreceive state "     << (unsigned int)next_receive_state_ << " " << nextReceiveStateToString(next_receive_state_)
+		      << "\nmslice state "   << (unsigned int)millislice_state_   << " " << millisliceStateToString(millislice_state_)
+		      << "\nuslices received "         << microslices_recvd_
+		      << "\nuslice size received "    << microslice_size_recvd_
+		      << "\nmslice size received "    << millislice_size_recvd_
+		      << "\ncurrent write ptr "           << current_write_ptr_
+		      << "\nnext recv size " << next_receive_size_;
 	
 	// Start the asynchronous receive operation into the current raw buffer.
 	data_socket_.async_receive(
@@ -488,7 +492,7 @@ void lbne::PennDataReceiver::handle_received_data(std::size_t length)
 	  state_start_ptr_ = current_write_ptr_;
 
 	//now we can update the current_write_ptr_
-	current_write_ptr_ = (void*)((char*)current_write_ptr_ + length);
+	current_write_ptr_ = static_cast<void*>(reinterpret_cast_checked<uint8_t*>(current_write_ptr_) + length );
 
 	//check to see if we have all the bytes for the current object
 	std::size_t nbytes_expected = nextReceiveStateToExpectedBytes(next_receive_state_);
@@ -496,10 +500,15 @@ void lbne::PennDataReceiver::handle_received_data(std::size_t length)
 	  millislice_state_   = MicrosliceIncomplete;
 	  //next_receive_state_ = //already set correctly
 	  next_receive_size_ = nbytes_expected - state_nbytes_recvd_;
-	  RECV_DEBUG(2) << "Incomplete " << nextReceiveStateToString(next_receive_state_)
-			<< " received for microslice " << microslices_recvd_
-			<< " (got " << state_nbytes_recvd_
-			<< " bytes, expected " << nbytes_expected << ")";
+
+	  // JCF, Jul-30-2015
+
+	  // I upgraded this circumstance to an error
+
+	  DAQLogger::LogError("PennDataReceiver") << "Incomplete " << nextReceiveStateToString(next_receive_state_)
+						  << " received for microslice " << microslices_recvd_
+						  << " (got " << state_nbytes_recvd_
+						  << " bytes, expected " << nbytes_expected << ")";
 	  return;
 	}
 
@@ -551,8 +560,6 @@ void lbne::PennDataReceiver::handle_received_data(std::size_t length)
 	case ReceiveMicrosliceHeader:
 	  {
 
-	    RECV_DEBUG(2) << "JCF: at start of \"case ReceiveMicrosliceHeader\"";
-
 	    // Capture the microslice version, length and sequence ID from the header
 	    lbne::PennMicroSlice::Header* header = reinterpret_cast_checked<lbne::PennMicroSlice::Header*>( state_start_ptr_ );
 
@@ -565,8 +572,6 @@ void lbne::PennDataReceiver::handle_received_data(std::size_t length)
 	    RECV_DEBUG(2) << "Got header for microslice version 0x" << std::hex << (unsigned int)microslice_version << std::dec 
 			  << " with size " << (unsigned int)microslice_size_
 			  << " sequence ID " << (unsigned int)sequence_id;
-
-	    //	    RECV_DEBUG(4) << "Header bits: " << std::bitset<8>(microslice_version) << " " << std::bitset<8>(sequence_id) << " " << std::bitset<16>(microslice_size_);
 
 	    // Validate the version - it shouldn't change!
 	    if(microslice_version_initialised_ && (microslice_version != last_microslice_version_)) {
@@ -588,7 +593,10 @@ void lbne::PennDataReceiver::handle_received_data(std::size_t length)
 	      //TODO handle error cleanly here
 	    }
 	    
-	    // Validate the sequence ID - should be incrementing monotonically (or identical to previous if it was fragmented)
+	    // Validate the sequence ID - should be incrementing
+	    // monotonically (or identical to previous if it was
+	    // fragmented)
+
 	    if (sequence_id_initialised_ && (sequence_id != uint8_t(last_sequence_id_+1))) {
 	      if (last_microslice_was_fragment_ && (sequence_id == uint8_t(last_sequence_id_))) {
 		// do nothing - we're in a normal fragmented microslice
@@ -621,13 +629,13 @@ void lbne::PennDataReceiver::handle_received_data(std::size_t length)
 	    last_microslice_was_fragment_ = false;
 
 	    //and roll back the current_write_ptr_, as to overwrite the Header in the next recv
-	    current_write_ptr_ = (void*)((char*)current_write_ptr_ - sizeof(lbne::PennMicroSlice::Header));
+
+	    current_write_ptr_ = static_cast<void*>(reinterpret_cast_checked<uint8_t*>(current_write_ptr_) - sizeof(lbne::PennMicroSlice::Header));
 	    millislice_size_recvd_ -= sizeof(lbne::PennMicroSlice::Header);
 
 	    //copy the microslice header to memory, for checksum tests
 	    memcpy(current_microslice_ptr_, state_start_ptr_, sizeof(lbne::PennMicroSlice::Header));
 
-	    RECV_DEBUG(2) << "JCF: about to reach end of \"case ReceiveMicrosliceHeader\"";
 	    break;
 	  } //case ReceiveMicrosliceHeader
 
@@ -671,6 +679,8 @@ void lbne::PennDataReceiver::handle_received_data(std::size_t length)
 	    std::size_t this_overlap_size(0);
 	    uint8_t* this_overlap_ptr = nullptr;
 
+	    RECV_DEBUG(4) << "Boundary time == " << boundary_time_ << ", overlap time == " << overlap_time_ ;
+	    
 	    // JCF, Jul-19-2015
 
 	    // I set the second-to-last argument to false, telling
@@ -698,20 +708,28 @@ void lbne::PennDataReceiver::handle_received_data(std::size_t length)
 	      DAQLogger::LogError("PennDataReceiver") << "ERROR: Microslice checksum mismatch! Hardware: " << hardware_checksum << " Software: " << software_checksum;
 	      //TODO add error cleanly here
 	    }
-	    else
+	    else {
 	      RECV_DEBUG(4) << "Microslice checksums... Hardware: " << hardware_checksum << " Software: " << software_checksum;
+	    }
 
 	    //make sure to remove the microslice checksum word from the millislice (it is useless without the header)
 	    //TODO tweak this logic more - some microslice checksum words are still getting into the millislice
-	    current_write_ptr_ = (void*)((char*)current_write_ptr_ - sizeof(lbne::PennMicroSlice::Payload_Header) - lbne::PennMicroSlice::payload_size_checksum);
-	    millislice_size_recvd_ -= (sizeof(lbne::PennMicroSlice::Payload_Header) + lbne::PennMicroSlice::payload_size_checksum);
 
-	    if (n_checksum_words == 0 || n_words == 0) {
-	      DAQLogger::LogError("PennDataReceiver") << "Code is about to try to decrement a uint32_t variable which has a value of 0";
-	    }
+	    size_t sizeof_checksum_frame = sizeof(lbne::PennMicroSlice::Payload_Header) + lbne::PennMicroSlice::payload_size_checksum;
 
-	    n_checksum_words--;
-	    n_words--;
+	    current_write_ptr_ = static_cast<void*>(reinterpret_cast_checked<uint8_t*>(current_write_ptr_) - sizeof_checksum_frame);
+	    millislice_size_recvd_ -= sizeof_checksum_frame;
+
+	    if (split_ptr == nullptr) {
+
+	      if (n_checksum_words == 0 || n_words == 0) {
+		DAQLogger::LogError("PennDataReceiver") << "Code is about to try to decrement a uint32_t variable which has a value of 0";
+	      }
+
+	      n_checksum_words--;
+	      n_words--;
+	    } 
+
 	    if(split_ptr != nullptr) {
 	      RECV_DEBUG(2) << "split_ptr is non-null with value " << static_cast<void*>(split_ptr);
 
@@ -780,6 +798,12 @@ void lbne::PennDataReceiver::handle_received_data(std::size_t length)
 	    payloads_recvd_selftest_  += n_selftest_words;
 	    payloads_recvd_checksum_  += n_checksum_words;
 
+	    // JCF, Jul-30-2015
+
+	    // Setting microslice_size_recvd_ = 0 here implies that we
+	    // can't (or shouldn't) fragment a microslice across
+	    // reads, correct?
+	    
 	    microslice_size_recvd_ = 0;
 	    millislice_state_ = MillisliceIncomplete;
 	    next_receive_state_ = ReceiveMicrosliceHeader;
