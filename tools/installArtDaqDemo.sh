@@ -98,7 +98,8 @@ function install_package {
 # below)
 
 install_package artdaq-core dc0c2461a042ae39cd4612c649fc3cec479efd2b e7 s11
-install_package lbne-raw-data v1_03_04 e7 s11
+#install_package lbne-raw-data v1_03_04 e7 s11
+install_package lbne-raw-data feature/penn_board_reader e7 s11
 
 # JCF, 6/9/15
 
