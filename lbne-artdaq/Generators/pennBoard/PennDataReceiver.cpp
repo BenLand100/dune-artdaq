@@ -17,7 +17,9 @@
 #include "lbne-raw-data/Overlays/PennMicroSlice.hh"
 #include "lbne-raw-data/Overlays/Utilities.hh"
 
-// JCF, Jul-14-2015: I promoted DAQLogger::LogDebug up to DAQLogger::LogInfo here
+// JCF, Jul-14-2015: I promoted mf::LogDebug up to mf::LogInfo here
+
+// ...and later swapped out mf::LogInfo for DAQLogger::LogInfo
 
 #define RECV_DEBUG(level) if (level <= debug_level_) DAQLogger::LogInfo("PennDataReceiver")
 
