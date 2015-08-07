@@ -136,7 +136,7 @@ private:
   TH2I *hRCEBitCheckAnd, *hRCEBitCheckOr;
   TH1D *hAvADCAllMillislice;
   TH2D *hAvADCChannelEvent;
-  TProfile *hADCMeanChannel, *hADCRMSChannel, *hRCEDNoiseChannel, *hAsymmetry;
+  TProfile *hADCMeanChannel, *hADCRMSChannel, *hRCEDNoiseChannel, *hAsymmetry , *hLastSixBitsCheckOff, *hLastSixBitsCheckOn;
   std::map<int,TProfile*> hADCChannel;
   std::map<int,TH1D*> hAvADCMillislice;
   std::map<int,TH1D*> hAvADCMillisliceChannel;
@@ -169,7 +169,7 @@ lbne::OnlineMonitoring::OnlineMonitoring(fhicl::ParameterSet const &pset) : EDAn
 
 void lbne::OnlineMonitoring::reconfigure(fhicl::ParameterSet const &p) {
   fMakeTree = p.get<bool>("MakeTree");
-  fInterestingChannels = {24,25,52,152,153,180};
+  fInterestingChannels = {260, 278, 289, 290};
 }
 
 void lbne::OnlineMonitoring::beginSubRun(const art::SubRun &sr) {
@@ -221,6 +221,8 @@ void lbne::OnlineMonitoring::beginSubRun(const art::SubRun &sr) {
   hAsymmetry                            = new TProfile("Asymmetry","Asymmetry of Bipolar Pulse_\"colz\"_none;Channel;Asymmetry",fNRCEChannels,0,fNRCEChannels);
   hRCEBitCheckAnd                       = new TH2I("RCEBitCheckAnd","RCE ADC Bits Always On_\"colz\"_none;Channel;Bit",fNRCEChannels,0,fNRCEChannels,16,0,16);
   hRCEBitCheckOr                        = new TH2I("RCEBitCheckOr","RCE ADC Bits Always Off_\"colz\"_none;Channel;Bit",fNRCEChannels,0,fNRCEChannels,16,0,16);
+  hLastSixBitsCheckOn                   = new TProfile("LastSixBitsCheckOn","Last Six RCE ADC Bits On_\"colz\"_none;Channel;Fraction of ADCs with stuck bits",fNRCEChannels,0,fNRCEChannels);
+  hLastSixBitsCheckOff                  = new TProfile("LastSixBitsCheckOff","Last Six RCE ADC Bits Off_\"colz\"_none;Channel;Fraction of ADCs with stuck bits",fNRCEChannels,0,fNRCEChannels);
   hAvADCAllMillislice                   = new TH1D("AvADCAllMillislice","Av ADC for all Millislices_\"colz\"_none;Event;Av ADC",10000,0,10000);
   for (unsigned int channel = 0; channel < fNRCEChannels; ++channel)
     hADCChannel[channel]                = new TProfile("ADCChannel"+TString(std::to_string(channel)),"RCE ADC v Tick for Channel "+TString(std::to_string(channel))+";Tick;ADC;",5000,0,5000);
@@ -367,29 +369,36 @@ void lbne::OnlineMonitoring::monitoringRCE(DQMvector ADCs) {
 
     for (unsigned int tick = 0; tick < ADCs.at(channel).size(); tick++) {
 
+      int ADC = ADCs.at(channel).at(tick);
+
       // Fill hists for tick
       if (!_interestingchannelsfilled && std::find(fInterestingChannels.begin(), fInterestingChannels.end(), channel) != fInterestingChannels.end())
-      	hDebugChannels.at(channel)->Fill(tick,ADCs.at(channel).at(tick));
-      hADCChannel.at(channel)->Fill(tick,ADCs.at(channel).at(tick));
-      if (channel && !ADCs.at(channel-1).empty()) hRCEDNoiseChannel->Fill(channel,ADCs.at(channel).at(tick)-ADCs.at(channel-1).at(tick));
+      	hDebugChannels.at(channel)->Fill(tick,ADC);
+      hADCChannel.at(channel)->Fill(tick,ADC);
+      if (channel && !ADCs.at(channel-1).empty()) hRCEDNoiseChannel->Fill(channel,ADC-ADCs.at(channel-1).at(tick));
 
       // Increase variables
-      fTotalADC += ADCs.at(channel).at(tick);
-      if (ADCs.at(channel).at(tick) > fThreshold) {
+      fTotalADC += ADC;
+      if (ADC > fThreshold) {
 	++tTotalRCEHitsChannel;
 	++fTotalRCEHitsEvent;
       }
 
       // Times over threshold
-      if ( (ADCs.at(channel).at(tick) > fThreshold) && !peak ) {
+      if ( (ADC > fThreshold) && !peak ) {
 	++fTimesADCGoesOverThreshold;
 	peak = true;
       }
-      if ( tick && (ADCs.at(channel).at(tick) < ADCs.at(channel).at(tick-1)) && peak ) peak = false;
+      if ( tick && (ADC < ADCs.at(channel).at(tick-1)) && peak ) peak = false;
 
       // Bit check
-      tBitCheckAnd &= ADCs.at(channel).at(tick);
-      tBitCheckOr  |= ADCs.at(channel).at(tick);
+      tBitCheckAnd &= ADC;
+      tBitCheckOr  |= ADC;
+
+      // Check last 6 bits
+      int mask1 = 0xFFC0, mask2 = 0x003F;
+      hLastSixBitsCheckOff->Fill(channel,((ADC & mask1) == ADC));
+      hLastSixBitsCheckOn ->Fill(channel,((ADC & mask2) == ADC));
 
     }
 
@@ -878,6 +887,7 @@ void lbne::OnlineMonitoring::addHists() {
   fHistArray.Add(hTotalADCEvent); fHistArray.Add(hTotalRCEHitsEvent);
   fHistArray.Add(hAsymmetry); fHistArray.Add(hTimesADCGoesOverThreshold);
   fHistArray.Add(hRCEBitCheckAnd); fHistArray.Add(hRCEBitCheckOr);
+  fHistArray.Add(hLastSixBitsCheckOn); fHistArray.Add(hLastSixBitsCheckOff);
   fHistArray.Add(hNumMicroslicesInMillislice); 
 
   fHistArray.Add(hAvWaveformChannelEvent);
@@ -902,6 +912,8 @@ void lbne::OnlineMonitoring::addHists() {
   fFigureCaptions["TimesADCGoesOverThreshold"] = "Number of times an RCE hit goes over a set ADC threshold";
   fFigureCaptions["RCEBitCheckAnd"] = "Check for stuck RCE bits: bits which are always on";
   fFigureCaptions["RCEBitCheckOr"] = "Check for stuck RCE bits: bits which are always off";
+  fFigureCaptions["LastSixBitsCheckOn"] = "Fraction of all RCE ADC values with the last six bits stuck on (profiled; one entry per ADC)";
+  fFigureCaptions["LastSixBitsCheckOff"] = "Fraction of all RCE ADC values with the last six bits stuck off (profiled; one entry per ADC)";
   fFigureCaptions["NumMicroslicesInMillislice"] = "Number of microslices in a millislice in this run";
   fFigureCaptions["AvWaveformChannelEvent"] = "Average SSP ADC across a channel for an event, shown for the first 100 events";
   fFigureCaptions["WaveformMeanChannel"] = "Mean ADC values for each channel read out by the SSPs (profiled over all events read)";
