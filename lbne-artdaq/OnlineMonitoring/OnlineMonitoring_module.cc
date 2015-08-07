@@ -82,7 +82,7 @@ private:
 
   // File directories and paths
   const TString fDataDirName   = "/data/lbnedaq/data/";
-  const TString fHistSavePath  = "/data/lbnedaq/scratch/wallbank/monitoring/";
+  const TString fHistSavePath  = "/data/lbnedaq/monitoring/";
   const TString fHistSaveType  = ".png";
   const TString fPathDelimiter = "_";
   TString fHistSaveDirectory;
