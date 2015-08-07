@@ -162,7 +162,7 @@ OnlineMonitoring::OnlineMonitoring::OnlineMonitoring(fhicl::ParameterSet const &
 
 void OnlineMonitoring::OnlineMonitoring::reconfigure(fhicl::ParameterSet const &p) {
   fMakeTree = p.get<bool>("MakeTree");
-  fInterestingChannels = {24,25,52,152,153,180};
+  fInterestingChannels = {260, 278, 289, 290};
 }
 
 void OnlineMonitoring::OnlineMonitoring::beginSubRun(const art::SubRun &sr) {
