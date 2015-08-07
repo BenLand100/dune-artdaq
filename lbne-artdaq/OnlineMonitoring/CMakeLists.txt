@@ -1,10 +1,14 @@
-#ADD_SUBDIRECTORY(utilities)
+# art_make_library( LIBRARY_NAME lbne-artdaq_OnlineMonitoring_MonitoringData
+#                   SOURCE MonitoringData.cxx
+#                   LIBRARIES ${MF_MESSAGELOGGER} ${MF_UTILITIES} ${ROOT_BASIC_LIB_LIST} ${Boost_SYSTEM_LIBRARY}
+# )
 
-art_make(NO_PLUGINS # WAnt different link lists for modues
-  LIB_LIBRARIES lbne-raw-data_Overlays lbne-artdaq_Products
+art_make_library(LIBRARY_NAME lbne-artdaq_OnlineMonitoring_DataReformatter
+		 SOURCE DataReformatter.cxx
+		 LIBRARIES lbne-raw-data_Overlays ${CETLIB}
 )
 
-simple_plugin(OnlineMonitoring "module" lbne-raw-data_Overlays 
+simple_plugin(OnlineMonitoring "module"
   ${SIMULATIONBASE}
   ${ART_FRAMEWORK_CORE}
   ${ART_FRAMEWORK_PRINCIPAL}
@@ -19,6 +23,9 @@ simple_plugin(OnlineMonitoring "module" lbne-raw-data_Overlays
   ${MF_UTILITIES}
   ${CETLIB}
   ${ROOT_BASIC_LIB_LIST}
-#  lbne-artdaq_RCConnection
-#  lbne-artdaq_I3JSON
+  #  lbne-artdaq_RCConnection
+  #  lbne-artdaq_I3JSON
+  lbne-raw-data_Overlays
+  #  lbne-artdaq_OnlineMonitoring_MonitoringData
+  lbne-artdaq_OnlineMonitoring_DataReformatter
 )

@@ -1,8 +1,11 @@
 ////////////////////////////////////////////////////////////////////////
+// Class:       OnlineMonitoring
+// Module type: analyser
+// File:        OnlineMonitoring_module.cc
+// Author:      Mike Wallbank (m.wallbank@sheffield.ac.uk), April 2015
 //
-// art module to produce online monitoring plots from raw artdaq data
-// April 2015, M Wallbank (m.wallbank@sheffield.ac.uk)
-//
+// Module to monitor data taking online for the 35t.
+// Takes raw data from the DAQ and produces relevant monitoring data.
 ////////////////////////////////////////////////////////////////////////
 
 #include "art/Framework/Core/EDAnalyzer.h"
@@ -48,31 +51,28 @@
 #include <TLegend.h>
 #include <TTree.h>
 
-typedef std::vector<std::vector<int> > DQMvector;
+#include "DataReformatter.h"
 
-namespace lbne {
+namespace OnlineMonitoring {
   class OnlineMonitoring;
 }
 
-class lbne::OnlineMonitoring : public art::EDAnalyzer {
+class OnlineMonitoring::OnlineMonitoring : public art::EDAnalyzer {
 
 public:
 
   explicit OnlineMonitoring(fhicl::ParameterSet const &pset);
 
-  void      addHists();
-  void      analyze(art::Event const &event);
-  DQMvector analyzeRCE(art::Handle<artdaq::Fragments> rawRCE);
-  DQMvector analyzeSSP(art::Handle<artdaq::Fragments> rawSSP);
-  void      beginSubRun(const art::SubRun &sr);
-  void      endSubRun(const art::SubRun &sr);
-  void      eventDisplay(DQMvector ADCs, DQMvector Waveforms);
-  void      monitoringGeneral();
-  void      monitoringRCE(DQMvector ADCs);
-  void      monitoringSSP(DQMvector Waveforms);
-  void      reconfigure(fhicl::ParameterSet const &p);
-  void      reset();
-  void      windowingRCE(DQMvector ADCs);
+  void AddHists();
+  void analyze(art::Event const &event);
+  void beginSubRun(const art::SubRun &sr);
+  void endSubRun(const art::SubRun &sr);
+  void EventDisplay(DQMvector ADCs, DQMvector Waveforms);
+  void GeneralMonitoring();
+  void RCEMonitoring(DQMvector ADCs);
+  void SSPMonitoring(DQMvector Waveforms);
+  void reconfigure(fhicl::ParameterSet const &p);
+  void Reset();
 
 private:
 
@@ -82,7 +82,7 @@ private:
 
   // File directories and paths
   const TString fDataDirName   = "/data/lbnedaq/data/";
-  const TString fHistSavePath  = "/data/lbnedaq/monitoring/";
+  const TString fHistSavePath  = "/data/lbnedaq/scratch/wallbank/monitoring/";
   const TString fHistSaveType  = ".png";
   const TString fPathDelimiter = "_";
   TString fHistSaveDirectory;
@@ -98,19 +98,13 @@ private:
   DQMvector fADC;
   DQMvector fWaveform;
 
-  // Maps to track fragments which are present
-  std::map<unsigned int, unsigned int> tpcFragmentMap;
-  std::map<unsigned int, unsigned int> sspFragmentMap;
-
   // Channels
   unsigned int fNRCEChannels = 512, fNRCEMillislices = 4, fNSSPChannels = 96;
 
   // Windowing
+  std::vector<int> fWindowingNumBlocks;
   std::vector<std::vector<short> > fWindowingBlockBegin;
   std::vector<std::vector<short> > fWindowingBlockSize;
-  std::vector<int> fWindowingNumBlocks;
-  const int fWindowingZeroThresholdSigned = 10;
-  int fWindowingNearestNeighbour = 4;
 
   // Variables for monitoring
   int fTotalADC, fTotalWaveform;
@@ -136,7 +130,7 @@ private:
   TH2I *hRCEBitCheckAnd, *hRCEBitCheckOr;
   TH1D *hAvADCAllMillislice;
   TH2D *hAvADCChannelEvent;
-  TProfile *hADCMeanChannel, *hADCRMSChannel, *hRCEDNoiseChannel, *hAsymmetry;
+  TProfile *hADCMeanChannel, *hADCRMSChannel, *hRCEDNoiseChannel, *hAsymmetry, *hLastSixBitsCheckOff, *hLastSixBitsCheckOn;
   std::map<int,TProfile*> hADCChannel;
   std::map<int,TH1D*> hAvADCMillislice;
   std::map<int,TH1D*> hAvADCMillisliceChannel;
@@ -153,26 +147,25 @@ private:
   // Debug ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
   // Run options
   bool _verbose = false;
-  bool _daqtest = false;
   bool _interestingchannelsfilled = false;
   std::vector<int> fInterestingChannels;
   std::map<int,TH1D*> hDebugChannels;
 
 };
 
-lbne::OnlineMonitoring::OnlineMonitoring(fhicl::ParameterSet const &pset) : EDAnalyzer(pset) {
+OnlineMonitoring::OnlineMonitoring::OnlineMonitoring(fhicl::ParameterSet const &pset) : EDAnalyzer(pset) {
   mf::LogInfo("Monitoring") << "Starting";
   this->reconfigure(pset);
   gStyle->SetOptStat(0);
   gStyle->SetOptTitle(0);
 }
 
-void lbne::OnlineMonitoring::reconfigure(fhicl::ParameterSet const &p) {
+void OnlineMonitoring::OnlineMonitoring::reconfigure(fhicl::ParameterSet const &p) {
   fMakeTree = p.get<bool>("MakeTree");
   fInterestingChannels = {24,25,52,152,153,180};
 }
 
-void lbne::OnlineMonitoring::beginSubRun(const art::SubRun &sr) {
+void OnlineMonitoring::OnlineMonitoring::beginSubRun(const art::SubRun &sr) {
 
   mf::LogInfo("Monitoring") << "Starting monitoring for run " << sr.run() << ", subRun " << sr.subRun();
 
@@ -221,6 +214,8 @@ void lbne::OnlineMonitoring::beginSubRun(const art::SubRun &sr) {
   hAsymmetry                            = new TProfile("Asymmetry","Asymmetry of Bipolar Pulse_\"colz\"_none;Channel;Asymmetry",fNRCEChannels,0,fNRCEChannels);
   hRCEBitCheckAnd                       = new TH2I("RCEBitCheckAnd","RCE ADC Bits Always On_\"colz\"_none;Channel;Bit",fNRCEChannels,0,fNRCEChannels,16,0,16);
   hRCEBitCheckOr                        = new TH2I("RCEBitCheckOr","RCE ADC Bits Always Off_\"colz\"_none;Channel;Bit",fNRCEChannels,0,fNRCEChannels,16,0,16);
+  hLastSixBitsCheckOn                   = new TProfile("LastSixBitsCheckOn","Last Six RCE ADC Bits On_\"colz\"_none;Channel;Fraction of ADCs with stuck bits",fNRCEChannels,0,fNRCEChannels);
+  hLastSixBitsCheckOff                  = new TProfile("LastSixBitsCheckOff","Last Six RCE ADC Bits Off_\"colz\"_none;Channel;Fraction of ADCs with stuck bits",fNRCEChannels,0,fNRCEChannels);
   hAvADCAllMillislice                   = new TH1D("AvADCAllMillislice","Av ADC for all Millislices_\"colz\"_none;Event;Av ADC",10000,0,10000);
   for (unsigned int channel = 0; channel < fNRCEChannels; ++channel)
     hADCChannel[channel]                = new TProfile("ADCChannel"+TString(std::to_string(channel)),"RCE ADC v Tick for Channel "+TString(std::to_string(channel))+";Tick;ADC;",5000,0,5000);
@@ -252,7 +247,7 @@ void lbne::OnlineMonitoring::beginSubRun(const art::SubRun &sr) {
 
 }
 
-void lbne::OnlineMonitoring::analyze(art::Event const &evt) {
+void OnlineMonitoring::OnlineMonitoring::analyze(art::Event const &evt) {
 
   fEventNumber = evt.event();
   fRun = evt.run();
@@ -275,14 +270,15 @@ void lbne::OnlineMonitoring::analyze(art::Event const &evt) {
   try { rawSSP->size(); }
   catch(std::exception e) { fIsSSP = false; }
 
-  reset();
+  Reset();
 
   // Format the data to channel/tick vectors
   if (fIsRCE) {
-    fADC = analyzeRCE(rawRCE);
-    windowingRCE(fADC);
+    ReformatRCEBoardData(rawRCE, &fADC);
+    WindowingRCEData(fADC, &fWindowingNumBlocks, &fWindowingBlockBegin, &fWindowingBlockSize);
   }    
-  if (fIsSSP) fWaveform = analyzeSSP(rawSSP);
+  if (fIsSSP)
+    ReformatSSPBoardData(rawSSP, &fWaveform);
 
   // // Event display -- every 500 events (8 s)
   // if (fEventNumber % 20 == 0) {
@@ -290,9 +286,9 @@ void lbne::OnlineMonitoring::analyze(art::Event const &evt) {
   //   t.detach();
   // }
 
-  if (fADC.size()) monitoringRCE(fADC);
-  if (fWaveform.size()) monitoringSSP(fWaveform);
-  monitoringGeneral();
+  if (fADC.size()) RCEMonitoring(fADC);
+  if (fWaveform.size()) SSPMonitoring(fWaveform);
+  GeneralMonitoring();
 
   if (fMakeTree)
     fDataTree->Fill();
@@ -300,7 +296,7 @@ void lbne::OnlineMonitoring::analyze(art::Event const &evt) {
 
 }
 
-void lbne::OnlineMonitoring::monitoringGeneral() {
+void OnlineMonitoring::OnlineMonitoring::GeneralMonitoring() {
 
   hNumSubDetectorsPresent->Fill(fNumSubDetectorsPresent);
 
@@ -347,7 +343,7 @@ void lbne::OnlineMonitoring::monitoringGeneral() {
 }
 
 // Function called to fill all histograms
-void lbne::OnlineMonitoring::monitoringRCE(DQMvector ADCs) {
+void OnlineMonitoring::OnlineMonitoring::RCEMonitoring(DQMvector ADCs) {
 
   for (unsigned int channel = 0; channel < ADCs.size(); channel++) {
 
@@ -367,29 +363,36 @@ void lbne::OnlineMonitoring::monitoringRCE(DQMvector ADCs) {
 
     for (unsigned int tick = 0; tick < ADCs.at(channel).size(); tick++) {
 
+      int ADC = ADCs.at(channel).at(tick);
+
       // Fill hists for tick
       if (!_interestingchannelsfilled && std::find(fInterestingChannels.begin(), fInterestingChannels.end(), channel) != fInterestingChannels.end())
-      	hDebugChannels.at(channel)->Fill(tick,ADCs.at(channel).at(tick));
-      hADCChannel.at(channel)->Fill(tick,ADCs.at(channel).at(tick));
-      if (channel && !ADCs.at(channel-1).empty()) hRCEDNoiseChannel->Fill(channel,ADCs.at(channel).at(tick)-ADCs.at(channel-1).at(tick));
+      	hDebugChannels.at(channel)->Fill(tick,ADC);
+      hADCChannel.at(channel)->Fill(tick,ADC);
+      if (channel && !ADCs.at(channel-1).empty()) hRCEDNoiseChannel->Fill(channel,ADC-ADCs.at(channel-1).at(tick));
 
       // Increase variables
-      fTotalADC += ADCs.at(channel).at(tick);
-      if (ADCs.at(channel).at(tick) > fThreshold) {
+      fTotalADC += ADC;
+      if (ADC > fThreshold) {
 	++tTotalRCEHitsChannel;
 	++fTotalRCEHitsEvent;
       }
 
       // Times over threshold
-      if ( (ADCs.at(channel).at(tick) > fThreshold) && !peak ) {
+      if ( (ADC > fThreshold) && !peak ) {
 	++fTimesADCGoesOverThreshold;
 	peak = true;
       }
-      if ( tick && (ADCs.at(channel).at(tick) < ADCs.at(channel).at(tick-1)) && peak ) peak = false;
+      if ( tick && (ADC < ADCs.at(channel).at(tick-1)) && peak ) peak = false;
 
       // Bit check
-      tBitCheckAnd &= ADCs.at(channel).at(tick);
-      tBitCheckOr  |= ADCs.at(channel).at(tick);
+      tBitCheckAnd &= ADC;
+      tBitCheckOr  |= ADC;
+
+      // Check last 6 bits
+      int mask1 = 0xFFC0, mask2 = 0x003F;
+      hLastSixBitsCheckOff->Fill(channel,((ADC & mask1) == ADC));
+      hLastSixBitsCheckOn ->Fill(channel,((ADC & mask2) == ADC));
 
     }
 
@@ -446,7 +449,7 @@ void lbne::OnlineMonitoring::monitoringRCE(DQMvector ADCs) {
 }
 
 // Function called to fill all histograms
-void lbne::OnlineMonitoring::monitoringSSP(DQMvector Waveforms) {
+void OnlineMonitoring::OnlineMonitoring::SSPMonitoring(DQMvector Waveforms) {
 
   for (unsigned int channel = 0; channel < Waveforms.size(); channel++) {
 
@@ -464,25 +467,27 @@ void lbne::OnlineMonitoring::monitoringSSP(DQMvector Waveforms) {
 
     for (unsigned int tick = 0; tick < Waveforms.at(channel).size(); tick++) {
 
+      int Waveform = Waveforms.at(channel).at(tick);
+
       // Fill hists for tick
-      hWaveformChannel.at(channel)->Fill(tick,Waveforms.at(channel).at(tick));
-      if (channel and !Waveforms.at(channel-1).empty()) hSSPDNoiseChannel->Fill(channel,Waveforms.at(channel).at(tick)-Waveforms.at(channel-1).at(tick));
+      hWaveformChannel.at(channel)->Fill(tick,Waveform);
+      if (channel and !Waveforms.at(channel-1).empty()) hSSPDNoiseChannel->Fill(channel,Waveform-Waveforms.at(channel-1).at(tick));
 
       // Increase variables
-      fTotalWaveform += Waveforms.at(channel).at(tick);
+      fTotalWaveform += Waveform;
       ++fTotalSSPHitsEvent;
       ++tTotalSSPHitsChannel;
 
       // Times over threshold
-      if ( (Waveforms.at(channel).at(tick) > fThreshold) && !peak ) {
+      if ( (Waveform > fThreshold) && !peak ) {
 	++fTimesWaveformGoesOverThreshold;
 	peak = true;
       }
-      if ( tick && (Waveforms.at(channel).at(tick) < Waveforms.at(channel).at(tick-1)) && peak ) peak = false;
+      if ( tick && (Waveform < Waveforms.at(channel).at(tick-1)) && peak ) peak = false;
 
       // Bit check
-      tBitCheckAnd &= Waveforms.at(channel).at(tick);
-      tBitCheckOr  |= Waveforms.at(channel).at(tick);
+      tBitCheckAnd &= Waveform;
+      tBitCheckOr  |= Waveform;
 
     }
 
@@ -507,7 +512,7 @@ void lbne::OnlineMonitoring::monitoringSSP(DQMvector Waveforms) {
 
 }
 
-// void lbne::OnlineMonitoring::eventDisplay(DQMvector ADCs, DQMvector Waveforms) {
+// void OnlineMonitoring::OnlineMonitoring::eventDisplay(DQMvector ADCs, DQMvector Waveforms) {
 
 //   std::unique_ptr<TH2D> UMap = new TH2D("UMap",";Wire;Tick;",fGeometry->Nwires(0,0,0),0,fGeometry->Nwires(0,0,0),3200,0,3200);
 
@@ -528,248 +533,10 @@ void lbne::OnlineMonitoring::monitoringSSP(DQMvector Waveforms) {
 //   UMap->delete();
 // }
 
-DQMvector lbne::OnlineMonitoring::analyzeRCE(art::Handle<artdaq::Fragments> rawRCE) {
-
-  DQMvector ADCs;
-
-  if (_verbose)
-    std::cout << "%%DQM----- Run " << fRun << ", subrun " << fSubrun << ", event " << fEventNumber << " has " << rawRCE->size() << " fragment(s) of type RCE" << std::endl;
-
-  fNumSubDetectorsPresent += rawRCE->size();
-
-  // Loop over fragments to make a map to save the order the frags are saved in
-  tpcFragmentMap.clear();
-  for (unsigned int fragIt = 0; fragIt < rawRCE->size(); fragIt++) {
-    const artdaq::Fragment &fragment = ((*rawRCE)[fragIt]);
-    unsigned int fragmentID = fragment.fragmentID(); //+ 100;
-    tpcFragmentMap.insert(std::pair<unsigned int, unsigned int>(fragmentID,fragIt));
-  }
-
-  // Loop over channels
-  for (unsigned int chanIt = 0; chanIt < fNRCEChannels; chanIt++) {
-
-    // Vector of ADC values for this channel
-    std::vector<int> adcVector;
-
-    // Find the fragment ID and the sample for this channel
-    unsigned int fragmentID = (unsigned int)((chanIt/128)+100);
-    unsigned int sample = (unsigned int)(chanIt%128);
-
-    // Analyse this fragment if it exists
-    if (tpcFragmentMap.find(fragmentID) != tpcFragmentMap.end() ) {
-
-      if (_verbose)
-	std::cout << "%%DQM---------- Channel " << chanIt << ", fragment " << fragmentID << " and sample " << sample << std::endl;
-
-      // Find the millislice fragment this channel lives in
-      unsigned int fragIndex = tpcFragmentMap.at(fragmentID);
-
-      // Get the millislice fragment
-      const artdaq::Fragment &frag = ((*rawRCE)[fragIndex]);
-      lbne::TpcMilliSliceFragment millisliceFragment(frag);
-
-      // Number of microslices in millislice fragments
-      auto nMicroSlices = millisliceFragment.microSliceCount();
-
-      hNumMicroslicesInMillislice->SetBinContent(fragmentID,nMicroSlices);
-
-      if (_verbose)
-	std::cout << "%%DQM--------------- TpcMilliSlice fragment " << fragmentID << " contains " << nMicroSlices << " microslices" << std::endl;
-
-      for (unsigned int microIt = 0; microIt < nMicroSlices; microIt++) {
-
-	// Get the microslice
-	std::unique_ptr <const lbne::TpcMicroSlice> microslice = millisliceFragment.microSlice(microIt);
-	auto nNanoSlices = microslice->nanoSliceCount();
-
-	if (_daqtest)
-	  if (nNanoSlices > 0) std::cout << "Number of nanoslices... " << nNanoSlices << std::endl;
-
-	if (_verbose)
-	  std::cout << "%%DQM-------------------- TpcMicroSlice " << microIt << " contains " << nNanoSlices << " nanoslices" << std::endl;
-
-	for (unsigned int nanoIt = 0; nanoIt < nNanoSlices; nanoIt++) {
-
-	  receivedData = true;
-
-	  // Get the ADC value
-	  uint16_t adc = std::numeric_limits<uint16_t>::max();
-	  bool success = microslice->nanosliceSampleValue(nanoIt, sample, adc);
-
-	  if (success) {
-	    if (_daqtest)
-	      if (adc > 0) std::cout << "adc = " << adc << std::endl;
-	    adcVector.push_back((int)adc);
-	  }
-
-	} // nanoslice loop
-
-      } // microslice loop
-
-    } // analyse fragment loop
-
-    ADCs.push_back(adcVector);
-
-  } // channel loop
-
-  if (!receivedData && fEventNumber%1000==0)
-    mf::LogWarning("Monitoring") << "No nanoslices have been made after " << fEventNumber << " events";
-
-  return ADCs;
-
-}
-
-DQMvector lbne::OnlineMonitoring::analyzeSSP(art::Handle<artdaq::Fragments> rawSSP) {
-
-  DQMvector Waveforms;
-
-  if (_verbose)
-    std::cout << "%%DQM----- Run " << fRun << ", subrun " << fSubrun << ", event " << fEventNumber << " has " << rawSSP->size() << " fragment(s) of type PHOTON" << std::endl;
-
-  fNumSubDetectorsPresent += rawSSP->size();
-
-  // Loop over fragments to make a map to save the order the frags are saved in
-  sspFragmentMap.clear();
-  for (unsigned int fragIt = 0; fragIt < rawSSP->size(); fragIt++) {
-    const artdaq::Fragment &fragment = ((*rawSSP)[fragIt]);
-    unsigned int fragmentID = fragment.fragmentID();
-    sspFragmentMap.insert(std::pair<unsigned int, unsigned int>(fragmentID,fragIt));
-  }
-
-  // Keep a note of the previous fragment
-  unsigned int prevFrag = 100;
-
-  // Define a data pointer
-  const unsigned int *dataPointer = 0;
-
-  // Loop over optical channels
-  for (unsigned int opChanIt = 0; opChanIt < fNSSPChannels; opChanIt++) {
-
-    std::vector<int> waveformVector;
-
-    // Find the fragment ID and the sample for this channel
-    unsigned int fragmentID = (unsigned int)(opChanIt/12);
-    unsigned int sample = (unsigned int)(opChanIt%12);
-
-    // Check this fragment exists
-    if (sspFragmentMap.find(fragmentID) != sspFragmentMap.end() ) {
-
-      if (_verbose)
-	std::cout << "%%DQM---------- Optical Channel " << opChanIt << ", fragment " << fragmentID << " and sample " << sample << std::endl;
-
-      // Find the fragment this channel lives in
-      unsigned int fragIndex = sspFragmentMap[fragmentID];
-
-      // Get the millislice fragment
-      const artdaq::Fragment &frag = ((*rawSSP)[fragIndex]);
-      lbne::SSPFragment sspFragment(frag);
-
-      // Define at start of each fragment
-      if (fragmentID != prevFrag) dataPointer = sspFragment.dataBegin();
-      prevFrag = fragmentID;
-
-      // Check there is data in this fragment
-      if (dataPointer >= sspFragment.dataEnd())
-	continue;
-
-      // Get the event header
-      const SSPDAQ::EventHeader *daqHeader = reinterpret_cast<const SSPDAQ::EventHeader*> (dataPointer);
-
-      unsigned short OpChan = ((daqHeader->group2 & 0x000F) >> 0);
-      unsigned int nADC = (daqHeader->length-sizeof(SSPDAQ::EventHeader)/sizeof(unsigned int))*2;
-
-      if (_verbose)
-	std::cout << "%%DQM--------------- OpChan " << OpChan << ", number of ADCs " << nADC << std::endl;
-
-      // Move data to end of trigger header (start of ADCs) and copy it
-      dataPointer += sizeof(SSPDAQ::EventHeader)/sizeof(unsigned int);
-      const unsigned short *adcPointer = reinterpret_cast<const unsigned short*> (dataPointer);
-
-      for (unsigned int adcIt = 0; adcIt < nADC; adcIt++) {
-	const unsigned short *adc = adcPointer + adcIt;
-	waveformVector.push_back(*adc);
-      }
-
-      // Move to end of trigger
-      dataPointer += nADC/2;
-
-    } // analyse fragment loop
-
-    Waveforms.push_back(waveformVector);
-
-  } // channel loop
-
-  return Waveforms;
-
-}
-
-void lbne::OnlineMonitoring::windowingRCE(DQMvector ADCs) {
-
-  for (unsigned int channel = 0; channel < ADCs.size(); channel++) {
-
-    // Define variables for the windowing
-    std::vector<short> tmpBlockBegin((ADCs.at(channel).size()/2)+1);
-    std::vector<short> tmpBlockSize((ADCs.at(channel).size()/2)+1);
-    int tmpNumBlocks = 0;
-    int blockstartcheck = 0;
-    int endofblockcheck = 0;
-
-    for (int tick = 0; tick < (int)ADCs.at(channel).size(); tick++) {
-      // Windowing code (taken from raw.cxx::ZeroSuppression)
-      if (blockstartcheck == 0) {
-	if (ADCs.at(channel).at(tick) > fWindowingZeroThresholdSigned) {
-	  if (tmpNumBlocks > 0) {
-	    if (tick-fWindowingNearestNeighbour <= tmpBlockBegin[tmpNumBlocks-1] + tmpBlockSize[tmpNumBlocks-1]+1) {
-	      tmpNumBlocks--;
-	      tmpBlockSize[tmpNumBlocks] = tick - tmpBlockBegin[tmpNumBlocks] + 1;
-	      blockstartcheck = 1;
-	    }
-	    else {
-	      tmpBlockBegin[tmpNumBlocks] = (tick - fWindowingNearestNeighbour > 0) ? tick - fWindowingNearestNeighbour : 0;
-	      tmpBlockSize[tmpNumBlocks] = tick - tmpBlockBegin[tmpNumBlocks] + 1;
-	      blockstartcheck = 1;
-	    }
-	  }
-	  else {
-	    tmpBlockBegin[tmpNumBlocks] = (tick - fWindowingNearestNeighbour > 0) ? tick - fWindowingNearestNeighbour : 0;
-	    tmpBlockSize[tmpNumBlocks] = tick - tmpBlockBegin[tmpNumBlocks] + 1;
-	    blockstartcheck = 1;	    
-	  }
-	}
-      }
-      else if (blockstartcheck == 1) {
-	if (ADCs.at(channel).at(tick) > fWindowingZeroThresholdSigned) {
-	  ++tmpBlockSize[tmpNumBlocks];
-	  endofblockcheck = 0;
-	}
-	else {
-	  if (endofblockcheck < fWindowingNearestNeighbour) {
-	    ++endofblockcheck;
-	    ++tmpBlockSize[tmpNumBlocks];
-	  }
-	  //block has ended
-	  else if ( std::abs(ADCs.at(channel).at(tick+1)) <= fWindowingZeroThresholdSigned || std::abs(ADCs.at(channel).at(tick+2)) <= fWindowingZeroThresholdSigned) {  
-	    endofblockcheck = 0;
-	    blockstartcheck = 0;
-	    ++tmpNumBlocks;
-	  }
-	}
-      }
-
-    } // tick
-
-    fWindowingBlockBegin.push_back(tmpBlockBegin);
-    fWindowingBlockSize.push_back(tmpBlockSize);
-    fWindowingNumBlocks.push_back(tmpNumBlocks);
-
-  } // channel
-
-}
-
-void lbne::OnlineMonitoring::endSubRun(art::SubRun const &sr) {
+void OnlineMonitoring::OnlineMonitoring::endSubRun(art::SubRun const &sr) {
 
   // Add all histograms to the array for saving
-  addHists();
+  AddHists();
 
   // Make the html for the web pages
   ofstream imageHTML((fHistSaveDirectory+TString("index.html").Data()));
@@ -843,6 +610,7 @@ void lbne::OnlineMonitoring::endSubRun(art::SubRun const &sr) {
   ofstream tmp((fHistSaveDirectory+TString("run").Data()));
   tmp << sr.run() << " " << sr.subRun();
   tmp.close();
+  system(("chmod -R g=u "+std::string(fHistSaveDirectory)).c_str());
 
   mf::LogInfo("Monitoring") << "Monitoring for run " << sr.run() << ", subRun " << sr.subRun() << " is viewable at http://lbne-dqm.fnal.gov/OnlineMonitoring/Run" << sr.run() << "Subrun" << sr.subRun();
 
@@ -850,7 +618,7 @@ void lbne::OnlineMonitoring::endSubRun(art::SubRun const &sr) {
   fHistArray.Delete();
 }
 
-void lbne::OnlineMonitoring::reset() {
+void OnlineMonitoring::OnlineMonitoring::Reset() {
 
   fADC.clear();
   fWaveform.clear();
@@ -869,7 +637,7 @@ void lbne::OnlineMonitoring::reset() {
 }
 
 // Add histograms to histogram array
-void lbne::OnlineMonitoring::addHists() {
+void OnlineMonitoring::OnlineMonitoring::AddHists() {
 
   // The order the histograms are added will be the order they're displayed on the web!
   fHistArray.Add(hADCMeanChannel); fHistArray.Add(hADCRMSChannel);
@@ -878,6 +646,7 @@ void lbne::OnlineMonitoring::addHists() {
   fHistArray.Add(hTotalADCEvent); fHistArray.Add(hTotalRCEHitsEvent);
   fHistArray.Add(hAsymmetry); fHistArray.Add(hTimesADCGoesOverThreshold);
   fHistArray.Add(hRCEBitCheckAnd); fHistArray.Add(hRCEBitCheckOr);
+  fHistArray.Add(hLastSixBitsCheckOn); fHistArray.Add(hLastSixBitsCheckOff);
   fHistArray.Add(hNumMicroslicesInMillislice); 
 
   fHistArray.Add(hAvWaveformChannelEvent);
@@ -902,6 +671,8 @@ void lbne::OnlineMonitoring::addHists() {
   fFigureCaptions["TimesADCGoesOverThreshold"] = "Number of times an RCE hit goes over a set ADC threshold";
   fFigureCaptions["RCEBitCheckAnd"] = "Check for stuck RCE bits: bits which are always on";
   fFigureCaptions["RCEBitCheckOr"] = "Check for stuck RCE bits: bits which are always off";
+  fFigureCaptions["LastSixBitsCheckOn"] = "Fraction of all RCE ADC values with the last six bits stuck on (profiled; one entry per ADC)";
+  fFigureCaptions["LastSixBitsCheckOff"] = "Fraction of all RCE ADC values with the last six bits stuck off (profiled; one entry per ADC)";
   fFigureCaptions["NumMicroslicesInMillislice"] = "Number of microslices in a millislice in this run";
   fFigureCaptions["AvWaveformChannelEvent"] = "Average SSP ADC across a channel for an event, shown for the first 100 events";
   fFigureCaptions["WaveformMeanChannel"] = "Mean ADC values for each channel read out by the SSPs (profiled over all events read)";
@@ -918,4 +689,4 @@ void lbne::OnlineMonitoring::addHists() {
   fFigureCaptions["NumSubDetectorsPresent"] = "Number of subdetectors present in each event in the data (one entry per event)";
 }
  
-DEFINE_ART_MODULE(lbne::OnlineMonitoring)
+DEFINE_ART_MODULE(OnlineMonitoring::OnlineMonitoring)
