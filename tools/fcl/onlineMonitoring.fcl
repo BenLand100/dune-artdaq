@@ -25,4 +25,5 @@ physics:
   end_paths: [ analysis ]
 }
 
-physics.analyzers.monitoring.MakeTree: "true"
+physics.analyzers.monitoring.MakeTree: "false"
+physics.analyzers.monitoring.MonitoringRefreshRate: 500

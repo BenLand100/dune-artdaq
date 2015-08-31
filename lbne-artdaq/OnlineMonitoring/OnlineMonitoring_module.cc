@@ -61,28 +61,27 @@ class OnlineMonitoring::OnlineMonitoring : public art::EDAnalyzer {
 
 public:
 
-  explicit OnlineMonitoring(fhicl::ParameterSet const &pset);
+  explicit OnlineMonitoring(fhicl::ParameterSet const& pset);
 
   void AddHists();
-  void analyze(art::Event const &event);
-  void beginSubRun(const art::SubRun &sr);
-  void endSubRun(const art::SubRun &sr);
+  void analyze(art::Event const& event);
+  void beginSubRun(art::SubRun const& sr);
+  void endSubRun(art::SubRun const& sr);
   void EventDisplay(DQMvector ADCs, DQMvector Waveforms);
   void GeneralMonitoring();
   void RCEMonitoring(DQMvector ADCs);
   void SSPMonitoring(DQMvector Waveforms);
-  void reconfigure(fhicl::ParameterSet const &p);
+  void reconfigure(fhicl::ParameterSet const& p);
   void Reset();
+  void WriteMonitoringData(int run, int subrun);
 
 private:
 
   art::EventNumber_t fEventNumber;
-  unsigned int fRun;
-  unsigned int fSubrun;
 
   // File directories and paths
   const TString fDataDirName   = "/data/lbnedaq/data/";
-  const TString fHistSavePath  = "/data/lbnedaq/monitoring/";
+  const TString fHistSavePath  = "/data/lbnedaq/scratch/wallbank/monitoring/";
   const TString fHistSaveType  = ".png";
   const TString fPathDelimiter = "_";
   TString fHistSaveDirectory;
@@ -120,6 +119,9 @@ private:
   // Tree
   bool fMakeTree;
   TTree *fDataTree;
+
+  // Refresh rates
+  int fMonitoringRefreshRate;
 
   // Histograms
   TObjArray fHistArray;
@@ -161,6 +163,7 @@ OnlineMonitoring::OnlineMonitoring::OnlineMonitoring(fhicl::ParameterSet const &
 }
 
 void OnlineMonitoring::OnlineMonitoring::reconfigure(fhicl::ParameterSet const &p) {
+  fMonitoringRefreshRate = p.get<int>("MonitoringRefreshRate");
   fMakeTree = p.get<bool>("MakeTree");
   fInterestingChannels = {260, 278, 289, 290};
 }
@@ -245,13 +248,14 @@ void OnlineMonitoring::OnlineMonitoring::beginSubRun(const art::SubRun &sr) {
   hSizeOfFiles            = new TH1I("SizeOfFiles","Data File Sizes_\"colz\"_none;Run&Subrun;Size (bytes);",20,0,20);
   hSizeOfFilesPerEvent    = new TH1D("SizeOfFilesPerEvent","Size of Event in Data Files_\"colz\"_none;Run&Subrun;Size (bytes/event);",20,0,20);
 
+  // Add all histograms to the array for saving
+  AddHists();
+
 }
 
 void OnlineMonitoring::OnlineMonitoring::analyze(art::Event const &evt) {
 
   fEventNumber = evt.event();
-  fRun = evt.run();
-  fSubrun = evt.subRun();
 
   if (_verbose)
     std::cout << "Event number " << fEventNumber << std::endl;
@@ -292,11 +296,19 @@ void OnlineMonitoring::OnlineMonitoring::analyze(art::Event const &evt) {
 
   if (fMakeTree)
     fDataTree->Fill();
+
+  // Write the data out every-so-often
+  int eventRefreshInterval = std::round((double)fMonitoringRefreshRate / 1.6e-3);
+  if (fEventNumber % eventRefreshInterval == 0)
+    this->WriteMonitoringData(evt.run(), evt.subRun());
+
   return;
 
 }
 
 void OnlineMonitoring::OnlineMonitoring::GeneralMonitoring() {
+
+  /// Fills the general monitoring histograms (i.e. monitoring not specific to a particular hardware component)
 
   hNumSubDetectorsPresent->Fill(fNumSubDetectorsPresent);
 
@@ -342,8 +354,9 @@ void OnlineMonitoring::OnlineMonitoring::GeneralMonitoring() {
   }
 }
 
-// Function called to fill all histograms
 void OnlineMonitoring::OnlineMonitoring::RCEMonitoring(DQMvector ADCs) {
+
+  /// Fills all histograms pertaining to RCE hardware monitoring
 
   for (unsigned int channel = 0; channel < ADCs.size(); channel++) {
 
@@ -448,8 +461,9 @@ void OnlineMonitoring::OnlineMonitoring::RCEMonitoring(DQMvector ADCs) {
 
 }
 
-// Function called to fill all histograms
 void OnlineMonitoring::OnlineMonitoring::SSPMonitoring(DQMvector Waveforms) {
+
+  /// Fills all histograms pertaining to SSP hardware monitoring
 
   for (unsigned int channel = 0; channel < Waveforms.size(); channel++) {
 
@@ -533,15 +547,36 @@ void OnlineMonitoring::OnlineMonitoring::SSPMonitoring(DQMvector Waveforms) {
 //   UMap->delete();
 // }
 
-void OnlineMonitoring::OnlineMonitoring::endSubRun(art::SubRun const &sr) {
+void OnlineMonitoring::OnlineMonitoring::endSubRun(art::SubRun const& sr) {
 
-  // Add all histograms to the array for saving
-  AddHists();
+  // Save the data at the end of the subrun
+  this->WriteMonitoringData(sr.run(), sr.subRun());
+
+  // Free up all used memory
+  for (unsigned int interestingchannel = 0; interestingchannel < fInterestingChannels.size(); ++interestingchannel)
+    hDebugChannels.at(fInterestingChannels.at(interestingchannel))->Delete();
+  for (unsigned int millislice = 0; millislice < fNRCEMillislices; ++millislice)
+    hAvADCMillislice.at(millislice)->Delete();
+  for (unsigned int channel = 0; channel < fNRCEChannels; ++channel)
+    hADCChannel.at(channel)->Delete();
+  for (unsigned int channel = 0; channel < fNSSPChannels; ++channel)
+    hWaveformChannel.at(channel)->Delete();
+  fDataFile->Close();
+  delete fDataFile;
+
+  // Free the memory for the histograms
+  fHistArray.Delete();
+
+}
+
+void OnlineMonitoring::OnlineMonitoring::WriteMonitoringData(int run, int subrun) {
+
+  /// Writes all the monitoring data currently saved in the data objects
 
   // Make the html for the web pages
   ofstream imageHTML((fHistSaveDirectory+TString("index.html").Data()));
-  imageHTML << "<head><link rel=\"stylesheet\" type=\"text/css\" href=\"../../style/style.css\"><title>35t: Run " << sr.run() << ", Subrun " << sr.subRun() <<"</title></head>" << std::endl << "<body><div class=\"bannertop\"></div>";
-  imageHTML << "<h1 align=center>Monitoring for Run " << sr.run() << ", Subrun " << sr.subRun() << "</h1>" << std::endl;
+  imageHTML << "<head><link rel=\"stylesheet\" type=\"text/css\" href=\"../../style/style.css\"><title>35t: Run " << run << ", Subrun " << subrun <<"</title></head>" << std::endl << "<body><div class=\"bannertop\"></div>";
+  imageHTML << "<h1 align=center>Monitoring for Run " << run << ", Subrun " << subrun << "</h1>" << std::endl;
 
   fDataFile->cd();
 
@@ -555,7 +590,7 @@ void OnlineMonitoring::OnlineMonitoring::endSubRun(art::SubRun const &sr) {
     TObjArray *histTitle = TString(_h->GetTitle()).Tokenize(fPathDelimiter);
     _h->Draw((char*)histTitle->At(1)->GetName());
     TPaveText *canvTitle = new TPaveText(0.05,0.92,0.6,0.98,"brNDC");
-    canvTitle->AddText((std::string(histTitle->At(0)->GetName())+": Run "+std::to_string(fRun)+", SubRun "+std::to_string(fSubrun)).c_str());
+    canvTitle->AddText((std::string(histTitle->At(0)->GetName())+": Run "+std::to_string(run)+", SubRun "+std::to_string(subrun)).c_str());
     canvTitle->Draw();
     if (strstr(histTitle->At(2)->GetName(),"logy")) fCanvas->SetLogy(1);
     else fCanvas->SetLogy(0);
@@ -581,6 +616,7 @@ void OnlineMonitoring::OnlineMonitoring::endSubRun(art::SubRun const &sr) {
   mslicecanv->cd();
   l->Draw("same");
   mslicecanv->SaveAs(fHistSaveDirectory+TString("AvADCMillisliceChannel")+fHistSaveType);
+  delete mslicecanv;
   imageHTML << "<figure><a href=\"AvADCMillisliceChannel.png\"><img src=\"AvADCMillisliceChannel.png\" width=\"650\"></a><figcaption>" << "Average ADC count across the channels read out by each millislice present in the data." << "</figcaption></figure>" << std::endl;
 
   imageHTML << "<div class=\"bannerbottom\"></div></body>" << std::endl;
@@ -588,34 +624,24 @@ void OnlineMonitoring::OnlineMonitoring::endSubRun(art::SubRun const &sr) {
 
   // Write other histograms
   fDataFile->cd();
-  for (unsigned int interestingchannel = 0; interestingchannel < fInterestingChannels.size(); ++interestingchannel) {
+  for (unsigned int interestingchannel = 0; interestingchannel < fInterestingChannels.size(); ++interestingchannel)
     hDebugChannels.at(fInterestingChannels.at(interestingchannel))->Write();
-    hDebugChannels.at(fInterestingChannels.at(interestingchannel))->Delete();
-  }
-  for (unsigned int millislice = 0; millislice < fNRCEMillislices; ++millislice) {
+  for (unsigned int millislice = 0; millislice < fNRCEMillislices; ++millislice)
     hAvADCMillislice.at(millislice)->Write();
-    hAvADCMillislice.at(millislice)->Delete();
-  }
-  for (unsigned int channel = 0; channel < fNRCEChannels; ++channel) {
+  for (unsigned int channel = 0; channel < fNRCEChannels; ++channel)
     hADCChannel.at(channel)->Write();
-    hADCChannel.at(channel)->Delete();
-  }
-  for (unsigned int channel = 0; channel < fNSSPChannels; ++channel) {
+  for (unsigned int channel = 0; channel < fNSSPChannels; ++channel)
     hWaveformChannel.at(channel)->Write();
-    hWaveformChannel.at(channel)->Delete();
-  }
-  fDataFile->Close();
 
   // Add run file
   ofstream tmp((fHistSaveDirectory+TString("run").Data()));
-  tmp << sr.run() << " " << sr.subRun();
+  tmp << run << " " << subrun;
+  tmp.flush();
   tmp.close();
-  system(("chmod -R g=u "+std::string(fHistSaveDirectory)).c_str());
+  system(("chmod -R a=rwx "+std::string(fHistSaveDirectory)).c_str());  
 
-  mf::LogInfo("Monitoring") << "Monitoring for run " << sr.run() << ", subRun " << sr.subRun() << " is viewable at http://lbne-dqm.fnal.gov/OnlineMonitoring/Run" << sr.run() << "Subrun" << sr.subRun();
+  mf::LogInfo("Monitoring") << "Monitoring for run " << run << ", subRun " << subrun << " is viewable at http://lbne-dqm.fnal.gov/OnlineMonitoring/Run" << run << "Subrun" << subrun;
 
-  // Free the memory for the histograms
-  fHistArray.Delete();
 }
 
 void OnlineMonitoring::OnlineMonitoring::Reset() {
