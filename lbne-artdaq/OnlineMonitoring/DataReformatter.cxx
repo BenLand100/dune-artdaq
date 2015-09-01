@@ -180,13 +180,204 @@ void OnlineMonitoring::ReformatSSPBoardData(art::Handle<artdaq::Fragments>& rawS
 
 }
 
+OnlineMonitoring::PTBFormatter::PTBFormatter(art::Handle<artdaq::Fragments> rawPTB){
+  //Initialise the trigger rates
+  fMuonTriggerRates[1] = 0;
+  fMuonTriggerRates[2] = 0;
+  fMuonTriggerRates[4] = 0;
+  fMuonTriggerRates[8] = 0;
 
-void OnlineMonitoring::ReformatTriggerBoardData() {
+  //Loop over the generic fragments
+  for (size_t idx = 0; idx < rawPTB->size(); ++idx){
+    const auto& frag((*rawPTB)[idx]);
 
+    //Get the PennMilliSliceFragment from the artdaq fragment
+    lbne::PennMilliSliceFragment msf(frag);
+
+    //Get the number of each payload type in the millislice
+    lbne::PennMilliSlice::Header::payload_count_t n_frames, n_frames_counter, n_frames_trigger, n_frames_timestamp;
+    n_frames = msf.payloadCount(n_frames_counter, n_frames_trigger, n_frames_timestamp);
+
+    //Now we need to grab the payload information in the millislice
+    lbne::PennMicroSlice::Payload_Header::data_packet_type_t type;
+    lbne::PennMicroSlice::Payload_Header::short_nova_timestamp_t timestamp;
+    uint8_t* payload_data;
+    size_t payload_size;
+
+    //Loop over the payloads
+    for (uint32_t ip = 0; ip < n_frames; ip++){
+      //Get the actual payload
+      payload_data = msf.payload(ip, type, timestamp, payload_size);
+
+      unsigned int payload_type = (unsigned int) type;
+      //Loop over the words in the payload
+      if (!((payload_data != nullptr) && payload_size)) continue;
+      switch (payload_type){
+        case 1:
+          //Dealing with counter word
+          CollectCounterBits(payload_data, payload_size);
+          fCounterTimes.push_back(timestamp);
+          break;
+        case 2:
+          //Dealing with trigger word
+          CollectMuonTrigger(payload_data, payload_size);
+          fMuonTriggerTimes.push_back(timestamp);
+        default:
+          break;
+      }
+    }
+  }
+}
+
+void OnlineMonitoring::PTBFormatter::AnalyzeCounter(int counter_index, double &activation_time, int &hit_rate) const{
+  //We need to loop through the requested counter to check
+  //  A) when it switched back on
+  //  B) How many times it switched on
+  //For now, we are going to ingore the counter if it begins the millislice activated UNTIL it switches off
+
+  //Initialise the values to be returned
+  activation_time = 0.;
+  hit_rate = 0;
+  //Assume that the counter was on in the previous millislice (this shouldn't be detrimental to the logic)
+  bool counter_previously_on = true;
+
+  for (std::vector<std::bitset<OnlineMonitoring::TypeSizes::CounterWordSize> >::const_iterator countIt = fCounterBits.begin(); countIt != fCounterBits.end(); countIt++){
+    //Get the counter status
+    bool counter_currently_on = (*countIt)[counter_index];
+    //std::cout<<counter_currently_on<<" "<<fCounterTimes[std::distance(countIt,fCounterBits.end())]<<std::endl;
+    if (counter_previously_on && counter_currently_on){
+      //If the counter was previously on and it is still on, just continue
+      continue;
+    }
+    else if (counter_previously_on && !counter_currently_on){
+      //The counter WAS on but it is now off so record the counter as switching off and move on
+      counter_previously_on = false;
+      continue;
+    }
+    else if (!counter_previously_on && !counter_currently_on){
+      //The counter was off and it is still off so very little to do here.  Continue!
+      continue;
+    }
+    else if (!counter_previously_on && counter_currently_on){
+      //The counter has switched on!!!!!
+      //Record that it is now on and record some numbers
+      counter_previously_on = true;
+      hit_rate++;
+      //Also record the activation time if it is the first time the counter has been hit
+      if (hit_rate==1){
+        //We need the array index to fetch the timestamp of the payload
+        int index = std::distance(countIt, fCounterBits.end());
+        activation_time = fCounterTimes.at(index);
+      }
+    }
+    else{
+      //We should never get here
+      std::cout<<"ERROR IN PTBFORMATTER'S LOGIC IN COUNTER ANALYSIS"<<std::endl;
+    }
+  }
+
+  return;
+}
+
+void OnlineMonitoring::PTBFormatter::AnalyzeMuonTrigger(int trigger_number, int &trigger_rate) {
+
+  trigger_rate = fMuonTriggerRates[trigger_number];
+  return;
+}
+
+
+void OnlineMonitoring::PTBFormatter::CollectCounterBits(uint8_t* payload, size_t payload_size){
+  std::bitset<OnlineMonitoring::TypeSizes::CounterWordSize> bits;
+  for (size_t ib = 0; ib < payload_size; ib++){
+    std::bitset<OnlineMonitoring::TypeSizes::CounterWordSize> byte = payload[ib];
+    //bits ^= (byte << 8*(payload_size-(ib+1)));
+    bits ^= (byte << 8*ib);
+
+  }
+
+  fCounterBits.push_back(bits);
+  return;
+}
+
+void OnlineMonitoring::PTBFormatter::CollectMuonTrigger(uint8_t* payload, size_t payload_size){
+  std::bitset<OnlineMonitoring::TypeSizes::TriggerWordSize> bits;
+  for (size_t ib = 0; ib < payload_size; ib++){
+    std::bitset<OnlineMonitoring::TypeSizes::TriggerWordSize> byte = payload[ib];
+    bits ^= (byte << 8*ib);
+    //bits ^= (byte << 8*(payload_size-(ib)));
+    //std::cout<<std::bitset<8>(payload[ib])<<std::endl;
+  }
+  //Bits collected, now get the trigger type
+  std::bitset<OnlineMonitoring::TypeSizes::TriggerWordSize> trigger_type_bits; 
+  trigger_type_bits ^= (bits >> (OnlineMonitoring::TypeSizes::TriggerWordSize - 5));
+  int trigger_type = static_cast<int>(trigger_type_bits.to_ulong());
+  //If we have a muon trigger, get which trigger it was and increase the hit rate
+  if (trigger_type == 16){
+    std::bitset<OnlineMonitoring::TypeSizes::TriggerWordSize> muon_trigger_bits;
+    //Shift the bits left by 5 first to remove the trigger type bits
+    muon_trigger_bits ^= (bits << 5);
+    //Now we need to shift the entire thing set to the LSB so we can record the number
+    //The muon trigger pattern words are 4 bits
+    muon_trigger_bits >>= (OnlineMonitoring::TypeSizes::TriggerWordSize-4);
+    int muon_trigger = static_cast<int>(muon_trigger_bits.to_ulong());
+    fMuonTriggerRates[muon_trigger]++;
+
+  }
+  return;
+}
+
+void OnlineMonitoring::ReformatTriggerBoardData(art::Handle<artdaq::Fragments> rawPTB) {
+  std::cout<<"PTB size: "<<rawPTB->size()<<std::endl;
+
+  //Loop over the generic fragments
+  for (size_t idx = 0; idx < rawPTB->size(); ++idx){
+    const auto& frag((*rawPTB)[idx]);
+
+    //Get the PennMilliSliceFragment from the artdaq fragment
+    lbne::PennMilliSliceFragment msf(frag);
+
+    //Get the number of each payload type in the millislice
+    lbne::PennMilliSlice::Header::payload_count_t n_frames, n_frames_counter, n_frames_trigger, n_frames_timestamp;
+    n_frames = msf.payloadCount(n_frames_counter, n_frames_trigger, n_frames_timestamp);
+
+    //Now we need to grab the payload information in the millislice
+    lbne::PennMicroSlice::Payload_Header::data_packet_type_t type;
+    lbne::PennMicroSlice::Payload_Header::short_nova_timestamp_t timestamp;
+    uint8_t* payload_data;
+    size_t payload_size;
+
+    //Loop over the payloads
+    for (uint32_t ip = 0; ip < n_frames; ip++){
+      //Get the actual payload
+      payload_data = msf.payload(ip, type, timestamp, payload_size);
+
+      unsigned int payload_type = (unsigned int) type;
+      std::cout<<"TYPE: " << payload_type << std::endl;
+      //Loop over the words in the payload
+      if (!((payload_data != nullptr) && payload_size)) continue;
+      for (size_t ib = 0; ib < payload_size; ib++){
+        switch (payload_type){
+          case 1:
+            //Dealing with counter word
+            break;
+          case 2:
+            //Dealing with trigger word
+            std::cout<<"Found trigger word"<<std::endl;
+          default:
+            break;
+        }
+
+
+      }
+    }
+
+
+  }
 }
 
 
 void OnlineMonitoring::WindowingRCEData(DQMvector& ADCs, std::vector<int>* numBlocks, std::vector<std::vector<short> >* blocksBegin, std::vector<std::vector<short> >* blocksSize) {
+
 
   const int fWindowingZeroThresholdSigned = 10;
   int fWindowingNearestNeighbour = 4;

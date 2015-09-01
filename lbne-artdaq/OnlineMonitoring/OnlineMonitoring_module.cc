@@ -67,10 +67,11 @@ public:
   void analyze(art::Event const& event);
   void beginSubRun(art::SubRun const& sr);
   void endSubRun(art::SubRun const& sr);
-  void EventDisplay(DQMvector ADCs, DQMvector Waveforms);
+  void MakeEventDisplay(DQMvector const& ADCs);
   void GeneralMonitoring();
-  void RCEMonitoring(DQMvector ADCs);
-  void SSPMonitoring(DQMvector Waveforms);
+  void RCEMonitoring(DQMvector const& ADCs);
+  void SSPMonitoring(DQMvector const& Waveforms);
+  void PTBMonitoring(PTBFormatter &ptb_formatter);
   void reconfigure(fhicl::ParameterSet const& p);
   void Reset();
   void WriteMonitoringData(int run, int subrun);
@@ -82,12 +83,13 @@ private:
   // File directories and paths
   const TString fDataDirName   = "/data/lbnedaq/data/";
   const TString fHistSavePath  = "/data/lbnedaq/scratch/wallbank/monitoring/";
+  const TString fEVDSavePath   = "/data/lbnedaq/eventDisplay";
   const TString fHistSaveType  = ".png";
   const TString fPathDelimiter = "_";
   TString fHistSaveDirectory;
 
   // SubRun flags
-  bool fIsRCE, fIsSSP, receivedData, checkedFileSizes;
+  bool fIsRCE, fIsSSP, fIsPTB, receivedData, checkedFileSizes;
 
   int fThreshold = 10;
   bool fIsInduction = true;
@@ -122,6 +124,7 @@ private:
 
   // Refresh rates
   int fMonitoringRefreshRate;
+  int fEventDisplayRefreshRate;
 
   // Histograms
   TObjArray fHistArray;
@@ -146,6 +149,31 @@ private:
   TH1I *hNumSubDetectorsPresent, *hSizeOfFiles;
   TH1D *hSizeOfFilesPerEvent;
 
+  //Stuff for the Penn trigger board
+  TProfile *hPTBTSUCounterHitRateWU;
+  TProfile *hPTBTSUCounterActivationTimeWU;
+  TProfile *hPTBTSUCounterHitRateEL;
+  TProfile *hPTBTSUCounterActivationTimeEL;
+  TProfile *hPTBTSUCounterHitRateExtra;
+  TProfile *hPTBTSUCounterActivationTimeExtra;
+  TProfile *hPTBTSUCounterHitRateNU;
+  TProfile *hPTBTSUCounterActivationTimeNU;
+  TProfile *hPTBTSUCounterHitRateSL;
+  TProfile *hPTBTSUCounterActivationTimeSL;
+  TProfile *hPTBTSUCounterHitRateNL;
+  TProfile *hPTBTSUCounterActivationTimeNL;
+  TProfile *hPTBTSUCounterHitRateSU;
+  TProfile *hPTBTSUCounterActivationTimeSU;
+  TProfile *hPTBBSUCounterHitRateRM;
+  TProfile *hPTBBSUCounterActivationTimeRM;
+  TProfile *hPTBBSUCounterHitRateCU;
+  TProfile *hPTBBSUCounterActivationTimeCU;
+  TProfile *hPTBBSUCounterHitRateCL;
+  TProfile *hPTBBSUCounterActivationTimeCL;
+  TProfile *hPTBBSUCounterHitRateRL;
+  TProfile *hPTBBSUCounterActivationTimeRL;
+  TProfile *hPTBTriggerRates;
+
   // Debug ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
   // Run options
   bool _verbose = false;
@@ -155,27 +183,28 @@ private:
 
 };
 
-OnlineMonitoring::OnlineMonitoring::OnlineMonitoring(fhicl::ParameterSet const &pset) : EDAnalyzer(pset) {
+OnlineMonitoring::OnlineMonitoring::OnlineMonitoring(fhicl::ParameterSet const& pset) : EDAnalyzer(pset) {
   mf::LogInfo("Monitoring") << "Starting";
   this->reconfigure(pset);
   gStyle->SetOptStat(0);
   gStyle->SetOptTitle(0);
 }
 
-void OnlineMonitoring::OnlineMonitoring::reconfigure(fhicl::ParameterSet const &p) {
+void OnlineMonitoring::OnlineMonitoring::reconfigure(fhicl::ParameterSet const& p) {
   fMonitoringRefreshRate = p.get<int>("MonitoringRefreshRate");
+  fEventDisplayRefreshRate = p.get<int>("EventDisplayRefreshRate");
   fMakeTree = p.get<bool>("MakeTree");
   fInterestingChannels = {260, 278, 289, 290};
 }
 
-void OnlineMonitoring::OnlineMonitoring::beginSubRun(const art::SubRun &sr) {
+void OnlineMonitoring::OnlineMonitoring::beginSubRun(art::SubRun const& sr) {
 
   mf::LogInfo("Monitoring") << "Starting monitoring for run " << sr.run() << ", subRun " << sr.subRun();
 
   // Set up new subrun
   fHistArray.Clear();
   fCanvas = new TCanvas("canv","",800,600);
-  receivedData = false; checkedFileSizes = false; fIsRCE = true; fIsSSP = true; _interestingchannelsfilled = false;
+  receivedData = false; checkedFileSizes = false; fIsRCE = true; fIsSSP = true; fIsPTB = true; _interestingchannelsfilled = false;
 
   // Get directory for this run
   std::ostringstream directory;
@@ -248,12 +277,96 @@ void OnlineMonitoring::OnlineMonitoring::beginSubRun(const art::SubRun &sr) {
   hSizeOfFiles            = new TH1I("SizeOfFiles","Data File Sizes_\"colz\"_none;Run&Subrun;Size (bytes);",20,0,20);
   hSizeOfFilesPerEvent    = new TH1D("SizeOfFilesPerEvent","Size of Event in Data Files_\"colz\"_none;Run&Subrun;Size (bytes/event);",20,0,20);
 
+  //Penn trigger board hists
+  hPTBTSUCounterHitRateWU = new TProfile("PTBTSUCounterRateWU","PTB TSU counter hit Rate (per millislice) (West Up)_\"\"_none;Counter number; No. hits per millislice",10,1,11);
+  hPTBTSUCounterHitRateWU->GetXaxis()->SetNdivisions(10);
+  hPTBTSUCounterHitRateWU->GetXaxis()->CenterLabels();
+  hPTBTSUCounterActivationTimeWU = new TProfile("PTBTSUCounterActivationTimeWU","PTB counter average activation time (West Up)_\"\"_none;Counter number; Time",10,1,11);
+  hPTBTSUCounterActivationTimeWU->GetXaxis()->SetNdivisions(10);
+  hPTBTSUCounterActivationTimeWU->GetXaxis()->CenterLabels();
+
+  hPTBTSUCounterHitRateEL = new TProfile("PTBTSUCounterRateEL","PTB TSU counter hit Rate (per millislice) (East Low)_\"\"_none;Counter number; No. hits per millislice",10,1,11);
+  hPTBTSUCounterHitRateEL->GetXaxis()->SetNdivisions(10);
+  hPTBTSUCounterHitRateEL->GetXaxis()->CenterLabels();
+  hPTBTSUCounterActivationTimeEL = new TProfile("PTBTSUCounterActivationTimeEL","PTB counter average activation time (East Low)_\"\"_none;Counter number; Time",10,1,11);
+  hPTBTSUCounterActivationTimeEL->GetXaxis()->SetNdivisions(10);
+  hPTBTSUCounterActivationTimeEL->GetXaxis()->CenterLabels();
+
+  hPTBTSUCounterHitRateExtra = new TProfile("PTBTSUCounterRateExtra","PTB TSU counter hit Rate (per millislice) (Empty counter bits - SHOULD BE EMPTY)_\"\"_none;Counter number; No. hits per millislice",4,1,5);
+  hPTBTSUCounterHitRateExtra->GetXaxis()->SetNdivisions(4);
+  hPTBTSUCounterHitRateExtra->GetXaxis()->CenterLabels();
+  hPTBTSUCounterActivationTimeExtra = new TProfile("PTBTSUCounterActivationTimeExtra","PTB counter average activation time (Empty counter bits - SHOULD BE EMPTY)_\"\"_none;Counter number; Time",4,1,5);
+  hPTBTSUCounterActivationTimeExtra->GetXaxis()->SetNdivisions(4);
+  hPTBTSUCounterActivationTimeExtra->GetXaxis()->CenterLabels();
+
+  hPTBTSUCounterHitRateNU = new TProfile("PTBTSUCounterRateNU","PTB TSU counter hit Rate (per millislice) (North Up)_\"\"_none;Counter number; No. hits per millislice",6,1,7);
+  hPTBTSUCounterHitRateNU->GetXaxis()->SetNdivisions(6);
+  hPTBTSUCounterHitRateNU->GetXaxis()->CenterLabels();
+  hPTBTSUCounterActivationTimeNU = new TProfile("PTBTSUCounterActivationTimeNU","PTB counter average activation time (North Up)_\"\"_none;Counter number; Time",6,1,7);
+  hPTBTSUCounterActivationTimeNU->GetXaxis()->SetNdivisions(6);
+  hPTBTSUCounterActivationTimeNU->GetXaxis()->CenterLabels();
+
+  hPTBTSUCounterHitRateSL = new TProfile("PTBTSUCounterRateSL","PTB TSU counter hit Rate (per millislice) (South Low)_\"\"_none;Counter number; No. hits per millislice",6,1,7);
+  hPTBTSUCounterHitRateSL->GetXaxis()->SetNdivisions(6);
+  hPTBTSUCounterHitRateSL->GetXaxis()->CenterLabels();
+  hPTBTSUCounterActivationTimeSL = new TProfile("PTBTSUCounterActivationTimeSL","PTB counter average activation time (South Low)_\"\"_none;Counter number; Time",6,1,7);
+  hPTBTSUCounterActivationTimeSL->GetXaxis()->SetNdivisions(6);
+  hPTBTSUCounterActivationTimeSL->GetXaxis()->CenterLabels();
+
+  hPTBTSUCounterHitRateNL = new TProfile("PTBTSUCounterRateNL","PTB TSU counter hit Rate (per millislice) (North Low)_\"\"_none;Counter number; No. hits per millislice",6,1,7);
+  hPTBTSUCounterHitRateNL->GetXaxis()->SetNdivisions(6);
+  hPTBTSUCounterHitRateNL->GetXaxis()->CenterLabels();
+  hPTBTSUCounterActivationTimeNL = new TProfile("PTBTSUCounterActivationTimeNL","PTB counter average activation time (North Low)_\"\"_none;Counter number; Time",6,1,7);
+  hPTBTSUCounterActivationTimeNL->GetXaxis()->SetNdivisions(6);
+  hPTBTSUCounterActivationTimeNL->GetXaxis()->CenterLabels();
+
+  hPTBTSUCounterHitRateSU = new TProfile("PTBTSUCounterRateSU","PTB TSU counter hit Rate (per millislice) (South Up)_\"\"_none;Counter number; No. hits per millislice",6,1,7);
+  hPTBTSUCounterHitRateSU->GetXaxis()->SetNdivisions(6);
+  hPTBTSUCounterHitRateSU->GetXaxis()->CenterLabels();
+  hPTBTSUCounterActivationTimeSU = new TProfile("PTBTSUCounterActivationTimeSU","PTB counter average activation time (South Up)_\"\"_none;Counter number; Time",6,1,7);
+  hPTBTSUCounterActivationTimeSU->GetXaxis()->SetNdivisions(6);
+  hPTBTSUCounterActivationTimeSU->GetXaxis()->CenterLabels();
+
+  hPTBBSUCounterHitRateRM = new TProfile("PTBBSUCounterRateRM","PTB BSU counter hit Rate (per millislice) (RM)_\"\"_none;Counter number; No. hits per millislice",16,1,17);
+  hPTBBSUCounterHitRateRM->GetXaxis()->SetNdivisions(16);
+  hPTBBSUCounterHitRateRM->GetXaxis()->CenterLabels();
+  hPTBBSUCounterActivationTimeRM = new TProfile("PTBBSUCounterActivationTimeRM","PTB counter average activation time (RM)_\"\"_none;Counter number; Time",16,1,17);
+  hPTBBSUCounterActivationTimeRM->GetXaxis()->SetNdivisions(16);
+  hPTBBSUCounterActivationTimeRM->GetXaxis()->CenterLabels();
+
+  hPTBBSUCounterHitRateCU = new TProfile("PTBBSUCounterRateCU","PTB BSU counter hit Rate (per millislice) (CU)_\"\"_none;Counter number; No. hits per millislice",10,1,11);
+  hPTBBSUCounterHitRateCU->GetXaxis()->SetNdivisions(10);
+  hPTBBSUCounterHitRateCU->GetXaxis()->CenterLabels();
+  hPTBBSUCounterActivationTimeCU = new TProfile("PTBBSUCounterActivationTimeCU","PTB counter average activation time (CU)_\"\"_none;Counter number; Time",10,1,11);
+  hPTBBSUCounterActivationTimeCU->GetXaxis()->SetNdivisions(10);
+  hPTBBSUCounterActivationTimeCU->GetXaxis()->CenterLabels();
+
+  hPTBBSUCounterHitRateCL = new TProfile("PTBBSUCounterRateCL","PTB BSU counter hit Rate (per millislice) (CL)_\"\"_none;Counter number; No. hits per millislice",13,1,14);
+  hPTBBSUCounterHitRateCL->GetXaxis()->SetNdivisions(13);
+  hPTBBSUCounterHitRateCL->GetXaxis()->CenterLabels();
+  hPTBBSUCounterActivationTimeCL = new TProfile("PTBBSUCounterActivationTimeCL","PTB counter average activation time (CL)_\"\"_none;Counter number; Time",13,1,14);
+  hPTBBSUCounterActivationTimeCL->GetXaxis()->SetNdivisions(13);
+  hPTBBSUCounterActivationTimeCL->GetXaxis()->CenterLabels();
+
+  hPTBBSUCounterHitRateRL = new TProfile("PTBBSUCounterRateRL","PTB BSU counter hit Rate (per millislice) (RL)_\"\"_none;Counter number; No. hits per millislice",10,1,11);
+  hPTBBSUCounterHitRateRL->GetXaxis()->SetNdivisions(10);
+  hPTBBSUCounterHitRateRL->GetXaxis()->CenterLabels();
+  hPTBBSUCounterActivationTimeRL = new TProfile("PTBBSUCounterActivationTimeRL","PTB counter average activation time (RL)_\"\"_none;Counter number; Time",10,1,11);
+  hPTBBSUCounterActivationTimeRL->GetXaxis()->SetNdivisions(10);
+  hPTBBSUCounterActivationTimeRL->GetXaxis()->CenterLabels();
+
+  hPTBTriggerRates = new TProfile("PTBTriggerRates","Muon trigger rates_\"\"_none;Muon trigger name; No. hits per millislice",4,1,5);
+  hPTBTriggerRates->GetXaxis()->SetBinLabel(1,"BSU RM-CM");
+  hPTBTriggerRates->GetXaxis()->SetBinLabel(2,"TSU NU-SL");
+  hPTBTriggerRates->GetXaxis()->SetBinLabel(3,"TSU SU-NL");
+  hPTBTriggerRates->GetXaxis()->SetBinLabel(4,"TSU EL-WU");
+
   // Add all histograms to the array for saving
   AddHists();
 
 }
 
-void OnlineMonitoring::OnlineMonitoring::analyze(art::Event const &evt) {
+void OnlineMonitoring::OnlineMonitoring::analyze(art::Event const& evt) {
 
   fEventNumber = evt.event();
 
@@ -268,11 +381,17 @@ void OnlineMonitoring::OnlineMonitoring::analyze(art::Event const &evt) {
   art::Handle<artdaq::Fragments> rawSSP;
   evt.getByLabel("daq","PHOTON",rawSSP);
 
+  // Look for PTB data
+  art::Handle<artdaq::Fragments> rawPTB;
+  evt.getByLabel("dap","PHOTON",rawPTB);
+
   // Check the data exists before continuing
   try { rawRCE->size(); }
   catch(std::exception e) { fIsRCE = false; }
   try { rawSSP->size(); }
   catch(std::exception e) { fIsSSP = false; }
+  try { rawPTB->size(); }
+  catch(std::exception e) { fIsPTB = false; }
 
   Reset();
 
@@ -284,6 +403,9 @@ void OnlineMonitoring::OnlineMonitoring::analyze(art::Event const &evt) {
   if (fIsSSP)
     ReformatSSPBoardData(rawSSP, &fWaveform);
 
+  // PTB reformatter
+  PTBFormatter ptbformatter(rawPTB);
+
   // // Event display -- every 500 events (8 s)
   // if (fEventNumber % 20 == 0) {
   //   std::thread t(&OnlineMonitoring::eventDisplay,this,ADCs,Waveforms);
@@ -292,6 +414,7 @@ void OnlineMonitoring::OnlineMonitoring::analyze(art::Event const &evt) {
 
   if (fADC.size()) RCEMonitoring(fADC);
   if (fWaveform.size()) SSPMonitoring(fWaveform);
+  PTBMonitoring(ptbformatter);
   GeneralMonitoring();
 
   if (fMakeTree)
@@ -301,6 +424,11 @@ void OnlineMonitoring::OnlineMonitoring::analyze(art::Event const &evt) {
   int eventRefreshInterval = std::round((double)fMonitoringRefreshRate / 1.6e-3);
   if (fEventNumber % eventRefreshInterval == 0)
     this->WriteMonitoringData(evt.run(), evt.subRun());
+
+  // // Make event display every-so-often
+  // int evdRefreshInterval = std::round((double)fEventDisplayRefreshRate / 1.6e-3);
+  // if (fEventNumber % evdRefreshInterval == 0)
+  //   this->MakeEventDisplay(fADC);
 
   return;
 
@@ -354,7 +482,7 @@ void OnlineMonitoring::OnlineMonitoring::GeneralMonitoring() {
   }
 }
 
-void OnlineMonitoring::OnlineMonitoring::RCEMonitoring(DQMvector ADCs) {
+void OnlineMonitoring::OnlineMonitoring::RCEMonitoring(DQMvector const& ADCs) {
 
   /// Fills all histograms pertaining to RCE hardware monitoring
 
@@ -461,7 +589,7 @@ void OnlineMonitoring::OnlineMonitoring::RCEMonitoring(DQMvector ADCs) {
 
 }
 
-void OnlineMonitoring::OnlineMonitoring::SSPMonitoring(DQMvector Waveforms) {
+void OnlineMonitoring::OnlineMonitoring::SSPMonitoring(DQMvector const& Waveforms) {
 
   /// Fills all histograms pertaining to SSP hardware monitoring
 
@@ -526,25 +654,127 @@ void OnlineMonitoring::OnlineMonitoring::SSPMonitoring(DQMvector Waveforms) {
 
 }
 
-// void OnlineMonitoring::OnlineMonitoring::eventDisplay(DQMvector ADCs, DQMvector Waveforms) {
+void OnlineMonitoring::OnlineMonitoring::PTBMonitoring(PTBFormatter &ptb_formatter) {
 
-//   std::unique_ptr<TH2D> UMap = new TH2D("UMap",";Wire;Tick;",fGeometry->Nwires(0,0,0),0,fGeometry->Nwires(0,0,0),3200,0,3200);
+  /// Produces PTB monitoring histograms
+
+  double activation_time = 0;
+  int hit_rate = 0;
+
+  for (int i = 0; i < 97; i++){
+
+    ptb_formatter.AnalyzeCounter(i,activation_time,hit_rate);
+
+    //Now we need to fill the relevant histograms :(
+    if (i>=0 && i<=9){
+      //Dealing with the WU TSU counters
+      hPTBTSUCounterHitRateWU->Fill(i+1,hit_rate);
+      hPTBTSUCounterActivationTimeWU->Fill(i+1,activation_time);
+    }
+    else if (i>=10 && i<=19){
+      //Dealing with the EL TSU counters
+      hPTBTSUCounterHitRateEL->Fill(i+1-10,hit_rate);
+      hPTBTSUCounterActivationTimeEL->Fill(i+1-10,activation_time);
+    }
+    else if (i>=20 && i<=23){
+      //Dealing with the EL TSU counters
+      hPTBTSUCounterHitRateExtra->Fill(i+1-20,hit_rate);
+      hPTBTSUCounterActivationTimeExtra->Fill(i+1-20,activation_time);
+    }
+    else if (i>=24 && i<=29){
+      //Dealing with the NU TSU counters
+      hPTBTSUCounterHitRateNU->Fill(i+1-24,hit_rate);
+      hPTBTSUCounterActivationTimeNU->Fill(i+1-24,activation_time);
+    }
+    else if (i>=30 && i<=35){
+      //Dealing with the SL TSU counters
+      hPTBTSUCounterHitRateSL->Fill(i+1-30,hit_rate);
+      hPTBTSUCounterActivationTimeSL->Fill(i+1-30,activation_time);
+    }
+    else if (i>=36 && i<=41){
+      //Dealing with the NL TSU counters
+      hPTBTSUCounterHitRateNL->Fill(i+1-36,hit_rate);
+      hPTBTSUCounterActivationTimeNL->Fill(i+1-36,activation_time);
+    }
+    else if (i>=42 && i<=47){
+      //Dealing with the SU TSU counters
+      hPTBTSUCounterHitRateSU->Fill(i+1-42,hit_rate);
+      hPTBTSUCounterActivationTimeSU->Fill(i+1-42,activation_time);
+    }
+    //In the word map, the BSU counters are 0 indexed, but start at 48.  Let the compiler do that maths
+    else if (i>=0+48 && i<=15+48){
+      //Dealing with the RM BSU counters
+      hPTBBSUCounterHitRateRM->Fill(i+1-(0+48),hit_rate);
+      hPTBBSUCounterActivationTimeRM->Fill(i+1-(0+48),activation_time);
+    }
+    else if (i>=16+48 && i<=25+48){
+      //Dealing with the CU BSU counters
+      hPTBBSUCounterHitRateCU->Fill(i+1-(16+48),hit_rate);
+      hPTBBSUCounterActivationTimeCU->Fill(i+1-(16+48),activation_time);
+    }
+    else if (i>=26+48 && i<=38+48){
+      //Dealing with the CL BSU counters
+      hPTBBSUCounterHitRateCL->Fill(i+1-(26+48),hit_rate);
+      hPTBBSUCounterActivationTimeCL->Fill(i+1-(26+48),activation_time);
+    }
+    else if (i>=39+48 && i<=48+48){
+      //Dealing with the RL BSU counters
+      hPTBBSUCounterHitRateRL->Fill(i+1-(39+48),hit_rate);
+      hPTBBSUCounterActivationTimeRL->Fill(i+1-(39+48),activation_time);
+    }
+
+    //Now do the triggers
+    int trigger_rate = 0;
+    ptb_formatter.AnalyzeMuonTrigger(1,trigger_rate);
+    hPTBTriggerRates->Fill(1,trigger_rate);
+
+    ptb_formatter.AnalyzeMuonTrigger(2,trigger_rate);
+    hPTBTriggerRates->Fill(2,trigger_rate);
+
+    ptb_formatter.AnalyzeMuonTrigger(4,trigger_rate);
+    hPTBTriggerRates->Fill(3,trigger_rate);
+
+    ptb_formatter.AnalyzeMuonTrigger(8,trigger_rate);
+    hPTBTriggerRates->Fill(4,trigger_rate);
+
+  }
+
+  return;
+
+}
+
+// void OnlineMonitoring::OnlineMonitoring::MakeEventDisplay(DQMvector const& ADCs) {
+
+//   /// Makes an event display and saves it as an image to be uploaded
+
+//   TH2D* UDisplay = new TH2D("UDisplay",";Wire;Tick;",244,0,243,32000,0,32000);
+//   TH2D* VDisplay = new TH2D("VDisplay",";Wire;Tick;",244,0,243,32000,0,32000);
+//   TH2D* ZDisplay = new TH2D("ZDisplay",";Wire;Tick;",244,0,243,32000,0,32000);
 
 //   for (unsigned int channel = 0; channel < ADCs.size(); ++channel) {
-//     std::vector<geo::WireID> wires = fGeometry->ChannelToWire(channel)
+//     int offlineChannel = onlineToOfflineChannel(channel);
+//     int plane = onlineChannelToPlane(channel);
 //     for (unsigned int tick = 0; tick < ADCs.at(channel).size(); ++tick) {
-//       for (auto wire : wires) {
-// 	if (fGeometry->View(channel) == geo::kU) {
-// 	  UMap->Fill(wire.Wire,tick);
-// 	}
-//       }
+//       int ADC = ADCs.at(channel).at(tick);
+//       if (plane == 0) UDisplay->Fill(offlineChannel,tick,ADC);
+//       if (plane == 1) VDisplay->Fill(offlineChannel,tick,ADC);
+//       if (plane == 2) ZDisplay->Fill(offlineChannel,tick,ADC);
 //     }
 //   }
 
-//   for (unsigned int channel = 0; channel < Waveforms.size(); ++channel) {
-//   }
+//   // Save the event display and make it look pretty
+//   TCanvas* evdCanvas = new TCanvas();
+//   evdCanvas->Divide(1,3);
+//   evdCanvas->cd(1);
+//   ZDisplay->Draw("colz");
+//   evdCanvas->cd(2);
+//   VDisplay->Draw("colz");
+//   evdCanvas->cd(3);
+//   UDisplay->Draw("colz");
+//   evdCanvas->SaveAs(fEVDSavePath+TString("evd")+fHistSaveType);
 
-//   UMap->delete();
+//   delete evdCanvas, UDisplay, VDisplay, ZDisplay;
+
 // }
 
 void OnlineMonitoring::OnlineMonitoring::endSubRun(art::SubRun const& sr) {
@@ -685,6 +915,31 @@ void OnlineMonitoring::OnlineMonitoring::AddHists() {
   fHistArray.Add(hSizeOfFiles); fHistArray.Add(hSizeOfFilesPerEvent);
   fHistArray.Add(hNumSubDetectorsPresent);
 
+  //Penn board hists
+  fHistArray.Add(hPTBTSUCounterActivationTimeWU);
+  fHistArray.Add(hPTBTSUCounterHitRateWU);
+  fHistArray.Add(hPTBTSUCounterActivationTimeEL);
+  fHistArray.Add(hPTBTSUCounterHitRateEL);
+  fHistArray.Add(hPTBTSUCounterActivationTimeExtra);
+  fHistArray.Add(hPTBTSUCounterHitRateExtra);
+  fHistArray.Add(hPTBTSUCounterActivationTimeNU);
+  fHistArray.Add(hPTBTSUCounterHitRateNU);
+  fHistArray.Add(hPTBTSUCounterActivationTimeSL);
+  fHistArray.Add(hPTBTSUCounterHitRateSL);
+  fHistArray.Add(hPTBTSUCounterActivationTimeNL);
+  fHistArray.Add(hPTBTSUCounterHitRateNL);
+  fHistArray.Add(hPTBTSUCounterActivationTimeSU);
+  fHistArray.Add(hPTBTSUCounterHitRateSU);
+  fHistArray.Add(hPTBBSUCounterActivationTimeRM);
+  fHistArray.Add(hPTBBSUCounterHitRateRM);
+  fHistArray.Add(hPTBBSUCounterActivationTimeCU);
+  fHistArray.Add(hPTBBSUCounterHitRateCU);
+  fHistArray.Add(hPTBBSUCounterActivationTimeCL);
+  fHistArray.Add(hPTBBSUCounterHitRateCL);
+  fHistArray.Add(hPTBBSUCounterActivationTimeRL);
+  fHistArray.Add(hPTBBSUCounterHitRateRL);
+  fHistArray.Add(hPTBTriggerRates);
+
   fFigureCaptions["ADCMeanChannel"] = "Mean ADC values for each channel read out by the RCEs (profiled over all events read)";
   fFigureCaptions["ADCRMSChannel"] = "RMS of the ADC values for each channel read out by the RCEs (profiled over all events read)";
   fFigureCaptions["AvADCAllMillislice"] = "Average RCE ADC across an entire millislice for the first 10000 events (one entry per millislice in each event)";
@@ -713,6 +968,32 @@ void OnlineMonitoring::OnlineMonitoring::AddHists() {
   fFigureCaptions["SizeOfFiles"] = "Size of the data files made by the DAQ for the last 20 runs";
   fFigureCaptions["SizeOfFilesPerEvent"] = "Size of event in each of the last 20 data files made by the DAQ (size of file / number of events in file)";
   fFigureCaptions["NumSubDetectorsPresent"] = "Number of subdetectors present in each event in the data (one entry per event)";
+
+  //Penn board captions
+  fFigureCaptions["PTBTSUCounterActivationTimeWU"] = "Average activation time for the TSU West Up counters";
+  fFigureCaptions["PTBTSUCounterRateWU"] = "Average hit rate in a millislice for the TSU West Up counters";
+  fFigureCaptions["PTBTSUCounterActivationTimeEL"] = "Average activation time for the TSU East Low counters";
+  fFigureCaptions["PTBTSUCounterRateEL"] = "Average hit rate in a millislice for the TSU East Low counters";
+  fFigureCaptions["PTBTSUCounterActivationTimeExtra"] = "Average activation time for the TSU extra counter bits (SHOULD BE EMPTY)";
+  fFigureCaptions["PTBTSUCounterRateExtra"] = "Average hit rate in a millislice for the TSU extra counter bits (SHOULD BE EMPTY)";
+  fFigureCaptions["PTBTSUCounterActivationTimeNU"] = "Average activation time for the TSU North Up counters";
+  fFigureCaptions["PTBTSUCounterRateNU"] = "Average hit rate in a millislice for the TSU North Up counters";
+  fFigureCaptions["PTBTSUCounterActivationTimeSL"] = "Average activation time for the TSU South Low counters";
+  fFigureCaptions["PTBTSUCounterRateSL"] = "Average hit rate in a millislice for the TSU South Low counters";
+  fFigureCaptions["PTBTSUCounterActivationTimeNL"] = "Average activation time for the TSU North Low counters";
+  fFigureCaptions["PTBTSUCounterRateNL"] = "Average hit rate in a millislice for the TSU North Low counters";
+  fFigureCaptions["PTBTSUCounterActivationTimeSU"] = "Average activation time for the TSU North Low counters";
+  fFigureCaptions["PTBTSUCounterRateSU"] = "Average hit rate in a millislice for the TSU North Low counters";
+  fFigureCaptions["PTBBSUCounterActivationTimeRM"] = "Average activation time for the BSU RM counters";
+  fFigureCaptions["PTBBSUCounterRateRM"] = "Average hit rate in a millislice for the BSU RM counters";
+  fFigureCaptions["PTBBSUCounterActivationTimeCU"] = "Average activation time for the BSU CU counters";
+  fFigureCaptions["PTBBSUCounterRateCU"] = "Average hit rate in a millislice for the BSU CU counters";
+  fFigureCaptions["PTBBSUCounterActivationTimeCL"] = "Average activation time for the BSU CL counters";
+  fFigureCaptions["PTBBSUCounterRateCL"] = "Average hit rate in a millislice for the BSU CL counters";
+  fFigureCaptions["PTBBSUCounterActivationTimeRL"] = "Average activation time for the BSU RL counters";
+  fFigureCaptions["PTBBSUCounterRateRL"] = "Average hit rate in a millislice for the BSU RL counters";
+  fFigureCaptions["PTBTriggerRates"] = "Average hit rates per millislice of the muon trigger system";
+
 }
  
 DEFINE_ART_MODULE(OnlineMonitoring::OnlineMonitoring)
