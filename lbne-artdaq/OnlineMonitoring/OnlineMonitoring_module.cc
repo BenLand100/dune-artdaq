@@ -55,7 +55,21 @@
 
 namespace OnlineMonitoring {
   class OnlineMonitoring;
+  class Channel;
 }
+
+struct OnlineMonitoring::Channel {
+  Channel(int onlineChannel, int offlineChannel, int plane, int apa) {
+    OnlineChannel = onlineChannel;
+    OfflineChannel = offlineChannel;
+    Plane = plane;
+    APA = apa;
+  }
+  int OnlineChannel;
+  int OfflineChannel;
+  int Plane;
+  int APA;
+};
 
 class OnlineMonitoring::OnlineMonitoring : public art::EDAnalyzer {
 
@@ -67,6 +81,7 @@ public:
   void analyze(art::Event const& event);
   void beginSubRun(art::SubRun const& sr);
   void endSubRun(art::SubRun const& sr);
+  void MakeChannelMaps();
   void MakeEventDisplay(DQMvector const& ADCs);
   void GeneralMonitoring();
   void RCEMonitoring(DQMvector const& ADCs);
@@ -82,8 +97,8 @@ private:
 
   // File directories and paths
   const TString fDataDirName   = "/data/lbnedaq/data/";
-  const TString fHistSavePath  = "/data/lbnedaq/scratch/wallbank/monitoring/";
-  const TString fEVDSavePath   = "/data/lbnedaq/eventDisplay";
+  const TString fHistSavePath  = "/data/lbnedaq/monitoring/";
+  const TString fEVDSavePath   = "/data/lbnedaq/eventDisplay/";
   const TString fHistSaveType  = ".png";
   const TString fPathDelimiter = "_";
   TString fHistSaveDirectory;
@@ -98,6 +113,9 @@ private:
   // channelvector<tickvector<ADC>>
   DQMvector fADC;
   DQMvector fWaveform;
+
+  // Map for online <-> offline
+  std::map<int,std::unique_ptr<Channel> > onlineChannelMap;
 
   // Channels
   unsigned int fNRCEChannels = 512, fNRCEMillislices = 4, fNSSPChannels = 96;
@@ -215,6 +233,9 @@ void OnlineMonitoring::OnlineMonitoring::beginSubRun(art::SubRun const& sr) {
   std::ostringstream cmd;
   cmd << "touch " << directory.str() << "; rm -rf " << directory.str() << "; mkdir " << directory.str();
   system(cmd.str().c_str());
+
+  // Make the online to offline maps
+  MakeChannelMaps();
 
   // Make the html for the web pages  // Monitoring -------------------------------------------------------------------------------------------------------------------------------------
 
@@ -370,6 +391,8 @@ void OnlineMonitoring::OnlineMonitoring::analyze(art::Event const& evt) {
 
   fEventNumber = evt.event();
 
+  std::cout << "Event " << fEventNumber << std::endl;
+
   if (_verbose)
     std::cout << "Event number " << fEventNumber << std::endl;
 
@@ -381,17 +404,17 @@ void OnlineMonitoring::OnlineMonitoring::analyze(art::Event const& evt) {
   art::Handle<artdaq::Fragments> rawSSP;
   evt.getByLabel("daq","PHOTON",rawSSP);
 
-  // Look for PTB data
-  art::Handle<artdaq::Fragments> rawPTB;
-  evt.getByLabel("dap","PHOTON",rawPTB);
+  // // Look for PTB data
+  // art::Handle<artdaq::Fragments> rawPTB;
+  // evt.getByLabel("daq","TRIGGER",rawPTB);
 
   // Check the data exists before continuing
   try { rawRCE->size(); }
   catch(std::exception e) { fIsRCE = false; }
   try { rawSSP->size(); }
   catch(std::exception e) { fIsSSP = false; }
-  try { rawPTB->size(); }
-  catch(std::exception e) { fIsPTB = false; }
+  // try { rawPTB->size(); }
+  // catch(std::exception e) { fIsPTB = false; }
 
   Reset();
 
@@ -403,8 +426,8 @@ void OnlineMonitoring::OnlineMonitoring::analyze(art::Event const& evt) {
   if (fIsSSP)
     ReformatSSPBoardData(rawSSP, &fWaveform);
 
-  // PTB reformatter
-  PTBFormatter ptbformatter(rawPTB);
+  // // PTB reformatter
+  // PTBFormatter ptbformatter(rawPTB);
 
   // // Event display -- every 500 events (8 s)
   // if (fEventNumber % 20 == 0) {
@@ -414,7 +437,7 @@ void OnlineMonitoring::OnlineMonitoring::analyze(art::Event const& evt) {
 
   if (fADC.size()) RCEMonitoring(fADC);
   if (fWaveform.size()) SSPMonitoring(fWaveform);
-  PTBMonitoring(ptbformatter);
+  // PTBMonitoring(ptbformatter);
   GeneralMonitoring();
 
   if (fMakeTree)
@@ -425,10 +448,11 @@ void OnlineMonitoring::OnlineMonitoring::analyze(art::Event const& evt) {
   if (fEventNumber % eventRefreshInterval == 0)
     this->WriteMonitoringData(evt.run(), evt.subRun());
 
-  // // Make event display every-so-often
+  // Make event display every-so-often
   // int evdRefreshInterval = std::round((double)fEventDisplayRefreshRate / 1.6e-3);
   // if (fEventNumber % evdRefreshInterval == 0)
-  //   this->MakeEventDisplay(fADC);
+  if (fEventNumber == 318)
+    this->MakeEventDisplay(fADC);
 
   return;
 
@@ -743,39 +767,64 @@ void OnlineMonitoring::OnlineMonitoring::PTBMonitoring(PTBFormatter &ptb_formatt
 
 }
 
-// void OnlineMonitoring::OnlineMonitoring::MakeEventDisplay(DQMvector const& ADCs) {
+void OnlineMonitoring::OnlineMonitoring::MakeChannelMaps() {
 
-//   /// Makes an event display and saves it as an image to be uploaded
+  /// Read in channel map from a text file and make maps
 
-//   TH2D* UDisplay = new TH2D("UDisplay",";Wire;Tick;",244,0,243,32000,0,32000);
-//   TH2D* VDisplay = new TH2D("VDisplay",";Wire;Tick;",244,0,243,32000,0,32000);
-//   TH2D* ZDisplay = new TH2D("ZDisplay",";Wire;Tick;",244,0,243,32000,0,32000);
+  std::ifstream inFile("/data/lbnedaq/scratch/wallbank/lbne-artdaq-base/lbne-artdaq/lbne-artdaq/OnlineMonitoring/detailedMap.txt", std::ios::in);
+  std::string line;
 
-//   for (unsigned int channel = 0; channel < ADCs.size(); ++channel) {
-//     int offlineChannel = onlineToOfflineChannel(channel);
-//     int plane = onlineChannelToPlane(channel);
-//     for (unsigned int tick = 0; tick < ADCs.at(channel).size(); ++tick) {
-//       int ADC = ADCs.at(channel).at(tick);
-//       if (plane == 0) UDisplay->Fill(offlineChannel,tick,ADC);
-//       if (plane == 1) VDisplay->Fill(offlineChannel,tick,ADC);
-//       if (plane == 2) ZDisplay->Fill(offlineChannel,tick,ADC);
-//     }
-//   }
+  while (std::getline(inFile,line)) {
+    int onlineChannel, rce, rcechannel, apa, plane, offlineChannel;
+    std::stringstream linestream(line);
+    linestream >> onlineChannel >> rce >> rcechannel >> apa >> plane >> offlineChannel;
+    onlineChannelMap[onlineChannel] = (std::unique_ptr<Channel>) new Channel(onlineChannel, offlineChannel, plane, apa);
+  }
 
-//   // Save the event display and make it look pretty
-//   TCanvas* evdCanvas = new TCanvas();
-//   evdCanvas->Divide(1,3);
-//   evdCanvas->cd(1);
-//   ZDisplay->Draw("colz");
-//   evdCanvas->cd(2);
-//   VDisplay->Draw("colz");
-//   evdCanvas->cd(3);
-//   UDisplay->Draw("colz");
-//   evdCanvas->SaveAs(fEVDSavePath+TString("evd")+fHistSaveType);
+  inFile.close();
 
-//   delete evdCanvas, UDisplay, VDisplay, ZDisplay;
+}
 
-// }
+void OnlineMonitoring::OnlineMonitoring::MakeEventDisplay(DQMvector const& ADCs) {
+
+  /// Makes an event display and saves it as an image to be uploaded
+
+  TH2D* UDisplay = new TH2D("UDisplay",";Wire;Tick;",2048,0,2048,32000,0,32000);
+  TH2D* VDisplay = new TH2D("VDisplay",";Wire;Tick;",2048,0,2048,32000,0,32000);
+  TH2D* ZDisplay = new TH2D("ZDisplay",";Wire;Tick;",2048,0,2048,32000,0,32000);
+
+  for (unsigned int channel = 0; channel < ADCs.size(); ++channel) {
+    int offlineChannel = onlineChannelMap.at(channel)->OfflineChannel;
+    int plane = onlineChannelMap.at(channel)->Plane;
+    for (unsigned int tick = 0; tick < ADCs.at(channel).size(); ++tick) {
+      int ADC = ADCs.at(channel).at(tick);
+      if (plane == 0) UDisplay->Fill(offlineChannel,tick,ADC);
+      if (plane == 1) VDisplay->Fill(offlineChannel,tick,ADC);
+      if (plane == 2) ZDisplay->Fill(offlineChannel,tick,ADC);
+    }
+  }
+
+  // Save the event display and make it look pretty
+  TCanvas* evdCanvas = new TCanvas();
+  evdCanvas->Divide(1,3);
+  evdCanvas->cd(1);
+  ZDisplay->Draw("colz");
+  evdCanvas->cd(2);
+  VDisplay->Draw("colz");
+  evdCanvas->cd(3);
+  UDisplay->Draw("colz");
+  evdCanvas->SaveAs(fEVDSavePath+TString("evd.eps"));//+fHistSaveType);
+
+  // Add run file
+  ofstream tmp((fEVDSavePath+TString("event")).Data());
+  tmp << fEventNumber;
+  tmp.flush();
+  tmp.close();
+  system(("chmod -R a=rwx "+std::string(fEVDSavePath+TString("event"))).c_str());  
+
+  delete evdCanvas; delete UDisplay; delete VDisplay; delete ZDisplay;
+
+}
 
 void OnlineMonitoring::OnlineMonitoring::endSubRun(art::SubRun const& sr) {
 
