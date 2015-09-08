@@ -82,6 +82,13 @@ function install_package {
     cd ../build_$packagename
 
     echo IN $PWD: about to . ../$packagename/ups/setup_for_development
+
+# JCF, Sep-8-2015
+
+# Added "unsetup cetbuildtools" as it's fine for a given package to
+# use a version of cetbuildtools not used by the others
+
+    unsetup cetbuildtools  
     . ../$packagename/ups/setup_for_development -${build_arg} $@
     echo FINISHED ../$packagename/ups/setup_for_development
     buildtool ${opt_clean+-c} -i -t
