@@ -29,10 +29,12 @@ xmlrpc_c v1_33_16 -f Linux64bit+2.6-2.12 -z ${productdir} -q ${basequal2}:${buil
 prods2="\
 smc_compiler/v6_1_0/smc_compiler-6.1.0-noarch.tar.bz2
 TRACE/v3_05_00/TRACE-3.05.00-slf6-x86_64-${basequal2}.tar.bz2
+cetbuildtools/v4_12_05/cetbuildtools-4.12.05-noarch.tar.bz2
 cetbuildtools/v4_12_06/cetbuildtools-4.12.06-noarch.tar.bz2
 cmake/v3_2_1/cmake-3.2.1-slf6-x86_64.tar.bz2
 cetpkgsupport/v1_08_05/cetpkgsupport-1.08.05-noarch.tar.bz2
 artdaq_ganglia_plugin/v1_0_8/artdaq_ganglia_plugin-1.0.8-slf6-x86_64-e7-g371-s15-prof.tar.bz2
+artdaq_utilities/v1_00_00/artdaq_utilities-1.00.00-slf6-x86_64-e7-s15-prof.tar.bz2
 "
 
 # $1=prod_area $2="prod_lines"
