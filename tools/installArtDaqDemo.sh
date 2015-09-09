@@ -97,7 +97,7 @@ function install_package {
 
 . $products_dir/setup
 
-install_package artdaq-core v1_14_17 e7 s15
+install_package artdaq-core v1_04_17 e7 s15
 install_package lbne-raw-data v1_03_08 e7 s15
 
 install_package artdaq v1_12_12a e7 s15 eth
@@ -145,6 +145,7 @@ fi
 
 echo "Building lbne-artdaq..."
 cd $LBNEARTDAQ_BUILD
+unsetup cetbuildtools  # See comment above for why this is done
 . $demo_dir/setupLBNEARTDAQ
 buildtool -t
 
