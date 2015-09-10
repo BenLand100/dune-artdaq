@@ -24,13 +24,13 @@ simple_plugin(SSPTrigger "module" lbne-raw-data_Overlays
   ${CETLIB}
 )
 
-simple_plugin(PennBoardTrigger "module" lbne-raw-data_Overlays 
-  lbne-artdaq_OnlineMonitoring_DataReformatter                               
+simple_plugin(PennBoardTrigger "module" 
   artdaq_DAQdata
   artdaq_BuildInfo
   artdaq-core_BuildInfo
   lbne-artdaq_BuildInfo
   lbne-raw-data_BuildInfo
+  lbne-raw-data_Overlays 
   ${MF_MESSAGELOGGER}
   ${FHICLCPP}
   ${CETLIB}

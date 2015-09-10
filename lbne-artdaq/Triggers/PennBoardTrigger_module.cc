@@ -18,11 +18,12 @@
 #include "messagefacility/MessageLogger/MessageLogger.h"
 
 #include <memory>
-
 #include <iostream>
+#include <iomanip>
+#include <bitset>
 
 #include "artdaq-core/Data/Fragments.hh"
-#include "lbne-artdaq/OnlineMonitoring/DataReformatter.h"
+#include "lbne-raw-data/Overlays/PennMilliSliceFragment.hh"
 
 namespace trig {
   class PennBoardTrigger;
@@ -101,13 +102,6 @@ bool trig::PennBoardTrigger::filter(art::Event & evt)
     std::cerr << "INFO : NOT Got Valid PTB fragments" << std::endl;
   }
 
-  // // PTB 
-  //  OnlineMonitoring::PTBFormatter ptbformatter(rawPTB);
-  
-
-
-
-
   return 1;
 }
 
@@ -118,13 +112,10 @@ void trig::PennBoardTrigger::printPennFragInfo( art::Handle<artdaq::Fragments> c
   for (size_t frag_index=0; frag_index < rawPTB->size(); ++frag_index){
     const auto & frag((*rawPTB)[frag_index]); //Make a fragment from the frag_index element of rawPTB
 
-    //    std::cerr << "JPD 1: Making PennMilliSliceFragment" << std::endl;
     lbne::PennMilliSliceFragment ms_frag(frag);
     //Get the number of each payload type in the millislice
 
-
     lbne::PennMilliSlice::Header::payload_count_t n_frames, n_frames_counter, n_frames_trigger, n_frames_timestamp;
-    //    std::cerr << "JPD 2: Getting payloadCount" << std::endl;
     n_frames = ms_frag.payloadCount(n_frames_counter, n_frames_trigger, n_frames_timestamp);
     
 
@@ -145,7 +136,6 @@ void trig::PennBoardTrigger::printPennFragInfo( art::Handle<artdaq::Fragments> c
               << " ticks (excluding overlap of " << ms_frag.overlapTicks()
               << " ticks_ and end timestamp " << ms_frag.endTimestamp() << std::endl;
 
-
     //Now we need to grab the payload informaation in the millislice
     lbne::PennMicroSlice::Payload_Header::data_packet_type_t payload_type;
     lbne::PennMicroSlice::Payload_Header::short_nova_timestamp_t timestamp;
@@ -155,58 +145,49 @@ void trig::PennBoardTrigger::printPennFragInfo( art::Handle<artdaq::Fragments> c
     //iterate through the frames
     for (uint32_t payload_index = 0; payload_index < n_frames; payload_index++){
       //Get the actual payload
-
-
-
-      //      std::cerr << "JPD 3: Getting payload from ms_frag" << std::endl;
       payload_data = ms_frag.payload(payload_index, payload_type, timestamp, payload_size);
-      std::cerr << "payload_index: " << std::dec << payload_index
-                << " payload_size: " << std::dec << payload_size
-                << " timestamp: 0x" << std::hex << timestamp << std::dec;
+      std::cerr << "payload_index: " << std::setw( 3) << std::dec << payload_index
+                << " payload_size: " << std::setw( 3) << std::dec << payload_size
+                << " timestamp: "    << std::setw(12) << std::dec << timestamp;
 
-
-      if ((payload_data == nullptr) || (payload_size == 0 )){
-        std::cerr << std::endl;
-        continue;
+      // if ((payload_data == nullptr) || (payload_size == 0 )){
+      //   std::cerr << std::endl;
+      //   continue;
+      // }
+      if (payload_data == nullptr ){
+	std::cerr << " payload_data == nullptr" << std::endl;
       }
-      //      if (!((payload_data != nullptr) && payload_size)) continue; //I think that this is the logic above
       
-      std::cerr << "JPD 4: Printing info about payload_types" << std::endl;
-      
-
       switch ( payload_type )
         {
         case lbne::PennMicroSlice::DataTypeCounter:
-          std::cerr << " payload_type: Counter" << std::endl;
+          std::cerr << " payload_type: Counter   "   ;//<< std::endl;
           break;
         case lbne::PennMicroSlice::DataTypeTrigger:
-          std::cerr << " payload_type: Trigger" << std::endl;
+          std::cerr << " payload_type: Trigger   "   ;//<< std::endl;
           break;
         case lbne::PennMicroSlice::DataTypeTimestamp:
-          std::cerr << " payload_type: Timestamp" << std::endl;
+          std::cerr << " payload_type: Timestamp " ;//<< std::endl;
           break;
         case lbne::PennMicroSlice::DataTypeSelftest:
-          std::cerr << " payload_type: Selftest" << std::endl;
+          std::cerr << " payload_type: Selftest  "  ;//<< std::endl;
           break;
         case lbne::PennMicroSlice::DataTypeChecksum:
-          std::cerr << " payload_type: Checksum" << std::endl;
+          std::cerr << " payload_type: Checksum  "  ;//<< std::endl;
           break;
         default:
-          std::cerr << " payload_type: Unknown" << std::endl;
+          std::cerr << " payload_type: Unknown   "   ;//<< std::endl;
           break;
         }//switch(payload_type)
-      
-
-
-      
+      //Print out the bit masks for the trigger or counter packets
+      if ( payload_type == lbne::PennMicroSlice::DataTypeCounter || payload_type == lbne::PennMicroSlice::DataTypeTrigger ){
+	for( size_t payload_byte=0; payload_byte < payload_size; payload_byte++){
+	  std::cerr << " " << std::bitset<8>( *(payload_data+payload_byte) );
+	}
+      }//if Counter or trigger payload
+      std::cerr << std::endl;
     }//payload_index
-
-
-
   }//frag_index
-
-  
-  
 }//printPennFragInfo
 
 DEFINE_ART_MODULE(trig::PennBoardTrigger)
