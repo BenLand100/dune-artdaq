@@ -1,11 +1,33 @@
-# art_make_library( LIBRARY_NAME lbne-artdaq_OnlineMonitoring_MonitoringData
-#                   SOURCE MonitoringData.cxx
-#                   LIBRARIES ${MF_MESSAGELOGGER} ${MF_UTILITIES} ${ROOT_BASIC_LIB_LIST} ${Boost_SYSTEM_LIBRARY}
-# )
-
 art_make_library(LIBRARY_NAME lbne-artdaq_OnlineMonitoring_DataReformatter
 		 SOURCE DataReformatter.cxx
-		 LIBRARIES lbne-raw-data_Overlays ${CETLIB}
+		 LIBRARIES lbne-raw-data_Overlays
+			   lbne-artdaq_OnlineMonitoring_EventDisplay
+			   lbne-artdaq_OnlineMonitoring_ChannelMap
+			   ${CETLIB}
+			   ${ROOT_BASIC_LIB_LIST}
+)
+
+art_make_library(LIBRARY_NAME lbne-artdaq_OnlineMonitoring_MonitoringData
+		 SOURCE MonitoringData.cxx
+		 LIBRARIES lbne-artdaq_OnlineMonitoring_DataReformatter
+ 		           ${ROOT_BASIC_LIB_LIST}
+ 			   ${MF_MESSAGELOGGER}
+			   ${MF_UTILITIES}
+)
+
+art_make_library(LIBRARY_NAME lbne-artdaq_OnlineMonitoring_EventDisplay
+		 SOURCE EventDisplay.cxx
+		 LIBRARIES ${ROOT_BASIC_LIB_LIST}
+)
+
+art_make_library(LIBRARY_NAME lbne-artdaq_OnlineMonitoring_ChannelMap
+		 SOURCE ChannelMap.cxx
+		 LIBRARIES ${ROOT_BASIC_LIB_LIST}
+)
+
+art_make_library(LIBRARY_NAME lbne-artdaq_OnlineMonitoring_OnlineMonitoringNamespace
+		 SOURCE OnlineMonitoringNamespace.cxx
+		 LIBRARIES ${ROOT_BASIC_LIB_LIST}
 )
 
 simple_plugin(OnlineMonitoring "module"
@@ -26,6 +48,8 @@ simple_plugin(OnlineMonitoring "module"
   #  lbne-artdaq_RCConnection
   #  lbne-artdaq_I3JSON
   lbne-raw-data_Overlays
-  #  lbne-artdaq_OnlineMonitoring_MonitoringData
+  lbne-artdaq_OnlineMonitoring_MonitoringData
   lbne-artdaq_OnlineMonitoring_DataReformatter
+  lbne-artdaq_OnlineMonitoring_EventDisplay
+  lbne-artdaq_OnlineMonitoring_ChannelMap
 )
