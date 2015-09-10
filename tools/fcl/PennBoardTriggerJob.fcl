@@ -1,0 +1,33 @@
+#include "PennBoardTrigger.fcl"
+
+process_name: SoftwareTrigger
+
+services:{}
+
+source:
+{
+  module_type: RootInput
+  maxEvents:   -1
+}
+
+outputs:
+{
+  out1:
+  {
+    module_type: RootOutput
+    SelectEvents: { SelectEvents: [softwaretrigger] }
+  }
+}
+
+physics:
+{
+  filters:
+  {
+    thispennboardtrigger: @local::pennboardtrigger
+  }
+  softwaretrigger: [ thispennboardtrigger ]
+  outputpath:      [ out1 ]
+
+  trigger_paths:    [ softwaretrigger ]
+  end_paths:        [ outputpath ]
+}

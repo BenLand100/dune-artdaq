@@ -1,0 +1,10 @@
+BEGIN_PROLOG 
+
+pennboardtrigger:{
+    module_type:     "PennBoardTrigger"
+    PTBModuleLabel:  "daq"
+    PTBInstanceName: "TRIGGER"
+}
+
+END_PROLOG
+
