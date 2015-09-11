@@ -87,6 +87,56 @@ namespace trig {
       //Dealing with the RL BSU counters                                                                            
 
     */
+    /*
+#TODO
+#JPD - this looks like the REAL channel mapping - sent to Dominick Brailsford by nuno. Will implement next
+
+## NOTE: 
+========
+
+The PTB has 50 input BSU channels. This was traced back in emails back to the beginning of the discussions. However, at the moment there are only 49 physical channels. Channel 32 in the PTB is not being used (would be ch 31 in CCU-3).
+
+This means that the channels 33-49 are shifted in the output word becoming 32-48.
+
+
+PTB Counter word bits to components
+-----------------------------------
+
+* Word has a total of 128 bits and contains:
+   ++ 3 bits  : header mask
+   ++ 28 bits : timestamp rollover (28 lab of timestamp)
+   ++ 49 bits : BSU
+   ++ 48 bits : TSU
+ 
+word[127-125] : header[2-0]
+word[124-97]  : ts_rollover[27-0]
+word[96-48]   : BSU[48-0]
+word[47-0]    : TSU[47-0]
+
+
+BSU counter word to CCU counters:
+---------------------------------
+
+BSU[48-39] : RL 10-1 (CCU3 : 48-39)
+BSU[38-32] : CL 13-7 (CCU3 : 38-32)
+BSU[31-26] : CL 6-1  (CCU4 : 16-11)
+BSU[25-16] : CU 10-1 (CCU4 : 10-1)
+BSU[15-0]  : RM 16-1 (CCU4 : 40-25)
+
+
+TSU counter word to TSU counters:
+---------------------------------
+
+TSU[47-42] : SU 6-1  (CCU2 : 24-19+48-43)
+TSU[41-36] : NL 6-1  (CCU2 : 18-13+42-37)
+TSU[35-30] : SL 6-1  (CCU2 : 12-7+36-31)
+TSU[29-24] : NU 6-1  (CCU2 : 6-1+30-25)
+
+TSU[23-20] : Extra   (CCU1 : 24-21+48-45)
+TSU[19-10] : EL 10-1 (CCU1 : 20-11+44-35)
+TSU[9-0]   : WU 10-1 (CCU1 : 10-1+34-25)
+    */
+
   };
   
 }
