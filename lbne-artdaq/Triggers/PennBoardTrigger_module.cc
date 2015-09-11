@@ -24,9 +24,71 @@
 
 #include "artdaq-core/Data/Fragments.hh"
 #include "lbne-raw-data/Overlays/PennMilliSliceFragment.hh"
+#include "lbne-raw-data/Overlays/Utilities.hh"
 
 namespace trig {
   class PennBoardTrigger;
+
+  struct PTBTriggerPatterns{
+    static uint8_t const bsu_rm_cl_bit = 26;
+    static uint8_t const tsu_nu_sl_bit = 25;
+    static uint8_t const tsu_sl_nu_bit = 24;
+    static uint8_t const tsu_el_wu_bit = 23;
+  };
+
+  struct PTBTriggerTypes{
+    static uint8_t const calibration=0x00;
+    static uint8_t const ssp=0x08;
+    static uint8_t const muon=0x10;
+  };
+
+  struct PTBTrigger{
+    uint32_t trigger_pattern: 27;
+    uint32_t trigger_type: 5;
+  };
+  struct PTBCounter{
+    //I think that it goes 
+    uint32_t tsu_wu: 10;
+    uint32_t tsu_el: 10;
+    uint32_t tsu_el_extra: 4;
+    uint32_t tsu_nu: 6;
+    uint32_t tsu_sl: 6;
+    uint32_t tsu_nl: 6;
+    uint32_t tsu_su: 6;
+    uint32_t bsu_rm: 16;
+    uint32_t bsu_cu: 10;
+    uint32_t bsu_cl: 13;
+    uint32_t bsu_rl: 10;
+    
+    /*
+      pennboard_config.fcl from nuno
+      BSU	: 0xFFFF				# BSU mask (RM 1-16)
+      BSU	: 0x7F7E000000				# BSU mask (CL 1-13)
+      TSU	: 0x3F000000			# TSU mask (NU 1-6)
+      TSU	: 0xFC0000000			# TSU mask (SL 1-6)
+      TSU	: 0xFC0000000000		# TSU mask (SU 1-6)
+      TSU	: 0x3F000000000			# TSU mask (NL 1-6)
+      TSU	: 0x7FE00				# TSU mask (EL 1-10)
+      TSU	: 0x1FF					# TSU mask (WU 1-10)
+
+      MonitoringData.cxx from Mike Wallbnk and Dominick Brailsford
+    if (i>=0 && i<=9){
+      //Dealing with the WU TSU counters                                                                                else if (i>=10 && i<=19){
+      //Dealing with the EL TSU counters  
+    else if (i>=20 && i<=23){
+      //Dealing with the EL TSU counters                                                                                else if (i>=24 && i<=29){
+      //Dealing with the NU TSU counters                                                                                else if (i>=30 && i<=35){
+      //Dealing with the SL TSU counters                                                                                else if (i>=36 && i<=41){
+      //Dealing with the NL TSU counters                                                                                else if (i>=42 && i<=47){
+      //Dealing with the SU TSU counters                                                                                else if (i>=0+48 && i<=15+48){
+      //Dealing with the RM BSU counters                                                                                else if (i>=16+48 && i<=25+48){
+      //Dealing with the CU BSU counters                                                                                else if (i>=26+48 && i<=38+48){
+      //Dealing with the CL BSU counters                                                                                else if (i>=39+48 && i<=48+48){
+      //Dealing with the RL BSU counters                                                                            
+
+    */
+  };
+  
 }
 
 class trig::PennBoardTrigger : public art::EDFilter {
@@ -42,6 +104,8 @@ public:
   PennBoardTrigger & operator = (PennBoardTrigger &&) = delete;
   void beginJob();
   void printPennFragInfo( art::Handle<artdaq::Fragments> const & rawPTB);
+  
+
 
   // Required functions.
   bool filter(art::Event & evt) override;
@@ -95,15 +159,163 @@ bool trig::PennBoardTrigger::filter(art::Event & evt)
     std::cerr << "INFO : Got PTB art::Handle<artdaq::Fragments>" << std::endl;
     std::cerr << "INFO : eventID: " << eventID << std::endl;
     std::cerr << std::endl;
-    printPennFragInfo(rawPTB);
-    std::cerr << std::endl;
-  }
+    //    printPennFragInfo(rawPTB);
+
+    /*
+      Loop over the fragments found.
+      Make a PennMilliSliceFragment from each
+      Check the number of payloads of each type within the fragement (referred to as 'frames')
+      Get each payload in turn and check its type
+      The Trigger and Counter types are of interest, so in that case we'll do something
+      We should extract the bit patterns. Not sure on the best way to do this!
+     */
+
+
+    for (size_t frag_index=0; frag_index < rawPTB->size(); ++frag_index){
+      const auto & frag((*rawPTB)[frag_index]); //Make a fragment from the frag_index element of rawPTB
+      lbne::PennMilliSliceFragment ms_frag(frag);
+      lbne::PennMilliSlice::Header::payload_count_t n_frames, n_frames_counter, n_frames_trigger, n_frames_timestamp;
+      n_frames = ms_frag.payloadCount(n_frames_counter, n_frames_trigger, n_frames_timestamp);
+      
+      //Information within the penn_payloads
+      lbne::PennMicroSlice::Payload_Header::data_packet_type_t payload_type;
+      lbne::PennMicroSlice::Payload_Header::short_nova_timestamp_t timestamp;
+      uint8_t* payload_data;
+      size_t payload_size;
+      
+      PTBTrigger *myPTBTrigger;
+      PTBCounter *myPTBCounter;
+      std::bitset<5> trigger_type;
+      std::bitset<27> trigger_pattern;
+
+      std::bitset<16> counter_bitset_tsu_wu       ;
+      std::bitset<16> counter_bitset_tsu_el       ;
+      std::bitset<16> counter_bitset_tsu_el_extra ;
+      std::bitset<16> counter_bitset_tsu_nu       ;
+      std::bitset<16> counter_bitset_tsu_sl       ;
+      std::bitset<16> counter_bitset_tsu_nl       ;
+      std::bitset<16> counter_bitset_tsu_su       ;
+      std::bitset<16> counter_bitset_bsu_rm       ;
+      std::bitset<16> counter_bitset_bsu_cu       ;
+      std::bitset<16> counter_bitset_bsu_cl       ;
+      std::bitset<16> counter_bitset_bsu_rl       ;
+
+
+
+      //iterate through the frames
+      for (uint32_t payload_index = 0; payload_index < n_frames; payload_index++){
+	payload_data = ms_frag.payload(payload_index, payload_type, timestamp, payload_size);
+	
+	if (payload_data == nullptr ){
+	  std::cerr << "payload_data == nullptr" << std::endl;
+	}
+	
+	switch ( payload_type )
+	  {
+	  case lbne::PennMicroSlice::DataTypeCounter:
+	    std::cerr << "payload_type: Counter   "   << std::endl;
+	    std::cerr << "payload_size: " << payload_size << std::endl;
+
+	    myPTBCounter = lbne::reinterpret_cast_checked<PTBCounter*>(payload_data);
+
+	    std::cerr << "myPTBCounter size: " << sizeof(*myPTBCounter) << std::endl;
+
+	    counter_bitset_tsu_wu       = std::bitset<16>(myPTBCounter->tsu_wu      ); 
+	    counter_bitset_tsu_el       = std::bitset<16>(myPTBCounter->tsu_el      ); 
+	    counter_bitset_tsu_el_extra = std::bitset<16>(myPTBCounter->tsu_el_extra); 
+	    counter_bitset_tsu_nu       = std::bitset<16>(myPTBCounter->tsu_nu      ); 
+	    counter_bitset_tsu_sl       = std::bitset<16>(myPTBCounter->tsu_sl      ); 
+	    counter_bitset_tsu_nl       = std::bitset<16>(myPTBCounter->tsu_nl      ); 
+	    counter_bitset_tsu_su       = std::bitset<16>(myPTBCounter->tsu_su      ); 
+	    counter_bitset_bsu_rm       = std::bitset<16>(myPTBCounter->bsu_rm      ); 
+	    counter_bitset_bsu_cu       = std::bitset<16>(myPTBCounter->bsu_cu      ); 
+	    counter_bitset_bsu_cl       = std::bitset<16>(myPTBCounter->bsu_cl      ); 
+	    counter_bitset_bsu_rl       = std::bitset<16>(myPTBCounter->bsu_rl      ); 
+
+	    std::cerr << "tsu_wu      : " << counter_bitset_tsu_wu      << std::endl;
+	    std::cerr << "tsu_el      : " << counter_bitset_tsu_el      << std::endl;
+	    std::cerr << "tsu_el_extra: " << counter_bitset_tsu_el_extra<< std::endl;
+	    std::cerr << "tsu_nu      : " << counter_bitset_tsu_nu      << std::endl;
+	    std::cerr << "tsu_sl      : " << counter_bitset_tsu_sl      << std::endl;
+	    std::cerr << "tsu_nl      : " << counter_bitset_tsu_nl      << std::endl;
+	    std::cerr << "tsu_su      : " << counter_bitset_tsu_su      << std::endl;
+	    std::cerr << "bsu_rm      : " << counter_bitset_bsu_rm      << std::endl;
+	    std::cerr << "bsu_cu      : " << counter_bitset_bsu_cu      << std::endl;
+	    std::cerr << "bsu_cl      : " << counter_bitset_bsu_cl      << std::endl;
+	    std::cerr << "bsu_rl      : " << counter_bitset_bsu_rl      << std::endl;
+	    std::cerr << std::endl;
+
+	    break;
+	  case lbne::PennMicroSlice::DataTypeTrigger:
+	    std::cerr << "payload_type: Trigger   "   << std::endl;
+	    std::cerr << "payload_size: " << payload_size << std::endl;
+
+	    myPTBTrigger = lbne::reinterpret_cast_checked<PTBTrigger*>(payload_data);
+	    trigger_type = std::bitset<5>(myPTBTrigger->trigger_type);
+	    trigger_pattern = std::bitset<27> (myPTBTrigger->trigger_pattern);
+	    std::cerr << "trigger_type:    " << trigger_type << std::endl;
+	    std::cerr << "trigger_pattern: " << trigger_pattern << std::endl;
+
+
+	    switch ( myPTBTrigger->trigger_type ){
+	    case trig::PTBTriggerTypes::calibration:
+	      std::cerr << "trig::PTBTriggerTypes::calibration" << std::endl;
+	      break;
+	    case trig::PTBTriggerTypes::ssp:
+	      std::cerr << "trig::PTBTriggerTypes::ssp" << std::endl;
+	      break;
+	    case trig::PTBTriggerTypes::muon:
+	      std::cerr << "trig::PTBTriggerTypes::muon" << std::endl;
+
+	      if(trigger_pattern.test(trig::PTBTriggerPatterns::bsu_rm_cl_bit)) 
+		std::cerr << "trig::PTBTriggerPatterns::bsu_rm_cl_bit" << std::endl;
+	      if(trigger_pattern.test(trig::PTBTriggerPatterns::tsu_nu_sl_bit)) 
+		std::cerr << "trig::PTBTriggerPatterns::tsu_nu_sl_bit" << std::endl;
+	      if(trigger_pattern.test(trig::PTBTriggerPatterns::tsu_sl_nu_bit)) 
+		std::cerr << "trig::PTBTriggerPatterns::tsu_sl_nu_bit" << std::endl;
+	      if(trigger_pattern.test(trig::PTBTriggerPatterns::tsu_el_wu_bit)) 
+		std::cerr << "trig::PTBTriggerPatterns::tsu_el_wu_bit" << std::endl;
+	      break;
+	    default:
+	      std::cerr << "trig::PTBTriggerTypes::unkown" << std::endl;
+	      break;
+	    }//switch( myPTBTrigger->trigger_type)
+
+
+
+
+
+
+	    break;
+	  case lbne::PennMicroSlice::DataTypeTimestamp:
+	    std::cerr << "payload_type: Timestamp " << std::endl;
+	    std::cerr << "payload_size: " << payload_size << std::endl;
+	    break;
+	  case lbne::PennMicroSlice::DataTypeSelftest:
+	    std::cerr << "payload_type: Selftest  "  << std::endl;
+	    std::cerr << "payload_size: " << payload_size << std::endl;
+	    break;
+	  case lbne::PennMicroSlice::DataTypeChecksum:
+	    std::cerr << "payload_type: Checksum  "  << std::endl;
+	    std::cerr << "payload_size: " << payload_size << std::endl;
+	    break;
+	  default:
+	    std::cerr << "payload_type: Unknown   "  << std::endl;
+	    std::cerr << "payload_size: " << payload_size << std::endl;
+	    break;
+	  }//switch(payload_type)
+	std::cerr << std::endl;
+      }//payload_index
+    }//frag_index
+  }//isValid
   else{
     std::cerr << "INFO : NOT Got Valid PTB fragments" << std::endl;
   }
 
   return 1;
 }
+
+
 
 void trig::PennBoardTrigger::printPennFragInfo( art::Handle<artdaq::Fragments> const & rawPTB){
 
