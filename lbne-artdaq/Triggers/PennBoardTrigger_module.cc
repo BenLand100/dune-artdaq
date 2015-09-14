@@ -55,13 +55,25 @@ namespace trig {
     */
   };
 
-
-
   struct PTBTrigger{
     uint32_t trigger_pattern: 27;
     uint32_t trigger_type: 5;
   };
   struct PTBCounter{
+    uint64_t tsu_wu     : 10;
+    uint64_t tsu_el     : 10;
+    uint64_t tsu_extra  :  4;    
+    uint64_t tsu_nu     :  6;
+    uint64_t tsu_sl     :  6;
+    uint64_t tsu_nl     :  6;
+    uint64_t tsu_su     :  6;
+    uint64_t bsu_rm     : 16;
+    uint64_t bsu_cu     : 10;
+    uint64_t bsu_cl     : 13;
+    uint64_t bsu_rl     : 10;
+    uint64_t ts_rollover: 28;
+    uint64_t header     :  3;
+
     //tsu [47-0]
     /*
       TSU counter word to TSU counters:
@@ -76,14 +88,6 @@ namespace trig {
       TSU[19-10] : EL 10-1 (CCU1 : 20-11+44-35)
       TSU[9-0]   : WU 10-1 (CCU1 : 10-1+34-25)
     */
-    uint32_t tsu_wu: 10;
-    uint32_t tsu_el: 10;
-    uint32_t tsu_extra: 4;    
-    uint32_t tsu_nu: 6;
-    uint32_t tsu_sl: 6;
-    uint32_t tsu_nl: 6;
-    uint32_t tsu_su: 6;
-
     //bsu [96-48]
     /*
       BSU counter word to CCU counters:
@@ -95,17 +99,10 @@ namespace trig {
       BSU[25-16] : CU 10-1 (CCU4 : 10-1)
       BSU[15-0]  : RM 16-1 (CCU4 : 40-25)
     */
-    uint32_t bsu_rm: 16;
-    uint32_t bsu_cu: 10;
-    uint32_t bsu_cl: 13;
-    uint32_t bsu_rl: 10;
 
     //ts_rollover[124-97]
-    uint32_t ts_rollover: 28;
-
     //header[127-125]
-    uint32_t header: 3;
-    
+
     /*
 
 #JPD - this looks like the REAL channel mapping - sent to Dominick Brailsford by nuno. Will implement next
@@ -172,8 +169,7 @@ public:
   PennBoardTrigger & operator = (PennBoardTrigger const &) = delete;
   PennBoardTrigger & operator = (PennBoardTrigger &&) = delete;
   void beginJob();
-  void printPennFragInfo( art::Handle<artdaq::Fragments> const & rawPTB);
-  
+  void checkGetNextPayload(art::Handle<artdaq::Fragments> const & rawPTB);
 
 
   // Required functions.
@@ -213,6 +209,60 @@ void trig::PennBoardTrigger::printParams(){
 
 }
 
+void trig::PennBoardTrigger::checkGetNextPayload(art::Handle<artdaq::Fragments> const & rawPTB){
+  
+
+  for (size_t frag_index=0; frag_index < rawPTB->size(); ++frag_index){
+    const auto & frag((*rawPTB)[frag_index]); //Make a fragment from the frag_index element of rawPTB
+    lbne::PennMilliSliceFragment ms_frag(frag);
+    lbne::PennMilliSlice::Header::payload_count_t n_frames, n_frames_counter, n_frames_trigger, n_frames_timestamp;
+    n_frames = ms_frag.payloadCount(n_frames_counter, n_frames_trigger, n_frames_timestamp);
+
+    lbne::PennMicroSlice::Payload_Header::data_packet_type_t payload_type;
+    lbne::PennMicroSlice::Payload_Header::short_nova_timestamp_t timestamp;
+    uint8_t* payload_data;
+    size_t payload_size;
+
+    lbne::PennMicroSlice::Payload_Header::data_packet_type_t payload_type_get_next;
+    lbne::PennMicroSlice::Payload_Header::short_nova_timestamp_t timestamp_get_next;
+    uint8_t* payload_data_get_next;
+    size_t payload_size_get_next;
+    
+    
+    uint32_t payload_index_get_next=0;
+    //iterate through the frames
+    for (uint32_t payload_index = 0; payload_index < n_frames; payload_index++){
+      payload_data = ms_frag.payload(payload_index, payload_type, timestamp, payload_size);
+      payload_data_get_next = ms_frag.get_next_payload(payload_index_get_next, payload_type_get_next, timestamp_get_next, payload_size_get_next);
+    
+      if(payload_data_get_next == nullptr){
+	std::cerr << "ERROR - payload_data_get_next == nullptr" << std::endl;
+	return;
+      }
+
+      if(payload_index != payload_index_get_next) {
+	std::cerr << "MISSMATCH - payload_index != payload_index_get_next" << std::endl;
+      }
+      else if(payload_data != payload_data_get_next){
+	std::cerr << "MISSMATCH - payload_data != payload_data_get_next" << std::endl;
+      }
+      else if(payload_type != payload_type_get_next){
+	std::cerr << "MISSMATCH - payload_type != payload_type_get_next" << std::endl;
+      }
+      else if(timestamp != timestamp_get_next){
+	std::cerr << "MISSMATCH - timestamp != timestamp_get_next" << std::endl;
+      }
+      else if(payload_size != payload_size_get_next){
+	std::cerr << "MISSMATCH - payload_size != payload_size_get_next" << std::endl;
+      }
+      else{
+	std::cerr << "MATCH - payload_index: " << payload_index << std::endl;
+      }
+    }//payload_index
+  }//frag_index
+}
+
+
 bool trig::PennBoardTrigger::filter(art::Event & evt)
 {
   // Implementation of required member function here.
@@ -228,7 +278,7 @@ bool trig::PennBoardTrigger::filter(art::Event & evt)
     std::cerr << "INFO : Got PTB art::Handle<artdaq::Fragments>" << std::endl;
     std::cerr << "INFO : eventID: " << eventID << std::endl;
     std::cerr << std::endl;
-    //    printPennFragInfo(rawPTB);
+    // checkGetNextPayload(rawPTB);
 
     /*
       Loop over the fragments found.
@@ -238,7 +288,6 @@ bool trig::PennBoardTrigger::filter(art::Event & evt)
       The Trigger and Counter types are of interest, so in that case we'll do something
       We should extract the bit patterns. Not sure on the best way to do this!
      */
-
 
     for (size_t frag_index=0; frag_index < rawPTB->size(); ++frag_index){
       const auto & frag((*rawPTB)[frag_index]); //Make a fragment from the frag_index element of rawPTB
@@ -253,23 +302,25 @@ bool trig::PennBoardTrigger::filter(art::Event & evt)
       size_t payload_size;
       
       PTBTrigger *myPTBTrigger;
-      PTBCounter *myPTBCounter;
+      //      PTBCounter *myPTBCounter;
+      lbne::PennMilliSlice::CounterPayload *myCounterPayload;
+
       std::bitset<5> trigger_type;
       std::bitset<27> trigger_pattern;
 
-      std::bitset<16> counter_bitset_tsu_wu       ;
-      std::bitset<16> counter_bitset_tsu_el       ;
-      std::bitset<16> counter_bitset_tsu_extra    ;
-      std::bitset<16> counter_bitset_tsu_nu       ;
-      std::bitset<16> counter_bitset_tsu_sl       ;
-      std::bitset<16> counter_bitset_tsu_nl       ;
-      std::bitset<16> counter_bitset_tsu_su       ;
-      std::bitset<16> counter_bitset_bsu_rm       ;
-      std::bitset<16> counter_bitset_bsu_cu       ;
-      std::bitset<16> counter_bitset_bsu_cl       ;
-      std::bitset<16> counter_bitset_bsu_rl       ;
-
-      //iterate through the frames
+      std::bitset<10> counter_bitset_tsu_wu       ;//tsu_wu     : 10
+      std::bitset<10> counter_bitset_tsu_el       ;//tsu_el     : 10
+      std::bitset< 4> counter_bitset_tsu_extra    ;//tsu_extra  :  4
+      std::bitset< 6> counter_bitset_tsu_nu       ;//tsu_nu     :  6
+      std::bitset< 6> counter_bitset_tsu_sl       ;//tsu_sl     :  6
+      std::bitset< 6> counter_bitset_tsu_nl       ;//tsu_nl     :  6
+      std::bitset< 6> counter_bitset_tsu_su       ;//tsu_su     :  6
+      std::bitset<16> counter_bitset_bsu_rm       ;//bsu_rm     : 16
+      std::bitset<10> counter_bitset_bsu_cu       ;//bsu_cu     : 10
+      std::bitset<13> counter_bitset_bsu_cl       ;//bsu_cl     : 13
+      std::bitset<10> counter_bitset_bsu_rl       ;//bsu_rl     : 10
+						     
+      //iterate through the frames		     
       for (uint32_t payload_index = 0; payload_index < n_frames; payload_index++){
 	payload_data = ms_frag.payload(payload_index, payload_type, timestamp, payload_size);
 	
@@ -283,25 +334,28 @@ bool trig::PennBoardTrigger::filter(art::Event & evt)
 	    std::cerr << "payload_type: Counter   "   << std::endl;
 	    std::cerr << "payload_size: " << payload_size << std::endl;
 
-	    myPTBCounter = lbne::reinterpret_cast_checked<PTBCounter*>(payload_data);
+	    //	    myPTBCounter = lbne::reinterpret_cast_checked<PTBCounter*>(payload_data);
+	    myCounterPayload = lbne::reinterpret_cast_checked<lbne::PennMilliSlice::CounterPayload*>(payload_data);
 
-	    std::cerr << "myPTBCounter size: " << sizeof(*myPTBCounter) << std::endl;
+	    std::cerr << "myCounterPayload size: " << sizeof(*myCounterPayload) << std::endl;
+	    //	    std::cerr << "myCounterPayload size: " << sizeof(PTBCounter) << std::endl;
+	    std::cerr << "myCounterPayload size: " << sizeof(lbne::PennMilliSlice::CounterPayload) << std::endl;
 
-	    counter_bitset_tsu_wu       = std::bitset<16>(myPTBCounter->tsu_wu      ); 
-	    counter_bitset_tsu_el       = std::bitset<16>(myPTBCounter->tsu_el      ); 
-	    counter_bitset_tsu_extra = std::bitset<16>(myPTBCounter->tsu_extra); 
-	    counter_bitset_tsu_nu       = std::bitset<16>(myPTBCounter->tsu_nu      ); 
-	    counter_bitset_tsu_sl       = std::bitset<16>(myPTBCounter->tsu_sl      ); 
-	    counter_bitset_tsu_nl       = std::bitset<16>(myPTBCounter->tsu_nl      ); 
-	    counter_bitset_tsu_su       = std::bitset<16>(myPTBCounter->tsu_su      ); 
-	    counter_bitset_bsu_rm       = std::bitset<16>(myPTBCounter->bsu_rm      ); 
-	    counter_bitset_bsu_cu       = std::bitset<16>(myPTBCounter->bsu_cu      ); 
-	    counter_bitset_bsu_cl       = std::bitset<16>(myPTBCounter->bsu_cl      ); 
-	    counter_bitset_bsu_rl       = std::bitset<16>(myPTBCounter->bsu_rl      ); 
+	    counter_bitset_tsu_wu       = std::bitset<10>(myCounterPayload->tsu_wu      );// tsu_wu     : 10
+	    counter_bitset_tsu_el       = std::bitset<10>(myCounterPayload->tsu_el      );// tsu_el     : 10
+	    counter_bitset_tsu_extra    = std::bitset< 4>(myCounterPayload->tsu_extra   );// tsu_extra  :  4
+	    counter_bitset_tsu_nu       = std::bitset< 6>(myCounterPayload->tsu_nu      );// tsu_nu     :  6
+	    counter_bitset_tsu_sl       = std::bitset< 6>(myCounterPayload->tsu_sl      );// tsu_sl     :  6
+	    counter_bitset_tsu_nl       = std::bitset< 6>(myCounterPayload->tsu_nl      );// tsu_nl     :  6
+	    counter_bitset_tsu_su       = std::bitset< 6>(myCounterPayload->tsu_su      );// tsu_su     :  6
+	    counter_bitset_bsu_rm       = std::bitset<16>(myCounterPayload->bsu_rm      );// bsu_rm     : 16
+	    counter_bitset_bsu_cu       = std::bitset<10>(myCounterPayload->bsu_cu      );// bsu_cu     : 10
+	    counter_bitset_bsu_cl       = std::bitset<13>(myCounterPayload->bsu_cl      );// bsu_cl     : 13
+	    counter_bitset_bsu_rl       = std::bitset<10>(myCounterPayload->bsu_rl      );// bsu_rl     : 10
 
 	    std::cerr << "tsu_wu      : " << counter_bitset_tsu_wu      << std::endl;
 	    std::cerr << "tsu_el      : " << counter_bitset_tsu_el      << std::endl;
-	    std::cerr << "tsu_extra: " << counter_bitset_tsu_extra<< std::endl;
+	    std::cerr << "tsu_extra   : " << counter_bitset_tsu_extra   << std::endl;
 	    std::cerr << "tsu_nu      : " << counter_bitset_tsu_nu      << std::endl;
 	    std::cerr << "tsu_sl      : " << counter_bitset_tsu_sl      << std::endl;
 	    std::cerr << "tsu_nl      : " << counter_bitset_tsu_nl      << std::endl;
@@ -384,89 +438,5 @@ bool trig::PennBoardTrigger::filter(art::Event & evt)
 
 
 
-void trig::PennBoardTrigger::printPennFragInfo( art::Handle<artdaq::Fragments> const & rawPTB){
-
-  std::cerr << "Found " << rawPTB->size() << " fragment(s) of type " << fPTBInstanceName << std::endl;
-
-  for (size_t frag_index=0; frag_index < rawPTB->size(); ++frag_index){
-    const auto & frag((*rawPTB)[frag_index]); //Make a fragment from the frag_index element of rawPTB
-
-    lbne::PennMilliSliceFragment ms_frag(frag);
-    //Get the number of each payload type in the millislice
-
-    lbne::PennMilliSlice::Header::payload_count_t n_frames, n_frames_counter, n_frames_trigger, n_frames_timestamp;
-    n_frames = ms_frag.payloadCount(n_frames_counter, n_frames_trigger, n_frames_timestamp);
-    
-
-    std::cerr << "Fragment " << frag.fragmentID() 
-              << " with version " << ms_frag.version()
-              << " and sequence ID " << ms_frag.sequenceID()
-              << " consists of: " << ms_frag.size() << " bytes containing "
-      //              << ms_frag.microSliceCount() << " microslices and" 
-              << std::endl;
-    std::cerr << n_frames << " total words ("
-              << n_frames_counter << " counter + "
-              << n_frames_trigger << " trigger + "
-              << n_frames_timestamp << " timestamp + "
-              << n_frames - (n_frames_counter + n_frames_trigger + n_frames_timestamp) << " selftest & checksum)"
-              << std::endl;
-
-    std::cerr << " with width " << ms_frag.widthTicks() 
-              << " ticks (excluding overlap of " << ms_frag.overlapTicks()
-              << " ticks_ and end timestamp " << ms_frag.endTimestamp() << std::endl;
-
-    //Now we need to grab the payload informaation in the millislice
-    lbne::PennMicroSlice::Payload_Header::data_packet_type_t payload_type;
-    lbne::PennMicroSlice::Payload_Header::short_nova_timestamp_t timestamp;
-    uint8_t* payload_data;
-    size_t payload_size;
-
-    //iterate through the frames
-    for (uint32_t payload_index = 0; payload_index < n_frames; payload_index++){
-      //Get the actual payload
-      payload_data = ms_frag.payload(payload_index, payload_type, timestamp, payload_size);
-      std::cerr << "payload_index: " << std::setw( 3) << std::dec << payload_index
-                << " payload_size: " << std::setw( 3) << std::dec << payload_size
-                << " timestamp: "    << std::setw(12) << std::dec << timestamp;
-
-      // if ((payload_data == nullptr) || (payload_size == 0 )){
-      //   std::cerr << std::endl;
-      //   continue;
-      // }
-      if (payload_data == nullptr ){
-	std::cerr << " payload_data == nullptr" << std::endl;
-      }
-      
-      switch ( payload_type )
-        {
-        case lbne::PennMicroSlice::DataTypeCounter:
-          std::cerr << " payload_type: Counter   "   ;//<< std::endl;
-          break;
-        case lbne::PennMicroSlice::DataTypeTrigger:
-          std::cerr << " payload_type: Trigger   "   ;//<< std::endl;
-          break;
-        case lbne::PennMicroSlice::DataTypeTimestamp:
-          std::cerr << " payload_type: Timestamp " ;//<< std::endl;
-          break;
-        case lbne::PennMicroSlice::DataTypeSelftest:
-          std::cerr << " payload_type: Selftest  "  ;//<< std::endl;
-          break;
-        case lbne::PennMicroSlice::DataTypeChecksum:
-          std::cerr << " payload_type: Checksum  "  ;//<< std::endl;
-          break;
-        default:
-          std::cerr << " payload_type: Unknown   "   ;//<< std::endl;
-          break;
-        }//switch(payload_type)
-      //Print out the bit masks for the trigger or counter packets
-      if ( payload_type == lbne::PennMicroSlice::DataTypeCounter || payload_type == lbne::PennMicroSlice::DataTypeTrigger ){
-	for( size_t payload_byte=0; payload_byte < payload_size; payload_byte++){
-	  std::cerr << " " << std::bitset<8>( *(payload_data+payload_byte) );
-	}
-      }//if Counter or trigger payload
-      std::cerr << std::endl;
-    }//payload_index
-  }//frag_index
-}//printPennFragInfo
 
 DEFINE_ART_MODULE(trig::PennBoardTrigger)
