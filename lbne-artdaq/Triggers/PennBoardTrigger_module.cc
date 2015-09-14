@@ -29,66 +29,85 @@
 namespace trig {
   class PennBoardTrigger;
 
-  struct PTBTriggerPatterns{
-    static uint8_t const bsu_rm_cl_bit = 26;
-    static uint8_t const tsu_nu_sl_bit = 25;
-    static uint8_t const tsu_sl_nu_bit = 24;
-    static uint8_t const tsu_el_wu_bit = 23;
+
+  struct PTBTriggerPatternBits{
+    static uint8_t const bsu_rm_cl = 26;
+    static uint8_t const tsu_nu_sl = 25;
+    static uint8_t const tsu_sl_nu = 24;
+    static uint8_t const tsu_el_wu = 23;
+  };
+  struct PTBTriggerTypes{
+    static uint32_t const calibration = 0x00;
+    static uint32_t const ssp = 0x08;
+    //FIXME not sure about the rce stuff!
+    static uint32_t const rce_a = 0x01;
+    static uint32_t const rce_b = 0x02;
+    static uint32_t const rce_c = 0x04;
+    static uint32_t const muon = 0x10;
+    /*
+      //From PTB Data Format v2.3 Nuno Baros DUNE Collaboration meeting September 2015
+      00000 Calibration DAQ requested calibration pulse/ID of the pulsed systems
+      01000 SSP         Trigger-in induced by the SSP/none
+      00001 RCE         Trigger-in induced by the RCE (1 bit per unit)
+      ...
+      00111 RCE
+      10000 Muon Panel  Counter trigger pattern ID
+    */
   };
 
-  struct PTBTriggerTypes{
-    static uint8_t const calibration=0x00;
-    static uint8_t const ssp=0x08;
-    static uint8_t const muon=0x10;
-  };
+
 
   struct PTBTrigger{
     uint32_t trigger_pattern: 27;
     uint32_t trigger_type: 5;
   };
   struct PTBCounter{
-    //I think that it goes 
+    //tsu [47-0]
+    /*
+      TSU counter word to TSU counters:
+      ---------------------------------
+
+      TSU[47-42] : SU 6-1  (CCU2 : 24-19+48-43)
+      TSU[41-36] : NL 6-1  (CCU2 : 18-13+42-37)
+      TSU[35-30] : SL 6-1  (CCU2 : 12-7+36-31)
+      TSU[29-24] : NU 6-1  (CCU2 : 6-1+30-25)
+      
+      TSU[23-20] : Extra   (CCU1 : 24-21+48-45)
+      TSU[19-10] : EL 10-1 (CCU1 : 20-11+44-35)
+      TSU[9-0]   : WU 10-1 (CCU1 : 10-1+34-25)
+    */
     uint32_t tsu_wu: 10;
     uint32_t tsu_el: 10;
-    uint32_t tsu_el_extra: 4;
+    uint32_t tsu_extra: 4;    
     uint32_t tsu_nu: 6;
     uint32_t tsu_sl: 6;
     uint32_t tsu_nl: 6;
     uint32_t tsu_su: 6;
+
+    //bsu [96-48]
+    /*
+      BSU counter word to CCU counters:
+      ---------------------------------
+      
+      BSU[48-39] : RL 10-1 (CCU3 : 48-39)
+      BSU[38-32] : CL 13-7 (CCU3 : 38-32)
+      BSU[31-26] : CL 6-1  (CCU4 : 16-11)
+      BSU[25-16] : CU 10-1 (CCU4 : 10-1)
+      BSU[15-0]  : RM 16-1 (CCU4 : 40-25)
+    */
     uint32_t bsu_rm: 16;
     uint32_t bsu_cu: 10;
     uint32_t bsu_cl: 13;
     uint32_t bsu_rl: 10;
+
+    //ts_rollover[124-97]
+    uint32_t ts_rollover: 28;
+
+    //header[127-125]
+    uint32_t header: 3;
     
     /*
-      pennboard_config.fcl from nuno
-      BSU	: 0xFFFF				# BSU mask (RM 1-16)
-      BSU	: 0x7F7E000000				# BSU mask (CL 1-13)
-      TSU	: 0x3F000000			# TSU mask (NU 1-6)
-      TSU	: 0xFC0000000			# TSU mask (SL 1-6)
-      TSU	: 0xFC0000000000		# TSU mask (SU 1-6)
-      TSU	: 0x3F000000000			# TSU mask (NL 1-6)
-      TSU	: 0x7FE00				# TSU mask (EL 1-10)
-      TSU	: 0x1FF					# TSU mask (WU 1-10)
 
-      MonitoringData.cxx from Mike Wallbnk and Dominick Brailsford
-    if (i>=0 && i<=9){
-      //Dealing with the WU TSU counters                                                                                else if (i>=10 && i<=19){
-      //Dealing with the EL TSU counters  
-    else if (i>=20 && i<=23){
-      //Dealing with the EL TSU counters                                                                                else if (i>=24 && i<=29){
-      //Dealing with the NU TSU counters                                                                                else if (i>=30 && i<=35){
-      //Dealing with the SL TSU counters                                                                                else if (i>=36 && i<=41){
-      //Dealing with the NL TSU counters                                                                                else if (i>=42 && i<=47){
-      //Dealing with the SU TSU counters                                                                                else if (i>=0+48 && i<=15+48){
-      //Dealing with the RM BSU counters                                                                                else if (i>=16+48 && i<=25+48){
-      //Dealing with the CU BSU counters                                                                                else if (i>=26+48 && i<=38+48){
-      //Dealing with the CL BSU counters                                                                                else if (i>=39+48 && i<=48+48){
-      //Dealing with the RL BSU counters                                                                            
-
-    */
-    /*
-#TODO
 #JPD - this looks like the REAL channel mapping - sent to Dominick Brailsford by nuno. Will implement next
 
 ## NOTE: 
@@ -240,7 +259,7 @@ bool trig::PennBoardTrigger::filter(art::Event & evt)
 
       std::bitset<16> counter_bitset_tsu_wu       ;
       std::bitset<16> counter_bitset_tsu_el       ;
-      std::bitset<16> counter_bitset_tsu_el_extra ;
+      std::bitset<16> counter_bitset_tsu_extra    ;
       std::bitset<16> counter_bitset_tsu_nu       ;
       std::bitset<16> counter_bitset_tsu_sl       ;
       std::bitset<16> counter_bitset_tsu_nl       ;
@@ -249,8 +268,6 @@ bool trig::PennBoardTrigger::filter(art::Event & evt)
       std::bitset<16> counter_bitset_bsu_cu       ;
       std::bitset<16> counter_bitset_bsu_cl       ;
       std::bitset<16> counter_bitset_bsu_rl       ;
-
-
 
       //iterate through the frames
       for (uint32_t payload_index = 0; payload_index < n_frames; payload_index++){
@@ -272,7 +289,7 @@ bool trig::PennBoardTrigger::filter(art::Event & evt)
 
 	    counter_bitset_tsu_wu       = std::bitset<16>(myPTBCounter->tsu_wu      ); 
 	    counter_bitset_tsu_el       = std::bitset<16>(myPTBCounter->tsu_el      ); 
-	    counter_bitset_tsu_el_extra = std::bitset<16>(myPTBCounter->tsu_el_extra); 
+	    counter_bitset_tsu_extra = std::bitset<16>(myPTBCounter->tsu_extra); 
 	    counter_bitset_tsu_nu       = std::bitset<16>(myPTBCounter->tsu_nu      ); 
 	    counter_bitset_tsu_sl       = std::bitset<16>(myPTBCounter->tsu_sl      ); 
 	    counter_bitset_tsu_nl       = std::bitset<16>(myPTBCounter->tsu_nl      ); 
@@ -284,7 +301,7 @@ bool trig::PennBoardTrigger::filter(art::Event & evt)
 
 	    std::cerr << "tsu_wu      : " << counter_bitset_tsu_wu      << std::endl;
 	    std::cerr << "tsu_el      : " << counter_bitset_tsu_el      << std::endl;
-	    std::cerr << "tsu_el_extra: " << counter_bitset_tsu_el_extra<< std::endl;
+	    std::cerr << "tsu_extra: " << counter_bitset_tsu_extra<< std::endl;
 	    std::cerr << "tsu_nu      : " << counter_bitset_tsu_nu      << std::endl;
 	    std::cerr << "tsu_sl      : " << counter_bitset_tsu_sl      << std::endl;
 	    std::cerr << "tsu_nl      : " << counter_bitset_tsu_nl      << std::endl;
@@ -317,14 +334,14 @@ bool trig::PennBoardTrigger::filter(art::Event & evt)
 	    case trig::PTBTriggerTypes::muon:
 	      std::cerr << "trig::PTBTriggerTypes::muon" << std::endl;
 
-	      if(trigger_pattern.test(trig::PTBTriggerPatterns::bsu_rm_cl_bit)) 
-		std::cerr << "trig::PTBTriggerPatterns::bsu_rm_cl_bit" << std::endl;
-	      if(trigger_pattern.test(trig::PTBTriggerPatterns::tsu_nu_sl_bit)) 
-		std::cerr << "trig::PTBTriggerPatterns::tsu_nu_sl_bit" << std::endl;
-	      if(trigger_pattern.test(trig::PTBTriggerPatterns::tsu_sl_nu_bit)) 
-		std::cerr << "trig::PTBTriggerPatterns::tsu_sl_nu_bit" << std::endl;
-	      if(trigger_pattern.test(trig::PTBTriggerPatterns::tsu_el_wu_bit)) 
-		std::cerr << "trig::PTBTriggerPatterns::tsu_el_wu_bit" << std::endl;
+	      if(trigger_pattern.test(trig::PTBTriggerPatternBits::bsu_rm_cl)) 
+		std::cerr << "trig::PTBTriggerPatternBits::bsu_rm_cl" << std::endl;
+	      if(trigger_pattern.test(trig::PTBTriggerPatternBits::tsu_nu_sl)) 
+		std::cerr << "trig::PTBTriggerPatternBits::tsu_nu_sl" << std::endl;
+	      if(trigger_pattern.test(trig::PTBTriggerPatternBits::tsu_sl_nu)) 
+		std::cerr << "trig::PTBTriggerPatternBits::tsu_sl_nu" << std::endl;
+	      if(trigger_pattern.test(trig::PTBTriggerPatternBits::tsu_el_wu)) 
+		std::cerr << "trig::PTBTriggerPatternBits::tsu_el_wu" << std::endl;
 	      break;
 	    default:
 	      std::cerr << "trig::PTBTriggerTypes::unkown" << std::endl;
