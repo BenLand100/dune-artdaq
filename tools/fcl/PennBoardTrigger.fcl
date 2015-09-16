@@ -5,26 +5,36 @@ pennboardtrigger:{
     PTBModuleLabel:  "daq"
     PTBInstanceName: "TRIGGER"
     Verbose: true
+    PrintPayloadInfo: false
 
-    FilterOnTriggerType: true
-    TriggerType: 0x00 #0x00==calibration, 0x01, 0x02, 0x04==rce, 0x08==ssp, 0x10==muon
+    FilterOnTriggerType: false
+    TriggerType: 0x10 
+    #0x00==calibration
+    #0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07==rce
+    #0x08==ssp
+    #0x10==muon
 
     FilterOnTriggerPattern: false
-    TriggerPatternBit: 26 #26==bsu_rm_cl, 25==tsu_nu_sl, 24==tsu_sl_nu, 23==tsu_el_wu 
+    TriggerPatternBit: 26 
+    #26==bsu_rm_cl
+    #25==tsu_nu_sl 
+    #24==tsu_sl_nu 
+    #23==tsu_el_wu 
 
 
-#    FilterOnCounterPattern: false
-#    CounterPatternTsuWu     : 10;
-#    CounterPatternTsuEl     : 10;
-#    CounterPatternTsuExtra  :  4;
-#    CounterPatternTsuNu     :  6;
-#    CounterPatternTsuSl     :  6;
-#    CounterPatternTsuNl     :  6;
-#    CounterPatternTsuSu     :  6;
-#    CounterPatternTsuRm     : 16;
-#    CounterPatternTsuCu     : 10;
-#    CounterPatternTsuCl     : 13;
-#    CounterPatternTsuRl     : 10;
+    FilterOnCounterPattern: false
+    #Note this is in binary - hex is horrible to read!
+    Counter_Pattern_tsu_wu     : "0000001001" #10;
+    Counter_Pattern_tsu_el     : "0000001001" #10;
+    Counter_Pattern_tsu_extra  : "0100" # 4;
+    Counter_Pattern_tsu_nu     : "000110" # 6;
+    Counter_Pattern_tsu_sl     : "000110" # 6;
+    Counter_Pattern_tsu_nl     : "000110" # 6;
+    Counter_Pattern_tsu_su     : "000110" # 6;
+    Counter_Pattern_bsu_rm     : "0000000000010000" #16;
+    Counter_Pattern_bsu_cu     : "0000001001" #10;
+    Counter_Pattern_bsu_cl     : "0000000001101" #13;
+    Counter_Pattern_bsu_rl     : "0000001001" #10;
 
 }
 
