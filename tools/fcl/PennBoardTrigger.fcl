@@ -4,6 +4,28 @@ pennboardtrigger:{
     module_type:     "PennBoardTrigger"
     PTBModuleLabel:  "daq"
     PTBInstanceName: "TRIGGER"
+    Verbose: true
+
+    FilterOnTriggerType: true
+    TriggerType: 0x00 #0x00==calibration, 0x01, 0x02, 0x04==rce, 0x08==ssp, 0x10==muon
+
+    FilterOnTriggerPattern: false
+    TriggerPatternBit: 26 #26==bsu_rm_cl, 25==tsu_nu_sl, 24==tsu_sl_nu, 23==tsu_el_wu 
+
+
+#    FilterOnCounterPattern: false
+#    CounterPatternTsuWu     : 10;
+#    CounterPatternTsuEl     : 10;
+#    CounterPatternTsuExtra  :  4;
+#    CounterPatternTsuNu     :  6;
+#    CounterPatternTsuSl     :  6;
+#    CounterPatternTsuNl     :  6;
+#    CounterPatternTsuSu     :  6;
+#    CounterPatternTsuRm     : 16;
+#    CounterPatternTsuCu     : 10;
+#    CounterPatternTsuCl     : 13;
+#    CounterPatternTsuRl     : 10;
+
 }
 
 END_PROLOG
