@@ -6,6 +6,8 @@ pennboardtrigger:{
     PTBInstanceName: "TRIGGER"
     Verbose: true
     PrintPayloadInfo: false
+    InsertTriggerResultBool: false
+    InvertTriggerDecision: false
 
     FilterOnTriggerType: false
     TriggerType: 0x10 
@@ -21,21 +23,19 @@ pennboardtrigger:{
     #24==tsu_sl_nu 
     #23==tsu_el_wu 
 
-
-    FilterOnCounterPattern: false
+    FilterOnCounterPattern: true
     #Note this is in binary - hex is horrible to read!
-    Counter_Pattern_tsu_wu     : "0000001001" #10;
-    Counter_Pattern_tsu_el     : "0000001001" #10;
-    Counter_Pattern_tsu_extra  : "0100" # 4;
-    Counter_Pattern_tsu_nu     : "000110" # 6;
-    Counter_Pattern_tsu_sl     : "000110" # 6;
-    Counter_Pattern_tsu_nl     : "000110" # 6;
-    Counter_Pattern_tsu_su     : "000110" # 6;
+    Counter_Pattern_tsu_wu     : "0000000000"       #10;
+    Counter_Pattern_tsu_el     : "0000001010"       #10;
+    Counter_Pattern_tsu_extra  : "0100"             # 4;
+    Counter_Pattern_tsu_nu     : "000110"           # 6;
+    Counter_Pattern_tsu_sl     : "000110"           # 6;
+    Counter_Pattern_tsu_nl     : "000110"           # 6;
+    Counter_Pattern_tsu_su     : "000110"           # 6;
     Counter_Pattern_bsu_rm     : "0000000000010000" #16;
-    Counter_Pattern_bsu_cu     : "0000001001" #10;
-    Counter_Pattern_bsu_cl     : "0000000001101" #13;
-    Counter_Pattern_bsu_rl     : "0000001001" #10;
-
+    Counter_Pattern_bsu_cu     : "0000001010"       #10;
+    Counter_Pattern_bsu_cl     : "0000000001101"    #13;
+    Counter_Pattern_bsu_rl     : "0000001010"       #10;
 }
 
 END_PROLOG
