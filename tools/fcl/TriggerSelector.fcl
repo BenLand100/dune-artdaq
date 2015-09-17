@@ -1,0 +1,28 @@
+BEGIN_PROLOG 
+
+triggerselector:{
+    module_type:     "TriggerSelector"
+    NumTriggers: 2
+    trig_0:
+    {
+      module_label: "module_0"
+      instance_name: "instance_0"
+    }
+
+    trig_1:
+    {
+      module_label: "module_1"
+      instance_name: "instance_1"
+    }
+
+#    trig_N:
+#    {
+#      module_label: "module_N"
+#      instance_name: "instance_N"
+#    }
+#    
+
+}
+
+END_PROLOG
+
