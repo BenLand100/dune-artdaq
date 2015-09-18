@@ -23,6 +23,7 @@
 #include <string>
 #include <iostream>
 #include <iomanip>
+#include <sstream>
 
 namespace trig {
   class PreScaleTrigger;
@@ -53,6 +54,7 @@ private:
   int   _iPreScale;                                         ///; Pre-Scale for the trigger (pass every _iPreScale events)
   int _iEventCounter;                                       ///; Counter for events
   bool _bUseRndmPreScale;                                   ///; Switch to turn on a PreScale that uses a random number generator (pass ~ every _iPreScale events)
+  bool _bVerbose;
   std::default_random_engine _generator;                    ///; Random number generator
   std::uniform_int_distribution<> _rndmDistribution;        ///; Random number distribution
   int _iNumPassed;                                          ///; Number of events passing trigger
@@ -74,6 +76,7 @@ trig::PreScaleTrigger::PreScaleTrigger(fhicl::ParameterSet const & p)
 
   _iEventCounter = 0;
   _bUseRndmPreScale = p.get < bool > ("UseRndmPreScale", false);
+  _bVerbose = p.get < bool > ("Verbose", false);
 
 
   unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
@@ -90,13 +93,16 @@ trig::PreScaleTrigger::PreScaleTrigger(fhicl::ParameterSet const & p)
 
 void trig::PreScaleTrigger::printParams(){
   
-  std::cout << std::string(80, '=') << std::endl;
+  std::ostringstream my_ostringstream;
 
-  std::cout << "_iPreScale: " << _iPreScale << std::endl;
-  std::cout << "_bUseRndmPreScale: " << _bUseRndmPreScale << std::endl;
+  my_ostringstream << std::string(80, '=') << std::endl;
 
-  std::cout << std::string(80, '=') << std::endl;
+  my_ostringstream << "_iPreScale: " << _iPreScale << std::endl;
+  my_ostringstream << "_bUseRndmPreScale: " << _bUseRndmPreScale << std::endl;
 
+  my_ostringstream << std::string(80, '=') << std::endl;
+
+  if(_bVerbose) std::cout << my_ostringstream.str();
 
 }
 
@@ -105,12 +111,12 @@ bool trig::PreScaleTrigger::filter(art::Event & evt)
   // Implementation of required member function here.
   bool trigger_decision = false;
   std::unique_ptr<bool> is_good_event(new bool(false));
-  auto eventID = evt.id();
+  //  auto eventID = evt.id();
 
   _iEventCounter++;
 
-  std::cout << "eventID " << eventID << " _iEventCounter " << _iEventCounter;
-  
+  std::ostringstream my_ostringstream;
+
   if(_bUseRndmPreScale){
     if(_rndmDistribution(_generator)<1)   trigger_decision = true;
   }//_bUseRndmPreScale==true
@@ -119,14 +125,16 @@ bool trig::PreScaleTrigger::filter(art::Event & evt)
   } //_bUseRndmPreScale==false
 
   if (trigger_decision){
-    std::cout << "  passed" << std::endl; 
+    my_ostringstream << "PASS" << std::endl; 
     _iNumPassed++;
     *is_good_event = true;
   } else {
-    std::cout << "  failed" << std::endl; 
+    my_ostringstream << "FAIL" << std::endl; 
     _iNumFailed++;
   }
   evt.put(std::move(is_good_event));
+
+  if(_bVerbose) std::cout << my_ostringstream.str();
 
   if(_bPassAllEvents) return true;
   return trigger_decision;
@@ -135,10 +143,14 @@ bool trig::PreScaleTrigger::filter(art::Event & evt)
 void trig::PreScaleTrigger::endJob()
 {
 
-  std::cout << std::string(80, '+') << std::endl;
-  std::cout << std::setw(6) << "Number Passed: " << std::setw(6) << _iNumPassed << "  fraction: " << double(_iNumPassed)/double(_iNumPassed+_iNumFailed)*100 << "%" << std::endl;
-  std::cout << std::setw(6) << "Number Failed: " << std::setw(6) << _iNumFailed << "  fraction: " << double(_iNumFailed)/double(_iNumPassed+_iNumFailed)*100 << "%" << std::endl;
-  std::cout << std::string(80, '+') << std::endl;
+  std::ostringstream my_ostringstream;
+
+  my_ostringstream << std::string(80, '+') << std::endl;
+  my_ostringstream << std::setw(6) << "Number Passed: " << std::setw(6) << _iNumPassed << "  fraction: " << double(_iNumPassed)/double(_iNumPassed+_iNumFailed)*100 << "%" << std::endl;
+  my_ostringstream << std::setw(6) << "Number Failed: " << std::setw(6) << _iNumFailed << "  fraction: " << double(_iNumFailed)/double(_iNumPassed+_iNumFailed)*100 << "%" << std::endl;
+  my_ostringstream << std::string(80, '+') << std::endl;
+
+  if(_bVerbose) std::cout << my_ostringstream.str();
 }
 
 DEFINE_ART_MODULE(trig::PreScaleTrigger)

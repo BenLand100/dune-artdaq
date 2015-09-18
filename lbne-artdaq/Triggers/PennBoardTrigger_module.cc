@@ -281,7 +281,10 @@ bool trig::PennBoardTrigger::filterOnCounterPayload(art::Handle<artdaq::Fragment
 
 	  if(triggerDecision){
 	    if(fVerbose){
-	      my_ostringstream << "PASS" << std::endl;
+	      my_ostringstream << "PASS -" 
+			       << " frag_index: " << frag_index
+			       << " payload_index: " << payload_index
+			       << std::endl;
 	      std::cerr << my_ostringstream.str();
 	      my_ostringstream.str("");
 	      my_ostringstream.clear();
@@ -292,6 +295,7 @@ bool trig::PennBoardTrigger::filterOnCounterPayload(art::Handle<artdaq::Fragment
       }//payload_index
     }//frag_index
     my_ostringstream << "FAIL" << std::endl;
+
     if(fVerbose) std::cerr << my_ostringstream.str();
     my_ostringstream.str("");
     my_ostringstream.clear();
@@ -306,7 +310,9 @@ bool trig::PennBoardTrigger::filterOnTriggerPayload(art::Handle<artdaq::Fragment
     std::ostringstream my_ostringstream;
     for(int i=0;i<80;i++) my_ostringstream << "=";
     my_ostringstream << std::endl;
-    my_ostringstream << "INFO : filterOnTriggerType" << std::endl;
+    my_ostringstream << "INFO : FilterOnTriggerType: " << fFilterOnTriggerType
+		     << " FilterOnTriggerPattern: " << fFilterOnTriggerPattern
+		     << std::endl;
     for(int i=0;i<80;i++) my_ostringstream << "=";
     my_ostringstream << std::endl;
 
@@ -343,12 +349,16 @@ bool trig::PennBoardTrigger::filterOnTriggerPayload(art::Handle<artdaq::Fragment
           if((myTriggerPayload->trigger_type) == fTriggerType){
             if(fFilterOnTriggerPattern){
               if(this_trigger_pattern.test(fTriggerPatternBit)){
-                my_ostringstream << "PASS - myTriggerPayload->trigger_pattern bit " << fTriggerPatternBit << " == 1" << std::endl;
-                my_ostringstream << "PASS - payload_index:    " << payload_index << std::endl;
-                my_ostringstream << "PASS - trigger_type:    " << this_trigger_type << std::endl;
-                my_ostringstream << "PASS - timestamp:       " << timestamp << std::endl;
-                my_ostringstream << "PASS - trigger_pattern: " << this_trigger_pattern << std::endl;
-                my_ostringstream << std::endl;
+		my_ostringstream << "PASS -" 
+				 << " frag_index: " << frag_index
+				 << " payload_index: " << payload_index
+				 << std::endl;
+                // my_ostringstream << "PASS - myTriggerPayload->trigger_pattern bit " << fTriggerPatternBit << " == 1" << std::endl;
+                // my_ostringstream << "PASS - payload_index:    " << payload_index << std::endl;
+                // my_ostringstream << "PASS - trigger_type:    " << this_trigger_type << std::endl;
+                // my_ostringstream << "PASS - timestamp:       " << timestamp << std::endl;
+                // my_ostringstream << "PASS - trigger_pattern: " << this_trigger_pattern << std::endl;
+                // my_ostringstream << std::endl;
                 if(fVerbose) std::cerr << my_ostringstream.str();
                 my_ostringstream.str("");
                 my_ostringstream.clear();
@@ -356,12 +366,12 @@ bool trig::PennBoardTrigger::filterOnTriggerPayload(art::Handle<artdaq::Fragment
                 return true;
               }
               else{
-                my_ostringstream << "    FAIL - myTriggerPayload->trigger_pattern bit " << fTriggerPatternBit << " != 1" << std::endl;
-                my_ostringstream << "    FAIL - payload_index:    " << payload_index << std::endl;
-                my_ostringstream << "    FAIL - trigger_type:    " << this_trigger_type << std::endl;
-                my_ostringstream << "    FAIL - timestamp:       " << timestamp << std::endl;
-                my_ostringstream << "    FAIL - trigger_pattern: " << this_trigger_pattern << std::endl;
-                my_ostringstream << std::endl;
+                // my_ostringstream << "    FAIL - myTriggerPayload->trigger_pattern bit " << fTriggerPatternBit << " != 1" << std::endl;
+                // my_ostringstream << "    FAIL - payload_index:    " << payload_index << std::endl;
+                // my_ostringstream << "    FAIL - trigger_type:    " << this_trigger_type << std::endl;
+                // my_ostringstream << "    FAIL - timestamp:       " << timestamp << std::endl;
+                // my_ostringstream << "    FAIL - trigger_pattern: " << this_trigger_pattern << std::endl;
+                // my_ostringstream << std::endl;
                 if(fVerbose) std::cerr << my_ostringstream.str();
                 my_ostringstream.str("");
                 my_ostringstream.clear();
@@ -369,12 +379,16 @@ bool trig::PennBoardTrigger::filterOnTriggerPayload(art::Handle<artdaq::Fragment
               }//this_trigger_pattern.test(fTriggerPatternBit) == false
             }//fFilterOnTriggerPattern == true
             else{
-              my_ostringstream << "PASS - myTriggerPayload->trigger_type == trigger_type" << std::endl;
-              my_ostringstream << "PASS - payload_index:    " << payload_index << std::endl;
-              my_ostringstream << "PASS - trigger_type:    " << this_trigger_type << std::endl;
-              my_ostringstream << "PASS - timestamp:       " << timestamp << std::endl;
-              my_ostringstream << "PASS - trigger_pattern: " << this_trigger_pattern << std::endl;
-              my_ostringstream << std::endl;
+	      my_ostringstream << "PASS -" 
+			       << " frag_index: " << frag_index
+			       << " payload_index: " << payload_index
+			       << std::endl;
+              // my_ostringstream << "PASS - myTriggerPayload->trigger_type == trigger_type" << std::endl;
+              // my_ostringstream << "PASS - payload_index:    " << payload_index << std::endl;
+              // my_ostringstream << "PASS - trigger_type:    " << this_trigger_type << std::endl;
+              // my_ostringstream << "PASS - timestamp:       " << timestamp << std::endl;
+              // my_ostringstream << "PASS - trigger_pattern: " << this_trigger_pattern << std::endl;
+              // my_ostringstream << std::endl;
               if(fVerbose) std::cerr << my_ostringstream.str();
               my_ostringstream.str("");
               my_ostringstream.clear();
@@ -384,12 +398,12 @@ bool trig::PennBoardTrigger::filterOnTriggerPayload(art::Handle<artdaq::Fragment
           }
           else
             {
-              my_ostringstream << "    FAIL - myTriggerPayload->trigger_type != trigger_type" << std::endl;
-              my_ostringstream << "    FAIL - payload_index:    " << payload_index << std::endl;
-              my_ostringstream << "    FAIL - trigger_type:    " << this_trigger_type << std::endl;
-              my_ostringstream << "    FAIL - timestamp:       " << timestamp << std::endl;
-              my_ostringstream << "    FAIL - trigger_pattern: " << this_trigger_pattern << std::endl;
-              my_ostringstream << std::endl;
+              // my_ostringstream << "    FAIL - myTriggerPayload->trigger_type != trigger_type" << std::endl;
+              // my_ostringstream << "    FAIL - payload_index:    " << payload_index << std::endl;
+              // my_ostringstream << "    FAIL - trigger_type:    " << this_trigger_type << std::endl;
+              // my_ostringstream << "    FAIL - timestamp:       " << timestamp << std::endl;
+              // my_ostringstream << "    FAIL - trigger_pattern: " << this_trigger_pattern << std::endl;
+              // my_ostringstream << std::endl;
               if(fVerbose) std::cerr << my_ostringstream.str();
               my_ostringstream.str("");
               my_ostringstream.clear();
@@ -398,8 +412,9 @@ bool trig::PennBoardTrigger::filterOnTriggerPayload(art::Handle<artdaq::Fragment
         }//DataTypeTrigger
       }//payload_index
     }//frag_index
+    my_ostringstream << "FAIL" << std::endl;
+    if(fVerbose) std::cerr << my_ostringstream.str();
   }//rawPTB.isValid
-
   return false;
 }//filterOnTriggerType
 

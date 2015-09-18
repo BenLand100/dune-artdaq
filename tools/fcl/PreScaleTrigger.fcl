@@ -6,6 +6,7 @@ prescale_trigger:
   PassAllEvents: true
   PreScale: 10
   UseRndmPreScale: true
+  Verbose: true
 }
 
 END_PROLOG
