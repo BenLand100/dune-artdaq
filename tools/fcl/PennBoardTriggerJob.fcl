@@ -23,7 +23,8 @@ physics:
 {
   filters:
   {
-    thispennboardtrigger: @local::pennboardtrigger
+#    thispennboardtrigger: @local::penn_board_trigger
+    thispennboardtrigger: @local::penn_board_trigger_muon_tsu_nu_sl
   }
   softwaretrigger: [ thispennboardtrigger ]
   outputpath:      [ out1 ]

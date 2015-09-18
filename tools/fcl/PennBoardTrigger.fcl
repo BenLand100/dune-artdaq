@@ -1,6 +1,6 @@
 BEGIN_PROLOG 
 
-pennboardtrigger:{
+penn_board_trigger:{
     module_type:     "PennBoardTrigger"
 
     PassAllEvents: true             #The trigger always returns true. Does not affect value of booleans created
@@ -39,6 +39,41 @@ pennboardtrigger:{
     Counter_Pattern_bsu_cl     : "0000000001101"    #13;
     Counter_Pattern_bsu_rl     : "0000001010"       #10;
 }
+
+
+penn_board_trigger_calibration: @local::penn_board_trigger
+penn_board_trigger_calibration.FilterOnTriggerType: true
+penn_board_trigger_calibration.TriggerType: 0x00 #calibration
+
+penn_board_trigger_muon_any: @local::penn_board_trigger
+penn_board_trigger_muon_any.FilterOnTriggerType: true
+penn_board_trigger_muon_any.TriggerType: 0x10 #muon
+
+penn_board_trigger_muon_bsu_rm_cl: @local::penn_board_trigger
+penn_board_trigger_muon_bsu_rm_cl.FilterOnTriggerType: true
+penn_board_trigger_muon_bsu_rm_cl.TriggerType: 0x10 #muon
+penn_board_trigger_muon_bsu_rm_cl.FilterOnTriggerPattern: true
+penn_board_trigger_muon_bsu_rm_cl.TriggerPattern: 26
+
+penn_board_trigger_muon_tsu_nu_sl: @local::penn_board_trigger
+penn_board_trigger_muon_tsu_nu_sl.FilterOnTriggerType: true
+penn_board_trigger_muon_tsu_nu_sl.TriggerType: 0x10 #muon
+penn_board_trigger_muon_tsu_nu_sl.FilterOnTriggerPattern: true
+penn_board_trigger_muon_tsu_nu_sl.TriggerPattern: 25
+
+penn_board_trigger_muon_tsu_sl_nu: @local::penn_board_trigger
+penn_board_trigger_muon_tsu_sl_nu.FilterOnTriggerType: true
+penn_board_trigger_muon_tsu_sl_nu.TriggerType: 0x10 #muon
+penn_board_trigger_muon_tsu_sl_nu.FilterOnTriggerPattern: true
+penn_board_trigger_muon_tsu_sl_nu.TriggerPattern: 24
+
+penn_board_trigger_muon_tsu_el_wu: @local::penn_board_trigger
+penn_board_trigger_muon_tsu_el_wu.FilterOnTriggerType: true
+penn_board_trigger_muon_tsu_el_wu.TriggerType: 0x10 #muon
+penn_board_trigger_muon_tsu_el_wu.FilterOnTriggerPattern: true
+penn_board_trigger_muon_tsu_el_wu.TriggerPattern: 23
+
+
 
 END_PROLOG
 

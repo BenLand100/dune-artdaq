@@ -62,12 +62,13 @@ private:
   bool fInsertTriggerResultBool;   //Add a boolean to event with the trigger decision
   bool fInvertTriggerDecision;     //Return the opposite of the trigger decision (over-riden bt fPassAllEvents)
 
-
   bool fFilterOnTriggerType;
   lbne::PennMilliSlice::TriggerPayload::trigger_type_t fTriggerType;
+  std::string fTriggerTypeName;
 
   bool fFilterOnTriggerPattern;
   lbne::PennMilliSlice::TriggerPayload::trigger_bits_t fTriggerPatternBit;
+  std::string fTriggerPatternBitName;
 
   bool fFilterOnCounterPattern;
   std::bitset<lbne::PennMilliSlice::CounterPayload::num_bits_tsu_wu>    fCounter_Pattern_bitset_tsu_wu   ;//10
@@ -113,9 +114,13 @@ trig::PennBoardTrigger::PennBoardTrigger(fhicl::ParameterSet const & p)
 
   fFilterOnTriggerType = p.get<bool>("FilterOnTriggerType", false);
   fTriggerType = p.get<lbne::PennMilliSlice::TriggerPayload::trigger_type_t>("TriggerType", 0x00);
+  fTriggerTypeName = lbne::PennMilliSlice::TriggerPayload::TriggerTypes::getName(fTriggerType);
 
   fFilterOnTriggerPattern = p.get<bool>("FilterOnTriggerPattern", false);
   fTriggerPatternBit = p.get<lbne::PennMilliSlice::TriggerPayload::trigger_bits_t>("TriggerPatternBit", 1);
+  fTriggerPatternBitName = lbne::PennMilliSlice::TriggerPayload::TriggerPatternBits::getName(fTriggerPatternBit);
+
+  //setup TriggerPatternNames
 
   fFilterOnCounterPattern = p.get<bool>("FilterOnCounterPattern", false);
   /*
@@ -158,20 +163,31 @@ void trig::PennBoardTrigger::printParams(){
   
   for(int i=0;i<80;i++) my_ostringstream << "=";
   my_ostringstream << std::endl;
+
   my_ostringstream << "fPassAllEvents: " << fPassAllEvents << std::endl;
   my_ostringstream << "fPTBModuleLabel: " << fPTBModuleLabel << std::endl;
   my_ostringstream << "fPTBInstanceName: " << fPTBInstanceName << std::endl;
+  my_ostringstream << std::endl;
+
   my_ostringstream << "fVerbose: " << fVerbose << std::endl;  
   my_ostringstream << "fPrintPayloadInfo: " << fPrintPayloadInfo << std::endl;  
   my_ostringstream << "fInsertTriggerResultBool: " << fInsertTriggerResultBool << std::endl;
   my_ostringstream << "fInvertTriggerDecision: " << fInvertTriggerDecision << std::endl;
+  my_ostringstream << std::endl;
 
   my_ostringstream << "fFilterOnTriggerType: " << fFilterOnTriggerType << std::endl;
-  if(fFilterOnTriggerType)
+  if(fFilterOnTriggerType){
     my_ostringstream << "fTriggerType: 0x" << std::hex << static_cast<int>(fTriggerType) << std::dec << std::endl;
+    my_ostringstream << "fTriggerTypeName: " << fTriggerTypeName << std::endl;
+    my_ostringstream << std::endl;
+  }
+
   my_ostringstream << "fFilterOnTriggerPattern: " << fFilterOnTriggerPattern << std::endl;
-  if(fFilterOnTriggerPattern)
+  if(fFilterOnTriggerPattern){
     my_ostringstream << "fTriggerPatternBit: " << fTriggerPatternBit << std::endl;
+    my_ostringstream << "fTriggerPatternBitName: " << fTriggerPatternBitName << std::endl;
+    my_ostringstream << std::endl;
+  }
 
   my_ostringstream << "fFilterOnCounterPattern: "    << fFilterOnCounterPattern    << std::endl;
   if(fFilterOnCounterPattern){
@@ -628,7 +644,5 @@ void trig::PennBoardTrigger::checkGetNextPayload(art::Handle<artdaq::Fragments> 
     }//payload_index
   }//frag_index
 }
-
-
 
 DEFINE_ART_MODULE(trig::PennBoardTrigger)
