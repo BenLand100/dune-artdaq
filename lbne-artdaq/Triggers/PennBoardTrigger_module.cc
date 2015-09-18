@@ -54,12 +54,14 @@ public:
 
 private:
 
-  std::string fPTBModuleLabel;
+  bool fPassAllEvents;             //This does not affect whether we insert a boolean result and what that is
+  std::string fPTBModuleLabel;     
   std::string fPTBInstanceName;
   bool fVerbose;
   bool fPrintPayloadInfo;
-  bool fInsertTriggerResultBool;
-  bool fInvertTriggerDecision;
+  bool fInsertTriggerResultBool;   //Add a boolean to event with the trigger decision
+  bool fInvertTriggerDecision;     //Return the opposite of the trigger decision (over-riden bt fPassAllEvents)
+
 
   bool fFilterOnTriggerType;
   lbne::PennMilliSlice::TriggerPayload::trigger_type_t fTriggerType;
@@ -101,6 +103,7 @@ void trig::PennBoardTrigger::beginJob(){
 trig::PennBoardTrigger::PennBoardTrigger(fhicl::ParameterSet const & p)
 // Initialize member data here.
 {
+  fPassAllEvents = p.get<bool>("PassAllEvents", true);
   fPTBModuleLabel = p.get<std::string>("PTBModuleLabel", "daq");
   fPTBInstanceName = p.get<std::string>("PTBInstanceName", "TRIGGER");
   fVerbose = p.get<bool>("Verbose", false);
@@ -155,6 +158,7 @@ void trig::PennBoardTrigger::printParams(){
   
   for(int i=0;i<80;i++) my_ostringstream << "=";
   my_ostringstream << std::endl;
+  my_ostringstream << "fPassAllEvents: " << fPassAllEvents << std::endl;
   my_ostringstream << "fPTBModuleLabel: " << fPTBModuleLabel << std::endl;
   my_ostringstream << "fPTBInstanceName: " << fPTBInstanceName << std::endl;
   my_ostringstream << "fVerbose: " << fVerbose << std::endl;  
@@ -211,6 +215,8 @@ bool trig::PennBoardTrigger::filter(art::Event & evt)
 
   
   if(fInsertTriggerResultBool)   evt.put(std::move(std::unique_ptr<bool>(new bool(triggerDecision))));
+
+  if(fPassAllEvents) return true;
   return (triggerDecision);
 }
 

@@ -48,6 +48,8 @@ public:
 
 private:
 
+
+  bool _bPassAllEvents;                                     ///; Pass all events, does not affect the boolean inserted into the event
   int   _iPreScale;                                         ///; Pre-Scale for the trigger (pass every _iPreScale events)
   int _iEventCounter;                                       ///; Counter for events
   bool _bUseRndmPreScale;                                   ///; Switch to turn on a PreScale that uses a random number generator (pass ~ every _iPreScale events)
@@ -63,6 +65,7 @@ trig::PreScaleTrigger::PreScaleTrigger(fhicl::ParameterSet const & p)
 // Initialize member data here.
 {
 
+  _bPassAllEvents = p.get<bool>("PassAllEvents", true);
   _iPreScale = p.get < int > ("PreScale", 2 );
   if(_iPreScale<1){
     std::cerr << "Error setting _iPreScale: " << _iPreScale << " Must be greater that 0" << std::endl;
@@ -124,6 +127,8 @@ bool trig::PreScaleTrigger::filter(art::Event & evt)
     _iNumFailed++;
   }
   evt.put(std::move(is_good_event));
+
+  if(_bPassAllEvents) return true;
   return trigger_decision;
 }
 

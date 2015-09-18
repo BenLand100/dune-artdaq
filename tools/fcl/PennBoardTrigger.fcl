@@ -2,12 +2,14 @@ BEGIN_PROLOG
 
 pennboardtrigger:{
     module_type:     "PennBoardTrigger"
+
+    PassAllEvents: true             #The trigger always returns true. Does not affect value of booleans created
     PTBModuleLabel:  "daq"
     PTBInstanceName: "TRIGGER"
     Verbose: true
     PrintPayloadInfo: false
-    InsertTriggerResultBool: false
-    InvertTriggerDecision: false
+    InsertTriggerResultBool: true  #Add a boolean to the event containig the trigger decision
+    InvertTriggerDecision: false    #Boolean / return value inverted
 
     FilterOnTriggerType: false
     TriggerType: 0x10 
@@ -23,7 +25,7 @@ pennboardtrigger:{
     #24==tsu_sl_nu 
     #23==tsu_el_wu 
 
-    FilterOnCounterPattern: true
+    FilterOnCounterPattern: false
     #Note this is in binary - hex is horrible to read!
     Counter_Pattern_tsu_wu     : "0000000000"       #10;
     Counter_Pattern_tsu_el     : "0000001010"       #10;
