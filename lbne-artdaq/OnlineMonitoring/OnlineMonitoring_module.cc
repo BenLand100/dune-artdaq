@@ -37,7 +37,7 @@
 #include "DataReformatter.hxx"
 #include "MonitoringData.hxx"
 #include "EventDisplay.hxx"
-#include "ChannelMap.cxx"
+#include "ChannelMap.hxx"
 
 class OnlineMonitoring::OnlineMonitoring : public art::EDAnalyzer {
 

@@ -50,4 +50,3 @@ void OnlineMonitoring::EventDisplay::MakeEventDisplay(RCEFormatter const& rcefor
   delete evdCanvas; delete UDisplay; delete VDisplay; delete ZDisplay;
 
 }
-

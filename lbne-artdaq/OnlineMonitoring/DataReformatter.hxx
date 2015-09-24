@@ -73,6 +73,7 @@ public:
   PTBFormatter(art::Handle<artdaq::Fragments> const& rawPTB);
   void AnalyzeCounter(int counter_index, double &activation_time, int &hit_rate) const;
   void AnalyzeMuonTrigger(int trigger_number, int &trigger_rate) const;
+  int NumTriggers() const { return fMuonTriggerRates.size(); }
 
 private:
 

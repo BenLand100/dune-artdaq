@@ -433,6 +433,9 @@ void OnlineMonitoring::MonitoringData::PTBMonitoring(PTBFormatter const& ptb_for
 
   /// Produces PTB monitoring histograms
 
+  if (ptb_formatter.NumTriggers() == 0)
+    return;
+
   double activation_time = 0;
   int hit_rate = 0;
 
@@ -721,5 +724,3 @@ void OnlineMonitoring::MonitoringData::AddHists() {
   fFigureCaptions["PTBTriggerRates"] = "Average hit rates per millislice of the muon trigger system";
 
 }
-
-
