@@ -13,10 +13,12 @@
 namespace OnlineMonitoring {
 
   class OnlineMonitoring;
+  class OnlinePedestal;
   class RCEFormatter;
   class SSPFormatter;
   class PTBFormatter;
   class MonitoringData;
+  class MonitoringPedestal;
   class EventDisplay;
   class ChannelMap;
   struct Channel;
