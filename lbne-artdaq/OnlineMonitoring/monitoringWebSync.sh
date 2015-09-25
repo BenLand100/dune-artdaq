@@ -7,13 +7,12 @@ KEYUSE=`/usr/krb5/bin/klist -k ${KEYTAB} | grep FNAL.GOV | head -1 | cut -c 5- |
 
 phost=lbnedaq@lbnegpvm01.fnal.gov
 
+# Look at the monitoring plots
 cd /data/lbnedaq/monitoring
 
 for directory in `find . -type d`
 do
     if [ -e ${directory}/run ]; then
-
-	echo "In directory ${directory}"
 
 	# Get run/subrun
 	read -r runsubrun < ${directory}/run
@@ -37,7 +36,16 @@ do
 	# rm $directory -rf
 
     fi
-
 done
+
+# Look at event display
+cd /data/lbnedaq/eventDisplay
+
+if [ -e event ]; then
+
+    scp ${phost}:/web/sites/lbne-dqm.fnal.gov/htdocs/EventDisplay
+    rm -f event
+
+fi
 
 /usr/krb5/bin/kdestroy

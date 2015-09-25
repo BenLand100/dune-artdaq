@@ -1,10 +1,12 @@
 ////////////////////////////////////////////////////////////////////////
-// Class:       OnlineMonitoring
+// Class:       OnlinePedestal
 // Module type: analyser
-// File:        OnlineMonitoring_module.cc
-// Author:      Mike Wallbank (m.wallbank@sheffield.ac.uk), April 2015
+// File:        OnlinePedestal_module.cc
+// Author:      Gabriel Santucci (gabriel.santucci@stonybrook.edu), Sept. 2015 -
+//              based on OnlinePedestal_module.cc by      
+//              Mike Wallbank (m.wallbank@sheffield.ac.uk), April 2015
 //
-// Module to monitor data taking online for the 35t.
+// Module to monitor Noise runs online for the 35t.
 // Takes raw data from the DAQ and produces relevant monitoring data.
 ////////////////////////////////////////////////////////////////////////
 
@@ -16,7 +18,6 @@
 #include "art/Framework/Services/Optional/TFileService.h"
 
 #include "lbne-raw-data/Overlays/TpcMilliSliceFragment.hh"
-#include "lbne-raw-data/Overlays/SSPFragment.hh"
 #include "artdaq-core/Data/Fragments.hh"
 #include "messagefacility/MessageLogger/MessageLogger.h"
 
@@ -35,15 +36,15 @@
 
 #include "OnlineMonitoringNamespace.cxx"
 #include "DataReformatter.hxx"
-#include "MonitoringData.hxx"
+#include "MonitoringPedestal.hxx"
 #include "EventDisplay.hxx"
-#include "ChannelMap.hxx"
+#include "ChannelMap.cxx"
 
-class OnlineMonitoring::OnlineMonitoring : public art::EDAnalyzer {
+class OnlineMonitoring::OnlinePedestal : public art::EDAnalyzer {
 
 public:
 
-  explicit OnlineMonitoring(fhicl::ParameterSet const& pset);
+  explicit OnlinePedestal(fhicl::ParameterSet const& pset);
 
   void analyze(art::Event const& event);
   void beginSubRun(art::SubRun const& sr);
@@ -54,7 +55,7 @@ private:
 
   art::EventNumber_t fEventNumber;
 
-  MonitoringData fMonitoringData;
+  MonitoringPedestal fMonitoringPedestal;
   EventDisplay fEventDisplay;
   ChannelMap fChannelMap;
 
@@ -66,32 +67,32 @@ private:
 
 };
 
-OnlineMonitoring::OnlineMonitoring::OnlineMonitoring(fhicl::ParameterSet const& pset) : EDAnalyzer(pset) {
+OnlineMonitoring::OnlinePedestal::OnlinePedestal(fhicl::ParameterSet const& pset) : EDAnalyzer(pset) {
   mf::LogInfo("Monitoring") << "Starting";
   this->reconfigure(pset);
   gStyle->SetOptStat(0);
   gStyle->SetOptTitle(0);
 }
 
-void OnlineMonitoring::OnlineMonitoring::reconfigure(fhicl::ParameterSet const& p) {
+void OnlineMonitoring::OnlinePedestal::reconfigure(fhicl::ParameterSet const& p) {
   fMonitoringRefreshRate = p.get<int>("MonitoringRefreshRate");
   fEventDisplayRefreshRate = p.get<int>("EventDisplayRefreshRate");
   fMakeTree = p.get<bool>("MakeTree");
 }
 
-void OnlineMonitoring::OnlineMonitoring::beginSubRun(art::SubRun const& sr) {
+void OnlineMonitoring::OnlinePedestal::beginSubRun(art::SubRun const& sr) {
 
-  mf::LogInfo("Monitoring") << "Starting monitoring for run " << sr.run() << ", subRun " << sr.subRun();
+  mf::LogInfo("Monitoring") << "Starting Pedestal/Noise monitoring for run " << sr.run() << ", subRun " << sr.subRun();
 
   // Start a new monitoring run
-  fMonitoringData.BeginMonitoring(sr.run(), sr.subRun());
+  fMonitoringPedestal.BeginMonitoring(sr.run(), sr.subRun());
 
   // Make the channel map for this subrun
   fChannelMap.MakeChannelMap();
 
 }
 
-void OnlineMonitoring::OnlineMonitoring::analyze(art::Event const& evt) {
+void OnlineMonitoring::OnlinePedestal::analyze(art::Event const& evt) {
 
   fEventNumber = evt.event();
 
@@ -102,32 +103,20 @@ void OnlineMonitoring::OnlineMonitoring::analyze(art::Event const& evt) {
   art::Handle<artdaq::Fragments> rawRCE;
   evt.getByLabel("daq","TPC",rawRCE);
 
-  // Look for SSP data
-  art::Handle<artdaq::Fragments> rawSSP;
-  evt.getByLabel("daq","PHOTON",rawSSP);
-
-  // Look for PTB data
-  art::Handle<artdaq::Fragments> rawPTB;
-  evt.getByLabel("daq","TRIGGER",rawPTB);
-
-  fMonitoringData.StartEvent(fEventNumber, fMakeTree);
+  fMonitoringPedestal.StartEvent(fEventNumber, fMakeTree);
 
   // Create data formatter objects and fill monitoring data products
   RCEFormatter rceformatter(rawRCE);
-  SSPFormatter sspformatter(rawSSP);
-  PTBFormatter ptbformatter(rawPTB);
 
   // Fill the data products in the monitoring data
-  if (rawRCE.isValid()) fMonitoringData.RCEMonitoring(rceformatter);
-  if (rawSSP.isValid()) fMonitoringData.SSPMonitoring(sspformatter);
-  if (rawSSP.isValid()) fMonitoringData.PTBMonitoring(ptbformatter);
-  fMonitoringData.GeneralMonitoring();
-  if (fMakeTree) fMonitoringData.FillTree(rceformatter, sspformatter);
+  if (rawRCE.isValid()) fMonitoringPedestal.RCEMonitoring(rceformatter);
+  fMonitoringPedestal.GeneralMonitoring();
+  if (fMakeTree) fMonitoringPedestal.FillTree(rceformatter);
 
   // Write the data out every-so-often
   int eventRefreshInterval = std::round((double)fMonitoringRefreshRate / 1.6e-3);
   if (fEventNumber % eventRefreshInterval == 0)
-    fMonitoringData.WriteMonitoringData(evt.run(), evt.subRun());
+    fMonitoringPedestal.WriteMonitoringPedestal(evt.run(), evt.subRun());
 
   // Make event display every-so-often
   int evdRefreshInterval = std::round((double)fEventDisplayRefreshRate / 1.6e-3);
@@ -145,14 +134,14 @@ void OnlineMonitoring::OnlineMonitoring::analyze(art::Event const& evt) {
 
 }
 
-void OnlineMonitoring::OnlineMonitoring::endSubRun(art::SubRun const& sr) {
+void OnlineMonitoring::OnlinePedestal::endSubRun(art::SubRun const& sr) {
 
   // Save the data at the end of the subrun
-  fMonitoringData.WriteMonitoringData(sr.run(), sr.subRun());
+  fMonitoringPedestal.WriteMonitoringPedestal(sr.run(), sr.subRun());
 
   // Clear up
-  fMonitoringData.EndMonitoring();
+  fMonitoringPedestal.EndMonitoring();
 
 }
 
-DEFINE_ART_MODULE(OnlineMonitoring::OnlineMonitoring)
+DEFINE_ART_MODULE(OnlineMonitoring::OnlinePedestal)
