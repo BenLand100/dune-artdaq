@@ -39,7 +39,7 @@
 #include <sstream>
 #include <fstream>
 
-#include "OnlineMonitoringNamespace.cxx"
+#include "OnlineMonitoringBase.cxx"
 #include "DataReformatter.hxx"
 
 class OnlineMonitoring::MonitoringPedestal {
@@ -111,6 +111,8 @@ private:
   bool checkedFileSizes;
   int fThreshold = 10;
   bool fIsInduction = true;
+
+  TString HistSaveDirectory;
 
   // Run options
   bool _interestingchannelsfilled = false;

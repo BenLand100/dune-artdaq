@@ -34,7 +34,7 @@ void OnlineMonitoring::MonitoringPedestal::BeginMonitoring(int run, int subrun) 
 
   // Outfile
   fDataFile = new TFile(HistSaveDirectory+TString("monitoringPedestalRun"+std::to_string(run)+"Subrun"+std::to_string(subrun)+".root"),"RECREATE");
-
+  
   // Tree
   if (fMakeTree) {
     fDataTree = new TTree("RawData","Raw Data");
@@ -65,22 +65,22 @@ void OnlineMonitoring::MonitoringPedestal::BeginMonitoring(int run, int subrun) 
   for (unsigned int channel = 0; channel < NRCEChannels; ++channel){
     hADCChannel[channel]                = new TProfile("ADCChannel"+TString(std::to_string(channel)),"RCE ADC v Tick for Channel "+TString(std::to_string(channel))+";Tick;ADC;",5000,0,5000);
     //Pedestal/Noise exclusive
-    hADCUnfiltered[channel]            = new TH1F(Form("hADCUnfiltered_%d",channel),Form("ADC Distribution of Channel %d", channel), 4096, 0, 4096);
-    hADCFiltered[channel]              = new TH1F(Form("hADCFiltered_%d",channel),Form("Filtered ADC Distribution of Channel %d",channel), 4096, 0, 4096);
+    hADCUnfiltered[channel]            = new TH1F(Form("ADCUnfiltered_%d",channel),Form("ADC Distribution of Channel %d_\"histl\"_none;", channel), 4096, 0, 4096);
+    hADCFiltered[channel]              = new TH1F(Form("ADCFiltered_%d",channel),Form("Filtered ADC Distribution of Channel %d_\"histl\"_none;",channel), 4096, 0, 4096);
   }
-  hPedestal                            = new TH1F("hPedestal", "Pedestal Distribution; Pedestal;",4096,0,4096);
-  hNoise                               = new TH1F("hNoise", "Noise Distribution; Noise;",500, 0, 500);
-  hMeanDiff                            = new TH1F("hMeanDiff", "Difference of the Gaussian Mean 1st - 2nd Fits", 200, -1.,1.);
-  hSigmaDiff                           = new TH1F("hSigmaDiff", "Difference of the Gaussian Sigma 1st - 2nd Fits", 200, -1.,1.);
-  hMeanFiltDiff                        = new TH1F("hMeanFiltDiff", "Difference of the Gaussian Mean Filtered - Unfiltered Fits", 200, -1.,1.);
-  hSigmaFiltDiff                       = new TH1F("hSigmaFiltDiff", "Difference of the Gaussian Sigma Filtered - Unfiltered Fits", 200, -1.,1.);
-  hPedestalChan                        = new TProfile("PedestalChannel","Pedestal per Channel;Channel;Pedestal",NRCEChannels,0,NRCEChannels);
-  hNoiseChan                           = new TProfile("NoiseChannel","Noise per Channel;Channel;Pedestal",NRCEChannels,0,NRCEChannels);
+  hPedestal                            = new TH1F("Pedestal", "Pedestal Distribution_\"\"_none; Pedestal;",4096,0,4096);
+  hNoise                               = new TH1F("Noise", "Noise Distribution_\"\"_none; Noise;",500, 0, 500);
+  hMeanDiff                            = new TH1F("MeanDiff", "Difference of the Gaussian Mean 1st - 2nd Fits_\"\"_none;", 200, -1.,1.);
+  hSigmaDiff                           = new TH1F("SigmaDiff", "Difference of the Gaussian Sigma 1st - 2nd Fits_\"\"_none;", 200, -1.,1.);
+  hMeanFiltDiff                        = new TH1F("MeanFiltDiff", "Difference of the Gaussian Mean Filtered - Unfiltered Fits_\"\"_none;", 200, -1.,1.);
+  hSigmaFiltDiff                       = new TH1F("SigmaFiltDiff", "Difference of the Gaussian Sigma Filtered - Unfiltered Fits_\"\"_none;", 200, -1.,1.);
+  hPedestalChan                        = new TProfile("PedestalChannel","Pedestal per Channel_\"histl\"_none;Channel;Pedestal",NRCEChannels,0,NRCEChannels);
+  hNoiseChan                           = new TProfile("NoiseChannel","Noise per Channel_\"histl\"_none;Channel;Pedestal",NRCEChannels,0,NRCEChannels);
   for (unsigned int millislice = 0; millislice < NRCEMillislices; ++millislice) {
     hAvADCMillislice[millislice]        = new TH1D("AvADCMillislice"+TString(std::to_string(millislice)),"Av ADC for Millislice "+TString(std::to_string(millislice))+";Event;Av ADC;",10000,0,10000);
     hAvADCMillisliceChannel[millislice] = new TH1D("AvADCMillisliceChannel"+TString(std::to_string(millislice)),"Av ADC v Channel for Millislice "+TString(std::to_string(millislice))+";Channel;Av ADC;",128,0,128);
   }
-  for (std::vector<int>::iterator debugchannel = DebugChannels.begin(); debugchannel != DebugChannels.end(); ++debugchannel)
+  for (std::vector<int>::const_iterator debugchannel = DebugChannels.begin(); debugchannel != DebugChannels.end(); ++debugchannel)
     hDebugChannelHists[(*debugchannel)] = new TH1D("Channel"+TString(std::to_string(*debugchannel))+"SingleEvent","Channel "+TString(std::to_string(*debugchannel))+" for Single Event",5000,0,5000);
 
   // General
@@ -238,6 +238,8 @@ void OnlineMonitoring::MonitoringPedestal::RCEMonitoring(RCEFormatter const& rce
     double mean = TMath::Mean(ADCs.at(channel).begin(),ADCs.at(channel).end());
     double rms  = TMath::RMS (ADCs.at(channel).begin(),ADCs.at(channel).end());
 
+    GetPedestal(ADCs.at(channel), channel, mean, rms);
+
     for (unsigned int tick = 0; tick < ADCs.at(channel).size(); tick++) {
 
       int ADC = ADCs.at(channel).at(tick);
@@ -325,7 +327,6 @@ void OnlineMonitoring::MonitoringPedestal::RCEMonitoring(RCEFormatter const& rce
 
 }
 void OnlineMonitoring::MonitoringPedestal::WriteMonitoringPedestal(int run, int subrun) {
-
   /// Writes all the monitoring data currently saved in the data objects
 
   // Make the html for the web pages
@@ -393,10 +394,7 @@ void OnlineMonitoring::MonitoringPedestal::WriteMonitoringPedestal(int run, int 
   hSigmaDiff->Write();
   hMeanFiltDiff->Write();
   hSigmaFiltDiff->Write();
-  hPedestal->Write();
-  hNoise->Write();
-  hPedestalChan->Write();
-  hNoiseChan->Write();
+
   // Add run file
   ofstream tmp((HistSaveDirectory+TString("run").Data()));
   tmp << run << " " << subrun;
@@ -432,6 +430,10 @@ void OnlineMonitoring::MonitoringPedestal::AddHists() {
 
   /// Adds all the histograms to an array for easier handling
 
+  //Pedestal/Noise exclusive                        
+  fHistArray.Add(hPedestal); fHistArray.Add(hNoise); 
+  fHistArray.Add(hPedestalChan); fHistArray.Add(hNoiseChan);
+
   // The order the histograms are added will be the order they're displayed on the web!
   fHistArray.Add(hADCMeanChannel); fHistArray.Add(hADCRMSChannel);
   fHistArray.Add(hAvADCAllMillislice); fHistArray.Add(hRCEDNoiseChannel);
@@ -445,10 +447,10 @@ void OnlineMonitoring::MonitoringPedestal::AddHists() {
   fHistArray.Add(hSizeOfFiles); fHistArray.Add(hSizeOfFilesPerEvent);
   fHistArray.Add(hNumSubDetectorsPresent);
   
-  //Pedestal/Noise exclusive
-  fHistArray.Add(hPedestal); fHistArray.Add(hNoise);
-  fHistArray.Add(hPedestalChan); fHistArray.Add(hNoiseChan);
-
+  fFigureCaptions["Pedestal"] = "Pedestal Distribution";
+  fFigureCaptions["Noise"] = "Noise Distribution";
+  fFigureCaptions["PedestalChannel"] = "Pedestal per Channel";
+  fFigureCaptions["NoiseChannel"] = "Noise per Channel";
   fFigureCaptions["ADCMeanChannel"] = "Mean ADC values for each channel read out by the RCEs (profiled over all events read)";
   fFigureCaptions["ADCRMSChannel"] = "RMS of the ADC values for each channel read out by the RCEs (profiled over all events read)";
   fFigureCaptions["AvADCAllMillislice"] = "Average RCE ADC across an entire millislice for the first 10000 events (one entry per millislice in each event)";
