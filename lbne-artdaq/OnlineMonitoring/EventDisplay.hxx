@@ -12,7 +12,7 @@
 #include "TH2D.h"
 #include "TCanvas.h"
 
-#include "OnlineMonitoringNamespace.cxx"
+#include "OnlineMonitoringBase.cxx"
 #include "ChannelMap.hxx"
 #include "DataReformatter.hxx"
 

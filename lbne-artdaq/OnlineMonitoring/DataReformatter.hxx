@@ -20,7 +20,7 @@
 #include <map>
 #include <bitset>
 
-#include "OnlineMonitoringNamespace.cxx"
+#include "OnlineMonitoringBase.cxx"
 
 class OnlineMonitoring::RCEFormatter {
 public:

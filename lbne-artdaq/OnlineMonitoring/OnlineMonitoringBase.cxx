@@ -5,8 +5,8 @@
 // Contains global variables used by classes in the monitoring namespace.
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-#ifndef OnlineMonitoringNamespace_cxx
-#define OnlineMonitoringNamespace_cxx
+#ifndef OnlineMonitoringNamespace
+#define OnlineMonitoringNamespace
 
 #include "TString.h"
 
@@ -23,23 +23,22 @@ namespace OnlineMonitoring {
   class ChannelMap;
   struct Channel;
 
-  unsigned int NRCEChannels    = 512;
-  unsigned int NRCEMillislices = 4;
-  unsigned int NSSPChannels    = 96;
-  std::vector<int> DebugChannels = {260, 278, 289, 290};
+  const unsigned int NRCEChannels    = 512;
+  const unsigned int NRCEMillislices = 4;
+  const unsigned int NSSPChannels    = 96;
+  const std::vector<int> DebugChannels = {260, 278, 289, 290};
 
   // Paths
   // Note -- on the gateway machine the default paths here refer to directories constantly
   // being scanned by cron jobs to upload new monitoring to the web.
   // If wanting to test and develop code, please change the paths!
-  const TString DataDirName   = "/data/lbnedaq/data/";
-  const TString HistSavePath  = "/data/lbnedaq/monitoring/";
-  const TString EVDSavePath   = "/data/lbnedaq/eventDisplay/";
+  const TString DataDirName   = "/lbne/data2/users/wallbank/";
+  const TString HistSavePath  = "/lbne/app/users/wallbank/lbne-artdaq-base/workspace/monitoring/";
+  const TString EVDSavePath   = "/lbne/app/users/wallbank/lbne-artdaq-base/workspace/eventDisplay/";
   const TString ImageType     = ".png";
   const TString PathDelimiter = "_";
-  TString HistSaveDirectory;
 
-  bool _verbose = false;
+  const bool _verbose = false;
 
   namespace TypeSizes {
     static int const CounterWordSize = 128;
