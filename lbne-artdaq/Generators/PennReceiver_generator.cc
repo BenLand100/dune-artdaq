@@ -139,10 +139,10 @@ lbne::PennReceiver::PennReceiver(fhicl::ParameterSet const & ps)
     channel_name << "calibrations.C";
     channel_name << i;
 
-    channel.id           = ps.get<std::string>(trig_name.str() + ".id");
-    channel.id_channel   = ps.get<std::string>(trig_name.str() + ".id_mask");
-    channel.enabled      = ps.get<bool>(trig_name.str() + ".enabled");
-    channel.period       = ps.get<uint32_t>(trig_name.str() + ".period");
+    channel.id           = ps.get<std::string>(channel_name.str() + ".id");
+    channel.id_mask   = ps.get<std::string>(channel_name.str() + ".id_mask");
+    channel.enabled      = ps.get<bool>(channel_name.str() + ".enabled");
+    channel.period       = ps.get<uint32_t>(channel_name.str() + ".period");
 
     calib_channels_.push_back(channel);
   }
@@ -555,17 +555,19 @@ void lbne::PennReceiver::generate_config_frag(std::ostringstream& config_frag) {
 
   // -- External triggers
   
+  std::string status_bool = (penn_ext_triggers_echo_)?"true":"false";
   config_frag << "<ExtTriggers>"
 	      << "<Mask>" << penn_ext_triggers_mask_ << "</Mask>"
-	      << "<EchoTriggers>"(penn_ext_triggers_echo_)?"true":"false" << "</EchoTriggers>"
+	      << "<EchoTriggers>" <<  status_bool << "</EchoTriggers>"
 	      << "</ExtTriggers>";
   
   // -- Calibration channels
   config_frag << "<Calibrations>";
   for (size_t i = 0; i < penn_num_calibration_channels_; ++i) {
-    config_frag << "<CalibrationMask id=\"" << calib_channels_.at(i).id "\""
+    status_bool = (calib_channels_.at(i).enabled)?"true":"false";
+    config_frag << "<CalibrationMask id=\"" << calib_channels_.at(i).id << "\""
 		<< " mask=\"" << calib_channels_.at(i).id_mask << "\">"
-		<< "<enabled>" << (calib_channels_.at(i).enabled)?"true":"false"<< "</enabled>"
+		<< "<enabled>" << status_bool << "</enabled>"
 		<< "<period>" << calib_channels_.at(i).period << "</period>"
 		<< "</CalibrationMask>";
   } 

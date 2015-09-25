@@ -108,6 +108,8 @@ typedef struct CalibChannelConfig {
     // Probably going to be removed
     uint32_t    penn_data_dest_rollover_;
 
+    uint32_t ptb_pulse_width_;
+
     /// Channel masks
     uint64_t    penn_channel_mask_bsu_;
     uint64_t    penn_channel_mask_tsu_;
