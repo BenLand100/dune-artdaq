@@ -32,9 +32,9 @@ namespace OnlineMonitoring {
   // Note -- on the gateway machine the default paths here refer to directories constantly
   // being scanned by cron jobs to upload new monitoring to the web.
   // If wanting to test and develop code, please change the paths!
-  const TString DataDirName   = "/lbne/data2/users/wallbank/";
-  const TString HistSavePath  = "/lbne/app/users/wallbank/lbne-artdaq-base/workspace/monitoring/";
-  const TString EVDSavePath   = "/lbne/app/users/wallbank/lbne-artdaq-base/workspace/eventDisplay/";
+  const TString DataDirName   = "/data/lbnedaq/data/";
+  const TString HistSavePath  = "/data/lbnedaq/monitoring/";
+  const TString EVDSavePath   = "/data/lbnedaq/eventDisplay/";
   const TString ImageType     = ".png";
   const TString PathDelimiter = "_";
 
