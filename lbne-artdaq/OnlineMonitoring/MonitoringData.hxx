@@ -36,7 +36,7 @@
 #include <sstream>
 #include <fstream>
 
-#include "OnlineMonitoringNamespace.cxx"
+#include "OnlineMonitoringBase.cxx"
 #include "DataReformatter.hxx"
 
 class OnlineMonitoring::MonitoringData {
@@ -59,16 +59,19 @@ private:
   int fEventNumber;
 
   // File
-  TFile *fDataFile;
+  TFile* fDataFile;
 
   // Tree
   bool fMakeTree;
-  TTree *fDataTree;
+  TTree* fDataTree;
+
+  // Save area
+  TString HistSaveDirectory;
 
   // Histograms
   TObjArray fHistArray;
   std::map<std::string,std::string> fFigureCaptions;
-  TCanvas *fCanvas;
+  TCanvas* fCanvas;
 
   // RCE
   TH1I *hTotalADCEvent, *hTotalRCEHitsEvent, *hTotalRCEHitsChannel, *hTimesADCGoesOverThreshold,  *hNumMicroslicesInMillislice, *hNumNanoslicesInMicroslice, *hNumNanoslicesInMillislice;

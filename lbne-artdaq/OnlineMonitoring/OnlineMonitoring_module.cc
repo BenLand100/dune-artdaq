@@ -33,7 +33,7 @@
 #include <sys/stat.h>
 #include <typeinfo>
 
-#include "OnlineMonitoringNamespace.cxx"
+#include "OnlineMonitoringBase.cxx"
 #include "DataReformatter.hxx"
 #include "MonitoringData.hxx"
 #include "EventDisplay.hxx"
@@ -43,7 +43,7 @@ class OnlineMonitoring::OnlineMonitoring : public art::EDAnalyzer {
 
 public:
 
-  explicit OnlineMonitoring(fhicl::ParameterSet const& pset);
+  OnlineMonitoring(fhicl::ParameterSet const& pset);
 
   void analyze(art::Event const& event);
   void beginSubRun(art::SubRun const& sr);

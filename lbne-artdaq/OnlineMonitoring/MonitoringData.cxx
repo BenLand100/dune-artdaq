@@ -67,7 +67,7 @@ void OnlineMonitoring::MonitoringData::BeginMonitoring(int run, int subrun) {
     hAvADCMillislice[millislice]        = new TH1D("AvADCMillislice"+TString(std::to_string(millislice)),"Av ADC for Millislice "+TString(std::to_string(millislice))+";Event;Av ADC;",10000,0,10000);
     hAvADCMillisliceChannel[millislice] = new TH1D("AvADCMillisliceChannel"+TString(std::to_string(millislice)),"Av ADC v Channel for Millislice "+TString(std::to_string(millislice))+";Channel;Av ADC;",128,0,128);
   }
-  for (std::vector<int>::iterator debugchannel = DebugChannels.begin(); debugchannel != DebugChannels.end(); ++debugchannel)
+  for (std::vector<int>::const_iterator debugchannel = DebugChannels.begin(); debugchannel != DebugChannels.end(); ++debugchannel)
     hDebugChannelHists[(*debugchannel)] = new TH1D("Channel"+TString(std::to_string(*debugchannel))+"SingleEvent","Channel "+TString(std::to_string(*debugchannel))+" for Single Event",5000,0,5000);
 
   // SSP hists
@@ -182,6 +182,9 @@ void OnlineMonitoring::MonitoringData::EndMonitoring() {
 
   /// Clear up after writing out the monitoring data
 
+  // Free the memory for the histograms
+  fHistArray.Delete();
+
   // Free up all used memory
   // for (unsigned int interestingchannel = 0; interestingchannel < DebugChannels.size(); ++interestingchannel)
   //   hDebugChannelHists.at(DebugChannels.at(interestingchannel))->Delete();
@@ -191,11 +194,11 @@ void OnlineMonitoring::MonitoringData::EndMonitoring() {
     hADCChannel.at(channel)->Delete();
   for (unsigned int channel = 0; channel < NSSPChannels; ++channel)
     hWaveformChannel.at(channel)->Delete();
-  fDataFile->Close();
-  delete fDataFile;
 
-  // Free the memory for the histograms
-  fHistArray.Delete();
+  fDataFile->Close();
+  delete fDataTree;
+  delete fDataFile;
+  delete fCanvas;
 
 }
 
