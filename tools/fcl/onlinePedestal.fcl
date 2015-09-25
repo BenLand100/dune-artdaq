@@ -1,0 +1,29 @@
+process_name: OnlinePedestal
+
+services:{}
+
+source:
+{
+  module_type: RootInput
+  fileNames:  [ "/lbne/data2/users/wallbank/DAQToOffline.root" ]
+  firstEvent: 1
+  maxEvents:  -1
+}
+
+outputs:{}
+
+physics:
+{
+  analyzers:
+  {
+    monitoring:
+    {
+      module_type:                "OnlinePedestal"
+      MakeTree:                   "true"
+      MonitoringRefreshRate:      500
+      EventDisplayRefreshRate:    100000 #8
+    }
+  }
+  analysis: [ monitoring ] //Directory for histograms
+  end_paths: [ analysis ]
+}
