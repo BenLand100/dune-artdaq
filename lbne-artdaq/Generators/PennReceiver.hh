@@ -38,7 +38,7 @@
 
 namespace lbne {    
 
-typedef struct TriggerMaskConfig {
+typedef struct MuonTriggerMaskConfig {
   std::string id;
   std::string id_mask;
   uint8_t     logic;
@@ -49,7 +49,17 @@ typedef struct TriggerMaskConfig {
   uint64_t    g2_mask_tsu;
   uint64_t    g2_mask_bsu;
   uint8_t     g2_logic;
-} TriggerMaskConfig;
+} MuonTriggerMaskConfig;
+
+typedef struct CalibChannelConfig {
+  std::string id;
+  std::string id_mask;
+  bool        enabled;
+  uint32_t    period;
+} CalibChannelConfig;
+
+
+
 
   class PennReceiver : public artdaq::CommandableFragmentGenerator {
   public:
@@ -127,7 +137,11 @@ typedef struct TriggerMaskConfig {
     // a successful pulse. Accounts for afterpulses (reflections?) from the panels.
     uint32_t penn_trig_lockdown_window_;
 
-    std::vector<TriggerMaskConfig>  muon_triggers_;
+    std::vector<MuonTriggerMaskConfig>  muon_triggers_;
+    
+    // -- This is immutable. Hardware limitation
+    const uint32_t penn_num_calibration_channels_ = 4;
+    std::vector<CalibChannelConfig>     calib_channels_;
 
 
     ////BOARDREADER OPTIONS

@@ -118,37 +118,46 @@ lbne::PennReceiver::PennReceiver(fhicl::ParameterSet const & ps)
 
   // Penn microslice duration
   penn_data_microslice_size_ =
-        ps.get<uint32_t>("penn_data_buffer.daq_microslice_size", 7);
+        ps.get<uint32_t>("penn_data_buffer.daq_microslice_size", 128);
 
-  
+  ptb_pulse_width_ = ps.get<uint32_t>("hardware.pulse_width",2);
 
   // -- Channel masks
   penn_channel_mask_bsu_ =
-    ps.get<uint64_t>("channel_mask.BSU", 0x0003FFFFFFFFFFFF);
+    ps.get<uint64_t>("channel_mask.BSU", 0x1FFFFFFFFFFFF);
   penn_channel_mask_tsu_ =
-    ps.get<uint64_t>("channel_mask.TSU", 0x000000FFFFFFFFFF);
+    ps.get<uint64_t>("channel_mask.TSU", 0xFFFFFFFFFFFF);
 
   // -- How to deal with external triggers
   penn_ext_triggers_mask_ = ps.get<uint8_t>("external_triggers.mask",0x1F);
-  penn_ext_triggers_echo_ = ps.get<bool>("external_triggers.echo_triggers",true);
-  penn_ext_triggers_echo_width_ = ps.get<uint8_t>("external_triggers.echo_width",2);
+  penn_ext_triggers_echo_ = ps.get<bool>("external_triggers.echo_triggers",false);
 
   // -- Calibrations
-  penn_calib_period_ = ps.get<uint16_t>("calibration.period",10);
-  penn_calib_channel_mask_ = ps.get<uint8_t>("calibration.channel_mask",0xF);
-  penn_calib_pulse_width_ = ps.get<uint8_t>("calibration.pulse_width",2);
+  for (uint32_t i = 1; i <= penn_num_calibration_channels_; ++i) {
+    CalibChannelConfig channel;
+    std::ostringstream channel_name;
+    channel_name << "calibrations.C";
+    channel_name << i;
+
+    channel.id           = ps.get<std::string>(trig_name.str() + ".id");
+    channel.id_channel   = ps.get<std::string>(trig_name.str() + ".id_mask");
+    channel.enabled      = ps.get<bool>(trig_name.str() + ".enabled");
+    channel.period       = ps.get<uint32_t>(trig_name.str() + ".period");
+
+    calib_channels_.push_back(channel);
+  }
 
   // -- Muon triggers
   // This is the more elaborated part:
   // First grab the global parameters
   penn_muon_num_triggers_ = ps.get<uint32_t>("muon_triggers.num_triggers",4);
-  penn_trig_out_pulse_width_ = ps.get<uint8_t>("muon_triggers.trig_out_width",2);
+  //  penn_trig_out_pulse_width_ = ps.get<uint8_t>("muon_triggers.trig_out_width",2);
   penn_trig_in_window_ = ps.get<uint8_t>("muon_triggers.trig_window",3);
   penn_trig_lockdown_window_ = ps.get<uint8_t>("muon_triggers.trig_lockdown",3);
 
   // And now grab the individual trigger mask configuration
   for (uint32_t i = 0; i < penn_muon_num_triggers_; ++i) {
-    TriggerMaskConfig mask;
+    MuonTriggerMaskConfig mask;
     std::ostringstream trig_name;
     trig_name << "muon_triggers.trigger_";
     trig_name << i;
@@ -503,6 +512,9 @@ void lbne::PennReceiver::generate_config_frag(std::ostringstream& config_frag) {
 
   // The config wrapper is added by the PennClient class just prior to send.
  // config_frag << "<config>";
+  config_frag << "<Hardware>"
+	      << "<PulseWidth>" << ptb_pulse_width_ << "</PulseWidth>"
+	      << "</Hardware>";
 
   // -- DataBuffer section. Controls the reader itself
   config_frag << "<DataBuffer>"
@@ -516,12 +528,14 @@ void lbne::PennReceiver::generate_config_frag(std::ostringstream& config_frag) {
 
   // -- Channel masks section. Controls the reader itself
   config_frag << "<ChannelMask>"
-	      << "<BSU>0x" << std::hex << static_cast<int>(penn_channel_mask_bsu_) << std::dec << "</BSU>"
+	      << "<BSU>0x" << std::hex << static_cast<uint64_t>(penn_channel_mask_bsu_) << std::dec << "</BSU>"
 	      << "<TSU>0x" << std::hex << static_cast<int>(penn_channel_mask_tsu_) << std::dec << "</TSU>"
       << "</ChannelMask>";
 
+  // -- Muon trigger section
+
+
   config_frag << "<MuonTriggers num_triggers=\"" << penn_muon_num_triggers_ << "\">"
-	      << "<TrigOutWidth>0x" << std::hex << static_cast<int>(penn_trig_out_pulse_width_)  << std::dec << "</TrigOutWidth>"
 	      << "<TriggerWindow>0x" << std::hex << static_cast<int>(penn_trig_in_window_)  << std::dec << "</TriggerWindow>"
 	      << "<LockdownWindow>0x" << std::hex << static_cast<int>(penn_trig_lockdown_window_)  << std::dec << "</LockdownWindow>";
   for (size_t i = 0; i < penn_muon_num_triggers_; ++i) {
@@ -537,6 +551,26 @@ void lbne::PennReceiver::generate_config_frag(std::ostringstream& config_frag) {
 		<< "<TSU>0x" << std::hex << static_cast<int>(muon_triggers_.at(i).g2_mask_tsu) << std::dec << "</TSU></group2>"
         << "</TriggerMask>";
   }
+  config_frag << "</MuonTriggers>";
+
+  // -- External triggers
+  
+  config_frag << "<ExtTriggers>"
+	      << "<Mask>" << penn_ext_triggers_mask_ << "</Mask>"
+	      << "<EchoTriggers>"(penn_ext_triggers_echo_)?"true":"false" << "</EchoTriggers>"
+	      << "</ExtTriggers>";
+  
+  // -- Calibration channels
+  config_frag << "<Calibrations>";
+  for (size_t i = 0; i < penn_num_calibration_channels_; ++i) {
+    config_frag << "<CalibrationMask id=\"" << calib_channels_.at(i).id "\""
+		<< " mask=\"" << calib_channels_.at(i).id_mask << "\">"
+		<< "<enabled>" << (calib_channels_.at(i).enabled)?"true":"false"<< "</enabled>"
+		<< "<period>" << calib_channels_.at(i).period << "</period>"
+		<< "</CalibrationMask>";
+  } 
+  config_frag << "</Calibrations>";
+
 
   // And finally close the tag
   //config_frag << "</config>";

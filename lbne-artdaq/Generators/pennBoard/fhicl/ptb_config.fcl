@@ -11,147 +11,187 @@
     fragment_id: 0
     board_id: 0
     sleep_on_stop_us: 500000
- 	
- 	  # The real configuration options for the PTB
-   	penn_client_host_addr     : '192.168.1.2' # the IP of the PTB
-  	penn_client_host_port     : 8991 		# client port
-  	penn_client_timeout_usecs : 5E5 		# connection timeout. THis is a board_reader option
-  		
-    #
-    # Board reader options. No idea of what they mean
-  	#
-  	
-  	# No idea of what these mean
-   	receiver_tick_period_usecs    : 1E4
-   	millislice_size               : 10
-   	millislice_overlap_size       : 5
-   	receiver_debug_level          : 0   # higher number = print more info (6 is current highest level)
-  	reporting_interval_fragments  : 10
-  	reporting_interval_time       : 0
-  	
-   	raw_buffer_size             : 4000000
-   	raw_buffer_precommit        : 50
-   	use_fragments_as_raw_buffer : true     # false not currently implemented
-  	
-  	#
-  	# Emulator options. Same as before. Seems a bit cryptic
-  	#
-  		
-  	penn_data_num_millislices   : 1         # 0=Run until stopped
-   	penn_data_num_microslices   : 1000
-   	penn_data_frag_rate         : 1000      # Hz
-   	
-   	# Same for these -- what to these mean?
-  	penn_data_payload_mode 			: 2         # counter&trigger payload contents 0=all off, 1=all on, 2=alternating on/off, 3=random
-  	penn_data_trigger_mode      : 2         # 0=no trigger words sent. 1=trigger word sent every tick. 2=trigger word sent randomly
-  
-   	penn_data_fragment_microslice_at_ticks : 0         #after this many ticks the uslice will be fragmented (<=0 means fragment automatically based on size)
-   	
-  	penn_data_repeat_microslices           : false     #for rate testing
-   	penn_data_debug_partial_recv           : false     #slows emulator down to send 1 byte at a time, every 0.1 seconds. For testing how the boardreader handles async_receive that grabs less than requested bytes
-   	
-   	
-   	#
-   	# PTB configuration options
-   	#
-   	
-   	penn_data_buffer : {
+        
+          # The real configuration options for the PTB
+        penn_client_host_addr     : '192.168.1.2' # the IP of the PTB
+        penn_client_host_port     : 8991                # client port
+        penn_client_timeout_usecs : 5E5                 # connection timeout. THis is a board_reader option
+                
+        #
+        # Board reader options. No idea of what they mean
+        #
+        
+        # No idea of what these mean
+        receiver_tick_period_usecs    : 1E4
+        millislice_size               : 10
+        millislice_overlap_size       : 5
+        receiver_debug_level          : 0   # higher number = print more info (6 is current highest level)
+        reporting_interval_fragments  : 10
+        reporting_interval_time       : 0
+        
+        raw_buffer_size		      : 4000000
+        raw_buffer_precommit          : 50
+        use_fragments_as_raw_buffer   : true     # false not currently implemented
+        
+        
+####################################################################
+#
+# PTB configuration options. These are then translated into a 
+# XML file that is parsed in the PTB
+#
+#
+# NOTES: 
+#     - Logic. All logic follows the rule: (0: AND, 1: OR, 2: XOR, 3: UNIQUE) 
+#
+#
+####################################################################
+
+   penn_data_buffer : {
       daq_host            : "lbnedaq5"
       daq_port            : 8992
-      daq_rollover 	      : 80 			# Number of packets before the slice is considered ready. Probably not needed.
-      daq_microslice_size	: 7			# There are (2^x)-1 clock ticks per microslice. This is a time based rollover
+      daq_rollover        : 80           # Number of packets before the slice
+                                         #  is considered ready. Probably not needed.
+      daq_microslice_size : 128          # This is the time based rollover. 
+                                         # Can be any value that fits a 28 bit word.
+                                         # Used to be a (2**x)-1 value. 
+                                         # Now an absolute number is used
     }
   
     channel_mask : {
-      BSU	: 0x1FFFFFFFFFFFF		# All 49 channels are ON
-      TSU : 0xFFFFFFFFFFFF		# All 48 channels are ON 
+      BSU : 0x1FFFFFFFFFFFF   # All 49 channels are ON
+      TSU : 0xFFFFFFFFFFFF    # All 48 channels are ON 
     }
   
+   hardware : {
+     pulse_width : 2     # Width of all output pulses in counts of NOvA clock
+   }
+   
     muon_triggers : {
-      trig_out_width: 2						# Number of clock ticks that the trigger out pulse is high
-      trig_window		: 3						# Number of clock ticks that the input signal is stretched to account for time offsets between panels
-      trig_lockdown	: 11					# Number of clock ticks that the input signal is locked low after being high. Accounts for reflections.
-      num_triggers	: 4						# Number of different trigger masks
+      trig_window : 3     # Number of clock ticks that the input signal
+                          #  is stretched to account for time offsets between panels
+      trig_lockdown : 11  # Number of clock ticks that the input signal is
+                          #  locked low after being high. Accounts for reflections.
+      num_triggers : 4    # Number of different trigger masks
   
       trigger_0 : {
-        id      : "A"					# Just something for debugging purposes
-        id_mask	: "1000"				# Not used at the moment. Same ID as the IP in the PL
-        logic		: 0						# Logic to be applied between groups (0: AND, 1: OR, 2: XOR) 
-        prescale: 0						# Number of triggers that are ignored after a successful trigger
-        group1 : {
-          logic	: 2						# XOR
-          BSU		: 0xFFFF				# BSU mask (RM 1-16)
-          TSU		: 0x0					# TSU mask
+        id      : "A"      # Just something for debugging purposes
+        id_mask : "1000"   # Not used at the moment. Same ID as the IP in the PL
+        logic   : 0        # Logic to be applied between groups 
+        prescale: 0        # Number of ignored triggers a successful trigger
+        group1 : {         
+          logic : 3                       # UNIQUE
+          BSU           : 0xFFFF          # BSU mask (RM 1-16)
+          TSU           : 0x0             # TSU mask
         }
         group2 : {
-          logic	: 2						# AND
-          BSU		: 0x7F7E000000			# BSU mask (CL 1-13)
-          TSU		: 0x0					# TSU mask
-        }			    
+          logic : 3                       # UNIQUE
+          BSU           : 0x7F7E000000    # BSU mask (CL 1-13)
+          TSU           : 0x0             # TSU mask
+        }                           
       }
   
       trigger_1 : {
-        id			: "B"					# Just something for debugging purposes
-        id_mask	: "0100"				# Not used at the moment. Same ID as the IP in the PL
-        logic		: 0						# Logic to be applied between groups (0: AND, 1: OR, 2: XOR) 
-        prescale: 0						# Number of triggers that are ignored after a successful trigger
+        id      : "B"     
+        id_mask : "0100"
+        logic   : 0 
+        prescale: 0 
         group1 : {
-          logic	: 1						# XOR
-          BSU		: 0x0					# BSU mask
-          TSU		: 0x3F000000			# TSU mask (NU 1-6)
+          logic : 1 
+          BSU   : 0x0 
+          TSU   : 0x3F000000 
         }
         group2 : {
-          logic	: 1						# AND
-          BSU		: 0x0					# BSU mask
-          TSU		: 0xFC0000000			# TSU mask (SL 1-6)
-        }			    
+          logic : 1
+          BSU   : 0x0 
+          TSU   : 0xFC0000000 
+        }                           
       }
   
       trigger_2 : {
-        id			: "C"					# Just something for debugging purposes
-        id_mask	: "0010"				# Not used at the moment. Same ID as the IP in the PL
-        logic		: 0						# Logic to be applied between groups (0: AND, 1: OR, 2: XOR) 
-        prescale: 0						# Number of triggers that are ignored after a successful trigger
+        id      : "C"  
+        id_mask : "0010"
+        logic   : 0 
+        prescale: 0 
         group1 : {
-          logic	: 1						# XOR
-          BSU		: 0x0					# BSU mask
-          TSU		: 0xFC0000000000		# TSU mask (SU 1-6)
+          logic : 1                       # OR
+          BSU   : 0x0                     # BSU mask
+          TSU   : 0xFC0000000000          # TSU mask (SU 1-6)
         }
         group2 : {
-          logic	: 1						# AND
-          BSU		: 0x0					# BSU mask
-          TSU		: 0x3F000000000			# TSU mask (NL 1-6)
-        }			    
+          logic : 1                       # OR
+          BSU   : 0x0                     # BSU mask
+          TSU   : 0x3F000000000           # TSU mask (NL 1-6)
+        }                           
       }
   
       trigger_3 : {
-        id			: "D"					# Just something for debugging purposes
-        id_mask	: "0001"				# Not used at the moment. Same ID as the IP in the PL
-        logic		: 0						# Logic to be applied between groups (0: AND, 1: OR, 2: XOR) 
-        prescale: 0						# Number of triggers that are ignored after a successful trigger
+        id      : "D"      # Just something for debugging purposes
+        id_mask : "0001"   # Not used at the moment. Same ID as the IP in the PL
+        logic   : 0        # Logic between groups (0: AND, 1: OR, 2: XOR, 3: UNIQUE) 
+        prescale: 0        # Number of triggers ignored after a successful trigger
         group1 : {
-          logic	: 1						# XOR
-          BSU		: 0x0					# BSU mask
-          TSU		: 0x7FE00				# TSU mask (EL 1-10)
+          logic : 1        # OR
+          BSU   : 0x0      # BSU mask
+          TSU   : 0x7FE00  # TSU mask (EL 1-10)
         }
-        group2 : {
-          logic	: 1						# AND
-          BSU		: 0x0					# BSU mask
-          TSU		: 0x1FF					# TSU mask (WU 1-10)
-        }			    
+        group2 : {         
+          logic : 1        # OR
+          BSU   : 0x0      # BSU mask
+          TSU   : 0x1FF    # TSU mask (WU 1-10)
+        }                           
       }
     }
   
     external_triggers : {
-      mask          : 0x1F					# Mask the external triggers (receiving). There are 4 independent + 8 ored (total of 5 bits) 
-      echo_triggers : true					# Should a trigger be sent back to the other systems?
-      echo_width    : 2						# Number of clock ticks the pulse should be high
-    }	
+      mask          : 0x1F      # Mask the external triggers (receiving). 
+                                # There are 4 independent + 8 ored (total of 5 bits) 
+      echo_triggers : true      # Should a trigger be sent back to the other systems?
+    }   
   
-    calibration : {
-      period      : 10					# Number of clock ticks between calibration pulse
-      channel_mask: 0xF					# There are 4 independent channels. Which should receive the calibration pulse?
-      pulse_width	: 2						# Number of clock ticks the pulse should be high
-    }
+    calibrations : {
+        C1 : {
+           id           : "C1"   # Just an ID to keep in mind
+           id_mask      : "1000" # The ID that is effectively going into the PL
+           enabled      : true   # enable/disable
+           period       : 10     # Number of clock ticks between calibration pulses
+        }
+        C2 : {
+           id           : "C2"   
+           id_mask      : "0100"
+           enabled      : false
+           period       : 10     
+        }
+        C3 : {
+           id           : "C3"   # Just an ID to keep in mind
+           id_mask      : "0010"
+           enabled      : false
+           period       : 10     
+        }
+        C4 : {
+           id           : "C4"   
+           id_mask      : "0001"
+           enabled      : false
+           period       : 10     
+        }
   }
+
+
+        #
+        # Emulator options. Same as before. Seems a bit cryptic
+        #
+                
+        penn_data_num_millislices   : 1         # 0=Run until stopped
+        penn_data_num_microslices   : 1000
+        penn_data_frag_rate         : 1000      # Hz
+        
+        # Same for these -- what to these mean?
+        penn_data_payload_mode                  : 2         # counter&trigger payload contents 0=all off, 1=all on, 2=alternating on/off, 3=random
+        penn_data_trigger_mode      : 2         # 0=no trigger words sent. 1=trigger word sent every tick. 2=trigger word sent randomly
+  
+        penn_data_fragment_microslice_at_ticks : 0         #after this many ticks the uslice will be fragmented (<=0 means fragment automatically based on size)
+        
+        penn_data_repeat_microslices           : false     #for rate testing
+        penn_data_debug_partial_recv           : false     #slows emulator down to send 1 byte at a time, every 0.1 seconds. For testing how the boardreader handles async_receive that grabs less than requested bytes
+        
+
 }
