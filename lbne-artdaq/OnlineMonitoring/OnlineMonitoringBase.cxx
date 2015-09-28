@@ -23,8 +23,8 @@ namespace OnlineMonitoring {
   class ChannelMap;
   struct Channel;
 
-  const unsigned int NRCEChannels    = 512;
-  const unsigned int NRCEMillislices = 4;
+  const unsigned int NRCEChannels    = 2048;
+  const unsigned int NRCEMillislices = 16;
   const unsigned int NSSPChannels    = 96;
   const std::vector<int> DebugChannels = {260, 278, 289, 290};
 
