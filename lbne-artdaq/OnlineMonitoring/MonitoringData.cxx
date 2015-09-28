@@ -283,10 +283,13 @@ void OnlineMonitoring::MonitoringData::RCEMonitoring(RCEFormatter const& rceform
       int ADC = ADCs.at(channel).at(tick);
 
       // Fill hists for tick
+      hADCChannel.at(channel)->Fill(tick,ADC);
+      if (channel && !ADCs.at(channel-1).empty() && tick < ADCs.at(channel-1).size())
+	hRCEDNoiseChannel->Fill(channel,ADC-ADCs.at(channel-1).at(tick));
+
+      // Debug
       if (!_interestingchannelsfilled && std::find(DebugChannels.begin(), DebugChannels.end(), channel) != DebugChannels.end())
       	hDebugChannelHists.at(channel)->Fill(tick,ADC);
-      hADCChannel.at(channel)->Fill(tick,ADC);
-      if (channel && !ADCs.at(channel-1).empty()) hRCEDNoiseChannel->Fill(channel,ADC-ADCs.at(channel-1).at(tick));
 
       // Increase variables
       fTotalADC += ADC;
