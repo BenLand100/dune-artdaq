@@ -452,7 +452,11 @@ void OnlineMonitoring::MonitoringData::WriteMonitoringData(int run, int subrun) 
   tmp << run << " " << subrun;
   tmp.flush();
   tmp.close();
-  system(("chmod -R a=rwx "+std::string(HistSaveDirectory)).c_str());  
+  system(("chmod -R a=rwx "+std::string(HistSaveDirectory)).c_str());
+  system(("chmod -R a=rwx "+std::string(HistSaveDirectory)).c_str());
+  system(("chmod -R a=rwx "+std::string(HistSaveDirectory)).c_str());
+  system(("chmod -R a=rwx "+std::string(HistSaveDirectory)).c_str());
+  system(("chmod -R a=rwx "+std::string(HistSaveDirectory)).c_str());
 
   mf::LogInfo("Monitoring") << "Monitoring for run " << run << ", subRun " << subrun << " is viewable at http://lbne-dqm.fnal.gov/OnlineMonitoring/Run" << run << "Subrun" << subrun;
 
