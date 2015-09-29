@@ -42,6 +42,7 @@ void OnlineMonitoring::MonitoringPedestal::BeginMonitoring(int run, int subrun) 
   }
 
   this->MakeHistograms();
+
 }
 
 void OnlineMonitoring::MonitoringPedestal::MakeHistograms() {
@@ -80,12 +81,12 @@ void OnlineMonitoring::MonitoringPedestal::MakeHistograms() {
     hADCUnfiltered[channel]             = new TH1F(Form("ADCUnfiltered_%d",channel),Form("ADC Distribution of Channel %d_\"histl\"_none;", channel), 4096, 0, 4096);
     hADCFiltered[channel]               = new TH1F(Form("ADCFiltered_%d",channel),Form("Filtered ADC Distribution of Channel %d_\"histl\"_none;",channel), 4096, 0, 4096);
   }
-  hPedestal                             = new TH1F("Pedestal", "Pedestal Distribution_\"\"_none; Pedestal;",4096,0,4096);
-  hNoise                                = new TH1F("Noise", "Noise Distribution_\"\"_none; Noise;",500, 0, 500);
-  hMeanDiff                             = new TH1F("MeanDiff", "Difference of the Gaussian Mean 1st - 2nd Fits_\"\"_none;", 200, -1.,1.);
-  hSigmaDiff                            = new TH1F("SigmaDiff", "Difference of the Gaussian Sigma 1st - 2nd Fits_\"\"_none;", 200, -1.,1.);
-  hMeanFiltDiff                         = new TH1F("MeanFiltDiff", "Difference of the Gaussian Mean Filtered - Unfiltered Fits_\"\"_none;", 200, -1.,1.);
-  hSigmaFiltDiff                        = new TH1F("SigmaFiltDiff", "Difference of the Gaussian Sigma Filtered - Unfiltered Fits_\"\"_none;", 200, -1.,1.);
+  hPedestal                             = new TH1F("Pedestal", "Pedestal Distribution_\"histl\"_none; Pedestal;",4096,0,4096);
+  hNoise                                = new TH1F("Noise", "Noise Distribution_\"histl\"_none; Noise;",500, 0, 500);
+  hMeanDiff                             = new TH1F("MeanDiff", "Difference of the Gaussian Mean 1st - 2nd Fits_\"histl\"_none;", 200, -1.,1.);
+  hSigmaDiff                            = new TH1F("SigmaDiff", "Difference of the Gaussian Sigma 1st - 2nd Fits_\" \"_none;", 200, -1.,1.);
+  hMeanFiltDiff                         = new TH1F("MeanFiltDiff", "Difference of the Gaussian Mean Filtered - Unfiltered Fits_\"histl\"_none;", 200, -1.,1.);
+  hSigmaFiltDiff                        = new TH1F("SigmaFiltDiff", "Difference of the Gaussian Sigma Filtered - Unfiltered Fits_\"histl\"_none;", 200, -1.,1.);
   hPedestalChan                         = new TProfile("PedestalChannel","Pedestal per Channel_\"histl\"_none;Channel;Pedestal",NRCEChannels,0,NRCEChannels);
   hNoiseChan                            = new TProfile("NoiseChannel","Noise per Channel_\"histl\"_none;Channel;Pedestal",NRCEChannels,0,NRCEChannels);
   for (unsigned int millislice = 0; millislice < NRCEMillislices; ++millislice) {
@@ -105,6 +106,7 @@ void OnlineMonitoring::MonitoringPedestal::MakeHistograms() {
   //Pedestal/Noise exclusive                                     
   fHistArray.Add(hPedestal); fHistArray.Add(hNoise);
   fHistArray.Add(hPedestalChan); fHistArray.Add(hNoiseChan);
+  fHistArray.Add(hMeanDiff); fHistArray.Add(hSigmaDiff);
 
   // The order the histograms are added will be the order they're displayed on the web!     
   fHistArray.Add(hADCMeanChannelAPA1); fHistArray.Add(hADCMeanChannelAPA2);
@@ -127,6 +129,8 @@ void OnlineMonitoring::MonitoringPedestal::MakeHistograms() {
   fFigureCaptions["Noise"] = "Noise Distribution";
   fFigureCaptions["PedestalChannel"] = "Pedestal per Channel";
   fFigureCaptions["NoiseChannel"] = "Noise per Channel";
+  fFigureCaptions["MeanDiff"] = "Mean Difference Distribution";
+  fFigureCaptions["SigmaDiff"] = "Sigma Difference Distribution";
   fFigureCaptions["ADCMeanChannelAPA1"] = "Mean ADC values for each channel read out by the RCEs (profiled over all events read)";
   fFigureCaptions["ADCMeanChannelAPA2"] = "Mean ADC values for each channel read out by the RCEs (profiled over all events read)";
   fFigureCaptions["ADCMeanChannelAPA3"] = "Mean ADC values for each channel read out by the RCEs (profiled over all events read)";
@@ -174,6 +178,7 @@ void OnlineMonitoring::MonitoringPedestal::EndMonitoring() {
   fDataFile->Close();
   delete fDataTree;
   delete fDataFile;
+  delete fCanvas;
 
 }
 
@@ -228,6 +233,7 @@ void OnlineMonitoring::MonitoringPedestal::GeneralMonitoring() {
       if (i == 20) break;
     }
   }
+
 }
 
 void OnlineMonitoring::MonitoringPedestal::GetPedestal(std::vector<int> ADCs, int channel, double mean, double rms){
@@ -258,18 +264,19 @@ void OnlineMonitoring::MonitoringPedestal::GetPedestal(std::vector<int> ADCs, in
   hNoiseChan->Fill(channel, sigmaG2);
 
   for (unsigned int itick = 0; itick < copy.size(); ++itick){
-    if ((int(copy.at(itick)&0x3F) == 0 && int(copy.at(itick)&0x3F) == 63) || (itick + 5 > copy.size() ) ) continue;
+    if ( itick + 5 >= copy.size() || copy.size() < 200)
+      break;
     else
       if( (copy.at(itick+1) > copy.at(itick) && copy.at(itick+2) > copy.at(itick+1) && copy.at(itick+3) > copy.at(itick+2) && copy.at(itick+4) > copy.at(itick+3) && copy.at(itick+5) > copy.at(itick+4) ) || ( copy.at(itick+1) < copy.at(itick) && copy.at(itick+2) < copy.at(itick+1) && copy.at(itick+3) < copy.at(itick+2) && copy.at(itick+4) < copy.at(itick+3) && copy.at(itick+5) < copy.at(itick+4) )){
-        if(itick < 100)
-          copy.erase(copy.begin(), copy.begin() + itick + 100);
-        else if(itick + 100 > copy.size())
-          copy.erase(copy.begin() + itick, copy.end());
-        else
-          copy.erase(copy.begin() + itick, copy.begin() + itick + 100);
+	if(itick < 100 )
+	  copy.erase(copy.begin(), copy.begin() + itick + 100);
+	else if(itick + 100 > copy.size())
+	  copy.erase(copy.begin() + itick, copy.end());
+	else
+	  copy.erase(copy.begin() + itick, copy.begin() + itick + 100);
       }
   }
-
+  
   for (unsigned int itick = 0; itick < copy.size(); ++itick){
     hADCFiltered.at(channel)->Fill(copy.at(itick));
     hADCChannelFilt.at(channel)->Fill(itick,copy.at(itick));
@@ -283,6 +290,7 @@ void OnlineMonitoring::MonitoringPedestal::GetPedestal(std::vector<int> ADCs, in
   hSigmaFiltDiff->Fill(sigmaG2 - sigmaGF);
 
 }
+
 void OnlineMonitoring::MonitoringPedestal::RCEMonitoring(RCEFormatter const& rceformatter) {
 
   /// Fills all histograms pertaining to RCE hardware monitoring
@@ -305,18 +313,18 @@ void OnlineMonitoring::MonitoringPedestal::RCEMonitoring(RCEFormatter const& rce
     double mean = TMath::Mean(ADCs.at(channel).begin(),ADCs.at(channel).end());
     double rms  = TMath::RMS (ADCs.at(channel).begin(),ADCs.at(channel).end());
 
-    GetPedestal(ADCs.at(channel), channel, mean, rms);
+    this->GetPedestal(ADCs.at(channel), channel, mean, rms);
 
     for (unsigned int tick = 0; tick < ADCs.at(channel).size(); tick++) {
 
       int ADC = ADCs.at(channel).at(tick);
 
-      // Fill hists for tick                                                                                                                                                  
+      // Fill hists for tick                                                                                                          
       hADCChannel.at(channel)->Fill(tick,ADC);
       if (channel && !ADCs.at(channel-1).empty() && tick < ADCs.at(channel-1).size())
         hRCEDNoiseChannel->Fill(channel,ADC-ADCs.at(channel-1).at(tick));
 
-      // Debug                                                                                                                                                                
+      // Debug                                                                                                                 
       if (!_interestingchannelsfilled && std::find(DebugChannels.begin(), DebugChannels.end(), channel) != DebugChannels.end())
         hDebugChannelHists.at(channel)->Fill(tick,ADC);
                                                   
@@ -404,6 +412,7 @@ void OnlineMonitoring::MonitoringPedestal::RCEMonitoring(RCEFormatter const& rce
 }
 
 void OnlineMonitoring::MonitoringPedestal::WriteMonitoringPedestal(int run, int subrun) {
+
   /// Writes all the monitoring data currently saved in the data objects
 
   // Make the html for the web pages
@@ -462,7 +471,7 @@ void OnlineMonitoring::MonitoringPedestal::WriteMonitoringPedestal(int run, int 
   tmp << run << " " << subrun;
   tmp.flush();
   tmp.close();
-  system(("chmod -R a=rwx "+std::string(HistSaveDirectory)).c_str());  
+  system(("chmod -R a=rwx "+std::string(HistSaveDirectory)).c_str());
 
   mf::LogInfo("Monitoring") << "Monitoring for run " << run << ", subRun " << subrun << " is viewable at http://lbne-dqm.fnal.gov/OnlineMonitoring/Run" << run << "Subrun" << subrun;
 
