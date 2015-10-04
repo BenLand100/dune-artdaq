@@ -41,12 +41,24 @@ void OnlineMonitoring::MonitoringPedestal::BeginMonitoring(int run, int subrun) 
     fDataTree->Branch("RCE",&fRCEADC);
   }
 
+  this->MakeHistograms();
+
+}
+
+void OnlineMonitoring::MonitoringPedestal::MakeHistograms() {
+
   // Define all histograms
   // Nomenclature: Name is used to save the histogram, Title has format : histogramTitle_histDrawOptions_canvasOptions;x-title;y-title;z-title
 
   // RCE hists
-  hADCMeanChannel                       = new TProfile("ADCMeanChannel","RCE ADC Mean_\"histl\"_none;Channel;RCE ADC Mean",NRCEChannels,0,NRCEChannels);
-  hADCRMSChannel                        = new TProfile("ADCRMSChannel","RCE ADC RMS_\"histl\"_none;Channel;RCE ADC RMS",NRCEChannels,0,NRCEChannels);
+  hADCMeanChannelAPA1                   = new TProfile("ADCMeanChannelAPA1","RCE ADC Mean APA1_\"histl\"_none;Channel;RCE ADC Mean",512,0,511);
+  hADCMeanChannelAPA2                   = new TProfile("ADCMeanChannelAPA2","RCE ADC Mean APA2_\"histl\"_none;Channel;RCE ADC Mean",512,512,1023);
+  hADCMeanChannelAPA3                   = new TProfile("ADCMeanChannelAPA3","RCE ADC Mean APA3_\"histl\"_none;Channel;RCE ADC Mean",512,1024,1535);
+  hADCMeanChannelAPA4                   = new TProfile("ADCMeanChannelAPA4","RCE ADC Mean APA4_\"histl\"_none;Channel;RCE ADC Mean",512,1536,2047);
+  hADCRMSChannelAPA1                    = new TProfile("ADCRMSChannelAPA1","RCE ADC RMS APA1_\"histl\"_none;Channel;RCE ADC RMS",512,0,511);
+  hADCRMSChannelAPA2                    = new TProfile("ADCRMSChannelAPA2","RCE ADC RMS APA2_\"histl\"_none;Channel;RCE ADC RMS",512,512,1023);
+  hADCRMSChannelAPA3                    = new TProfile("ADCRMSChannelAPA3","RCE ADC RMS APA3_\"histl\"_none;Channel;RCE ADC RMS",512,1024,1535);
+  hADCRMSChannelAPA4                    = new TProfile("ADCRMSChannelAPA4","RCE ADC RMS APA4_\"histl\"_none;Channel;RCE ADC RMS",512,1536,2047);
   hAvADCChannelEvent                    = new TH2D("AvADCChannelEvent","Average RCE ADC Value_\"colz\"_none;Event;Channel",100,0,100,NRCEChannels,0,NRCEChannels);
   hRCEDNoiseChannel                     = new TProfile("RCEDNoiseChannel","RCE DNoise_\"colz\"_none;Channel;DNoise",NRCEChannels,0,NRCEChannels);
   hTotalADCEvent                        = new TH1I("TotalADCEvent","Total RCE ADC_\"colz\"_logy;Total ADC;",100,0,1000000000);
@@ -65,17 +77,18 @@ void OnlineMonitoring::MonitoringPedestal::BeginMonitoring(int run, int subrun) 
   for (unsigned int channel = 0; channel < NRCEChannels; ++channel){
     hADCChannel[channel]                = new TProfile("ADCChannel"+TString(std::to_string(channel)),"RCE ADC v Tick for Channel "+TString(std::to_string(channel))+";Tick;ADC;",5000,0,5000);
     //Pedestal/Noise exclusive
-    hADCUnfiltered[channel]            = new TH1F(Form("ADCUnfiltered_%d",channel),Form("ADC Distribution of Channel %d_\"histl\"_none;", channel), 4096, 0, 4096);
-    hADCFiltered[channel]              = new TH1F(Form("ADCFiltered_%d",channel),Form("Filtered ADC Distribution of Channel %d_\"histl\"_none;",channel), 4096, 0, 4096);
+    hADCChannelFilt[channel]            = new TProfile("ADCChannelFil"+TString(std::to_string(channel)),"RCE ADC v Tick for Channel "+TString(std::to_string(channel))+";Tick;ADC;",5000,0,5000);
+    hADCUnfiltered[channel]             = new TH1F(Form("ADCUnfiltered_%d",channel),Form("ADC Distribution of Channel %d_\"histl\"_none;", channel), 4096, 0, 4096);
+    hADCFiltered[channel]               = new TH1F(Form("ADCFiltered_%d",channel),Form("Filtered ADC Distribution of Channel %d_\"histl\"_none;",channel), 4096, 0, 4096);
   }
-  hPedestal                            = new TH1F("Pedestal", "Pedestal Distribution_\"\"_none; Pedestal;",4096,0,4096);
-  hNoise                               = new TH1F("Noise", "Noise Distribution_\"\"_none; Noise;",500, 0, 500);
-  hMeanDiff                            = new TH1F("MeanDiff", "Difference of the Gaussian Mean 1st - 2nd Fits_\"\"_none;", 200, -1.,1.);
-  hSigmaDiff                           = new TH1F("SigmaDiff", "Difference of the Gaussian Sigma 1st - 2nd Fits_\"\"_none;", 200, -1.,1.);
-  hMeanFiltDiff                        = new TH1F("MeanFiltDiff", "Difference of the Gaussian Mean Filtered - Unfiltered Fits_\"\"_none;", 200, -1.,1.);
-  hSigmaFiltDiff                       = new TH1F("SigmaFiltDiff", "Difference of the Gaussian Sigma Filtered - Unfiltered Fits_\"\"_none;", 200, -1.,1.);
-  hPedestalChan                        = new TProfile("PedestalChannel","Pedestal per Channel_\"histl\"_none;Channel;Pedestal",NRCEChannels,0,NRCEChannels);
-  hNoiseChan                           = new TProfile("NoiseChannel","Noise per Channel_\"histl\"_none;Channel;Pedestal",NRCEChannels,0,NRCEChannels);
+  hPedestal                             = new TH1F("Pedestal", "Pedestal Distribution_\"histl\"_none; Pedestal;",4096,0,4096);
+  hNoise                                = new TH1F("Noise", "Noise Distribution_\"histl\"_none; Noise;",500, 0, 500);
+  hMeanDiff                             = new TH1F("MeanDiff", "Difference of the Gaussian Mean 1st - 2nd Fits_\"histl\"_none;", 200, -1.,1.);
+  hSigmaDiff                            = new TH1F("SigmaDiff", "Difference of the Gaussian Sigma 1st - 2nd Fits_\" \"_none;", 200, -1.,1.);
+  hMeanFiltDiff                         = new TH1F("MeanFiltDiff", "Difference of the Gaussian Mean Filtered - Unfiltered Fits_\"histl\"_none;", 200, -1.,1.);
+  hSigmaFiltDiff                        = new TH1F("SigmaFiltDiff", "Difference of the Gaussian Sigma Filtered - Unfiltered Fits_\"histl\"_none;", 200, -1.,1.);
+  hPedestalChan                         = new TProfile("PedestalChannel","Pedestal per Channel_\"histl\"_none;Channel;Pedestal",NRCEChannels,0,NRCEChannels);
+  hNoiseChan                            = new TProfile("NoiseChannel","Noise per Channel_\"histl\"_none;Channel;Pedestal",NRCEChannels,0,NRCEChannels);
   for (unsigned int millislice = 0; millislice < NRCEMillislices; ++millislice) {
     hAvADCMillislice[millislice]        = new TH1D("AvADCMillislice"+TString(std::to_string(millislice)),"Av ADC for Millislice "+TString(std::to_string(millislice))+";Event;Av ADC;",10000,0,10000);
     hAvADCMillisliceChannel[millislice] = new TH1D("AvADCMillisliceChannel"+TString(std::to_string(millislice)),"Av ADC v Channel for Millislice "+TString(std::to_string(millislice))+";Channel;Av ADC;",128,0,128);
@@ -88,8 +101,60 @@ void OnlineMonitoring::MonitoringPedestal::BeginMonitoring(int run, int subrun) 
   hSizeOfFiles            = new TH1I("SizeOfFiles","Data File Sizes_\"colz\"_none;Run&Subrun;Size (bytes);",20,0,20);
   hSizeOfFilesPerEvent    = new TH1D("SizeOfFilesPerEvent","Size of Event in Data Files_\"colz\"_none;Run&Subrun;Size (bytes/event);",20,0,20);
 
-  // Add all histograms to the array for saving
-  AddHists();
+  /// Adds all the histograms to an array for easier handling            
+
+  //Pedestal/Noise exclusive                                     
+  fHistArray.Add(hPedestal); fHistArray.Add(hNoise);
+  fHistArray.Add(hPedestalChan); fHistArray.Add(hNoiseChan);
+  fHistArray.Add(hMeanDiff); fHistArray.Add(hSigmaDiff);
+
+  // The order the histograms are added will be the order they're displayed on the web!     
+  fHistArray.Add(hADCMeanChannelAPA1); fHistArray.Add(hADCMeanChannelAPA2);
+  fHistArray.Add(hADCMeanChannelAPA3); fHistArray.Add(hADCMeanChannelAPA4);
+  fHistArray.Add(hADCRMSChannelAPA1); fHistArray.Add(hADCRMSChannelAPA2);
+  fHistArray.Add(hADCRMSChannelAPA3); fHistArray.Add(hADCRMSChannelAPA4);
+  fHistArray.Add(hAvADCAllMillislice); fHistArray.Add(hRCEDNoiseChannel);
+  fHistArray.Add(hAvADCChannelEvent); fHistArray.Add(hTotalRCEHitsChannel);
+  fHistArray.Add(hTotalADCEvent); fHistArray.Add(hTotalRCEHitsEvent);
+  fHistArray.Add(hAsymmetry); fHistArray.Add(hTimesADCGoesOverThreshold);
+  fHistArray.Add(hRCEBitCheckAnd); fHistArray.Add(hRCEBitCheckOr);
+  fHistArray.Add(hLastSixBitsCheckOn); fHistArray.Add(hLastSixBitsCheckOff);
+  fHistArray.Add(hNumMicroslicesInMillislice);
+
+  fHistArray.Add(hSizeOfFiles); fHistArray.Add(hSizeOfFilesPerEvent);
+  fHistArray.Add(hNumSubDetectorsPresent);
+
+
+  fFigureCaptions["Pedestal"] = "Pedestal Distribution";
+  fFigureCaptions["Noise"] = "Noise Distribution";
+  fFigureCaptions["PedestalChannel"] = "Pedestal per Channel";
+  fFigureCaptions["NoiseChannel"] = "Noise per Channel";
+  fFigureCaptions["MeanDiff"] = "Mean Difference Distribution";
+  fFigureCaptions["SigmaDiff"] = "Sigma Difference Distribution";
+  fFigureCaptions["ADCMeanChannelAPA1"] = "Mean ADC values for each channel read out by the RCEs (profiled over all events read)";
+  fFigureCaptions["ADCMeanChannelAPA2"] = "Mean ADC values for each channel read out by the RCEs (profiled over all events read)";
+  fFigureCaptions["ADCMeanChannelAPA3"] = "Mean ADC values for each channel read out by the RCEs (profiled over all events read)";
+  fFigureCaptions["ADCMeanChannelAPA4"] = "Mean ADC values for each channel read out by the RCEs (profiled over all events read)";
+  fFigureCaptions["ADCRMSChannelAPA1"] = "RMS of the ADC values for each channel read out by the RCEs (profiled over all events read)";
+  fFigureCaptions["ADCRMSChannelAPA2"] = "RMS of the ADC values for each channel read out by the RCEs (profiled over all events read)";
+  fFigureCaptions["ADCRMSChannelAPA3"] = "RMS of the ADC values for each channel read out by the RCEs (profiled over all events read)";
+  fFigureCaptions["ADCRMSChannelAPA4"] = "RMS of the ADC values for each channel read out by the RCEs (profiled over all events read)";
+  fFigureCaptions["AvADCAllMillislice"] = "Average RCE ADC across an entire millislice for the first 10000 events (one entry per millislice in each event)";
+  fFigureCaptions["RCEDNoiseChannel"] = "DNoise (difference in ADC between neighbouring channels for the same tick) for the RCE ADCs (profiled over all events read)";
+  fFigureCaptions["AvADCChannelEvent"] = "Average RCE ADC across a channel for an event, shown for the first 100 events";
+  fFigureCaptions["TotalRCEHitsChannel"] = "Total number of RCE hits in each channel across all events";
+  fFigureCaptions["TotalADCEvent"] = "Total RCE ADC recorded for an event across all channels (one entry per event)";
+  fFigureCaptions["TotalRCEHitsEvent"] = "Total number of hits recorded on the RCEs per event (one entry per event)";
+  fFigureCaptions["Asymmetry"] = "Asymmetry of the bipolar pulse measured on the induction planes, by channel (profiled across all events). Zero means completely symmetric pulse";
+  fFigureCaptions["TimesADCGoesOverThreshold"] = "Number of times an RCE hit goes over a set ADC threshold";
+  fFigureCaptions["RCEBitCheckAnd"] = "Check for stuck RCE bits: bits which are always on";
+  fFigureCaptions["RCEBitCheckOr"] = "Check for stuck RCE bits: bits which are always off";
+  fFigureCaptions["LastSixBitsCheckOn"] = "Fraction of all RCE ADC values with the last six bits stuck on (profiled; one entry per ADC)";
+  fFigureCaptions["LastSixBitsCheckOff"] = "Fraction of all RCE ADC values with the last six bits stuck off (profiled; one entry per ADC)";
+  fFigureCaptions["NumMicroslicesInMillislice"] = "Number of microslices in a millislice in this run";
+  fFigureCaptions["SizeOfFiles"] = "Size of the data files made by the DAQ for the last 20 runs";
+  fFigureCaptions["SizeOfFilesPerEvent"] = "Size of event in each of the last 20 data files made by the DAQ (size of file / number of events in file)";
+  fFigureCaptions["NumSubDetectorsPresent"] = "Number of subdetectors present in each event in the data (one entry per event)";
 
 }
 
@@ -97,18 +162,23 @@ void OnlineMonitoring::MonitoringPedestal::EndMonitoring() {
 
   /// Clear up after writing out the monitoring data
 
-  // Free up all used memory
+  // Free the memory for the histograms                                    
+  fHistArray.Delete();
+
+  // Free up all used memory                                                                    
   // for (unsigned int interestingchannel = 0; interestingchannel < DebugChannels.size(); ++interestingchannel)
   //   hDebugChannelHists.at(DebugChannels.at(interestingchannel))->Delete();
   for (unsigned int millislice = 0; millislice < NRCEMillislices; ++millislice)
     hAvADCMillislice.at(millislice)->Delete();
-  for (unsigned int channel = 0; channel < NRCEChannels; ++channel)
+  for (unsigned int channel = 0; channel < NRCEChannels; ++channel){
     hADCChannel.at(channel)->Delete();
+    hADCChannelFilt.at(channel)->Delete();
+  }
+  
   fDataFile->Close();
+  delete fDataTree;
   delete fDataFile;
-
-  // Free the memory for the histograms
-  fHistArray.Delete();
+  delete fCanvas;
 
 }
 
@@ -163,6 +233,7 @@ void OnlineMonitoring::MonitoringPedestal::GeneralMonitoring() {
       if (i == 20) break;
     }
   }
+
 }
 
 void OnlineMonitoring::MonitoringPedestal::GetPedestal(std::vector<int> ADCs, int channel, double mean, double rms){
@@ -193,20 +264,23 @@ void OnlineMonitoring::MonitoringPedestal::GetPedestal(std::vector<int> ADCs, in
   hNoiseChan->Fill(channel, sigmaG2);
 
   for (unsigned int itick = 0; itick < copy.size(); ++itick){
-    if ((int(copy.at(itick)&0x3F) == 0 && int(copy.at(itick)&0x3F) == 63) || (itick + 5 > copy.size() ) ) continue;
+    if ( itick + 5 >= copy.size() || copy.size() < 200)
+      break;
     else
       if( (copy.at(itick+1) > copy.at(itick) && copy.at(itick+2) > copy.at(itick+1) && copy.at(itick+3) > copy.at(itick+2) && copy.at(itick+4) > copy.at(itick+3) && copy.at(itick+5) > copy.at(itick+4) ) || ( copy.at(itick+1) < copy.at(itick) && copy.at(itick+2) < copy.at(itick+1) && copy.at(itick+3) < copy.at(itick+2) && copy.at(itick+4) < copy.at(itick+3) && copy.at(itick+5) < copy.at(itick+4) )){
-        if(itick < 100)
-          copy.erase(copy.begin(), copy.begin() + itick + 100);
-        else if(itick + 100 > copy.size())
-          copy.erase(copy.begin() + itick, copy.end());
-        else
-          copy.erase(copy.begin() + itick, copy.begin() + itick + 100);
+	if(itick < 100 )
+	  copy.erase(copy.begin(), copy.begin() + itick + 100);
+	else if(itick + 100 > copy.size())
+	  copy.erase(copy.begin() + itick, copy.end());
+	else
+	  copy.erase(copy.begin() + itick, copy.begin() + itick + 100);
       }
   }
-
-  for (unsigned int itick = 0; itick < ADCs.size(); ++itick)
-    hADCFiltered.at(channel)->Fill(ADCs.at(itick));
+  
+  for (unsigned int itick = 0; itick < copy.size(); ++itick){
+    hADCFiltered.at(channel)->Fill(copy.at(itick));
+    hADCChannelFilt.at(channel)->Fill(itick,copy.at(itick));
+  }
 
   hADCFiltered.at(channel)->Fit(mygaus, "R");
   double meanGF = mygaus->GetParameter(1);
@@ -216,6 +290,7 @@ void OnlineMonitoring::MonitoringPedestal::GetPedestal(std::vector<int> ADCs, in
   hSigmaFiltDiff->Fill(sigmaG2 - sigmaGF);
 
 }
+
 void OnlineMonitoring::MonitoringPedestal::RCEMonitoring(RCEFormatter const& rceformatter) {
 
   /// Fills all histograms pertaining to RCE hardware monitoring
@@ -238,18 +313,21 @@ void OnlineMonitoring::MonitoringPedestal::RCEMonitoring(RCEFormatter const& rce
     double mean = TMath::Mean(ADCs.at(channel).begin(),ADCs.at(channel).end());
     double rms  = TMath::RMS (ADCs.at(channel).begin(),ADCs.at(channel).end());
 
-    GetPedestal(ADCs.at(channel), channel, mean, rms);
+    this->GetPedestal(ADCs.at(channel), channel, mean, rms);
 
     for (unsigned int tick = 0; tick < ADCs.at(channel).size(); tick++) {
 
       int ADC = ADCs.at(channel).at(tick);
 
-      // Fill hists for tick
-      if (!_interestingchannelsfilled && std::find(DebugChannels.begin(), DebugChannels.end(), channel) != DebugChannels.end())
-      	hDebugChannelHists.at(channel)->Fill(tick,ADC);
+      // Fill hists for tick                                                                                                          
       hADCChannel.at(channel)->Fill(tick,ADC);
-      if (channel && !ADCs.at(channel-1).empty()) hRCEDNoiseChannel->Fill(channel,ADC-ADCs.at(channel-1).at(tick));
+      if (channel && !ADCs.at(channel-1).empty() && tick < ADCs.at(channel-1).size())
+        hRCEDNoiseChannel->Fill(channel,ADC-ADCs.at(channel-1).at(tick));
 
+      // Debug                                                                                                                 
+      if (!_interestingchannelsfilled && std::find(DebugChannels.begin(), DebugChannels.end(), channel) != DebugChannels.end())
+        hDebugChannelHists.at(channel)->Fill(tick,ADC);
+                                                  
       // Increase variables
       fTotalADC += ADC;
       if (ADC > fThreshold) {
@@ -276,8 +354,14 @@ void OnlineMonitoring::MonitoringPedestal::RCEMonitoring(RCEFormatter const& rce
     }
 
     // Fill hists for channel
-    hADCMeanChannel     ->Fill(channel,mean);
-    hADCRMSChannel      ->Fill(channel,rms);
+    hADCMeanChannelAPA1     ->Fill(channel,mean);
+    hADCMeanChannelAPA2     ->Fill(channel,mean);
+    hADCMeanChannelAPA3     ->Fill(channel,mean);
+    hADCMeanChannelAPA4     ->Fill(channel,mean);
+    hADCRMSChannelAPA1      ->Fill(channel,rms);
+    hADCRMSChannelAPA2      ->Fill(channel,rms);
+    hADCRMSChannelAPA3      ->Fill(channel,rms);
+    hADCRMSChannelAPA4      ->Fill(channel,rms);
     hAvADCChannelEvent  ->Fill(fEventNumber,channel,mean);
     hTotalRCEHitsChannel->Fill(channel+1,tTotalRCEHitsChannel);
     int tbit = 1;
@@ -326,7 +410,9 @@ void OnlineMonitoring::MonitoringPedestal::RCEMonitoring(RCEFormatter const& rce
   }
 
 }
+
 void OnlineMonitoring::MonitoringPedestal::WriteMonitoringPedestal(int run, int subrun) {
+
   /// Writes all the monitoring data currently saved in the data objects
 
   // Make the html for the web pages
@@ -358,24 +444,8 @@ void OnlineMonitoring::MonitoringPedestal::WriteMonitoringPedestal(int run, int 
     imageHTML << "<figure><a href=\"" << (TString(_h->GetName())+ImageType).Data() << "\"><img src=\"" << (TString(_h->GetName())+ImageType).Data() << "\" width=\"650\"></a><figcaption>" << fFigureCaptions.at(_h->GetName()) << "</figcaption></figure>" << std::endl;
   }
 
-  TCanvas *mslicecanv = new TCanvas("mslicecanv","",800,600);
-  TLegend *l = new TLegend(0.7,0.7,0.9,0.9,"Millislice","brNDC");
-  int colour = 1;
-  for (unsigned int millislice = 0; millislice < NRCEMillislices; ++millislice, ++colour) {
-    hAvADCMillisliceChannel.at(millislice)->SetLineColor(colour);
-    if (colour == 1) hAvADCMillisliceChannel.at(millislice)->Draw();
-    else hAvADCMillisliceChannel.at(millislice)->Draw("same");
-    l->AddEntry(hAvADCMillisliceChannel.at(millislice),"Millislice "+TString(std::to_string(millislice)),"l");
-    fDataFile->cd();
-    hAvADCMillisliceChannel.at(millislice)->Write();
-  }
-  mslicecanv->cd();
-  l->Draw("same");
-  mslicecanv->SaveAs(HistSaveDirectory+TString("AvADCMillisliceChannel")+ImageType);
-  delete mslicecanv;
-  imageHTML << "<figure><a href=\"AvADCMillisliceChannel.png\"><img src=\"AvADCMillisliceChannel.png\" width=\"650\"></a><figcaption>" << "Average ADC count across the channels read out by each millislice present in the data." << "</figcaption></figure>" << std::endl;
-
   imageHTML << "<div class=\"bannerbottom\"></div></body>" << std::endl;
+  imageHTML.flush();
   imageHTML.close();
 
   // Write other histograms
@@ -387,6 +457,7 @@ void OnlineMonitoring::MonitoringPedestal::WriteMonitoringPedestal(int run, int 
   for (unsigned int channel = 0; channel < NRCEChannels; ++channel){
     hADCChannel.at(channel)->Write();
     //Pedestal/Noise exclusive
+    hADCChannelFilt.at(channel)->Write();
     hADCFiltered.at(channel)->Write();
     hADCUnfiltered.at(channel)->Write();
   }
@@ -400,7 +471,7 @@ void OnlineMonitoring::MonitoringPedestal::WriteMonitoringPedestal(int run, int 
   tmp << run << " " << subrun;
   tmp.flush();
   tmp.close();
-  system(("chmod -R a=rwx "+std::string(HistSaveDirectory)).c_str());  
+  system(("chmod -R a=rwx "+std::string(HistSaveDirectory)).c_str());
 
   mf::LogInfo("Monitoring") << "Monitoring for run " << run << ", subRun " << subrun << " is viewable at http://lbne-dqm.fnal.gov/OnlineMonitoring/Run" << run << "Subrun" << subrun;
 
@@ -423,52 +494,6 @@ void OnlineMonitoring::MonitoringPedestal::Reset() {
   fTimesADCGoesOverThreshold = 0;
 
   fNumSubDetectorsPresent = 0;
-
-}
-
-void OnlineMonitoring::MonitoringPedestal::AddHists() {
-
-  /// Adds all the histograms to an array for easier handling
-
-  //Pedestal/Noise exclusive                        
-  fHistArray.Add(hPedestal); fHistArray.Add(hNoise); 
-  fHistArray.Add(hPedestalChan); fHistArray.Add(hNoiseChan);
-
-  // The order the histograms are added will be the order they're displayed on the web!
-  fHistArray.Add(hADCMeanChannel); fHistArray.Add(hADCRMSChannel);
-  fHistArray.Add(hAvADCAllMillislice); fHistArray.Add(hRCEDNoiseChannel);
-  fHistArray.Add(hAvADCChannelEvent); fHistArray.Add(hTotalRCEHitsChannel);
-  fHistArray.Add(hTotalADCEvent); fHistArray.Add(hTotalRCEHitsEvent);
-  fHistArray.Add(hAsymmetry); fHistArray.Add(hTimesADCGoesOverThreshold);
-  fHistArray.Add(hRCEBitCheckAnd); fHistArray.Add(hRCEBitCheckOr);
-  fHistArray.Add(hLastSixBitsCheckOn); fHistArray.Add(hLastSixBitsCheckOff);
-  fHistArray.Add(hNumMicroslicesInMillislice); 
-
-  fHistArray.Add(hSizeOfFiles); fHistArray.Add(hSizeOfFilesPerEvent);
-  fHistArray.Add(hNumSubDetectorsPresent);
-  
-  fFigureCaptions["Pedestal"] = "Pedestal Distribution";
-  fFigureCaptions["Noise"] = "Noise Distribution";
-  fFigureCaptions["PedestalChannel"] = "Pedestal per Channel";
-  fFigureCaptions["NoiseChannel"] = "Noise per Channel";
-  fFigureCaptions["ADCMeanChannel"] = "Mean ADC values for each channel read out by the RCEs (profiled over all events read)";
-  fFigureCaptions["ADCRMSChannel"] = "RMS of the ADC values for each channel read out by the RCEs (profiled over all events read)";
-  fFigureCaptions["AvADCAllMillislice"] = "Average RCE ADC across an entire millislice for the first 10000 events (one entry per millislice in each event)";
-  fFigureCaptions["RCEDNoiseChannel"] = "DNoise (difference in ADC between neighbouring channels for the same tick) for the RCE ADCs (profiled over all events read)";
-  fFigureCaptions["AvADCChannelEvent"] = "Average RCE ADC across a channel for an event, shown for the first 100 events";
-  fFigureCaptions["TotalRCEHitsChannel"] = "Total number of RCE hits in each channel across all events";
-  fFigureCaptions["TotalADCEvent"] = "Total RCE ADC recorded for an event across all channels (one entry per event)";
-  fFigureCaptions["TotalRCEHitsEvent"] = "Total number of hits recorded on the RCEs per event (one entry per event)";
-  fFigureCaptions["Asymmetry"] = "Asymmetry of the bipolar pulse measured on the induction planes, by channel (profiled across all events). Zero means completely symmetric pulse";
-  fFigureCaptions["TimesADCGoesOverThreshold"] = "Number of times an RCE hit goes over a set ADC threshold";
-  fFigureCaptions["RCEBitCheckAnd"] = "Check for stuck RCE bits: bits which are always on";
-  fFigureCaptions["RCEBitCheckOr"] = "Check for stuck RCE bits: bits which are always off";
-  fFigureCaptions["LastSixBitsCheckOn"] = "Fraction of all RCE ADC values with the last six bits stuck on (profiled; one entry per ADC)";
-  fFigureCaptions["LastSixBitsCheckOff"] = "Fraction of all RCE ADC values with the last six bits stuck off (profiled; one entry per ADC)";
-  fFigureCaptions["NumMicroslicesInMillislice"] = "Number of microslices in a millislice in this run";
-  fFigureCaptions["SizeOfFiles"] = "Size of the data files made by the DAQ for the last 20 runs";
-  fFigureCaptions["SizeOfFilesPerEvent"] = "Size of event in each of the last 20 data files made by the DAQ (size of file / number of events in file)";
-  fFigureCaptions["NumSubDetectorsPresent"] = "Number of subdetectors present in each event in the data (one entry per event)";
 
 }
 
