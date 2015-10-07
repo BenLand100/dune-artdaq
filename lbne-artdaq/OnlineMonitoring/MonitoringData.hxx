@@ -36,7 +36,7 @@
 #include <sstream>
 #include <fstream>
 
-#include "OnlineMonitoringNamespace.cxx"
+#include "OnlineMonitoringBase.cxx"
 #include "DataReformatter.hxx"
 
 class OnlineMonitoring::MonitoringData {
@@ -49,7 +49,7 @@ public:
   void RCEMonitoring(RCEFormatter const& rce_formatter);
   void SSPMonitoring(SSPFormatter const& ssp_formatter);
   void PTBMonitoring(PTBFormatter const& ptb_formatter);
-  void AddHists();
+  void MakeHistograms();
   void StartEvent(int eventNumber, bool maketree);
   void Reset();
   void WriteMonitoringData(int run, int subrun);
@@ -58,24 +58,35 @@ private:
 
   int fEventNumber;
 
-  // File
-  TFile *fDataFile;
-
-  // Tree
+  // Data handling
+  TFile* fDataFile;
   bool fMakeTree;
-  TTree *fDataTree;
-
-  // Histograms
+  TTree* fDataTree;
+  TString HistSaveDirectory;
   TObjArray fHistArray;
   std::map<std::string,std::string> fFigureCaptions;
-  TCanvas *fCanvas;
+  TCanvas* fCanvas;
 
+  // Variables for monitoring
+  int fTotalADC, fTotalWaveform;
+  int fTotalRCEHitsEvent, fTotalSSPHitsEvent;
+  int fTimesADCGoesOverThreshold, fTimesWaveformGoesOverThreshold;
+  int fNumSubDetectorsPresent;
+  std::vector<std::vector<int> > fRCEADC, fSSPADC;
+
+  bool checkedFileSizes;
+  int fThreshold = 10;
+  bool fIsInduction = true;
+  bool _interestingchannelsfilled = false;
+
+  // Monitoring Data --------------------------------------------------------------------------------------------------------------------------------------------------------------------------
   // RCE
   TH1I *hTotalADCEvent, *hTotalRCEHitsEvent, *hTotalRCEHitsChannel, *hTimesADCGoesOverThreshold,  *hNumMicroslicesInMillislice, *hNumNanoslicesInMicroslice, *hNumNanoslicesInMillislice;
   TH2I *hRCEBitCheckAnd, *hRCEBitCheckOr;
   TH1D *hAvADCAllMillislice;
   TH2D *hAvADCChannelEvent;
-  TProfile *hADCMeanChannel, *hADCRMSChannel, *hRCEDNoiseChannel, *hAsymmetry, *hLastSixBitsCheckOff, *hLastSixBitsCheckOn;
+  TProfile *hADCMeanChannelAPA1, *hADCMeanChannelAPA2, *hADCMeanChannelAPA3, *hADCMeanChannelAPA4, *hADCRMSChannelAPA1, *hADCRMSChannelAPA2, *hADCRMSChannelAPA3, *hADCRMSChannelAPA4;
+  TProfile *hRCEDNoiseChannel, *hAsymmetry, *hLastSixBitsCheckOff, *hLastSixBitsCheckOn;
   std::map<int,TProfile*> hADCChannel;
   std::map<int,TH1D*> hAvADCMillislice;
   std::map<int,TH1D*> hAvADCMillisliceChannel;
@@ -89,6 +100,7 @@ private:
   std::map<int,TProfile*> hWaveformChannel;
 
   // PTB
+  TProfile *hPTBTriggerRates;
   TProfile *hPTBTSUCounterHitRateWU,    *hPTBTSUCounterActivationTimeWU;
   TProfile *hPTBTSUCounterHitRateEL,    *hPTBTSUCounterActivationTimeEL;
   TProfile *hPTBTSUCounterHitRateExtra, *hPTBTSUCounterActivationTimeExtra;
@@ -100,25 +112,10 @@ private:
   TProfile *hPTBBSUCounterHitRateCU,    *hPTBBSUCounterActivationTimeCU;
   TProfile *hPTBBSUCounterHitRateCL,    *hPTBBSUCounterActivationTimeCL;
   TProfile *hPTBBSUCounterHitRateRL,    *hPTBBSUCounterActivationTimeRL;
-  TProfile *hPTBTriggerRates;
 
   // General
   TH1I *hNumSubDetectorsPresent, *hSizeOfFiles;
   TH1D *hSizeOfFilesPerEvent;
-
-  // Variables for monitoring
-  int fTotalADC, fTotalWaveform;
-  int fTotalRCEHitsEvent, fTotalSSPHitsEvent;
-  int fTimesADCGoesOverThreshold, fTimesWaveformGoesOverThreshold;
-  int fNumSubDetectorsPresent;
-  std::vector<std::vector<int> > fRCEADC, fSSPADC;
-
-  bool checkedFileSizes;
-  int fThreshold = 10;
-  bool fIsInduction = true;
-
-  // Run options
-  bool _interestingchannelsfilled = false;
 
 };
 

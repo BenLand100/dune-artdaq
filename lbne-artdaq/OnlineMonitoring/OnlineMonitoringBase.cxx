@@ -5,8 +5,8 @@
 // Contains global variables used by classes in the monitoring namespace.
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-#ifndef OnlineMonitoringNamespace_cxx
-#define OnlineMonitoringNamespace_cxx
+#ifndef OnlineMonitoringNamespace
+#define OnlineMonitoringNamespace
 
 #include "TString.h"
 
@@ -23,10 +23,10 @@ namespace OnlineMonitoring {
   class ChannelMap;
   struct Channel;
 
-  unsigned int NRCEChannels    = 512;
-  unsigned int NRCEMillislices = 4;
-  unsigned int NSSPChannels    = 96;
-  std::vector<int> DebugChannels = {260, 278, 289, 290};
+  const unsigned int NRCEChannels    = 2048;
+  const unsigned int NRCEMillislices = 16;
+  const unsigned int NSSPChannels    = 96;
+  const std::vector<int> DebugChannels = {260, 278, 289, 290};
 
   // Paths
   // Note -- on the gateway machine the default paths here refer to directories constantly
@@ -37,9 +37,8 @@ namespace OnlineMonitoring {
   const TString EVDSavePath   = "/data/lbnedaq/eventDisplay/";
   const TString ImageType     = ".png";
   const TString PathDelimiter = "_";
-  TString HistSaveDirectory;
 
-  bool _verbose = false;
+  const bool _verbose = false;
 
   namespace TypeSizes {
     static int const CounterWordSize = 128;

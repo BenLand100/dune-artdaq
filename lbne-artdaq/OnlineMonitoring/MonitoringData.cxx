@@ -40,147 +40,16 @@ void OnlineMonitoring::MonitoringData::BeginMonitoring(int run, int subrun) {
     fDataTree->Branch("SSP",&fSSPADC);
   }
 
-  // Define all histograms
-  // Nomenclature: Name is used to save the histogram, Title has format : histogramTitle_histDrawOptions_canvasOptions;x-title;y-title;z-title
-
-  // RCE hists
-  hADCMeanChannel                       = new TProfile("ADCMeanChannel","RCE ADC Mean_\"histl\"_none;Channel;RCE ADC Mean",NRCEChannels,0,NRCEChannels);
-  hADCRMSChannel                        = new TProfile("ADCRMSChannel","RCE ADC RMS_\"histl\"_none;Channel;RCE ADC RMS",NRCEChannels,0,NRCEChannels);
-  hAvADCChannelEvent                    = new TH2D("AvADCChannelEvent","Average RCE ADC Value_\"colz\"_none;Event;Channel",100,0,100,NRCEChannels,0,NRCEChannels);
-  hRCEDNoiseChannel                     = new TProfile("RCEDNoiseChannel","RCE DNoise_\"colz\"_none;Channel;DNoise",NRCEChannels,0,NRCEChannels);
-  hTotalADCEvent                        = new TH1I("TotalADCEvent","Total RCE ADC_\"colz\"_logy;Total ADC;",100,0,1000000000);
-  hTotalRCEHitsEvent                    = new TH1I("TotalRCEHitsEvent","Total RCE Hits in Event_\"colz\"_logy;Total RCE Hits;",100,0,10000000);
-  hTotalRCEHitsChannel                  = new TH1I("TotalRCEHitsChannel","Total RCE Hits by Channel_\"colz\"_none;Channel;Total RCE Hits;",NRCEChannels,0,NRCEChannels);
-  hNumMicroslicesInMillislice           = new TH1I("NumMicroslicesInMillislice","Number of Microslices in Millislice_\"colz\"_none;Millislice;Number of Microslices;",16,100,116);
-  hNumNanoslicesInMicroslice            = new TH1I("NumNanoslicesInMicroslice","Number of Nanoslices in Microslice_\"colz\"_logy;Number of Nanoslices;",1000,0,1100);
-  hNumNanoslicesInMillislice            = new TH1I("NumNanoslicesInMillislice","Number of Nanoslices in Millislice_\"colz\"_logy;Number of Nanoslices;",1000,0,11000);
-  hTimesADCGoesOverThreshold            = new TH1I("TimesADCGoesOverThreshold","Times RCE ADC Over Threshold_\"colz\"_none;Times ADC Goes Over Threshold;",100,0,1000);
-  hAsymmetry                            = new TProfile("Asymmetry","Asymmetry of Bipolar Pulse_\"colz\"_none;Channel;Asymmetry",NRCEChannels,0,NRCEChannels);
-  hRCEBitCheckAnd                       = new TH2I("RCEBitCheckAnd","RCE ADC Bits Always On_\"colz\"_none;Channel;Bit",NRCEChannels,0,NRCEChannels,16,0,16);
-  hRCEBitCheckOr                        = new TH2I("RCEBitCheckOr","RCE ADC Bits Always Off_\"colz\"_none;Channel;Bit",NRCEChannels,0,NRCEChannels,16,0,16);
-  hLastSixBitsCheckOn                   = new TProfile("LastSixBitsCheckOn","Last Six RCE ADC Bits On_\"colz\"_none;Channel;Fraction of ADCs with stuck bits",NRCEChannels,0,NRCEChannels);
-  hLastSixBitsCheckOff                  = new TProfile("LastSixBitsCheckOff","Last Six RCE ADC Bits Off_\"colz\"_none;Channel;Fraction of ADCs with stuck bits",NRCEChannels,0,NRCEChannels);
-  hAvADCAllMillislice                   = new TH1D("AvADCAllMillislice","Av ADC for all Millislices_\"colz\"_none;Event;Av ADC",10000,0,10000);
-  for (unsigned int channel = 0; channel < NRCEChannels; ++channel)
-    hADCChannel[channel]                = new TProfile("ADCChannel"+TString(std::to_string(channel)),"RCE ADC v Tick for Channel "+TString(std::to_string(channel))+";Tick;ADC;",5000,0,5000);
-  for (unsigned int millislice = 0; millislice < NRCEMillislices; ++millislice) {
-    hAvADCMillislice[millislice]        = new TH1D("AvADCMillislice"+TString(std::to_string(millislice)),"Av ADC for Millislice "+TString(std::to_string(millislice))+";Event;Av ADC;",10000,0,10000);
-    hAvADCMillisliceChannel[millislice] = new TH1D("AvADCMillisliceChannel"+TString(std::to_string(millislice)),"Av ADC v Channel for Millislice "+TString(std::to_string(millislice))+";Channel;Av ADC;",128,0,128);
-  }
-  for (std::vector<int>::iterator debugchannel = DebugChannels.begin(); debugchannel != DebugChannels.end(); ++debugchannel)
-    hDebugChannelHists[(*debugchannel)] = new TH1D("Channel"+TString(std::to_string(*debugchannel))+"SingleEvent","Channel "+TString(std::to_string(*debugchannel))+" for Single Event",5000,0,5000);
-
-  // SSP hists
-  hWaveformMeanChannel            = new TProfile("WaveformMeanChannel","SSP ADC Mean_\"histl\"_none;Channel;SSP ADC Mean",NSSPChannels,0,NSSPChannels);
-  hWaveformRMSChannel             = new TProfile("WaveformRMSChannel","SSP ADC RMS_\"histl\"_none;Channel;SSP ADC RMS",NSSPChannels,0,NSSPChannels);
-  hAvWaveformChannelEvent         = new TH2D("AvWaveformChannelEvent","Average SSP ADC Value_\"colz\"_none;Event;Channel",100,0,100,NSSPChannels,0,NSSPChannels);
-  hSSPDNoiseChannel               = new TProfile("SSPDNoiseChannel","SSP DNoise_\"colz\"_none;Channel;DNoise",NSSPChannels,0,NSSPChannels);
-  hTotalWaveformEvent             = new TH1I("TotalWaveformEvent","Total SSP ADC_\"colz\"_logy;Total Waveform;",100,0,1000000000);
-  hTotalSSPHitsEvent              = new TH1I("TotalSSPHitsEvent","Total SSP Hits in Event_\"colz\"_logy;Total SSP Hits;",100,0,10000000);
-  hTotalSSPHitsChannel            = new TH1I("TotalSSPHitsChannel","Total SSP Hits by Channel_\"colz\"_none;Channel;Total SSP Hits;",NSSPChannels,0,NSSPChannels);
-  hTimesWaveformGoesOverThreshold = new TH1I("TimesWaveformGoesOverThreshold","Times SSP ADC Over Threshold_\"colz\"_none;Time Waveform Goes Over Threshold;",100,0,1000);
-  hSSPBitCheckAnd                 = new TH2I("SSPBitCheckAnd","SSP ADC Bits Always On_\"colz\"_none;Channel;Bit",NSSPChannels,0,NSSPChannels,16,0,16);
-  hSSPBitCheckOr                  = new TH2I("SSPBitCheckOr","SSP ADC Bits Always Off_\"colz\"_none;Channel;Bit",NSSPChannels,0,NSSPChannels,16,0,16);
-  for (unsigned int channel = 0; channel < NSSPChannels; ++channel)
-    hWaveformChannel[channel]     = new TProfile("WaveformChannel"+TString(std::to_string(channel)),"SSP ADC v Tick for Channel "+TString(std::to_string(channel))+";Tick;Waveform;",5000,0,5000);
-
-  // General
-  hNumSubDetectorsPresent = new TH1I("NumSubDetectorsPresent","Number of Subdetectors_\"colz\"_logy;Number of Subdetectors;",25,0,25);
-  hSizeOfFiles            = new TH1I("SizeOfFiles","Data File Sizes_\"colz\"_none;Run&Subrun;Size (bytes);",20,0,20);
-  hSizeOfFilesPerEvent    = new TH1D("SizeOfFilesPerEvent","Size of Event in Data Files_\"colz\"_none;Run&Subrun;Size (bytes/event);",20,0,20);
-
-  // PTB hists
-  hPTBTSUCounterHitRateWU = new TProfile("PTBTSUCounterRateWU","PTB TSU counter hit Rate (per millislice) (West Up)_\"\"_none;Counter number; No. hits per millislice",10,1,11);
-  hPTBTSUCounterHitRateWU->GetXaxis()->SetNdivisions(10);
-  hPTBTSUCounterHitRateWU->GetXaxis()->CenterLabels();
-  hPTBTSUCounterActivationTimeWU = new TProfile("PTBTSUCounterActivationTimeWU","PTB counter average activation time (West Up)_\"\"_none;Counter number; Time",10,1,11);
-  hPTBTSUCounterActivationTimeWU->GetXaxis()->SetNdivisions(10);
-  hPTBTSUCounterActivationTimeWU->GetXaxis()->CenterLabels();
-
-  hPTBTSUCounterHitRateEL = new TProfile("PTBTSUCounterRateEL","PTB TSU counter hit Rate (per millislice) (East Low)_\"\"_none;Counter number; No. hits per millislice",10,1,11);
-  hPTBTSUCounterHitRateEL->GetXaxis()->SetNdivisions(10);
-  hPTBTSUCounterHitRateEL->GetXaxis()->CenterLabels();
-  hPTBTSUCounterActivationTimeEL = new TProfile("PTBTSUCounterActivationTimeEL","PTB counter average activation time (East Low)_\"\"_none;Counter number; Time",10,1,11);
-  hPTBTSUCounterActivationTimeEL->GetXaxis()->SetNdivisions(10);
-  hPTBTSUCounterActivationTimeEL->GetXaxis()->CenterLabels();
-
-  hPTBTSUCounterHitRateExtra = new TProfile("PTBTSUCounterRateExtra","PTB TSU counter hit Rate (per millislice) (Empty counter bits - SHOULD BE EMPTY)_\"\"_none;Counter number; No. hits per millislice",4,1,5);
-  hPTBTSUCounterHitRateExtra->GetXaxis()->SetNdivisions(4);
-  hPTBTSUCounterHitRateExtra->GetXaxis()->CenterLabels();
-  hPTBTSUCounterActivationTimeExtra = new TProfile("PTBTSUCounterActivationTimeExtra","PTB counter average activation time (Empty counter bits - SHOULD BE EMPTY)_\"\"_none;Counter number; Time",4,1,5);
-  hPTBTSUCounterActivationTimeExtra->GetXaxis()->SetNdivisions(4);
-  hPTBTSUCounterActivationTimeExtra->GetXaxis()->CenterLabels();
-
-  hPTBTSUCounterHitRateNU = new TProfile("PTBTSUCounterRateNU","PTB TSU counter hit Rate (per millislice) (North Up)_\"\"_none;Counter number; No. hits per millislice",6,1,7);
-  hPTBTSUCounterHitRateNU->GetXaxis()->SetNdivisions(6);
-  hPTBTSUCounterHitRateNU->GetXaxis()->CenterLabels();
-  hPTBTSUCounterActivationTimeNU = new TProfile("PTBTSUCounterActivationTimeNU","PTB counter average activation time (North Up)_\"\"_none;Counter number; Time",6,1,7);
-  hPTBTSUCounterActivationTimeNU->GetXaxis()->SetNdivisions(6);
-  hPTBTSUCounterActivationTimeNU->GetXaxis()->CenterLabels();
-
-  hPTBTSUCounterHitRateSL = new TProfile("PTBTSUCounterRateSL","PTB TSU counter hit Rate (per millislice) (South Low)_\"\"_none;Counter number; No. hits per millislice",6,1,7);
-  hPTBTSUCounterHitRateSL->GetXaxis()->SetNdivisions(6);
-  hPTBTSUCounterHitRateSL->GetXaxis()->CenterLabels();
-  hPTBTSUCounterActivationTimeSL = new TProfile("PTBTSUCounterActivationTimeSL","PTB counter average activation time (South Low)_\"\"_none;Counter number; Time",6,1,7);
-  hPTBTSUCounterActivationTimeSL->GetXaxis()->SetNdivisions(6);
-  hPTBTSUCounterActivationTimeSL->GetXaxis()->CenterLabels();
-
-  hPTBTSUCounterHitRateNL = new TProfile("PTBTSUCounterRateNL","PTB TSU counter hit Rate (per millislice) (North Low)_\"\"_none;Counter number; No. hits per millislice",6,1,7);
-  hPTBTSUCounterHitRateNL->GetXaxis()->SetNdivisions(6);
-  hPTBTSUCounterHitRateNL->GetXaxis()->CenterLabels();
-  hPTBTSUCounterActivationTimeNL = new TProfile("PTBTSUCounterActivationTimeNL","PTB counter average activation time (North Low)_\"\"_none;Counter number; Time",6,1,7);
-  hPTBTSUCounterActivationTimeNL->GetXaxis()->SetNdivisions(6);
-  hPTBTSUCounterActivationTimeNL->GetXaxis()->CenterLabels();
-
-  hPTBTSUCounterHitRateSU = new TProfile("PTBTSUCounterRateSU","PTB TSU counter hit Rate (per millislice) (South Up)_\"\"_none;Counter number; No. hits per millislice",6,1,7);
-  hPTBTSUCounterHitRateSU->GetXaxis()->SetNdivisions(6);
-  hPTBTSUCounterHitRateSU->GetXaxis()->CenterLabels();
-  hPTBTSUCounterActivationTimeSU = new TProfile("PTBTSUCounterActivationTimeSU","PTB counter average activation time (South Up)_\"\"_none;Counter number; Time",6,1,7);
-  hPTBTSUCounterActivationTimeSU->GetXaxis()->SetNdivisions(6);
-  hPTBTSUCounterActivationTimeSU->GetXaxis()->CenterLabels();
-
-  hPTBBSUCounterHitRateRM = new TProfile("PTBBSUCounterRateRM","PTB BSU counter hit Rate (per millislice) (RM)_\"\"_none;Counter number; No. hits per millislice",16,1,17);
-  hPTBBSUCounterHitRateRM->GetXaxis()->SetNdivisions(16);
-  hPTBBSUCounterHitRateRM->GetXaxis()->CenterLabels();
-  hPTBBSUCounterActivationTimeRM = new TProfile("PTBBSUCounterActivationTimeRM","PTB counter average activation time (RM)_\"\"_none;Counter number; Time",16,1,17);
-  hPTBBSUCounterActivationTimeRM->GetXaxis()->SetNdivisions(16);
-  hPTBBSUCounterActivationTimeRM->GetXaxis()->CenterLabels();
-
-  hPTBBSUCounterHitRateCU = new TProfile("PTBBSUCounterRateCU","PTB BSU counter hit Rate (per millislice) (CU)_\"\"_none;Counter number; No. hits per millislice",10,1,11);
-  hPTBBSUCounterHitRateCU->GetXaxis()->SetNdivisions(10);
-  hPTBBSUCounterHitRateCU->GetXaxis()->CenterLabels();
-  hPTBBSUCounterActivationTimeCU = new TProfile("PTBBSUCounterActivationTimeCU","PTB counter average activation time (CU)_\"\"_none;Counter number; Time",10,1,11);
-  hPTBBSUCounterActivationTimeCU->GetXaxis()->SetNdivisions(10);
-  hPTBBSUCounterActivationTimeCU->GetXaxis()->CenterLabels();
-
-  hPTBBSUCounterHitRateCL = new TProfile("PTBBSUCounterRateCL","PTB BSU counter hit Rate (per millislice) (CL)_\"\"_none;Counter number; No. hits per millislice",13,1,14);
-  hPTBBSUCounterHitRateCL->GetXaxis()->SetNdivisions(13);
-  hPTBBSUCounterHitRateCL->GetXaxis()->CenterLabels();
-  hPTBBSUCounterActivationTimeCL = new TProfile("PTBBSUCounterActivationTimeCL","PTB counter average activation time (CL)_\"\"_none;Counter number; Time",13,1,14);
-  hPTBBSUCounterActivationTimeCL->GetXaxis()->SetNdivisions(13);
-  hPTBBSUCounterActivationTimeCL->GetXaxis()->CenterLabels();
-
-  hPTBBSUCounterHitRateRL = new TProfile("PTBBSUCounterRateRL","PTB BSU counter hit Rate (per millislice) (RL)_\"\"_none;Counter number; No. hits per millislice",10,1,11);
-  hPTBBSUCounterHitRateRL->GetXaxis()->SetNdivisions(10);
-  hPTBBSUCounterHitRateRL->GetXaxis()->CenterLabels();
-  hPTBBSUCounterActivationTimeRL = new TProfile("PTBBSUCounterActivationTimeRL","PTB counter average activation time (RL)_\"\"_none;Counter number; Time",10,1,11);
-  hPTBBSUCounterActivationTimeRL->GetXaxis()->SetNdivisions(10);
-  hPTBBSUCounterActivationTimeRL->GetXaxis()->CenterLabels();
-
-  hPTBTriggerRates = new TProfile("PTBTriggerRates","Muon trigger rates_\"\"_none;Muon trigger name; No. hits per millislice",4,1,5);
-  hPTBTriggerRates->GetXaxis()->SetBinLabel(1,"BSU RM-CM");
-  hPTBTriggerRates->GetXaxis()->SetBinLabel(2,"TSU NU-SL");
-  hPTBTriggerRates->GetXaxis()->SetBinLabel(3,"TSU SU-NL");
-  hPTBTriggerRates->GetXaxis()->SetBinLabel(4,"TSU EL-WU");
-
-  // Add all histograms to the array for saving
-  AddHists();
+  this->MakeHistograms();
 
 }
 
 void OnlineMonitoring::MonitoringData::EndMonitoring() {
 
   /// Clear up after writing out the monitoring data
+
+  // Free the memory for the histograms
+  fHistArray.Delete();
 
   // Free up all used memory
   // for (unsigned int interestingchannel = 0; interestingchannel < DebugChannels.size(); ++interestingchannel)
@@ -191,11 +60,11 @@ void OnlineMonitoring::MonitoringData::EndMonitoring() {
     hADCChannel.at(channel)->Delete();
   for (unsigned int channel = 0; channel < NSSPChannels; ++channel)
     hWaveformChannel.at(channel)->Delete();
-  fDataFile->Close();
-  delete fDataFile;
 
-  // Free the memory for the histograms
-  fHistArray.Delete();
+  fDataFile->Close();
+  delete fDataTree;
+  delete fDataFile;
+  delete fCanvas;
 
 }
 
@@ -280,10 +149,13 @@ void OnlineMonitoring::MonitoringData::RCEMonitoring(RCEFormatter const& rceform
       int ADC = ADCs.at(channel).at(tick);
 
       // Fill hists for tick
+      hADCChannel.at(channel)->Fill(tick,ADC);
+      if (channel && !ADCs.at(channel-1).empty() && tick < ADCs.at(channel-1).size())
+	hRCEDNoiseChannel->Fill(channel,ADC-ADCs.at(channel-1).at(tick));
+
+      // Debug
       if (!_interestingchannelsfilled && std::find(DebugChannels.begin(), DebugChannels.end(), channel) != DebugChannels.end())
       	hDebugChannelHists.at(channel)->Fill(tick,ADC);
-      hADCChannel.at(channel)->Fill(tick,ADC);
-      if (channel && !ADCs.at(channel-1).empty()) hRCEDNoiseChannel->Fill(channel,ADC-ADCs.at(channel-1).at(tick));
 
       // Increase variables
       fTotalADC += ADC;
@@ -311,8 +183,14 @@ void OnlineMonitoring::MonitoringData::RCEMonitoring(RCEFormatter const& rceform
     }
 
     // Fill hists for channel
-    hADCMeanChannel     ->Fill(channel,mean);
-    hADCRMSChannel      ->Fill(channel,rms);
+    hADCMeanChannelAPA1     ->Fill(channel,mean);
+    hADCMeanChannelAPA2     ->Fill(channel,mean);
+    hADCMeanChannelAPA3     ->Fill(channel,mean);
+    hADCMeanChannelAPA4     ->Fill(channel,mean);
+    hADCRMSChannelAPA1      ->Fill(channel,rms);
+    hADCRMSChannelAPA2      ->Fill(channel,rms);
+    hADCRMSChannelAPA3      ->Fill(channel,rms);
+    hADCRMSChannelAPA4      ->Fill(channel,rms);
     hAvADCChannelEvent  ->Fill(fEventNumber,channel,mean);
     hTotalRCEHitsChannel->Fill(channel+1,tTotalRCEHitsChannel);
     int tbit = 1;
@@ -541,7 +419,7 @@ void OnlineMonitoring::MonitoringData::WriteMonitoringData(int run, int subrun) 
     TH1 *_h = (TH1*)fHistArray.At(histIt);
     TObjArray *histTitle = TString(_h->GetTitle()).Tokenize(PathDelimiter);
     _h->Draw((char*)histTitle->At(1)->GetName());
-    TPaveText *canvTitle = new TPaveText(0.05,0.92,0.6,0.98,"brNDC");
+    TPaveText *canvTitle = new TPaveText(0.05,0.92,0.6,0.98,"NDC");
     canvTitle->AddText((std::string(histTitle->At(0)->GetName())+": Run "+std::to_string(run)+", SubRun "+std::to_string(subrun)).c_str());
     canvTitle->Draw();
     if (strstr(histTitle->At(2)->GetName(),"logy")) fCanvas->SetLogy(1);
@@ -554,24 +432,8 @@ void OnlineMonitoring::MonitoringData::WriteMonitoringData(int run, int subrun) 
     imageHTML << "<figure><a href=\"" << (TString(_h->GetName())+ImageType).Data() << "\"><img src=\"" << (TString(_h->GetName())+ImageType).Data() << "\" width=\"650\"></a><figcaption>" << fFigureCaptions.at(_h->GetName()) << "</figcaption></figure>" << std::endl;
   }
 
-  TCanvas *mslicecanv = new TCanvas("mslicecanv","",800,600);
-  TLegend *l = new TLegend(0.7,0.7,0.9,0.9,"Millislice","brNDC");
-  int colour = 1;
-  for (unsigned int millislice = 0; millislice < NRCEMillislices; ++millislice, ++colour) {
-    hAvADCMillisliceChannel.at(millislice)->SetLineColor(colour);
-    if (colour == 1) hAvADCMillisliceChannel.at(millislice)->Draw();
-    else hAvADCMillisliceChannel.at(millislice)->Draw("same");
-    l->AddEntry(hAvADCMillisliceChannel.at(millislice),"Millislice "+TString(std::to_string(millislice)),"l");
-    fDataFile->cd();
-    hAvADCMillisliceChannel.at(millislice)->Write();
-  }
-  mslicecanv->cd();
-  l->Draw("same");
-  mslicecanv->SaveAs(HistSaveDirectory+TString("AvADCMillisliceChannel")+ImageType);
-  delete mslicecanv;
-  imageHTML << "<figure><a href=\"AvADCMillisliceChannel.png\"><img src=\"AvADCMillisliceChannel.png\" width=\"650\"></a><figcaption>" << "Average ADC count across the channels read out by each millislice present in the data." << "</figcaption></figure>" << std::endl;
-
   imageHTML << "<div class=\"bannerbottom\"></div></body>" << std::endl;
+  imageHTML.flush();
   imageHTML.close();
 
   // Write other histograms
@@ -590,7 +452,6 @@ void OnlineMonitoring::MonitoringData::WriteMonitoringData(int run, int subrun) 
   tmp << run << " " << subrun;
   tmp.flush();
   tmp.close();
-  system(("chmod -R a=rwx "+std::string(HistSaveDirectory)).c_str());  
 
   mf::LogInfo("Monitoring") << "Monitoring for run " << run << ", subRun " << subrun << " is viewable at http://lbne-dqm.fnal.gov/OnlineMonitoring/Run" << run << "Subrun" << subrun;
 
@@ -620,12 +481,154 @@ void OnlineMonitoring::MonitoringData::Reset() {
 
 }
 
-void OnlineMonitoring::MonitoringData::AddHists() {
+void OnlineMonitoring::MonitoringData::MakeHistograms() {
 
-  /// Adds all the histograms to an array for easier handling
+  /// Makes all histograms and adds them to an array for easier handling
+
+  // Define all histograms
+  // Nomenclature: Name is used to save the histogram, Title has format : histogramTitle_histDrawOptions_canvasOptions;x-title;y-title;z-title
+
+  // RCE hists
+  hADCMeanChannelAPA1                   = new TProfile("ADCMeanChannelAPA1","RCE ADC Mean APA1_\"histl\"_none;Channel;RCE ADC Mean",512,0,511);
+  hADCMeanChannelAPA2                   = new TProfile("ADCMeanChannelAPA2","RCE ADC Mean APA2_\"histl\"_none;Channel;RCE ADC Mean",512,512,1023);
+  hADCMeanChannelAPA3                   = new TProfile("ADCMeanChannelAPA3","RCE ADC Mean APA3_\"histl\"_none;Channel;RCE ADC Mean",512,1024,1535);
+  hADCMeanChannelAPA4                   = new TProfile("ADCMeanChannelAPA4","RCE ADC Mean APA4_\"histl\"_none;Channel;RCE ADC Mean",512,1536,2047);
+  hADCRMSChannelAPA1                    = new TProfile("ADCRMSChannelAPA1","RCE ADC RMS APA1_\"histl\"_none;Channel;RCE ADC RMS",512,0,511);
+  hADCRMSChannelAPA2                    = new TProfile("ADCRMSChannelAPA2","RCE ADC RMS APA2_\"histl\"_none;Channel;RCE ADC RMS",512,512,1023);
+  hADCRMSChannelAPA3                    = new TProfile("ADCRMSChannelAPA3","RCE ADC RMS APA3_\"histl\"_none;Channel;RCE ADC RMS",512,1024,1535);
+  hADCRMSChannelAPA4                    = new TProfile("ADCRMSChannelAPA4","RCE ADC RMS APA4_\"histl\"_none;Channel;RCE ADC RMS",512,1536,2047);
+  hAvADCChannelEvent                    = new TH2D("AvADCChannelEvent","Average RCE ADC Value_\"colz\"_none;Event;Channel",100,0,100,NRCEChannels,0,NRCEChannels);
+  hRCEDNoiseChannel                     = new TProfile("RCEDNoiseChannel","RCE DNoise_\"colz\"_none;Channel;DNoise",NRCEChannels,0,NRCEChannels);
+  hTotalADCEvent                        = new TH1I("TotalADCEvent","Total RCE ADC_\"colz\"_logy;Total ADC;",100,0,1000000000);
+  hTotalRCEHitsEvent                    = new TH1I("TotalRCEHitsEvent","Total RCE Hits in Event_\"colz\"_logy;Total RCE Hits;",100,0,10000000);
+  hTotalRCEHitsChannel                  = new TH1I("TotalRCEHitsChannel","Total RCE Hits by Channel_\"colz\"_none;Channel;Total RCE Hits;",NRCEChannels,0,NRCEChannels);
+  hNumMicroslicesInMillislice           = new TH1I("NumMicroslicesInMillislice","Number of Microslices in Millislice_\"colz\"_none;Millislice;Number of Microslices;",16,100,116);
+  hNumNanoslicesInMicroslice            = new TH1I("NumNanoslicesInMicroslice","Number of Nanoslices in Microslice_\"colz\"_logy;Number of Nanoslices;",1000,0,1100);
+  hNumNanoslicesInMillislice            = new TH1I("NumNanoslicesInMillislice","Number of Nanoslices in Millislice_\"colz\"_logy;Number of Nanoslices;",1000,0,11000);
+  hTimesADCGoesOverThreshold            = new TH1I("TimesADCGoesOverThreshold","Times RCE ADC Over Threshold_\"colz\"_none;Times ADC Goes Over Threshold;",100,0,1000);
+  hAsymmetry                            = new TProfile("Asymmetry","Asymmetry of Bipolar Pulse_\"colz\"_none;Channel;Asymmetry",NRCEChannels,0,NRCEChannels);
+  hRCEBitCheckAnd                       = new TH2I("RCEBitCheckAnd","RCE ADC Bits Always On_\"colz\"_none;Channel;Bit",NRCEChannels,0,NRCEChannels,16,0,16);
+  hRCEBitCheckOr                        = new TH2I("RCEBitCheckOr","RCE ADC Bits Always Off_\"colz\"_none;Channel;Bit",NRCEChannels,0,NRCEChannels,16,0,16);
+  hLastSixBitsCheckOn                   = new TProfile("LastSixBitsCheckOn","Last Six RCE ADC Bits On_\"colz\"_none;Channel;Fraction of ADCs with stuck bits",NRCEChannels,0,NRCEChannels);
+  hLastSixBitsCheckOff                  = new TProfile("LastSixBitsCheckOff","Last Six RCE ADC Bits Off_\"colz\"_none;Channel;Fraction of ADCs with stuck bits",NRCEChannels,0,NRCEChannels);
+  hAvADCAllMillislice                   = new TH1D("AvADCAllMillislice","Av ADC for all Millislices_\"colz\"_none;Event;Av ADC",10000,0,10000);
+  for (unsigned int channel = 0; channel < NRCEChannels; ++channel)
+    hADCChannel[channel]                = new TProfile("ADCChannel"+TString(std::to_string(channel)),"RCE ADC v Tick for Channel "+TString(std::to_string(channel))+";Tick;ADC;",5000,0,5000);
+  for (unsigned int millislice = 0; millislice < NRCEMillislices; ++millislice) {
+    hAvADCMillislice[millislice]        = new TH1D("AvADCMillislice"+TString(std::to_string(millislice)),"Av ADC for Millislice "+TString(std::to_string(millislice))+";Event;Av ADC;",10000,0,10000);
+    hAvADCMillisliceChannel[millislice] = new TH1D("AvADCMillisliceChannel"+TString(std::to_string(millislice)),"Av ADC v Channel for Millislice "+TString(std::to_string(millislice))+";Channel;Av ADC;",128,0,128);
+  }
+  for (std::vector<int>::const_iterator debugchannel = DebugChannels.begin(); debugchannel != DebugChannels.end(); ++debugchannel)
+    hDebugChannelHists[(*debugchannel)] = new TH1D("Channel"+TString(std::to_string(*debugchannel))+"SingleEvent","Channel "+TString(std::to_string(*debugchannel))+" for Single Event",5000,0,5000);
+
+  // SSP hists
+  hWaveformMeanChannel            = new TProfile("WaveformMeanChannel","SSP ADC Mean_\"histl\"_none;Channel;SSP ADC Mean",NSSPChannels,0,NSSPChannels);
+  hWaveformRMSChannel             = new TProfile("WaveformRMSChannel","SSP ADC RMS_\"histl\"_none;Channel;SSP ADC RMS",NSSPChannels,0,NSSPChannels);
+  hAvWaveformChannelEvent         = new TH2D("AvWaveformChannelEvent","Average SSP ADC Value_\"colz\"_none;Event;Channel",100,0,100,NSSPChannels,0,NSSPChannels);
+  hSSPDNoiseChannel               = new TProfile("SSPDNoiseChannel","SSP DNoise_\"colz\"_none;Channel;DNoise",NSSPChannels,0,NSSPChannels);
+  hTotalWaveformEvent             = new TH1I("TotalWaveformEvent","Total SSP ADC_\"colz\"_logy;Total Waveform;",100,0,1000000000);
+  hTotalSSPHitsEvent              = new TH1I("TotalSSPHitsEvent","Total SSP Hits in Event_\"colz\"_logy;Total SSP Hits;",100,0,10000000);
+  hTotalSSPHitsChannel            = new TH1I("TotalSSPHitsChannel","Total SSP Hits by Channel_\"colz\"_none;Channel;Total SSP Hits;",NSSPChannels,0,NSSPChannels);
+  hTimesWaveformGoesOverThreshold = new TH1I("TimesWaveformGoesOverThreshold","Times SSP ADC Over Threshold_\"colz\"_none;Time Waveform Goes Over Threshold;",100,0,1000);
+  hSSPBitCheckAnd                 = new TH2I("SSPBitCheckAnd","SSP ADC Bits Always On_\"colz\"_none;Channel;Bit",NSSPChannels,0,NSSPChannels,16,0,16);
+  hSSPBitCheckOr                  = new TH2I("SSPBitCheckOr","SSP ADC Bits Always Off_\"colz\"_none;Channel;Bit",NSSPChannels,0,NSSPChannels,16,0,16);
+  for (unsigned int channel = 0; channel < NSSPChannels; ++channel)
+    hWaveformChannel[channel]     = new TProfile("WaveformChannel"+TString(std::to_string(channel)),"SSP ADC v Tick for Channel "+TString(std::to_string(channel))+";Tick;Waveform;",5000,0,5000);
+
+  // General
+  hNumSubDetectorsPresent = new TH1I("NumSubDetectorsPresent","Number of Subdetectors_\"colz\"_logy;Number of Subdetectors;",25,0,25);
+  hSizeOfFiles            = new TH1I("SizeOfFiles","Data File Sizes_\"colz\"_none;Run&Subrun;Size (bytes);",20,0,20);
+  hSizeOfFilesPerEvent    = new TH1D("SizeOfFilesPerEvent","Size of Event in Data Files_\"colz\"_none;Run&Subrun;Size (bytes/event);",20,0,20);
+
+  // PTB hists
+  hPTBTSUCounterHitRateWU = new TProfile("PTBTSUCounterRateWU","PTB TSU counter hit Rate (per millislice) (West Up)_\"\"_none;Counter number; No. hits per millislice",10,1,11);
+  hPTBTSUCounterHitRateWU->GetXaxis()->SetNdivisions(10);
+  hPTBTSUCounterHitRateWU->GetXaxis()->CenterLabels();
+  hPTBTSUCounterActivationTimeWU = new TProfile("PTBTSUCounterActivationTimeWU","PTB counter average activation time (West Up)_\"\"_none;Counter number; Time",10,1,11);
+  hPTBTSUCounterActivationTimeWU->GetXaxis()->SetNdivisions(10);
+  hPTBTSUCounterActivationTimeWU->GetXaxis()->CenterLabels();
+
+  hPTBTSUCounterHitRateEL = new TProfile("PTBTSUCounterRateEL","PTB TSU counter hit Rate (per millislice) (East Low)_\"\"_none;Counter number; No. hits per millislice",10,1,11);
+  hPTBTSUCounterHitRateEL->GetXaxis()->SetNdivisions(10);
+  hPTBTSUCounterHitRateEL->GetXaxis()->CenterLabels();
+  hPTBTSUCounterActivationTimeEL = new TProfile("PTBTSUCounterActivationTimeEL","PTB counter average activation time (East Low)_\"\"_none;Counter number; Time",10,1,11);
+  hPTBTSUCounterActivationTimeEL->GetXaxis()->SetNdivisions(10);
+  hPTBTSUCounterActivationTimeEL->GetXaxis()->CenterLabels();
+
+  hPTBTSUCounterHitRateExtra = new TProfile("PTBTSUCounterRateExtra","PTB TSU counter hit Rate (per millislice) (Empty counter bits - SHOULD BE EMPTY)_\"\"_none;Counter number; No. hits per millislice",4,1,5);
+  hPTBTSUCounterHitRateExtra->GetXaxis()->SetNdivisions(4);
+  hPTBTSUCounterHitRateExtra->GetXaxis()->CenterLabels();
+  hPTBTSUCounterActivationTimeExtra = new TProfile("PTBTSUCounterActivationTimeExtra","PTB counter average activation time (Empty counter bits - SHOULD BE EMPTY)_\"\"_none;Counter number; Time",4,1,5);
+  hPTBTSUCounterActivationTimeExtra->GetXaxis()->SetNdivisions(4);
+  hPTBTSUCounterActivationTimeExtra->GetXaxis()->CenterLabels();
+
+  hPTBTSUCounterHitRateNU = new TProfile("PTBTSUCounterRateNU","PTB TSU counter hit Rate (per millislice) (North Up)_\"\"_none;Counter number; No. hits per millislice",6,1,7);
+  hPTBTSUCounterHitRateNU->GetXaxis()->SetNdivisions(6);
+  hPTBTSUCounterHitRateNU->GetXaxis()->CenterLabels();
+  hPTBTSUCounterActivationTimeNU = new TProfile("PTBTSUCounterActivationTimeNU","PTB counter average activation time (North Up)_\"\"_none;Counter number; Time",6,1,7);
+  hPTBTSUCounterActivationTimeNU->GetXaxis()->SetNdivisions(6);
+  hPTBTSUCounterActivationTimeNU->GetXaxis()->CenterLabels();
+
+  hPTBTSUCounterHitRateSL = new TProfile("PTBTSUCounterRateSL","PTB TSU counter hit Rate (per millislice) (South Low)_\"\"_none;Counter number; No. hits per millislice",6,1,7);
+  hPTBTSUCounterHitRateSL->GetXaxis()->SetNdivisions(6);
+  hPTBTSUCounterHitRateSL->GetXaxis()->CenterLabels();
+  hPTBTSUCounterActivationTimeSL = new TProfile("PTBTSUCounterActivationTimeSL","PTB counter average activation time (South Low)_\"\"_none;Counter number; Time",6,1,7);
+  hPTBTSUCounterActivationTimeSL->GetXaxis()->SetNdivisions(6);
+  hPTBTSUCounterActivationTimeSL->GetXaxis()->CenterLabels();
+
+  hPTBTSUCounterHitRateNL = new TProfile("PTBTSUCounterRateNL","PTB TSU counter hit Rate (per millislice) (North Low)_\"\"_none;Counter number; No. hits per millislice",6,1,7);
+  hPTBTSUCounterHitRateNL->GetXaxis()->SetNdivisions(6);
+  hPTBTSUCounterHitRateNL->GetXaxis()->CenterLabels();
+  hPTBTSUCounterActivationTimeNL = new TProfile("PTBTSUCounterActivationTimeNL","PTB counter average activation time (North Low)_\"\"_none;Counter number; Time",6,1,7);
+  hPTBTSUCounterActivationTimeNL->GetXaxis()->SetNdivisions(6);
+  hPTBTSUCounterActivationTimeNL->GetXaxis()->CenterLabels();
+
+  hPTBTSUCounterHitRateSU = new TProfile("PTBTSUCounterRateSU","PTB TSU counter hit Rate (per millislice) (South Up)_\"\"_none;Counter number; No. hits per millislice",6,1,7);
+  hPTBTSUCounterHitRateSU->GetXaxis()->SetNdivisions(6);
+  hPTBTSUCounterHitRateSU->GetXaxis()->CenterLabels();
+  hPTBTSUCounterActivationTimeSU = new TProfile("PTBTSUCounterActivationTimeSU","PTB counter average activation time (South Up)_\"\"_none;Counter number; Time",6,1,7);
+  hPTBTSUCounterActivationTimeSU->GetXaxis()->SetNdivisions(6);
+  hPTBTSUCounterActivationTimeSU->GetXaxis()->CenterLabels();
+
+  hPTBBSUCounterHitRateRM = new TProfile("PTBBSUCounterRateRM","PTB BSU counter hit Rate (per millislice) (RM)_\"\"_none;Counter number; No. hits per millislice",16,1,17);
+  hPTBBSUCounterHitRateRM->GetXaxis()->SetNdivisions(16);
+  hPTBBSUCounterHitRateRM->GetXaxis()->CenterLabels();
+  hPTBBSUCounterActivationTimeRM = new TProfile("PTBBSUCounterActivationTimeRM","PTB counter average activation time (RM)_\"\"_none;Counter number; Time",16,1,17);
+  hPTBBSUCounterActivationTimeRM->GetXaxis()->SetNdivisions(16);
+  hPTBBSUCounterActivationTimeRM->GetXaxis()->CenterLabels();
+
+  hPTBBSUCounterHitRateCU = new TProfile("PTBBSUCounterRateCU","PTB BSU counter hit Rate (per millislice) (CU)_\"\"_none;Counter number; No. hits per millislice",10,1,11);
+  hPTBBSUCounterHitRateCU->GetXaxis()->SetNdivisions(10);
+  hPTBBSUCounterHitRateCU->GetXaxis()->CenterLabels();
+  hPTBBSUCounterActivationTimeCU = new TProfile("PTBBSUCounterActivationTimeCU","PTB counter average activation time (CU)_\"\"_none;Counter number; Time",10,1,11);
+  hPTBBSUCounterActivationTimeCU->GetXaxis()->SetNdivisions(10);
+  hPTBBSUCounterActivationTimeCU->GetXaxis()->CenterLabels();
+
+  hPTBBSUCounterHitRateCL = new TProfile("PTBBSUCounterRateCL","PTB BSU counter hit Rate (per millislice) (CL)_\"\"_none;Counter number; No. hits per millislice",13,1,14);
+  hPTBBSUCounterHitRateCL->GetXaxis()->SetNdivisions(13);
+  hPTBBSUCounterHitRateCL->GetXaxis()->CenterLabels();
+  hPTBBSUCounterActivationTimeCL = new TProfile("PTBBSUCounterActivationTimeCL","PTB counter average activation time (CL)_\"\"_none;Counter number; Time",13,1,14);
+  hPTBBSUCounterActivationTimeCL->GetXaxis()->SetNdivisions(13);
+  hPTBBSUCounterActivationTimeCL->GetXaxis()->CenterLabels();
+
+  hPTBBSUCounterHitRateRL = new TProfile("PTBBSUCounterRateRL","PTB BSU counter hit Rate (per millislice) (RL)_\"\"_none;Counter number; No. hits per millislice",10,1,11);
+  hPTBBSUCounterHitRateRL->GetXaxis()->SetNdivisions(10);
+  hPTBBSUCounterHitRateRL->GetXaxis()->CenterLabels();
+  hPTBBSUCounterActivationTimeRL = new TProfile("PTBBSUCounterActivationTimeRL","PTB counter average activation time (RL)_\"\"_none;Counter number; Time",10,1,11);
+  hPTBBSUCounterActivationTimeRL->GetXaxis()->SetNdivisions(10);
+  hPTBBSUCounterActivationTimeRL->GetXaxis()->CenterLabels();
+
+  hPTBTriggerRates = new TProfile("PTBTriggerRates","Muon trigger rates_\"\"_none;Muon trigger name; No. hits per millislice",4,1,5);
+  hPTBTriggerRates->GetXaxis()->SetBinLabel(1,"BSU RM-CM");
+  hPTBTriggerRates->GetXaxis()->SetBinLabel(2,"TSU NU-SL");
+  hPTBTriggerRates->GetXaxis()->SetBinLabel(3,"TSU SU-NL");
+  hPTBTriggerRates->GetXaxis()->SetBinLabel(4,"TSU EL-WU");
 
   // The order the histograms are added will be the order they're displayed on the web!
-  fHistArray.Add(hADCMeanChannel); fHistArray.Add(hADCRMSChannel);
+  fHistArray.Add(hADCMeanChannelAPA1); fHistArray.Add(hADCMeanChannelAPA2);
+  fHistArray.Add(hADCMeanChannelAPA3); fHistArray.Add(hADCMeanChannelAPA4);
+  fHistArray.Add(hADCRMSChannelAPA1); fHistArray.Add(hADCRMSChannelAPA2);
+  fHistArray.Add(hADCRMSChannelAPA3); fHistArray.Add(hADCRMSChannelAPA4);
   fHistArray.Add(hAvADCAllMillislice); fHistArray.Add(hRCEDNoiseChannel);
   fHistArray.Add(hAvADCChannelEvent); fHistArray.Add(hTotalRCEHitsChannel);
   fHistArray.Add(hTotalADCEvent); fHistArray.Add(hTotalRCEHitsEvent);
@@ -644,33 +647,28 @@ void OnlineMonitoring::MonitoringData::AddHists() {
   fHistArray.Add(hSizeOfFiles); fHistArray.Add(hSizeOfFilesPerEvent);
   fHistArray.Add(hNumSubDetectorsPresent);
 
-  //Penn board hists
-  fHistArray.Add(hPTBTSUCounterActivationTimeWU);
-  fHistArray.Add(hPTBTSUCounterHitRateWU);
-  fHistArray.Add(hPTBTSUCounterActivationTimeEL);
-  fHistArray.Add(hPTBTSUCounterHitRateEL);
-  fHistArray.Add(hPTBTSUCounterActivationTimeExtra);
-  fHistArray.Add(hPTBTSUCounterHitRateExtra);
-  fHistArray.Add(hPTBTSUCounterActivationTimeNU);
-  fHistArray.Add(hPTBTSUCounterHitRateNU);
-  fHistArray.Add(hPTBTSUCounterActivationTimeSL);
-  fHistArray.Add(hPTBTSUCounterHitRateSL);
-  fHistArray.Add(hPTBTSUCounterActivationTimeNL);
-  fHistArray.Add(hPTBTSUCounterHitRateNL);
-  fHistArray.Add(hPTBTSUCounterActivationTimeSU);
-  fHistArray.Add(hPTBTSUCounterHitRateSU);
-  fHistArray.Add(hPTBBSUCounterActivationTimeRM);
-  fHistArray.Add(hPTBBSUCounterHitRateRM);
-  fHistArray.Add(hPTBBSUCounterActivationTimeCU);
-  fHistArray.Add(hPTBBSUCounterHitRateCU);
-  fHistArray.Add(hPTBBSUCounterActivationTimeCL);
-  fHistArray.Add(hPTBBSUCounterHitRateCL);
-  fHistArray.Add(hPTBBSUCounterActivationTimeRL);
-  fHistArray.Add(hPTBBSUCounterHitRateRL);
+  // Penn board hists
   fHistArray.Add(hPTBTriggerRates);
+  fHistArray.Add(hPTBTSUCounterActivationTimeWU); fHistArray.Add(hPTBTSUCounterHitRateWU);
+  fHistArray.Add(hPTBTSUCounterActivationTimeEL); fHistArray.Add(hPTBTSUCounterHitRateEL);
+  fHistArray.Add(hPTBTSUCounterActivationTimeExtra); fHistArray.Add(hPTBTSUCounterHitRateExtra);
+  fHistArray.Add(hPTBTSUCounterActivationTimeNU); fHistArray.Add(hPTBTSUCounterHitRateNU);
+  fHistArray.Add(hPTBTSUCounterActivationTimeSL); fHistArray.Add(hPTBTSUCounterHitRateSL);
+  fHistArray.Add(hPTBTSUCounterActivationTimeNL); fHistArray.Add(hPTBTSUCounterHitRateNL);
+  fHistArray.Add(hPTBTSUCounterActivationTimeSU); fHistArray.Add(hPTBTSUCounterHitRateSU);
+  fHistArray.Add(hPTBBSUCounterActivationTimeRM); fHistArray.Add(hPTBBSUCounterHitRateRM);
+  fHistArray.Add(hPTBBSUCounterActivationTimeCU); fHistArray.Add(hPTBBSUCounterHitRateCU);
+  fHistArray.Add(hPTBBSUCounterActivationTimeCL); fHistArray.Add(hPTBBSUCounterHitRateCL);
+  fHistArray.Add(hPTBBSUCounterActivationTimeRL); fHistArray.Add(hPTBBSUCounterHitRateRL);
 
-  fFigureCaptions["ADCMeanChannel"] = "Mean ADC values for each channel read out by the RCEs (profiled over all events read)";
-  fFigureCaptions["ADCRMSChannel"] = "RMS of the ADC values for each channel read out by the RCEs (profiled over all events read)";
+  fFigureCaptions["ADCMeanChannelAPA1"] = "Mean ADC values for each channel read out by the RCEs (profiled over all events read)";
+  fFigureCaptions["ADCMeanChannelAPA2"] = "Mean ADC values for each channel read out by the RCEs (profiled over all events read)";
+  fFigureCaptions["ADCMeanChannelAPA3"] = "Mean ADC values for each channel read out by the RCEs (profiled over all events read)";
+  fFigureCaptions["ADCMeanChannelAPA4"] = "Mean ADC values for each channel read out by the RCEs (profiled over all events read)";
+  fFigureCaptions["ADCRMSChannelAPA1"] = "RMS of the ADC values for each channel read out by the RCEs (profiled over all events read)";
+  fFigureCaptions["ADCRMSChannelAPA2"] = "RMS of the ADC values for each channel read out by the RCEs (profiled over all events read)";
+  fFigureCaptions["ADCRMSChannelAPA3"] = "RMS of the ADC values for each channel read out by the RCEs (profiled over all events read)";
+  fFigureCaptions["ADCRMSChannelAPA4"] = "RMS of the ADC values for each channel read out by the RCEs (profiled over all events read)";
   fFigureCaptions["AvADCAllMillislice"] = "Average RCE ADC across an entire millislice for the first 10000 events (one entry per millislice in each event)";
   fFigureCaptions["RCEDNoiseChannel"] = "DNoise (difference in ADC between neighbouring channels for the same tick) for the RCE ADCs (profiled over all events read)";
   fFigureCaptions["AvADCChannelEvent"] = "Average RCE ADC across a channel for an event, shown for the first 100 events";

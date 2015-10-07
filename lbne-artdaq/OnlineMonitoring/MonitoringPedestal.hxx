@@ -39,7 +39,7 @@
 #include <sstream>
 #include <fstream>
 
-#include "OnlineMonitoringNamespace.cxx"
+#include "OnlineMonitoringBase.cxx"
 #include "DataReformatter.hxx"
 
 class OnlineMonitoring::MonitoringPedestal {
@@ -51,7 +51,7 @@ public:
   void GeneralMonitoring();
   void RCEMonitoring(RCEFormatter const& rce_formatter);
   void GetPedestal(std::vector<int> ADCs, int channel, double mean, double rms);
-  void AddHists();
+  void MakeHistograms();
   void StartEvent(int eventNumber, bool maketree);
   void Reset();
   void WriteMonitoringPedestal(int run, int subrun);
@@ -77,8 +77,9 @@ private:
   TH2I *hRCEBitCheckAnd, *hRCEBitCheckOr;
   TH1D *hAvADCAllMillislice;
   TH2D *hAvADCChannelEvent;
-  TProfile *hADCMeanChannel, *hADCRMSChannel, *hRCEDNoiseChannel, *hAsymmetry, *hLastSixBitsCheckOff, *hLastSixBitsCheckOn;
-  std::map<int,TProfile*> hADCChannel;
+  TProfile *hADCMeanChannelAPA1, *hADCMeanChannelAPA2, *hADCMeanChannelAPA3, *hADCMeanChannelAPA4, *hADCRMSChannelAPA1, *hADCRMSChannelAPA2, *hADCRMSChannelAPA3, *hADCRMSChannelAPA4;
+  TProfile *hRCEDNoiseChannel, *hAsymmetry, *hLastSixBitsCheckOff, *hLastSixBitsCheckOn;
+  std::map<int,TProfile*> hADCChannel, hADCChannelFilt;
   std::map<int,TH1D*> hAvADCMillislice;
   std::map<int,TH1D*> hAvADCMillisliceChannel;
   std::map<int,TH1D*> hDebugChannelHists;
@@ -102,15 +103,17 @@ private:
   TH1D *hSizeOfFilesPerEvent;
 
   // Variables for monitoring
-  int fTotalADC, fTotalWaveform;
+  int fTotalADC;
   int fTotalRCEHitsEvent;
-  int fTimesADCGoesOverThreshold, fTimesWaveformGoesOverThreshold;
+  int fTimesADCGoesOverThreshold;
   int fNumSubDetectorsPresent;
   std::vector<std::vector<int> > fRCEADC;
 
   bool checkedFileSizes;
   int fThreshold = 10;
   bool fIsInduction = true;
+
+  TString HistSaveDirectory;
 
   // Run options
   bool _interestingchannelsfilled = false;

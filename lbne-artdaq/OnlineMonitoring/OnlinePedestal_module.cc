@@ -34,7 +34,7 @@
 #include <sys/stat.h>
 #include <typeinfo>
 
-#include "OnlineMonitoringNamespace.cxx"
+#include "OnlineMonitoringBase.cxx"
 #include "DataReformatter.hxx"
 #include "MonitoringPedestal.hxx"
 #include "EventDisplay.hxx"
