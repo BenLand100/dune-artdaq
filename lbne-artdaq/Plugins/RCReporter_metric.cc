@@ -1,12 +1,12 @@
 // RCReporter_metric.cc: RunControl Metric Plugin
 // Author: John Freeman
 //
-// An implementation of artdaq's MetricPlugin for RunControl reporting
+// An implementation of artdaq-utilities's MetricPlugin for RunControl reporting
 
 #include "lbne-artdaq/RCConnection/RCConnection.hh"
 #include "lbne-artdaq/RCConnection/I3JSON.hh"
 
-#include "artdaq/Plugins/MetricMacros.hh"
+#include "artdaq-utilities/Plugins/MetricMacros.hh"
 #include "fhiclcpp/ParameterSet.h"
 
 
@@ -23,6 +23,7 @@ namespace lbne {
   class RCReporter : public artdaq::MetricPlugin {
 
   public:
+
     RCReporter(fhicl::ParameterSet ps) : 
       artdaq::MetricPlugin(ps),
       stopped_(true)
@@ -47,7 +48,7 @@ namespace lbne {
 #pragma GCC diagnostic ignored "-Wunused-parameter"
 
 
-    virtual void sendMetric(std::string name, std::string value, std::string unit) 
+    virtual void sendMetric_(std::string name, std::string value, std::string unit) 
     {
       if (!stopped_) {
 
@@ -56,26 +57,26 @@ namespace lbne {
     }
 #pragma GCC diagnostic pop
 
-    virtual void sendMetric(std::string name, int value, std::string unit ) 
+    virtual void sendMetric_(std::string name, int value, std::string unit ) 
     { 
-      sendMetric(name, std::to_string(value), unit);
+      sendMetric_(name, std::to_string(value), unit);
     }
-    virtual void sendMetric(std::string name, double value, std::string unit ) 
+    virtual void sendMetric_(std::string name, double value, std::string unit ) 
     { 
-      sendMetric(name, std::to_string(value), unit);
+      sendMetric_(name, std::to_string(value), unit);
     }
-    virtual void sendMetric(std::string name, float value, std::string unit ) 
+    virtual void sendMetric_(std::string name, float value, std::string unit ) 
     {
-      sendMetric(name, std::to_string(value), unit);
+      sendMetric_(name, std::to_string(value), unit);
     }
-    virtual void sendMetric(std::string name, unsigned long int value, std::string unit ) 
+    virtual void sendMetric_(std::string name, unsigned long int value, std::string unit ) 
     { 
-      sendMetric(name, std::to_string(value), unit);
+      sendMetric_(name, std::to_string(value), unit);
     }
 
-    virtual void startMetrics() { stopped_ = false; }
+    virtual void startMetrics_() { stopped_ = false; }
 
-    virtual void stopMetrics() {}
+    virtual void stopMetrics_() {}
 
   private:
 

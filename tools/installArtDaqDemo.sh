@@ -82,6 +82,13 @@ function install_package {
     cd ../build_$packagename
 
     echo IN $PWD: about to . ../$packagename/ups/setup_for_development
+
+# JCF, Sep-8-2015
+
+# Added "unsetup cetbuildtools" as it's fine for a given package to
+# use a version of cetbuildtools not used by the others
+
+    unsetup cetbuildtools  
     . ../$packagename/ups/setup_for_development -${build_arg} $@
     echo FINISHED ../$packagename/ups/setup_for_development
     buildtool ${opt_clean+-c} -i -t
@@ -90,25 +97,10 @@ function install_package {
 
 . $products_dir/setup
 
-# JCF, 6/9/15
+install_package artdaq-core v1_04_17 e7 s15
+install_package lbne-raw-data v1_03_08 e7 s15
 
-# artdaq-core commit dc0c2461a042ae39cd4612c649fc3cec479efd2b contains
-# the ExceptionHandler module, which allows for more informative
-# exception handling in catch blocks (this feature is used by artdaq,
-# below)
-
-install_package artdaq-core dc0c2461a042ae39cd4612c649fc3cec479efd2b e7 s11
-install_package lbne-raw-data v1_03_04 e7 s11
-
-# JCF, 6/9/15
-
-# artdaq commit c3e9457cfff2c0feaa85888a2ae3bdee3a0471e6 includes
-# improved exception handling (specifically, whereas earlier versions
-# of artdaq contained try-catch blocks where all exceptions were
-# swallowed and a generic warning or error message appeared, this
-# commit will try to print out the contents of the exception object)
-
-install_package artdaq c3e9457cfff2c0feaa85888a2ae3bdee3a0471e6 e7 s11 eth
+install_package artdaq v1_12_12a e7 s15 eth
 
 setup_qualifier="e7"
 
@@ -153,6 +145,7 @@ fi
 
 echo "Building lbne-artdaq..."
 cd $LBNEARTDAQ_BUILD
+unsetup cetbuildtools  # See comment above for why this is done
 . $demo_dir/setupLBNEARTDAQ
 buildtool -t
 
