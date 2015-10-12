@@ -6,6 +6,7 @@
  */
 
 #include "RceClient.hh"
+#include "lbne-artdaq/DAQLogger/DAQLogger.hh"
 #include <iostream>
 #include <sstream>
 #include <boost/algorithm/string.hpp>
@@ -39,7 +40,7 @@ lbne::RceClient::RceClient(const std::string& instance_name, const std::string& 
 		while ((endpoint_iter != end) && (socket_.is_open() == false))
 		{
 			tcp::endpoint endpoint = *endpoint_iter++;
-			mf::LogInfo(instance_name_) << "Connecting to RCE at " << endpoint;
+			DAQLogger::LogInfo(instance_name_) << "Connecting to RCE at " << endpoint;
 
 			// If a client timeout is specified, set the deadline timer appropriately
 			this->set_deadline();
@@ -63,19 +64,19 @@ lbne::RceClient::RceClient(const std::string& instance_name, const std::string& 
 			if (error == boost::asio::error::operation_aborted)
 			{
 				socket_.close();
-				mf::LogError(instance_name_) << "Timeout establishing client connection to RCE at " << endpoint;
+				DAQLogger::LogError(instance_name_) << "Timeout establishing client connection to RCE at " << endpoint;
 				// TODO replace with exception
 			}
 			// If another error occurred during connect - throw an exception
 			else if (error)
 			{
 				socket_.close();
-				mf::LogError(instance_name_) << "Error establishing connection to RCE at " << endpoint << " : " << error.message();
+				DAQLogger::LogError(instance_name_) << "Error establishing connection to RCE at " << endpoint << " : " << error.message();
 			}
 		}
 		if (socket_.is_open() == false)
 		{
-			mf::LogError(instance_name_) << "Failed to open connection to RCE";
+			DAQLogger::LogError(instance_name_) << "Failed to open connection to RCE";
 		} else {
 			// Send RCE a bell character to suppress async updates
 			this->send("\a\n");
@@ -86,13 +87,13 @@ lbne::RceClient::RceClient(const std::string& instance_name, const std::string& 
 			  data = this->receive();
 			  bytesFlushed += data.length();
 			} while (data.length() > 0);
-			mf::LogDebug(instance_name_)  << "Flushed " << bytesFlushed << " bytes of stale data from client socket";
+			DAQLogger::LogDebug(instance_name_)  << "Flushed " << bytesFlushed << " bytes of stale data from client socket";
 		  
 		}
 	}
 	catch (boost::system::system_error& e)
 	{
-		mf::LogError(instance_name_) << "Exception caught opening connection to RCE: " << e.what();
+		DAQLogger::LogError(instance_name_) << "Exception caught opening connection to RCE: " << e.what();
 	}
 
 }
@@ -104,14 +105,14 @@ lbne::RceClient::~RceClient()
 	}
 	catch (boost::system::system_error& e)
 	{
-		mf::LogError(instance_name_) << "Exception caught closing RceClient connection:" << e.what();
+		DAQLogger::LogError(instance_name_) << "Exception caught closing RceClient connection:" << e.what();
 	}
 }
 
 void lbne::RceClient::send_command(std::string const & command, std::string const & param)
 {
 
-	mf::LogDebug(instance_name_) << "Sending command: " << command << " with param: " << param;
+	DAQLogger::LogDebug(instance_name_) << "Sending command: " << command << " with param: " << param;
 	
 	// Build XML fragment containing command enclosing the parameter
 	std::ostringstream xml_frag;
@@ -125,7 +126,7 @@ void lbne::RceClient::send_command(std::string const & command, std::string cons
 
 void lbne::RceClient::send_command(std::string const & command)
 {
-	mf::LogDebug(instance_name_) << "Sending command: " << command;
+	DAQLogger::LogDebug(instance_name_) << "Sending command: " << command;
 
 	// Build the XML fragment with command as empty closed tag
 	std::ostringstream xml_frag;
@@ -137,7 +138,7 @@ void lbne::RceClient::send_command(std::string const & command)
 
 void lbne::RceClient::send_config(std::string const & config)
 {
-	mf::LogDebug(instance_name_) << "Sending config: " << config;
+	DAQLogger::LogDebug(instance_name_) << "Sending config: " << config;
 	std::ostringstream config_frag;
 	config_frag << "<config>" << config << "</config>";
 
@@ -177,8 +178,8 @@ void lbne::RceClient::send_xml(std::string const & xml_frag)
 	}
 
 	if (doc == NULL) {
-		mf::LogError(instance_name_) << "Failed to parse XML response (length: " <<  response.length() << ")";
-		mf::LogDebug(instance_name_) << response;
+		DAQLogger::LogError(instance_name_) << "Failed to parse XML response (length: " <<  response.length() << ")";
+		DAQLogger::LogDebug(instance_name_) << response;
 	}
 	else
 	{
@@ -197,9 +198,9 @@ void lbne::RceClient::send_xml(std::string const & xml_frag)
 			//xmlNode* error_node = cur_node->children;
 			xmlChar* errorContent = xmlNodeGetContent(cur_node);
 			if (errorContent) {
-				mf::LogError(instance_name_) << "Got error response from RCE: " << errorContent;
+				DAQLogger::LogError(instance_name_) << "Got error response from RCE: " << errorContent;
 			} else {
-				mf::LogError(instance_name_) << "Got error resposne from RCE but cannot parse content";
+				DAQLogger::LogError(instance_name_) << "Got error resposne from RCE but cannot parse content";
 			}
 			xmlFree(errorContent);
 	      }
@@ -282,20 +283,20 @@ std::size_t lbne::RceClient::send(std::string const & send_str)
 	if (error == boost::asio::error::eof)
 	{
 		// Connection closed by peer
-		mf::LogError(instance_name_) << "Connection closed by RCE";
+		DAQLogger::LogError(instance_name_) << "Connection closed by RCE";
 	}
 	else if (error == boost::asio::error::operation_aborted)
 	{
 		// Timeout signalled by deadline actor
-		mf::LogError(instance_name_) << "Timeout sending message to RCE";
+		DAQLogger::LogError(instance_name_) << "Timeout sending message to RCE";
 	}
 	else if (error)
 	{
-		mf::LogError(instance_name_) << "Error sending message to RCE: " << error.message();
+		DAQLogger::LogError(instance_name_) << "Error sending message to RCE: " << error.message();
 	}
 	else if (send_len != send_str.size())
 	{
-		mf::LogError(instance_name_) << "Size mismatch when sending transaction: wrote " << send_len << " expected " << send_str.size();
+		DAQLogger::LogError(instance_name_) << "Size mismatch when sending transaction: wrote " << send_len << " expected " << send_str.size();
 	}
 
 	return send_len;
@@ -363,7 +364,7 @@ void lbne::RceClient::set_param_(std::string const & name, std::string const & e
 	// Parse the response to ensure the command was acknowledged
 	if (!response_is_ack(response, "SET"))
 	{
-		mf::LogError(instance_name_) << "SET command failed: " << response;
+		DAQLogger::LogError(instance_name_) << "SET command failed: " << response;
 	}
 
 }

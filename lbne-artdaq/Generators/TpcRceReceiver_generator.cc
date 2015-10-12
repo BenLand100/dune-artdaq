@@ -1,6 +1,7 @@
 #include "lbne-artdaq/Generators/TpcRceReceiver.hh"
 #include "lbne-raw-data/Overlays/MilliSliceWriter.hh"
 #include "lbne-raw-data/Overlays/TpcMilliSliceWriter.hh"
+#include "lbne-artdaq/DAQLogger/DAQLogger.hh"
 
 #include "art/Utilities/Exception.h"
 #include "artdaq/Application/GeneratorMacros.hh"
@@ -12,6 +13,7 @@
 #include "fhiclcpp/ParameterSet.h"
 #include "artdaq-core/Utilities/SimpleLookupPolicy.h"
 #include "messagefacility/MessageLogger/MessageLogger.h"
+
 
 #include <fstream>
 #include <iomanip>
@@ -38,7 +40,7 @@ lbne::TpcRceReceiver::TpcRceReceiver(fhicl::ParameterSet const & ps)
 
   instance_name_for_metrics_ = instance_name_;
 
-  mf::LogInfo(instance_name_) << "Starting up";
+  DAQLogger::LogInfo(instance_name_) << "Starting up";
 
   int fragment_id = ps.get<int>("fragment_id");
   fragment_ids_.push_back(fragment_id);
@@ -140,12 +142,12 @@ lbne::TpcRceReceiver::TpcRceReceiver(fhicl::ParameterSet const & ps)
 
   // Set the DPM to FEB emulation mode if necessary
   if (rce_feb_emulation_) {
-    mf::LogDebug(instance_name_) << "Enabling FEB emulation in RCE";
+    DAQLogger::LogDebug(instance_name_) << "Enabling FEB emulation in RCE";
     dpm_client_->send_command("StartDebugFebEmu");
   }
   // else
   // {
-  //   mf::LogDebug(instance_name_) << "Disabling FEB emulation in RCE";
+  //   DAQLogger::LogDebug(instance_name_) << "Disabling FEB emulation in RCE";
   //   dpm_client_->send_command("StopDebugFebEmu");
   // }
 
@@ -172,7 +174,7 @@ lbne::TpcRceReceiver::TpcRceReceiver(fhicl::ParameterSet const & ps)
 
 void lbne::TpcRceReceiver::start(void)
 {
-	mf::LogDebug(instance_name_) << "start() called";
+	DAQLogger::LogDebug(instance_name_) << "start() called";
 
 	// Tell the data receiver to drain any unused buffers from the empty queue
 	data_receiver_->release_empty_buffers();
@@ -184,7 +186,7 @@ void lbne::TpcRceReceiver::start(void)
 	raw_to_frag_map_.clear();
 
 	// Pre-commit buffers to the data receiver object - creating either fragments or raw buffers depending on raw buffer mode
-	mf::LogDebug(instance_name_) << "Pre-committing " << raw_buffer_precommit_ << " buffers of size " << raw_buffer_size_ << " to receiver";
+	DAQLogger::LogDebug(instance_name_) << "Pre-committing " << raw_buffer_precommit_ << " buffers of size " << raw_buffer_size_ << " to receiver";
 	empty_buffer_low_mark_ = 0;
 	for (unsigned int i = 0; i < raw_buffer_precommit_; i++)
 	{
@@ -197,7 +199,7 @@ void lbne::TpcRceReceiver::start(void)
 		{
 			raw_buffer = lbne::RceRawBufferPtr(new RceRawBuffer(raw_buffer_size_));
 		}
-		// mf::LogDebug(instance_name_) << "Pre-commiting raw buffer " << i << " at address " << (void*)(raw_buffer->dataPtr());
+		// DAQLogger::LogDebug(instance_name_) << "Pre-commiting raw buffer " << i << " at address " << (void*)(raw_buffer->dataPtr());
 		data_receiver_->commit_empty_buffer(raw_buffer);
 		empty_buffer_low_mark_++;
 	}
@@ -240,7 +242,7 @@ void lbne::TpcRceReceiver::start(void)
 
 void lbne::TpcRceReceiver::stop(void)
 {
-	mf::LogInfo(instance_name_) << "stop() called";
+	DAQLogger::LogInfo(instance_name_) << "stop() called";
 
 #ifndef NO_RCE_CLIENT
 
@@ -260,14 +262,14 @@ void lbne::TpcRceReceiver::stop(void)
 	// Stop the data receiver.
 	data_receiver_->stop();
 
-	mf::LogInfo(instance_name_) << "Low water mark on empty buffer queue is " << empty_buffer_low_mark_;
+	DAQLogger::LogInfo(instance_name_) << "Low water mark on empty buffer queue is " << empty_buffer_low_mark_;
 
 	auto elapsed_msecs = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - start_time_).count();
 	double elapsed_secs = ((double)elapsed_msecs) / 1000;
 	double rate = ((double)millislices_received_) / elapsed_secs;
 	double data_rate_mbs = ((double)total_bytes_received_) / ((1024*1024) * elapsed_secs);
 
-	mf::LogInfo(instance_name_) << "Received " << millislices_received_ << " millislices in "
+	DAQLogger::LogInfo(instance_name_) << "Received " << millislices_received_ << " millislices in "
 			      << elapsed_secs << " seconds, rate "
 			      << rate << " Hz, total data " << total_bytes_received_ << " bytes, rate " << data_rate_mbs << " MB/s" << std::endl;
 
@@ -291,7 +293,7 @@ bool lbne::TpcRceReceiver::getNext_(artdaq::FragmentPtrs & frags) {
 	  (reporting_interval_time_ * 1000))
       {
 	report_time_ = std::chrono::high_resolution_clock::now();
-	mf::LogInfo(instance_name_) << "Received " << millislices_received_ << " millislices so far";
+	DAQLogger::LogInfo(instance_name_) << "Received " << millislices_received_ << " millislices so far";
       }
     }
   }
@@ -303,11 +305,11 @@ bool lbne::TpcRceReceiver::getNext_(artdaq::FragmentPtrs & frags) {
 
 		if( data_receiver_->filled_buffers_available() > 0)
 		{
-			mf::LogWarning(instance_name_) << "getNext_ stopping while there were still filled buffers available";
+			DAQLogger::LogWarning(instance_name_) << "getNext_ stopping while there were still filled buffers available";
 		}
 		else
 		{
-	    	mf::LogInfo(instance_name_) << "No unprocessed filled buffers available at end of run";
+	    	DAQLogger::LogInfo(instance_name_) << "No unprocessed filled buffers available at end of run";
 		}
 
 	return false;
@@ -318,7 +320,7 @@ bool lbne::TpcRceReceiver::getNext_(artdaq::FragmentPtrs & frags) {
   // an empty list
   if (recvd_buffer->size() == 0)
   {
-	  mf::LogWarning(instance_name_) << "getNext_ : no data received in raw buffer";
+	  DAQLogger::LogWarning(instance_name_) << "getNext_ : no data received in raw buffer";
 	  return true;
   }
 
@@ -348,7 +350,7 @@ bool lbne::TpcRceReceiver::getNext_(artdaq::FragmentPtrs & frags) {
 	  }
 	  else
 	  {
-		  mf::LogError(instance_name_) << "Cannot map raw buffer with data address" << (void*)recvd_buffer->dataPtr() << " back onto fragment";
+		  DAQLogger::LogError(instance_name_) << "Cannot map raw buffer with data address" << (void*)recvd_buffer->dataPtr() << " back onto fragment";
 		  return true;
 	  }
   }
@@ -376,7 +378,7 @@ bool lbne::TpcRceReceiver::getNext_(artdaq::FragmentPtrs & frags) {
 	  auto elapsed_msecs = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - start_time_).count();
 	  double elapsed_secs = ((double)elapsed_msecs)/1000;
 
-	  mf::LogInfo(instance_name_) << "Received " << millislices_received_ << " millislices, "
+	  DAQLogger::LogInfo(instance_name_) << "Received " << millislices_received_ << " millislices, "
 			  << float(total_bytes_received_)/(1024*1024) << " MB in " << elapsed_secs << " seconds";
   }
 
@@ -441,14 +443,14 @@ uint32_t lbne::TpcRceReceiver::format_millislice_from_raw_buffer(uint16_t* src_a
   for (uint32_t udx = 0; udx < number_of_microslices_to_generate_; ++udx) {
     microslice_writer_ptr = millislice_writer.reserveMicroSlice(MICROSLICE_BUFFER_SIZE);
     if (microslice_writer_ptr.get() == 0) {
-      mf::LogError(instance_name_)
+      DAQLogger::LogError(instance_name_)
         << "Unable to create microslice number " << udx;
     }
     else {
       for (uint32_t ndx = 0; ndx < number_of_nanoslices_to_generate_; ++ndx) {
         nanoslice_writer_ptr = microslice_writer_ptr->reserveNanoSlice(NANOSLICE_BUFFER_SIZE);
         if (nanoslice_writer_ptr.get() == 0) {
-          mf::LogError(instance_name_)
+          DAQLogger::LogError(instance_name_)
             << "Unable to create nanoslice number " << ndx;
         }
         else {
@@ -465,7 +467,7 @@ uint32_t lbne::TpcRceReceiver::format_millislice_from_raw_buffer(uint16_t* src_a
   // Check if we have overrun the end of the raw buffer
   if (sample_addr > (src_addr + src_size))
   {
-	  mf::LogError(instance_name_)
+	  DAQLogger::LogError(instance_name_)
 	  	  << "Raw buffer overrun during millislice formatting by " << ((src_addr + src_size) - sample_addr);
   }
   millislice_writer.finalize();

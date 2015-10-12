@@ -47,6 +47,7 @@ simple_plugin(TpcRceReceiver "generator"
   ${FHICLCPP}
   ${MF_MESSAGELOGGER}
   ${CETLIB}
+  lbne-artdaq_DAQLogger
   )
   
   add_subdirectory(RceSupportLib)
