@@ -120,7 +120,7 @@ void OnlineMonitoring::OnlineMonitoring::analyze(art::Event const& evt) {
   // Fill the data products in the monitoring data
   if (rawRCE.isValid()) fMonitoringData.RCEMonitoring(rceformatter);
   if (rawSSP.isValid()) fMonitoringData.SSPMonitoring(sspformatter);
-  if (rawSSP.isValid()) fMonitoringData.PTBMonitoring(ptbformatter);
+  if (rawPTB.isValid()) fMonitoringData.PTBMonitoring(ptbformatter);
   fMonitoringData.GeneralMonitoring();
   if (fMakeTree) fMonitoringData.FillTree(rceformatter, sspformatter);
 
