@@ -17,13 +17,14 @@ void OnlineMonitoring::ChannelMap::MakeChannelMap() {
   std::string line;
 
   while (std::getline(inFile,line)) {
-    int onlineChannel, rce, rcechannel, apa, plane, offlineChannel;
+    int onlineChannel, rce, rcechannel, apa, drift, plane, offlineChannel;
     std::stringstream linestream(line);
     linestream >> onlineChannel >> rce >> rcechannel >> apa >> plane >> offlineChannel;
-    fChannelMap[onlineChannel] = (std::unique_ptr<Channel>) new Channel(onlineChannel, offlineChannel, plane, apa);
+    if (rce == 0 or rce == 1 or rce == 4 or rce == 5 or rce == 8 or rce == 9 or rce == 12 or rce == 13) drift = 1;
+    else drift = 0;
+    fChannelMap[onlineChannel] = (std::unique_ptr<Channel>) new Channel(onlineChannel, offlineChannel, plane, apa, drift);
   }
 
   inFile.close();
 
 }
-

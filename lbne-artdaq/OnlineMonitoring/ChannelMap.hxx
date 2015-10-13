@@ -19,22 +19,25 @@
 #include "OnlineMonitoringBase.cxx"
 
 struct OnlineMonitoring::Channel {
-  Channel(int onlineChannel, int offlineChannel, int plane, int apa) {
+  Channel(int onlineChannel, int offlineChannel, int plane, int apa, int drift) {
     OnlineChannel = onlineChannel;
     OfflineChannel = offlineChannel;
     Plane = plane;
     APA = apa;
+    Drift = drift;
   }
   int OnlineChannel;
   int OfflineChannel;
   int Plane;
   int APA;
+  int Drift;
 };
 
 class OnlineMonitoring::ChannelMap {
 public:
 
   int GetAPA(int onlineChannel) const { return fChannelMap.at(onlineChannel)->APA; }
+  int GetDriftVolume(int onlineChannel) const { return fChannelMap.at(onlineChannel)->Drift; }
   std::map<int,std::unique_ptr<Channel> > const& GetChannelMap() const { return fChannelMap; }
   int GetOfflineChannel(int onlineChannel) const { return fChannelMap.at(onlineChannel)->OfflineChannel; }
   int GetPlane(int onlineChannel) const { return fChannelMap.at(onlineChannel)->Plane; }

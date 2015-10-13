@@ -11,6 +11,7 @@
 
 #include "TH2D.h"
 #include "TCanvas.h"
+#include "TLine.h"
 
 #include "OnlineMonitoringBase.cxx"
 #include "ChannelMap.hxx"
@@ -21,6 +22,7 @@ public:
 
   void MakeEventDisplay(RCEFormatter const& rceformatter, ChannelMap const& channelMap, int event);
   void SaveEventDisplay();
+  int GetCollectionChannel(int offlineCollectionChannel, int apa, int drift);
 
 private:
 
