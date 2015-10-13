@@ -12,7 +12,8 @@ void OnlineMonitoring::EventDisplay::MakeEventDisplay(RCEFormatter const& rcefor
 
   /// Makes crude online event display and saves it as an image to be displayed on the web
 
-  TH2D* EVD = new TH2D("EVD","",112,0,112,35000,-30000,5000);
+  //TH2D* EVD = new TH2D("EVD","",336,0,336,35000,-30000,5000);
+  TH2D* EVD = new TH2D("EVD","",336,0,336,3500,-3000,500);
 
   const std::vector<std::vector<int> > ADCs = rceformatter.ADCVector();
 
@@ -24,17 +25,22 @@ void OnlineMonitoring::EventDisplay::MakeEventDisplay(RCEFormatter const& rcefor
     for (unsigned int tick = 0; tick < ADCs.at(channel).size(); ++tick) {
       int ADC = ADCs.at(channel).at(tick);
       if (drift == 0) EVD->Fill(collectionChannel,tick,ADC);
-      if (drift == 1) EVD->Fill(collectionChannel,-tick,ADC);
+      if (drift == 1) EVD->Fill(collectionChannel,(int)-tick,ADC);
     }
   }
 
   // Save the event display and make it look pretty
+  // Double_t Red[2] = { 1.00, 0.00 };
+  // Double_t Green[2] = { 1.00, 0.00 };
+  // Double_t Blue[2] = { 1.00, 0.00 };
+  // Double_t Length[2] = { 0.00, 1.00 };
+  // TColor::CreateGradientColorTable(2, Length, Red, Green, Blue, 1000);
   TCanvas* evdCanvas = new TCanvas();
-  EVD->Draw();
+  EVD->Draw("colz");
   TLine line;
   line.SetLineStyle(2);
   line.SetLineWidth(4);
-  line.DrawLine(0,0,112,0);
+  line.DrawLine(0,0,336,0);
   evdCanvas->SaveAs(EVDSavePath+TString("evd.png"));//+ImageType);
 
   // Add event file
@@ -79,8 +85,6 @@ int OnlineMonitoring::EventDisplay::GetCollectionChannel(int offlineCollectionCh
     break;
 
   }
-
-  std::cout << "APA " << apa << ", drift " << drift << " and offline channel " << offlineCollectionChannel << " gives global collection channel " << collectionChannel << std::endl;
 
   return collectionChannel;
 

@@ -12,6 +12,7 @@
 #include "TH2D.h"
 #include "TCanvas.h"
 #include "TLine.h"
+#include "TColor.h"
 
 #include "OnlineMonitoringBase.cxx"
 #include "ChannelMap.hxx"
