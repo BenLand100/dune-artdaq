@@ -47,7 +47,7 @@
 ####################################################################
 
    penn_data_buffer : {
-      daq_host            : "lbnedaq5"
+      daq_host            : "192.168.1.1"
       daq_port            : 8992
       daq_rollover        : 80           # Number of packets before the slice
                                          #  is considered ready. Probably not needed.
@@ -145,7 +145,7 @@
     external_triggers : {
       mask          : 0x1F      # Mask the external triggers (receiving). 
                                 # There are 4 independent + 8 ored (total of 5 bits) 
-      echo_triggers : true      # Should a trigger be sent back to the other systems?
+      echo_triggers : false     # Should a trigger be sent back to the other systems?
     }   
   
     calibrations : {

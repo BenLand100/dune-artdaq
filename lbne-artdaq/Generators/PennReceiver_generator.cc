@@ -152,8 +152,8 @@ lbne::PennReceiver::PennReceiver(fhicl::ParameterSet const & ps)
   // First grab the global parameters
   penn_muon_num_triggers_ = ps.get<uint32_t>("muon_triggers.num_triggers",4);
   //  penn_trig_out_pulse_width_ = ps.get<uint8_t>("muon_triggers.trig_out_width",2);
-  penn_trig_in_window_ = ps.get<uint8_t>("muon_triggers.trig_window",3);
-  penn_trig_lockdown_window_ = ps.get<uint8_t>("muon_triggers.trig_lockdown",3);
+  penn_trig_in_window_ = ps.get<uint32_t>("muon_triggers.trig_window",3);
+  penn_trig_lockdown_window_ = ps.get<uint32_t>("muon_triggers.trig_lockdown",3);
 
   // And now grab the individual trigger mask configuration
   for (uint32_t i = 0; i < penn_muon_num_triggers_; ++i) {
@@ -256,7 +256,7 @@ void lbne::PennReceiver::start(void)
 	data_receiver_->start();
 
 	// Send start command to PENN
-	penn_client_->send_command("SoftReset");
+	//penn_client_->send_command("SoftReset");
 	penn_client_->send_command("StartRun");
 
 }
@@ -529,26 +529,26 @@ void lbne::PennReceiver::generate_config_frag(std::ostringstream& config_frag) {
   // -- Channel masks section. Controls the reader itself
   config_frag << "<ChannelMask>"
 	      << "<BSU>0x" << std::hex << static_cast<uint64_t>(penn_channel_mask_bsu_) << std::dec << "</BSU>"
-	      << "<TSU>0x" << std::hex << static_cast<int>(penn_channel_mask_tsu_) << std::dec << "</TSU>"
+	      << "<TSU>0x" << std::hex << static_cast<uint64_t>(penn_channel_mask_tsu_) << std::dec << "</TSU>"
       << "</ChannelMask>";
 
   // -- Muon trigger section
 
 
   config_frag << "<MuonTriggers num_triggers=\"" << penn_muon_num_triggers_ << "\">"
-	      << "<TriggerWindow>0x" << std::hex << static_cast<int>(penn_trig_in_window_)  << std::dec << "</TriggerWindow>"
-	      << "<LockdownWindow>0x" << std::hex << static_cast<int>(penn_trig_lockdown_window_)  << std::dec << "</LockdownWindow>";
+	      << "<TriggerWindow>0x" << std::hex << penn_trig_in_window_  << std::dec << "</TriggerWindow>"
+	      << "<LockdownWindow>0x" << std::hex << penn_trig_lockdown_window_  << std::dec << "</LockdownWindow>";
   for (size_t i = 0; i < penn_muon_num_triggers_; ++i) {
     // I would rather put masks as hex strings to be easier to understand
     config_frag << "<TriggerMask id=\"" << muon_triggers_.at(i).id << "\" mask=\"" << muon_triggers_.at(i).id_mask <<  "\">"
 		<< "<ExtLogic>0x" << std::hex << static_cast<int>(muon_triggers_.at(i).logic) << std::dec << "</ExtLogic>"
-		<< "<Prescale>" << static_cast<int>(muon_triggers_.at(i).prescale) << "</Prescale>"
+		<< "<Prescale>0x" << std::hex << static_cast<uint32_t>(muon_triggers_.at(i).prescale) << std::dec << "</Prescale>"
 		<< "<group1><Logic>0x" << std::hex << static_cast<int>(muon_triggers_.at(i).g1_logic) << std::dec << "</Logic>"
-		<< "<BSU>0x" << std::hex << static_cast<int>(muon_triggers_.at(i).g1_mask_bsu) << std::dec << "</BSU>"
-		<< "<TSU>0x" << std::hex << static_cast<int>(muon_triggers_.at(i).g1_mask_tsu) << std::dec << "</TSU></group1>"
+		<< "<BSU>0x" << std::hex << static_cast<uint64_t>(muon_triggers_.at(i).g1_mask_bsu) << std::dec << "</BSU>"
+		<< "<TSU>0x" << std::hex << static_cast<uint64_t>(muon_triggers_.at(i).g1_mask_tsu) << std::dec << "</TSU></group1>"
 		<< "<group2><Logic>0x" << std::hex << static_cast<int>(muon_triggers_.at(i).g2_logic) << std::dec << "</Logic>"
-		<< "<BSU>0x" << std::hex << static_cast<int>(muon_triggers_.at(i).g2_mask_bsu) << std::dec << "</BSU>"
-		<< "<TSU>0x" << std::hex << static_cast<int>(muon_triggers_.at(i).g2_mask_tsu) << std::dec << "</TSU></group2>"
+		<< "<BSU>0x" << std::hex << static_cast<uint64_t>(muon_triggers_.at(i).g2_mask_bsu) << std::dec << "</BSU>"
+		<< "<TSU>0x" << std::hex << static_cast<uint64_t>(muon_triggers_.at(i).g2_mask_tsu) << std::dec << "</TSU></group2>"
         << "</TriggerMask>";
   }
   config_frag << "</MuonTriggers>";
@@ -557,7 +557,7 @@ void lbne::PennReceiver::generate_config_frag(std::ostringstream& config_frag) {
   
   std::string status_bool = (penn_ext_triggers_echo_)?"true":"false";
   config_frag << "<ExtTriggers>"
-	      << "<Mask>" << penn_ext_triggers_mask_ << "</Mask>"
+	      << "<Mask>0x" << std::hex << static_cast<uint32_t>(penn_ext_triggers_mask_) << std::dec << "</Mask>"
 	      << "<EchoTriggers>" <<  status_bool << "</EchoTriggers>"
 	      << "</ExtTriggers>";
   
@@ -568,7 +568,7 @@ void lbne::PennReceiver::generate_config_frag(std::ostringstream& config_frag) {
     config_frag << "<CalibrationMask id=\"" << calib_channels_.at(i).id << "\""
 		<< " mask=\"" << calib_channels_.at(i).id_mask << "\">"
 		<< "<enabled>" << status_bool << "</enabled>"
-		<< "<period>" << calib_channels_.at(i).period << "</period>"
+		<< "<period>0x" << std::hex << calib_channels_.at(i).period << std::dec << "</period>"
 		<< "</CalibrationMask>";
   } 
   config_frag << "</Calibrations>";

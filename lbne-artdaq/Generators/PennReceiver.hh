@@ -118,7 +118,6 @@ typedef struct CalibChannelConfig {
     // These are triggers that are received on the trigger-in channels
     uint8_t     penn_ext_triggers_mask_;
     bool        penn_ext_triggers_echo_;
-    uint8_t     penn_ext_triggers_echo_width_;
 
     /// Calibrations
     uint16_t    penn_calib_period_;
