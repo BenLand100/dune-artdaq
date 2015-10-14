@@ -1,6 +1,6 @@
 #include "DeviceInterface.h"
 #include "anlExceptions.h"
-#include "Log.h"
+#include "lbne-artdaq/DAQLogger/DAQLogger.hh"
 #include "RegMap.h"
 #include <time.h>
 #include <utility>
@@ -20,13 +20,13 @@ void SSPDAQ::DeviceInterface::OpenSlowControl(){
 
   SSPDAQ::Device* device=0;
 
-  SSPDAQ::Log::Info()<<"Opening "<<((fCommType==SSPDAQ::kUSB)?"USB":((fCommType==SSPDAQ::kEthernet)?"Ethernet":"Emulated"))
+  lbne::DAQLogger::LogInfo("SSP_DeviceInterface")<<"Opening "<<((fCommType==SSPDAQ::kUSB)?"USB":((fCommType==SSPDAQ::kEthernet)?"Ethernet":"Emulated"))
 		     <<" device #"<<fDeviceId<<" for slow control only..."<<std::endl;
   
   device=devman.OpenDevice(fCommType,fDeviceId,true);
   
   if(!device){
-    SSPDAQ::Log::Error()<<"Unable to get handle to device; giving up!"<<std::endl;
+    lbne::DAQLogger::LogError("SSP_DeviceInterface")<<"Unable to get handle to device; giving up!"<<std::endl;
     throw(ENoSuchDevice());
   }
 
@@ -41,13 +41,13 @@ void SSPDAQ::DeviceInterface::Initialize(){
 
   SSPDAQ::Device* device=0;
 
-  SSPDAQ::Log::Info()<<"Initializing "<<((fCommType==SSPDAQ::kUSB)?"USB":((fCommType==SSPDAQ::kEthernet)?"Ethernet":"Emulated"))
+  lbne::DAQLogger::LogInfo("SSP_DeviceInterface")<<"Initializing "<<((fCommType==SSPDAQ::kUSB)?"USB":((fCommType==SSPDAQ::kEthernet)?"Ethernet":"Emulated"))
 		     <<" device #"<<fDeviceId<<"..."<<std::endl;
   
   device=devman.OpenDevice(fCommType,fDeviceId);
   
   if(!device){
-    SSPDAQ::Log::Error()<<"Unable to get handle to device; giving up!"<<std::endl;
+    lbne::DAQLogger::LogError("SSP_DeviceInterface")<<"Unable to get handle to device; giving up!"<<std::endl;
     throw(ENoSuchDevice());
   }
 
@@ -60,11 +60,11 @@ void SSPDAQ::DeviceInterface::Initialize(){
 void SSPDAQ::DeviceInterface::Stop(){
   if(fState!=SSPDAQ::DeviceInterface::kRunning&&
      fState!=SSPDAQ::DeviceInterface::kUninitialized){
-    SSPDAQ::Log::Warning()<<"Running stop command for non-running device!"<<std::endl;
+    lbne::DAQLogger::LogWarning("SSP_DeviceInterface")<<"Running stop command for non-running device!"<<std::endl;
   }
 
   if(fState==SSPDAQ::DeviceInterface::kRunning){
-    SSPDAQ::Log::Info()<<"Device interface stopping run"<<std::endl;
+    lbne::DAQLogger::LogInfo("SSP_DeviceInterface")<<"Device interface stopping run"<<std::endl;
   }
 
   SSPDAQ::RegMap& lbneReg=SSPDAQ::RegMap::Get();
@@ -74,7 +74,7 @@ void SSPDAQ::DeviceInterface::Stop(){
   if(fReadThread){
     fReadThread->join();
     fReadThread.reset();
-    SSPDAQ::Log::Info()<<"Read thread terminated"<<std::endl;
+    lbne::DAQLogger::LogInfo("SSP_DeviceInterface")<<"Read thread terminated"<<std::endl;
   }  
 
   fDevice->DeviceWrite(lbneReg.eventDataControl, 0x0013001F);
@@ -86,11 +86,11 @@ void SSPDAQ::DeviceInterface::Stop(){
   fDevice->DeviceWrite(lbneReg.event_data_control, 0x00020001);
   // Flush RX buffer
   fDevice->DevicePurgeData();
-  SSPDAQ::Log::Info()<<"Hardware set to stopped state"<<std::endl;
+  lbne::DAQLogger::LogInfo("SSP_DeviceInterface")<<"Hardware set to stopped state"<<std::endl;
   fState=SSPDAQ::DeviceInterface::kStopped;
 
   if(fState==SSPDAQ::DeviceInterface::kRunning){
-    SSPDAQ::Log::Info()<<"DeviceInterface stop transition complete!"<<std::endl;
+    lbne::DAQLogger::LogInfo("SSP_DeviceInterface")<<"DeviceInterface stop transition complete!"<<std::endl;
   }
 }
 
@@ -98,16 +98,16 @@ void SSPDAQ::DeviceInterface::Stop(){
 void SSPDAQ::DeviceInterface::Start(bool startReadThread){
 
   if(fState!=kStopped){
-    SSPDAQ::Log::Warning()<<"Attempt to start acquisition on non-stopped device refused!"<<std::endl;
+    lbne::DAQLogger::LogWarning("SSP_DeviceInterface")<<"Attempt to start acquisition on non-stopped device refused!"<<std::endl;
     return;
   }
  
   if(fSlowControlOnly){
-    SSPDAQ::Log::Error()<<"Naughty Zoot! Attempt to start run on slow control interface refused!"<<std::endl;
+    lbne::DAQLogger::LogError("SSP_DeviceInterface")<<"Naughty Zoot! Attempt to start run on slow control interface refused!"<<std::endl;
     return;
   }
 
-  SSPDAQ::Log::Info()<<"Device interface starting run"<<std::endl;
+  lbne::DAQLogger::LogInfo("SSP_DeviceInterface")<<"Device interface starting run"<<std::endl;
   SSPDAQ::RegMap& lbneReg=SSPDAQ::RegMap::Get();
   // This script enables all logic and FIFOs and starts data acquisition in the device
   // Operations MUST be performed in this order
@@ -129,17 +129,17 @@ void SSPDAQ::DeviceInterface::Start(bool startReadThread){
   unsigned long runStartTime=0;
   if(fStartOnNOvASync){
     fDevice->DeviceWrite(lbneReg.master_logic_control, 0x00000100);
-    SSPDAQ::Log::Info()<<GetIdentifier()<<"Hardware waiting for NOvA sync to start run"<<std::endl;
+    lbne::DAQLogger::LogInfo("SSP_DeviceInterface")<<GetIdentifier()<<"Hardware waiting for NOvA sync to start run"<<std::endl;
   }
   else{
-    SSPDAQ::Log::Info()<<GetIdentifier()<<"Starting run without NOvA sync!"<<std::endl;
+    lbne::DAQLogger::LogInfo("SSP_DeviceInterface")<<GetIdentifier()<<"Starting run without NOvA sync!"<<std::endl;
     fDevice->DeviceWrite(lbneReg.master_logic_control, 0x00000001);
   }
 
 
   fShouldStop=false;
   fState=SSPDAQ::DeviceInterface::kRunning;
-  SSPDAQ::Log::Debug()<<"Device interface starting read thread...";
+  lbne::DAQLogger::LogDebug("SSP_DeviceInterface")<<"Device interface starting read thread...";
 
   //In normal operation DeviceInterface will start read thread and form millislices.
   //If user will manually call ReadEventFromDevice to get events, this can be disabled.
@@ -147,13 +147,13 @@ void SSPDAQ::DeviceInterface::Start(bool startReadThread){
     fReadThread=std::unique_ptr<std::thread>(new std::thread(&SSPDAQ::DeviceInterface::ReadEvents,this,runStartTime));
   }
 
-  SSPDAQ::Log::Info()<<"DAQ run started!"<<std::endl;
+  lbne::DAQLogger::LogInfo("SSP_DeviceInterface")<<"DAQ run started!"<<std::endl;
 }
 
 void SSPDAQ::DeviceInterface::ReadEvents(unsigned long runStartTime){
 
   if(fState!=kRunning){
-    SSPDAQ::Log::Warning()<<"Attempt to get data from non-running device refused!"<<std::endl;
+    lbne::DAQLogger::LogWarning("SSP_DeviceInterface")<<"Attempt to get data from non-running device refused!"<<std::endl;
     return;
   }
 
@@ -170,7 +170,7 @@ void SSPDAQ::DeviceInterface::ReadEvents(unsigned long runStartTime){
     runStartTime=timestampBuf;
     fDevice->DeviceRead(lbneReg.sync_stamp_high,&timestampBuf);
     runStartTime+=(static_cast<unsigned long>(timestampBuf))<<32;
-    SSPDAQ::Log::Info()<<GetIdentifier()<<"Hardware synced at "<<runStartTime<<", starting run"<<std::endl;
+    lbne::DAQLogger::LogInfo("SSP_DeviceInterface")<<GetIdentifier()<<"Hardware synced at "<<runStartTime<<", starting run"<<std::endl;
   }
 
   bool useExternalTimestamp=fUseExternalTimestamp;
@@ -214,7 +214,7 @@ void SSPDAQ::DeviceInterface::ReadEvents(unsigned long runStartTime){
       //This stops the aggregator waiting indefinitely for a fragment.
       if(sleepTime>fEmptyWriteDelayInus&&(hasSeenEvent||runStartTime!=0)){	
 	if(!haveWarnedNoEvents){
-	  SSPDAQ::Log::Warning()<<this->GetIdentifier()<<"Warning: DeviceInterface is seeing no events, starting to write empty slices"<<std::endl;
+	  lbne::DAQLogger::LogWarning("SSP_DeviceInterface")<<this->GetIdentifier()<<"Warning: DeviceInterface is seeing no events, starting to write empty slices"<<std::endl;
 	  haveWarnedNoEvents=true;
 	}
 
@@ -272,7 +272,7 @@ void SSPDAQ::DeviceInterface::ReadEvents(unsigned long runStartTime){
       }
     }
 
-    SSPDAQ::Log::Debug()<<this->GetIdentifier()<<"Interface got event with timestamp "<<eventTime<<"("<<(eventTime-runStartTime)/150E6<<"s from run start)"<<std::endl;
+    lbne::DAQLogger::LogDebug("SSP_DeviceInterface")<<this->GetIdentifier()<<"Interface got event with timestamp "<<eventTime<<"("<<(eventTime-runStartTime)/150E6<<"s from run start)"<<std::endl;
 
     bool haveWrittenEvent=false;
 
@@ -287,7 +287,7 @@ void SSPDAQ::DeviceInterface::ReadEvents(unsigned long runStartTime){
 	else if(events_prevSlice.size()){
 	  events_prevSlice.back().DumpEvent();
 	}
-	SSPDAQ::Log::Error()<<this->GetIdentifier()<<"Error: Event seen with timestamp less than start of first available slice ("
+	lbne::DAQLogger::LogError("SSP_DeviceInterface")<<this->GetIdentifier()<<"Error: Event seen with timestamp less than start of first available slice ("
 			    <<eventTime<<" vs "<<millisliceStartTime-millisliceLengthInTicks<<")!"<<std::endl;
 	event.DumpEvent();
 	throw(EEventReadError("Bad timestamp"));
@@ -319,7 +319,7 @@ void SSPDAQ::DeviceInterface::ReadEvents(unsigned long runStartTime){
       //The while loop will keep getting to this condition
       //until the slice containing the event is found.
       else{
-	SSPDAQ::Log::Debug()<<this->GetIdentifier()<<"Device interface building millislice with "<<events_prevSlice.size()<<" events"<<std::endl;
+	lbne::DAQLogger::LogDebug("SSP_DeviceInterface")<<this->GetIdentifier()<<"Device interface building millislice with "<<events_prevSlice.size()<<" events"<<std::endl;
 	//Write prevSlice and swap slices back through containers
 	if(hasFinishedFirstSlice){
 	  this->BuildMillislice(events_prevSlice,millisliceStartTime-millisliceLengthInTicks,millisliceStartTime+millisliceOverlapInTicks);
@@ -393,7 +393,7 @@ void SSPDAQ::DeviceInterface::BuildMillislice(const std::vector<EventPacket>& ev
   //Add millislice to queue//
   //=======================//
 
-  SSPDAQ::Log::Debug()<<this->GetIdentifier()<<"Pushing slice with "<<events.size()<<" triggers, starting at "<<startTime<<" onto queue!"<<std::endl;
+  lbne::DAQLogger::LogDebug("SSP_DeviceInterface")<<this->GetIdentifier()<<"Pushing slice with "<<events.size()<<" triggers, starting at "<<startTime<<" onto queue!"<<std::endl;
   fQueue.push(std::move(sliceData));
 
   ++fMillislicesBuilt;
@@ -409,7 +409,7 @@ void SSPDAQ::DeviceInterface::GetMillislice(std::vector<unsigned int>& sliceData
   if(fQueue.try_pop(sliceData,std::chrono::microseconds(100000))){
     ++fMillislicesSent;//Try to pop from queue for 100ms
     if(!(fMillislicesSent%1000)){
-    SSPDAQ::Log::Info()<<this->GetIdentifier()
+    lbne::DAQLogger::LogInfo("SSP_DeviceInterface")<<this->GetIdentifier()
 		       <<"Interface sending slice "<<fMillislicesSent
 		       <<", total built slices "<<fMillislicesBuilt
 		       <<", current queue length "<<fQueue.size()<<std::endl;
@@ -420,7 +420,7 @@ void SSPDAQ::DeviceInterface::GetMillislice(std::vector<unsigned int>& sliceData
 void SSPDAQ::DeviceInterface::ReadEventFromDevice(EventPacket& event){
   
   if(fState!=kRunning){
-    SSPDAQ::Log::Warning()<<"Attempt to get data from non-running device refused!"<<std::endl;
+    lbne::DAQLogger::LogWarning("SSP_DeviceInterface")<<"Attempt to get data from non-running device refused!"<<std::endl;
     event.SetEmpty();
     return;
   }
@@ -445,7 +445,7 @@ void SSPDAQ::DeviceInterface::ReadEventFromDevice(EventPacket& event){
     //without filling packet
     if(data.size()==0){
       if(skippedWords){
-	SSPDAQ::Log::Warning()<<this->GetIdentifier()<<"Warning: GetEvent skipped "<<skippedWords<<"words and has not seen header for next event!"<<std::endl;
+	lbne::DAQLogger::LogWarning("SSP_DeviceInterface")<<this->GetIdentifier()<<"Warning: GetEvent skipped "<<skippedWords<<"words and has not seen header for next event!"<<std::endl;
       }
       event.SetEmpty();
       return;
@@ -460,12 +460,12 @@ void SSPDAQ::DeviceInterface::ReadEventFromDevice(EventPacket& event){
     if(data.size()>0){
       if(!skippedWords)firstSkippedWord=data[0];
       ++skippedWords;
-      SSPDAQ::Log::Warning()<<this->GetIdentifier()<<"Warning: GetEvent skipping over word "<<data[0]<<" ("<<std::hex<<data[0]<<std::dec<<")"<<std::endl;
+      lbne::DAQLogger::LogWarning("SSP_DeviceInterface")<<this->GetIdentifier()<<"Warning: GetEvent skipping over word "<<data[0]<<" ("<<std::hex<<data[0]<<std::dec<<")"<<std::endl;
     }
   }
 
   if(skippedWords){
-    SSPDAQ::Log::Warning()<<this->GetIdentifier()<<"Warning: GetEvent skipped "<<skippedWords<<"words before finding next event header!"<<std::endl
+    lbne::DAQLogger::LogWarning("SSP_DeviceInterface")<<this->GetIdentifier()<<"Warning: GetEvent skipped "<<skippedWords<<"words before finding next event header!"<<std::endl
 			  <<"First skipped word was "<<std::hex<<firstSkippedWord<<std::dec<<std::endl;
   }
     
@@ -483,7 +483,7 @@ void SSPDAQ::DeviceInterface::ReadEventFromDevice(EventPacket& event){
       usleep(1000); //1ms
       timeWaited+=1000;
       if(timeWaited>10000000){ //10s
-	SSPDAQ::Log::Error()<<this->GetIdentifier()<<"SSP delayed 10s between issuing header word and full header; giving up"
+	lbne::DAQLogger::LogError("SSP_DeviceInterface")<<this->GetIdentifier()<<"SSP delayed 10s between issuing header word and full header; giving up"
 			    <<std::endl;
 	event.SetEmpty();
 	throw(EEventReadError());
@@ -494,7 +494,7 @@ void SSPDAQ::DeviceInterface::ReadEventFromDevice(EventPacket& event){
   //Get header from device and check it is the right length
   fDevice->DeviceReceive(data,headerReadSize);
   if(data.size()!=headerReadSize){
-    SSPDAQ::Log::Error()<<this->GetIdentifier()<<"SSP returned truncated header even though FIFO queue is of sufficient length!"
+    lbne::DAQLogger::LogError("SSP_DeviceInterface")<<this->GetIdentifier()<<"SSP returned truncated header even though FIFO queue is of sufficient length!"
 			<<std::endl;
     event.SetEmpty();
     throw(EEventReadError());
@@ -514,7 +514,7 @@ void SSPDAQ::DeviceInterface::ReadEventFromDevice(EventPacket& event){
       usleep(1000); //1ms
       timeWaited+=1000;
       if(timeWaited>10000000){ //10s
-	SSPDAQ::Log::Error()<<this->GetIdentifier()<<"SSP delayed 10s between issuing header and full event; giving up"
+	lbne::DAQLogger::LogError("SSP_DeviceInterface")<<this->GetIdentifier()<<"SSP delayed 10s between issuing header and full event; giving up"
 			    <<std::endl;
 	event.DumpHeader();
 	event.SetEmpty();
@@ -527,7 +527,7 @@ void SSPDAQ::DeviceInterface::ReadEventFromDevice(EventPacket& event){
   fDevice->DeviceReceive(data,bodyReadSize);
 
   if(data.size()!=bodyReadSize){
-    SSPDAQ::Log::Error()<<this->GetIdentifier()<<"SSP returned truncated event even though FIFO queue is of sufficient length!"
+    lbne::DAQLogger::LogError("SSP_DeviceInterface")<<this->GetIdentifier()<<"SSP returned truncated event even though FIFO queue is of sufficient length!"
 			<<std::endl;
     event.SetEmpty();
     throw(EEventReadError());
@@ -608,7 +608,7 @@ void SSPDAQ::DeviceInterface::SetRegisterArrayByName(std::string name, unsigned 
 void SSPDAQ::DeviceInterface::SetRegisterArrayByName(std::string name, std::vector<unsigned int> values){
   SSPDAQ::RegMap::Register reg=(SSPDAQ::RegMap::Get())[name];
   if(reg.Size()!=values.size()){
-    SSPDAQ::Log::Error()<<"Request to set named register array "<<name<<", length "<<reg.Size()
+    lbne::DAQLogger::LogError("SSP_DeviceInterface")<<"Request to set named register array "<<name<<", length "<<reg.Size()
   			<<"with vector of "<<values.size()<<" values!"<<std::endl;
     throw(std::invalid_argument(""));
   }
@@ -637,7 +637,7 @@ void SSPDAQ::DeviceInterface::ReadRegisterArrayByName(std::string name, std::vec
 void SSPDAQ::DeviceInterface::Configure(){
 
   if(fState!=kStopped){
-    SSPDAQ::Log::Warning()<<"Attempt to reconfigure non-stopped device refused!"<<std::endl;
+    lbne::DAQLogger::LogWarning("SSP_DeviceInterface")<<"Attempt to reconfigure non-stopped device refused!"<<std::endl;
     return;
   }
 

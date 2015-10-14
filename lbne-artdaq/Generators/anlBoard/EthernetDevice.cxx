@@ -1,7 +1,7 @@
 #include "EthernetDevice.h"
 #include <cstdlib>
 #include <algorithm>
-#include "Log.h"
+#include "lbne-artdaq/DAQLogger/DAQLogger.hh"
 #include "anlExceptions.h"
 
 boost::asio::io_service SSPDAQ::EthernetDevice::fIo_service;
@@ -16,14 +16,14 @@ void SSPDAQ::EthernetDevice::Open(bool slowControlOnly){
 
   fSlowControlOnly=slowControlOnly;
 
-  SSPDAQ::Log::Info()<<"Looking for SSP Ethernet device at "<<fIP.to_string()<<std::endl;
+  lbne::DAQLogger::LogInfo("SSP_EthernetDevice")<<"Looking for SSP Ethernet device at "<<fIP.to_string()<<std::endl;
   boost::asio::ip::tcp::resolver resolver(fIo_service);
   boost::asio::ip::tcp::resolver::query commQuery(fIP.to_string(), slowControlOnly?"55002":"55001");
   boost::asio::ip::tcp::resolver::iterator commEndpointIterator = resolver.resolve(commQuery);
   boost::asio::connect(fCommSocket, commEndpointIterator);
   
   if(slowControlOnly){
-    SSPDAQ::Log::Info()<<"Connected to SSP Ethernet device at "<<fIP.to_string()<<std::endl;
+    lbne::DAQLogger::LogInfo("SSP_EthernetDevice")<<"Connected to SSP Ethernet device at "<<fIP.to_string()<<std::endl;
     return;
   }
 
@@ -31,12 +31,12 @@ void SSPDAQ::EthernetDevice::Open(bool slowControlOnly){
   boost::asio::ip::tcp::resolver::iterator dataEndpointIterator = resolver.resolve(dataQuery);
   
   boost::asio::connect(fDataSocket, dataEndpointIterator);
-  SSPDAQ::Log::Info()<<"Connected to SSP Ethernet device at "<<fIP.to_string()<<std::endl;
+  lbne::DAQLogger::LogInfo("SSP_EthernetDevice")<<"Connected to SSP Ethernet device at "<<fIP.to_string()<<std::endl;
 }
 
 void SSPDAQ::EthernetDevice::Close(){
   isOpen=false;
-  SSPDAQ::Log::Info()<<"Device closed"<<std::endl;
+  lbne::DAQLogger::LogInfo("SSP_EthernetDevice")<<"Device closed"<<std::endl;
 } 
 
 void SSPDAQ::EthernetDevice::DevicePurgeComm (void){
@@ -219,10 +219,10 @@ void SSPDAQ::EthernetDevice::SendReceive(SSPDAQ::CtrlPacket& tx, SSPDAQ::CtrlPac
       if(timesTried<retryCount){
 	DevicePurgeComm();
 	++timesTried;
-	SSPDAQ::Log::Warning()<<"Send/receive failed "<<timesTried<<" times on Ethernet link, retrying..."<<std::endl;
+	lbne::DAQLogger::LogWarning("SSP_EthernetDevice")<<"Send/receive failed "<<timesTried<<" times on Ethernet link, retrying..."<<std::endl;
       }
       else{
-	SSPDAQ::Log::Error()<<"Send/receive failed on Ethernet link, giving up."<<std::endl;
+	lbne::DAQLogger::LogError("SSP_EthernetDevice")<<"Send/receive failed on Ethernet link, giving up."<<std::endl;
 	throw;
       }
     }

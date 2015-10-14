@@ -1,6 +1,6 @@
 #include "EmulatedDevice.h"
 #include <cstdlib>
-#include "Log.h"
+#include "lbne-artdaq/DAQLogger/DAQLogger.hh"
 #include "anlExceptions.h"
 #include <random>
 #include "RegMap.h"
@@ -16,14 +16,14 @@ SSPDAQ::EmulatedDevice::EmulatedDevice(unsigned int deviceNumber){
 void SSPDAQ::EmulatedDevice::Open(bool slowControlOnly){
 
   fSlowControlOnly=slowControlOnly;
-  SSPDAQ::Log::Info()<<"Emulated device open"<<std::endl;
+  lbne::DAQLogger::LogInfo("SSP_EmulatedDevice")<<"Emulated device open"<<std::endl;
   isOpen=true;
 }
 
 void SSPDAQ::EmulatedDevice::Close(){
   this->DevicePurgeData();
   isOpen=false;
-  SSPDAQ::Log::Info()<<"Emulated Device closed"<<std::endl;
+  lbne::DAQLogger::LogInfo("SSP_EmulatedDevice")<<"Emulated Device closed"<<std::endl;
 }
 
 void SSPDAQ::EmulatedDevice::DevicePurgeComm()
@@ -122,7 +122,7 @@ void SSPDAQ::EmulatedDevice::DeviceArrayWrite (unsigned int address, unsigned in
 //==============================================================
 
 void SSPDAQ::EmulatedDevice::Start(){
-  SSPDAQ::Log::Debug()<<"Creating emulator thread..."<<std::endl;
+  lbne::DAQLogger::LogDebug("SSP_EmulatedDevice")<<"Creating emulator thread..."<<std::endl;
   fEmulatorShouldStop=false;
   fEmulatorThread=std::unique_ptr<std::thread>(new std::thread(&SSPDAQ::EmulatedDevice::EmulatorLoop,this));
 }
@@ -137,7 +137,7 @@ void SSPDAQ::EmulatedDevice::Stop(){
 
 void SSPDAQ::EmulatedDevice::EmulatorLoop(){
 
-  SSPDAQ::Log::Debug()<<"Starting emulator loop..."<<std::endl;
+  lbne::DAQLogger::LogDebug("SSP_EmulatedDevice")<<"Starting emulator loop..."<<std::endl;
   static unsigned int headerSizeInWords=sizeof(SSPDAQ::EventHeader)/sizeof(unsigned int);
 
   //We want to generate events on random channels at random times
