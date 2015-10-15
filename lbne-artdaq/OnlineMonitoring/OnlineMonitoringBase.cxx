@@ -22,6 +22,7 @@ namespace OnlineMonitoring {
   class EventDisplay;
   class ChannelMap;
   struct Channel;
+  struct Trigger;
 
   const unsigned int NRCEChannels    = 2048;
   const unsigned int NRCEMillislices = 16;
@@ -37,8 +38,6 @@ namespace OnlineMonitoring {
   const TString EVDSavePath   = "/data/lbnedaq/eventDisplay/";
   const TString ImageType     = ".png";
   const TString PathDelimiter = "_";
-
-  const bool _verbose = false;
 
   namespace TypeSizes {
     static int const CounterWordSize = 128;

@@ -96,9 +96,6 @@ void OnlineMonitoring::OnlinePedestal::analyze(art::Event const& evt) {
 
   fEventNumber = evt.event();
 
-  if (_verbose)
-    std::cout << "Event number " << fEventNumber << std::endl;
-
   // Look for RCE millislice fragments
   art::Handle<artdaq::Fragments> rawRCE;
   evt.getByLabel("daq","TPC",rawRCE);

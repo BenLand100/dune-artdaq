@@ -8,9 +8,6 @@
 
 #include "DataReformatter.hxx"
 
-int fRun = 0, fSubrun = 0, fEventNumber = 0;
-
-
 // RCE ----------------------------------------------------------------------------------------------------------------------------------------------------
 OnlineMonitoring::RCEFormatter::RCEFormatter(art::Handle<artdaq::Fragments> const& rawRCE) {
 
@@ -22,9 +19,6 @@ OnlineMonitoring::RCEFormatter::RCEFormatter(art::Handle<artdaq::Fragments> cons
 }
 
 void OnlineMonitoring::RCEFormatter::AnalyseADCs(art::Handle<artdaq::Fragments> const& rawRCE) {
-
-  if (_verbose)
-    std::cout << "%%DQM----- Run " << fRun << ", subrun " << fSubrun << ", event " << fEventNumber << " has " << rawRCE->size() << " fragment(s) of type RCE" << std::endl;
 
   fNRCEs = rawRCE->size();
 
@@ -49,9 +43,6 @@ void OnlineMonitoring::RCEFormatter::AnalyseADCs(art::Handle<artdaq::Fragments> 
     // Analyse this fragment if it exists
     if (tpcFragmentMap.find(fragmentID) != tpcFragmentMap.end() ) {
 
-      if (_verbose)
-      	std::cout << "%%DQM---------- Channel " << chanIt << ", fragment " << fragmentID << " and sample " << sample << std::endl;
-
       // Find the millislice fragment this channel lives in
       unsigned int fragIndex = tpcFragmentMap.at(fragmentID);
 
@@ -64,17 +55,11 @@ void OnlineMonitoring::RCEFormatter::AnalyseADCs(art::Handle<artdaq::Fragments> 
 
       // hNumMicroslicesInMillislice->SetBinContent(fragmentID,nMicroSlices);
 
-      if (_verbose)
-      	std::cout << "%%DQM--------------- TpcMilliSlice fragment " << fragmentID << " contains " << nMicroSlices << " microslices" << std::endl;
-
       for (unsigned int microIt = 0; microIt < nMicroSlices; ++microIt) {
 
 	// Get the microslice
 	std::unique_ptr <const lbne::TpcMicroSlice> microslice = millisliceFragment.microSlice(microIt);
 	auto nNanoSlices = microslice->nanoSliceCount();
-
-	if (_verbose)
-	  std::cout << "%%DQM-------------------- TpcMicroSlice " << microIt << " contains " << nNanoSlices << " nanoslices" << std::endl;
 
 	for (unsigned int nanoIt = 0; nanoIt < nNanoSlices; ++nanoIt) {
 
@@ -172,83 +157,70 @@ void OnlineMonitoring::RCEFormatter::Windowing() {
 // SSP ----------------------------------------------------------------------------------------------------------------------------------------------------
 OnlineMonitoring::SSPFormatter::SSPFormatter(art::Handle<artdaq::Fragments> const& rawSSP) {
 
-  if (!rawSSP.isValid()) return;
+  /// SSPFormatter will take raw SSP artdaq::Fragments and extracts the information, saving useful bits
 
-  if (_verbose)
-    std::cout << "%%DQM----- Run " << fRun << ", subrun " << fSubrun << ", event " << fEventNumber << " has " << rawSSP->size() << " fragment(s) of type PHOTON" << std::endl;
+  if (!rawSSP.isValid()) return;
 
   fNSSPs = rawSSP->size();
 
-  // Loop over fragments to make a map to save the order the frags are saved in
-  std::map<unsigned int, unsigned int> sspFragmentMap;
-  for (unsigned int fragIt = 0; fragIt < rawSSP->size(); ++fragIt) {
-    const artdaq::Fragment &fragment = ((*rawSSP)[fragIt]);
-    unsigned int fragmentID = fragment.fragmentID();
-    sspFragmentMap.insert(std::pair<unsigned int, unsigned int>(fragmentID,fragIt));
-  }
+  for (unsigned int fragmentNum = 0; fragmentNum < rawSSP->size(); ++fragmentNum) {
 
-  // Keep a note of the previous fragment
-  unsigned int prevFrag = 100;
+    // Get the raw fragment
+    const artdaq::Fragment fragment = rawSSP->at(fragmentNum);
+    lbne::SSPFragment sspfrag(fragment);
 
-  // Define a data pointer
-  const unsigned int *dataPointer = 0;
+    // Get the metadata
+    const SSPDAQ::MillisliceHeader* meta = 0;
+    if (fragment.hasMetadata())
+      meta = &(fragment.metadata<lbne::SSPFragment::Metadata>()->sliceHeader);
+    
+    const unsigned int* dataPointer = sspfrag.dataBegin();
 
-  // Loop over optical channels
-  for (unsigned int opChanIt = 0; opChanIt < NSSPChannels; ++opChanIt) {
+    // Loop over all the triggers in this millislice
+    for (unsigned int triggerNum = 0; (meta == 0 or triggerNum < meta->nTriggers) and dataPointer < sspfrag.dataEnd(); ++triggerNum) {
 
-    std::vector<int> adcVector;
+      const SSPDAQ::EventHeader* triggerHeader = reinterpret_cast<const SSPDAQ::EventHeader*>(dataPointer);
 
-    // Find the fragment ID and the sample for this channel
-    unsigned int fragmentID = (unsigned int)(opChanIt/12);
-    unsigned int sample = (unsigned int)(opChanIt%12);
+      // Find the (online) channel number
+      int SSPChannel = ((triggerHeader->group2 & 0x000F) >> 0);
+      int SSPNumber  = ((triggerHeader->group2 & 0x00F0) >> 4);
+      int channel = (12 * SSPNumber) + SSPChannel;
 
-    // Check this fragment exists
-    if (sspFragmentMap.find(fragmentID) != sspFragmentMap.end() ) {
+      // Find the information for this trigger
+      unsigned int peaksum = ((triggerHeader->group3 & 0x00FF) >> 16) + triggerHeader->peakSumLow;
+      if (peaksum & 0x00800000)
+        peaksum |= 0xFF000000;
+      unsigned int prerise = ((triggerHeader->group4 & 0x00FF) << 16) + triggerHeader->preriseLow;
+      unsigned int integral = ((unsigned int)(triggerHeader->intSumHigh) << 8) + (((unsigned int)(triggerHeader->group4) & 0xFF00) >> 8);
+      unsigned int pedestal = triggerHeader->baseline;
+      unsigned int nTicks = (triggerHeader->length - sizeof(SSPDAQ::EventHeader)/sizeof(unsigned int)) * 2;
 
-      if (_verbose)
-      	std::cout << "%%DQM---------- Optical Channel " << opChanIt << ", fragment " << fragmentID << " and sample " << sample << std::endl;
-
-      // Find the fragment this channel lives in
-      unsigned int fragIndex = sspFragmentMap[fragmentID];
-
-      // Get the millislice fragment
-      const artdaq::Fragment &frag = ((*rawSSP)[fragIndex]);
-      lbne::SSPFragment sspFragment(frag);
-
-      // Define at start of each fragment
-      if (fragmentID != prevFrag) dataPointer = sspFragment.dataBegin();
-      prevFrag = fragmentID;
-
-      // Check there is data in this fragment
-      if (dataPointer >= sspFragment.dataEnd())
-	continue;
-
-      // Get the event header
-      const SSPDAQ::EventHeader *daqHeader = reinterpret_cast<const SSPDAQ::EventHeader*> (dataPointer);
-
-      unsigned short OpChan = ((daqHeader->group2 & 0x000F) >> 0);
-      unsigned int nADC = (daqHeader->length-sizeof(SSPDAQ::EventHeader)/sizeof(unsigned int))*2;
-
-      if (_verbose)
-      	std::cout << "%%DQM--------------- OpChan " << OpChan << ", number of ADCs " << nADC << std::endl;
-
-      // Move data to end of trigger header (start of ADCs) and copy it
+      // Move data to look at ADCs
       dataPointer += sizeof(SSPDAQ::EventHeader)/sizeof(unsigned int);
-      const unsigned short *adcPointer = reinterpret_cast<const unsigned short*> (dataPointer);
+      const unsigned short* adcPointer = reinterpret_cast<const unsigned short*>(dataPointer);
 
-      for (unsigned int adcIt = 0; adcIt < nADC; ++adcIt) {
-	const unsigned short *adc = adcPointer + adcIt;
+      // Make ADC vector
+      std::vector<int> adcVector;
+      for (size_t adcIt = 0; adcIt < nTicks; ++adcIt) {
+	const unsigned short* adc = adcPointer + adcIt;
 	adcVector.push_back(*adc);
       }
 
-      // Move to end of trigger
-      dataPointer += nADC/2;
+      // Find the mean and RMS ADC for this trigger
+      double mean = TMath::Mean(adcVector.begin(),adcVector.end());
+      double rms  = TMath::RMS (adcVector.begin(),adcVector.end());
 
-    } // analyse fragment loop
+      // Move data pointer to end of the trigger ready for next one
+      dataPointer += nTicks / 2;
 
-    ADCs.push_back(adcVector);
+      // Save the information for this trigger in the reformatter object
+      Trigger trigger(channel, peaksum, prerise, integral, pedestal, nTicks, mean, rms, adcVector);
+      fTriggers.push_back(trigger);
+      fChannelTriggers[channel].push_back(trigger);
 
-  } // channel loop
+    } // triggers
+
+  } // millislices
 
 }
 

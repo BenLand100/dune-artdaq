@@ -54,12 +54,8 @@ void OnlineMonitoring::MonitoringData::EndMonitoring() {
   // Free up all used memory
   // for (unsigned int interestingchannel = 0; interestingchannel < DebugChannels.size(); ++interestingchannel)
   //   hDebugChannelHists.at(DebugChannels.at(interestingchannel))->Delete();
-  for (unsigned int millislice = 0; millislice < NRCEMillislices; ++millislice)
-    hAvADCMillislice.at(millislice)->Delete();
   for (unsigned int channel = 0; channel < NRCEChannels; ++channel)
     hADCChannel.at(channel)->Delete();
-  for (unsigned int channel = 0; channel < NSSPChannels; ++channel)
-    hWaveformChannel.at(channel)->Delete();
 
   fDataFile->Close();
   delete fDataTree;
@@ -70,7 +66,8 @@ void OnlineMonitoring::MonitoringData::EndMonitoring() {
 
 void OnlineMonitoring::MonitoringData::FillTree(RCEFormatter const& rceformatter, SSPFormatter const& sspformatter) {
   fRCEADC = rceformatter.ADCVector();
-  fSSPADC = sspformatter.ADCVector();
+  // fSSPADC = sspformatter.ADCVector();
+  std::cout << "Number of SSPs is " << sspformatter.NumSSPs() << std::endl;
   fDataTree->Fill();
 }
 
@@ -105,12 +102,9 @@ void OnlineMonitoring::MonitoringData::GeneralMonitoring() {
     	}
       }
     }
-    int i = 0;
-    for(std::multimap<Long_t,std::pair<std::vector<TString>,Long_t> >::iterator mapIt = fileMap.begin(); mapIt != fileMap.end(); ++mapIt) {
+    int i = 1;
+    for(std::multimap<Long_t,std::pair<std::vector<TString>,Long_t> >::iterator mapIt = fileMap.begin(); mapIt != fileMap.end(); ++mapIt, ++i) {
       TString name = mapIt->second.first.at(1)+mapIt->second.first.at(2);
-      if (_verbose)
-	std::cout << "File: modified... " << mapIt->first << ", run " << name << " and size: " << mapIt->second.second << std::endl;
-      ++i;
       std::stringstream cmd; cmd << "TFile::Open(\"" << mapIt->second.first.at(0) << "\"); Events->GetEntriesFast()";
       Int_t entries = gROOT->ProcessLine(cmd.str().c_str());
       hSizeOfFiles->GetXaxis()->SetBinLabel(i,name);
@@ -242,68 +236,36 @@ void OnlineMonitoring::MonitoringData::RCEMonitoring(RCEFormatter const& rceform
 
 void OnlineMonitoring::MonitoringData::SSPMonitoring(SSPFormatter const& sspformatter) {
 
-  /// Fills all histograms pertaining to SSP hardware monitoring
+  // /// Fills all histograms pertaining to SSP hardware monitoring
 
-  const std::vector<std::vector<int> > ADCs = sspformatter.ADCVector();
+  const std::map<int,std::vector<Trigger> > channelTriggers = sspformatter.ChannelTriggers();
 
-  for (unsigned int channel = 0; channel < ADCs.size(); channel++) {
+  // Loop over channels
+  for (std::map<int,std::vector<Trigger> >::const_iterator channelIt = channelTriggers.begin(); channelIt != channelTriggers.end(); ++channelIt) {
 
-    if (!ADCs.at(channel).size())
-      continue;
+    const int channel = channelIt->first;
+    const std::vector<Trigger> triggers = channelIt->second;
 
-    // Variables for channel
-    bool peak = false;
-    bool tBitCheckAnd = 0xFFFF, tBitCheckOr = 0;
-    int tTotalSSPHitsChannel = 0;
+    // Loop over triggers
+    for (std::vector<Trigger>::const_iterator triggerIt = triggers.begin(); triggerIt != triggers.end(); ++triggerIt) {
 
-    // Find the mean and RMS Waveform for this channel
-    double mean = TMath::Mean(ADCs.at(channel).begin(),ADCs.at(channel).end());
-    double rms  = TMath::RMS (ADCs.at(channel).begin(),ADCs.at(channel).end());
-
-    for (unsigned int tick = 0; tick < ADCs.at(channel).size(); tick++) {
-
-      int ADC = ADCs.at(channel).at(tick);
-
-      // Fill hists for tick
-      hWaveformChannel.at(channel)->Fill(tick,ADC);
-      if (channel and !ADCs.at(channel-1).empty()) hSSPDNoiseChannel->Fill(channel,ADC-ADCs.at(channel-1).at(tick));
-
-      // Increase variables
-      fTotalWaveform += ADC;
-      ++fTotalSSPHitsEvent;
-      ++tTotalSSPHitsChannel;
-
-      // Times over threshold
-      if ( (ADC > fThreshold) && !peak ) {
-	++fTimesWaveformGoesOverThreshold;
-	peak = true;
-      }
-      if ( tick && (ADC < ADCs.at(channel).at(tick-1)) && peak ) peak = false;
-
-      // Bit check
-      tBitCheckAnd &= ADC;
-      tBitCheckOr  |= ADC;
+      // Fill trigger level hists
+      hWaveformMean->Fill(channel,triggerIt->Mean);
+      hWaveformRMS->Fill(channel,triggerIt->RMS);
+      hWaveformPeakHeight->Fill(channel,triggerIt->PeakSum);
+      hWaveformIntegral->Fill(channel,triggerIt->Integral);
+      hWaveformIntegralNorm->Fill(channel,triggerIt->Integral/triggerIt->NTicks);
+      hWaveformPedestal->Fill(channel,triggerIt->Pedestal);
+      hWaveformNumTicks->Fill(channel,triggerIt->NTicks);
 
     }
 
-    // Fill hists for channel
-    hWaveformMeanChannel->Fill(channel,mean);
-    hWaveformRMSChannel->Fill(channel,rms);
-    hAvWaveformChannelEvent->Fill(fEventNumber,channel,mean);
-    hTotalSSPHitsChannel->Fill(channel+1,tTotalSSPHitsChannel);
-    int tbit = 1;
-    for (int bitIt = 0; bitIt < 16; ++bitIt) {
-      hSSPBitCheckAnd->Fill(channel,bitIt,(tBitCheckAnd & tbit));
-      hSSPBitCheckOr ->Fill(channel,bitIt,(tBitCheckOr & tbit));
-      tbit <<= 1;
-    }
+    // Fill channel level hists
+    hNumberOfTriggers->Fill(channel,triggers.size());
 
   }
 
-  // Fill hists for event
-  hTotalWaveformEvent->Fill(fTotalADC);
-  hTotalSSPHitsEvent->Fill(fTotalSSPHitsEvent);
-  hTimesWaveformGoesOverThreshold->Fill(fTimesADCGoesOverThreshold);
+  // Fill event level hists
 
 }
 
@@ -440,12 +402,8 @@ void OnlineMonitoring::MonitoringData::WriteMonitoringData(int run, int subrun) 
   fDataFile->cd();
   for (unsigned int interestingchannel = 0; interestingchannel < DebugChannels.size(); ++interestingchannel)
     hDebugChannelHists.at(DebugChannels.at(interestingchannel))->Write();
-  for (unsigned int millislice = 0; millislice < NRCEMillislices; ++millislice)
-    hAvADCMillislice.at(millislice)->Write();
   for (unsigned int channel = 0; channel < NRCEChannels; ++channel)
     hADCChannel.at(channel)->Write();
-  for (unsigned int channel = 0; channel < NSSPChannels; ++channel)
-    hWaveformChannel.at(channel)->Write();
 
   // Add run file
   ofstream tmp((HistSaveDirectory+TString("run").Data()));
@@ -489,29 +447,28 @@ void OnlineMonitoring::MonitoringData::MakeHistograms() {
   // Nomenclature: Name is used to save the histogram, Title has format : histogramTitle_histDrawOptions_canvasOptions;x-title;y-title;z-title
 
   // RCE hists
-  hADCMeanChannelAPA1                   = new TProfile("ADCMeanChannelAPA1","RCE ADC Mean APA1_\"histl\"_none;Channel;RCE ADC Mean",512,0,511);
-  hADCMeanChannelAPA2                   = new TProfile("ADCMeanChannelAPA2","RCE ADC Mean APA2_\"histl\"_none;Channel;RCE ADC Mean",512,512,1023);
-  hADCMeanChannelAPA3                   = new TProfile("ADCMeanChannelAPA3","RCE ADC Mean APA3_\"histl\"_none;Channel;RCE ADC Mean",512,1024,1535);
-  hADCMeanChannelAPA4                   = new TProfile("ADCMeanChannelAPA4","RCE ADC Mean APA4_\"histl\"_none;Channel;RCE ADC Mean",512,1536,2047);
-  hADCRMSChannelAPA1                    = new TProfile("ADCRMSChannelAPA1","RCE ADC RMS APA1_\"histl\"_none;Channel;RCE ADC RMS",512,0,511);
-  hADCRMSChannelAPA2                    = new TProfile("ADCRMSChannelAPA2","RCE ADC RMS APA2_\"histl\"_none;Channel;RCE ADC RMS",512,512,1023);
-  hADCRMSChannelAPA3                    = new TProfile("ADCRMSChannelAPA3","RCE ADC RMS APA3_\"histl\"_none;Channel;RCE ADC RMS",512,1024,1535);
-  hADCRMSChannelAPA4                    = new TProfile("ADCRMSChannelAPA4","RCE ADC RMS APA4_\"histl\"_none;Channel;RCE ADC RMS",512,1536,2047);
-  hAvADCChannelEvent                    = new TH2D("AvADCChannelEvent","Average RCE ADC Value_\"colz\"_none;Event;Channel",100,0,100,NRCEChannels,0,NRCEChannels);
-  hRCEDNoiseChannel                     = new TProfile("RCEDNoiseChannel","RCE DNoise_\"colz\"_none;Channel;DNoise",NRCEChannels,0,NRCEChannels);
-  hTotalADCEvent                        = new TH1I("TotalADCEvent","Total RCE ADC_\"colz\"_logy;Total ADC;",100,0,1000000000);
-  hTotalRCEHitsEvent                    = new TH1I("TotalRCEHitsEvent","Total RCE Hits in Event_\"colz\"_logy;Total RCE Hits;",100,0,10000000);
-  hTotalRCEHitsChannel                  = new TH1I("TotalRCEHitsChannel","Total RCE Hits by Channel_\"colz\"_none;Channel;Total RCE Hits;",NRCEChannels,0,NRCEChannels);
-  hNumMicroslicesInMillislice           = new TH1I("NumMicroslicesInMillislice","Number of Microslices in Millislice_\"colz\"_none;Millislice;Number of Microslices;",16,100,116);
-  hNumNanoslicesInMicroslice            = new TH1I("NumNanoslicesInMicroslice","Number of Nanoslices in Microslice_\"colz\"_logy;Number of Nanoslices;",1000,0,1100);
-  hNumNanoslicesInMillislice            = new TH1I("NumNanoslicesInMillislice","Number of Nanoslices in Millislice_\"colz\"_logy;Number of Nanoslices;",1000,0,11000);
-  hTimesADCGoesOverThreshold            = new TH1I("TimesADCGoesOverThreshold","Times RCE ADC Over Threshold_\"colz\"_none;Times ADC Goes Over Threshold;",100,0,1000);
-  hAsymmetry                            = new TProfile("Asymmetry","Asymmetry of Bipolar Pulse_\"colz\"_none;Channel;Asymmetry",NRCEChannels,0,NRCEChannels);
-  hRCEBitCheckAnd                       = new TH2I("RCEBitCheckAnd","RCE ADC Bits Always On_\"colz\"_none;Channel;Bit",NRCEChannels,0,NRCEChannels,16,0,16);
-  hRCEBitCheckOr                        = new TH2I("RCEBitCheckOr","RCE ADC Bits Always Off_\"colz\"_none;Channel;Bit",NRCEChannels,0,NRCEChannels,16,0,16);
-  hLastSixBitsCheckOn                   = new TProfile("LastSixBitsCheckOn","Last Six RCE ADC Bits On_\"colz\"_none;Channel;Fraction of ADCs with stuck bits",NRCEChannels,0,NRCEChannels);
-  hLastSixBitsCheckOff                  = new TProfile("LastSixBitsCheckOff","Last Six RCE ADC Bits Off_\"colz\"_none;Channel;Fraction of ADCs with stuck bits",NRCEChannels,0,NRCEChannels);
-  hAvADCAllMillislice                   = new TH1D("AvADCAllMillislice","Av ADC for all Millislices_\"colz\"_none;Event;Av ADC",10000,0,10000);
+  hADCMeanChannelAPA1                   = new TProfile("RCE_APA0_ADC_Mean_Channel_All","RCE ADC Mean APA0_\"histl\"_none;Channel;RCE ADC Mean",512,0,511);
+  hADCMeanChannelAPA2                   = new TProfile("RCE_APA1_ADC_Mean_Channel_All","RCE ADC Mean APA1_\"histl\"_none;Channel;RCE ADC Mean",512,512,1023);
+  hADCMeanChannelAPA3                   = new TProfile("RCE_APA2_ADC_Mean_Channel_All","RCE ADC Mean APA2_\"histl\"_none;Channel;RCE ADC Mean",512,1024,1535);
+  hADCMeanChannelAPA4                   = new TProfile("RCE_APA3_ADC_Mean_Channel_All","RCE ADC Mean APA3_\"histl\"_none;Channel;RCE ADC Mean",512,1536,2047);
+  hADCRMSChannelAPA1                    = new TProfile("RCE_APA0_ADC_RMS_Channel_All","RCE ADC RMS APA0_\"histl\"_none;Channel;RCE ADC RMS",512,0,511);
+  hADCRMSChannelAPA2                    = new TProfile("RCE_APA1_ADC_RMS_Channel_All","RCE ADC RMS APA1_\"histl\"_none;Channel;RCE ADC RMS",512,512,1023);
+  hADCRMSChannelAPA3                    = new TProfile("RCE_APA2_ADC_RMS_Channel_All","RCE ADC RMS APA2_\"histl\"_none;Channel;RCE ADC RMS",512,1024,1535);
+  hADCRMSChannelAPA4                    = new TProfile("RCE_APA3_ADC_RMS_Channel_All","RCE ADC RMS APA3_\"histl\"_none;Channel;RCE ADC RMS",512,1536,2047);
+  hAvADCChannelEvent                    = new TH2D("RCE__ADC_Mean_Event_First100","Average RCE ADC Value_\"colz\"_none;Event;Channel",100,0,100,NRCEChannels,0,NRCEChannels);
+  hRCEDNoiseChannel                     = new TProfile("RCE__ADC_DNoise_Channel_All","RCE DNoise_\"colz\"_none;Channel;DNoise",NRCEChannels,0,NRCEChannels);
+  hTotalADCEvent                        = new TH1I("RCE__ADC_Total__All","Total RCE ADC_\"colz\"_logy;Total ADC;",100,0,1000000000);
+  hTotalRCEHitsEvent                    = new TH1I("RCE__Hits_Total__All","Total RCE Hits in Event_\"colz\"_logy;Total RCE Hits;",100,0,10000000);
+  hTotalRCEHitsChannel                  = new TH1I("RCE__Hits_Total_Channel_All","Total RCE Hits by Channel_\"colz\"_none;Channel;Total RCE Hits;",NRCEChannels,0,NRCEChannels);
+  hNumMicroslicesInMillislice           = new TH1I("RCE__Microslices_Total_Millislice_All","Number of Microslices in Millislice_\"colz\"_none;Millislice;Number of Microslices;",16,100,116);
+  hNumNanoslicesInMicroslice            = new TH1I("RCE__Nanoslices_Total_Microslice_All","Number of Nanoslices in Microslice_\"colz\"_logy;Number of Nanoslices;",1000,0,1100);
+  hNumNanoslicesInMillislice            = new TH1I("RCE__Nanoslices_Total_Millislice_All","Number of Nanoslices in Millislice_\"colz\"_logy;Number of Nanoslices;",1000,0,11000);
+  hTimesADCGoesOverThreshold            = new TH1I("RCE__ADC_TimesOverThreshold__All","Times RCE ADC Over Threshold_\"colz\"_none;Times ADC Goes Over Threshold;",100,0,1000);
+  hAsymmetry                            = new TProfile("RCE__ADC_Asymmetry__All","Asymmetry of Bipolar Pulse_\"colz\"_none;Channel;Asymmetry",NRCEChannels,0,NRCEChannels);
+  hRCEBitCheckAnd                       = new TH2I("RCE__ADCBit_On_Channel_All","RCE ADC Bits Always On_\"colz\"_none;Channel;Bit",NRCEChannels,0,NRCEChannels,16,0,16);
+  hRCEBitCheckOr                        = new TH2I("RCE__ADCBit_Off_Channel_All","RCE ADC Bits Always Off_\"colz\"_none;Channel;Bit",NRCEChannels,0,NRCEChannels,16,0,16);
+  hLastSixBitsCheckOn                   = new TProfile("RCE__ADCLast6Bits_On_Channel_All","Last Six RCE ADC Bits On_\"colz\"_none;Channel;Fraction of ADCs with stuck bits",NRCEChannels,0,NRCEChannels);
+  hLastSixBitsCheckOff                  = new TProfile("RCE__ADCLast6Bits_Off_Channel_All","Last Six RCE ADC Bits Off_\"colz\"_none;Channel;Fraction of ADCs with stuck bits",NRCEChannels,0,NRCEChannels);
   for (unsigned int channel = 0; channel < NRCEChannels; ++channel)
     hADCChannel[channel]                = new TProfile("ADCChannel"+TString(std::to_string(channel)),"RCE ADC v Tick for Channel "+TString(std::to_string(channel))+";Tick;ADC;",5000,0,5000);
   for (unsigned int millislice = 0; millislice < NRCEMillislices; ++millislice) {
@@ -522,103 +479,99 @@ void OnlineMonitoring::MonitoringData::MakeHistograms() {
     hDebugChannelHists[(*debugchannel)] = new TH1D("Channel"+TString(std::to_string(*debugchannel))+"SingleEvent","Channel "+TString(std::to_string(*debugchannel))+" for Single Event",5000,0,5000);
 
   // SSP hists
-  hWaveformMeanChannel            = new TProfile("WaveformMeanChannel","SSP ADC Mean_\"histl\"_none;Channel;SSP ADC Mean",NSSPChannels,0,NSSPChannels);
-  hWaveformRMSChannel             = new TProfile("WaveformRMSChannel","SSP ADC RMS_\"histl\"_none;Channel;SSP ADC RMS",NSSPChannels,0,NSSPChannels);
-  hAvWaveformChannelEvent         = new TH2D("AvWaveformChannelEvent","Average SSP ADC Value_\"colz\"_none;Event;Channel",100,0,100,NSSPChannels,0,NSSPChannels);
-  hSSPDNoiseChannel               = new TProfile("SSPDNoiseChannel","SSP DNoise_\"colz\"_none;Channel;DNoise",NSSPChannels,0,NSSPChannels);
-  hTotalWaveformEvent             = new TH1I("TotalWaveformEvent","Total SSP ADC_\"colz\"_logy;Total Waveform;",100,0,1000000000);
-  hTotalSSPHitsEvent              = new TH1I("TotalSSPHitsEvent","Total SSP Hits in Event_\"colz\"_logy;Total SSP Hits;",100,0,10000000);
-  hTotalSSPHitsChannel            = new TH1I("TotalSSPHitsChannel","Total SSP Hits by Channel_\"colz\"_none;Channel;Total SSP Hits;",NSSPChannels,0,NSSPChannels);
-  hTimesWaveformGoesOverThreshold = new TH1I("TimesWaveformGoesOverThreshold","Times SSP ADC Over Threshold_\"colz\"_none;Time Waveform Goes Over Threshold;",100,0,1000);
-  hSSPBitCheckAnd                 = new TH2I("SSPBitCheckAnd","SSP ADC Bits Always On_\"colz\"_none;Channel;Bit",NSSPChannels,0,NSSPChannels,16,0,16);
-  hSSPBitCheckOr                  = new TH2I("SSPBitCheckOr","SSP ADC Bits Always Off_\"colz\"_none;Channel;Bit",NSSPChannels,0,NSSPChannels,16,0,16);
-  for (unsigned int channel = 0; channel < NSSPChannels; ++channel)
-    hWaveformChannel[channel]     = new TProfile("WaveformChannel"+TString(std::to_string(channel)),"SSP ADC v Tick for Channel "+TString(std::to_string(channel))+";Tick;Waveform;",5000,0,5000);
+  hWaveformMean = new TProfile("SSP__ADC_Mean_Channel_All","SSP ADC Mean_\"histl\"_none;Channel;Average Waveform",NSSPChannels,0,NSSPChannels);
+  hWaveformRMS = new TProfile("SSP__ADC_RMS_Channel_All","SSP ADC RMS_\"histl\"_none;Channel;RMS of Waveform",NSSPChannels,0,NSSPChannels);
+  hWaveformPeakHeight = new TProfile("SSP__ADC_PeakHeight_Channel_All","Waveform Peak Height_\"histl\"_none;Channel;Peak Height",NSSPChannels,0,NSSPChannels);
+  hWaveformIntegral = new TProfile("SSP__ADC_Integral_Channel_All","Waveform Integral_\"histl\"_none;Channel;Integral",NSSPChannels,0,NSSPChannels);
+  hWaveformIntegralNorm = new TProfile("SSP__ADC_IntegralNorm_Channel_All","Waveform Integral (normalised by window size)_\"histl\"_none;Channel;Integral",NSSPChannels,0,NSSPChannels);
+  hWaveformPedestal = new TProfile("SSP__ADC_Pedestal_Channel_All","Waveform Pedestal_\"histl\"_none;Channel;Pedestal",NSSPChannels,0,NSSPChannels);
+  hWaveformNumTicks = new TProfile("SSP__Ticks__Channel_All","Num Ticks in Trigger_\"histl\"_none;Number of Ticks",NSSPChannels,0,NSSPChannels);
+  hNumberOfTriggers = new TProfile("SSP__Triggers_Total_Channel_All","Number of Triggers_\"histl\"_none;Channel;Number of Triggers",NSSPChannels,0,NSSPChannels);
 
   // General
-  hNumSubDetectorsPresent = new TH1I("NumSubDetectorsPresent","Number of Subdetectors_\"colz\"_logy;Number of Subdetectors;",25,0,25);
-  hSizeOfFiles            = new TH1I("SizeOfFiles","Data File Sizes_\"colz\"_none;Run&Subrun;Size (bytes);",20,0,20);
-  hSizeOfFilesPerEvent    = new TH1D("SizeOfFilesPerEvent","Size of Event in Data Files_\"colz\"_none;Run&Subrun;Size (bytes/event);",20,0,20);
+  hNumSubDetectorsPresent = new TH1I("General__NumberOfSubdetectors_Total__All","Number of Subdetectors_\"colz\"_logy;Number of Subdetectors;",25,0,25);
+  hSizeOfFiles            = new TH1I("General__Last20Files_Size_RunSubrun_All","Data File Sizes_\"colz\"_none;Run&Subrun;Size (bytes);",20,0,20);
+  hSizeOfFilesPerEvent    = new TH1D("General__Last20Files_SizePerEvent_RunSubrun_All","Size of Event in Data Files_\"colz\"_none;Run&Subrun;Size (bytes/event);",20,0,20);
 
   // PTB hists
-  hPTBTSUCounterHitRateWU = new TProfile("PTBTSUCounterRateWU","PTB TSU counter hit Rate (per millislice) (West Up)_\"\"_none;Counter number; No. hits per millislice",10,1,11);
+  hPTBTSUCounterHitRateWU = new TProfile("PTB_TSUWU_Hits_Mean_Counter_All","PTB TSU counter hit Rate (per millislice) (West Up)_\"\"_none;Counter number; No. hits per millislice",10,1,11);
   hPTBTSUCounterHitRateWU->GetXaxis()->SetNdivisions(10);
   hPTBTSUCounterHitRateWU->GetXaxis()->CenterLabels();
-  hPTBTSUCounterActivationTimeWU = new TProfile("PTBTSUCounterActivationTimeWU","PTB counter average activation time (West Up)_\"\"_none;Counter number; Time",10,1,11);
+  hPTBTSUCounterActivationTimeWU = new TProfile("PTB_TSUWU_ActivationTime_Mean_Counter_All","PTB counter average activation time (West Up)_\"\"_none;Counter number; Time",10,1,11);
   hPTBTSUCounterActivationTimeWU->GetXaxis()->SetNdivisions(10);
   hPTBTSUCounterActivationTimeWU->GetXaxis()->CenterLabels();
 
-  hPTBTSUCounterHitRateEL = new TProfile("PTBTSUCounterRateEL","PTB TSU counter hit Rate (per millislice) (East Low)_\"\"_none;Counter number; No. hits per millislice",10,1,11);
+  hPTBTSUCounterHitRateEL = new TProfile("PTB_TSUEL_Hits_Mean_Counter_All","PTB TSU counter hit Rate (per millislice) (East Low)_\"\"_none;Counter number; No. hits per millislice",10,1,11);
   hPTBTSUCounterHitRateEL->GetXaxis()->SetNdivisions(10);
   hPTBTSUCounterHitRateEL->GetXaxis()->CenterLabels();
-  hPTBTSUCounterActivationTimeEL = new TProfile("PTBTSUCounterActivationTimeEL","PTB counter average activation time (East Low)_\"\"_none;Counter number; Time",10,1,11);
+  hPTBTSUCounterActivationTimeEL = new TProfile("PTB_TSUEL_ActivationTime_Mean_Counter_All","PTB counter average activation time (East Low)_\"\"_none;Counter number; Time",10,1,11);
   hPTBTSUCounterActivationTimeEL->GetXaxis()->SetNdivisions(10);
   hPTBTSUCounterActivationTimeEL->GetXaxis()->CenterLabels();
 
-  hPTBTSUCounterHitRateExtra = new TProfile("PTBTSUCounterRateExtra","PTB TSU counter hit Rate (per millislice) (Empty counter bits - SHOULD BE EMPTY)_\"\"_none;Counter number; No. hits per millislice",4,1,5);
+  hPTBTSUCounterHitRateExtra = new TProfile("PTB_TSUExtra_Hits_Mean_Counter_All","PTB TSU counter hit Rate (per millislice) (Empty counter bits - SHOULD BE EMPTY)_\"\"_none;Counter number; No. hits per millislice",4,1,5);
   hPTBTSUCounterHitRateExtra->GetXaxis()->SetNdivisions(4);
   hPTBTSUCounterHitRateExtra->GetXaxis()->CenterLabels();
-  hPTBTSUCounterActivationTimeExtra = new TProfile("PTBTSUCounterActivationTimeExtra","PTB counter average activation time (Empty counter bits - SHOULD BE EMPTY)_\"\"_none;Counter number; Time",4,1,5);
+  hPTBTSUCounterActivationTimeExtra = new TProfile("PTB_TSUExtra_ActivationTime_Mean_Counter_All","PTB counter average activation time (Empty counter bits - SHOULD BE EMPTY)_\"\"_none;Counter number; Time",4,1,5);
   hPTBTSUCounterActivationTimeExtra->GetXaxis()->SetNdivisions(4);
   hPTBTSUCounterActivationTimeExtra->GetXaxis()->CenterLabels();
 
-  hPTBTSUCounterHitRateNU = new TProfile("PTBTSUCounterRateNU","PTB TSU counter hit Rate (per millislice) (North Up)_\"\"_none;Counter number; No. hits per millislice",6,1,7);
+  hPTBTSUCounterHitRateNU = new TProfile("PTB_TSUNU_Hits_Mean_Counter_All","PTB TSU counter hit Rate (per millislice) (North Up)_\"\"_none;Counter number; No. hits per millislice",6,1,7);
   hPTBTSUCounterHitRateNU->GetXaxis()->SetNdivisions(6);
   hPTBTSUCounterHitRateNU->GetXaxis()->CenterLabels();
-  hPTBTSUCounterActivationTimeNU = new TProfile("PTBTSUCounterActivationTimeNU","PTB counter average activation time (North Up)_\"\"_none;Counter number; Time",6,1,7);
+  hPTBTSUCounterActivationTimeNU = new TProfile("PTB_TSUNU_ActivationTime_Mean_Counter_All","PTB counter average activation time (North Up)_\"\"_none;Counter number; Time",6,1,7);
   hPTBTSUCounterActivationTimeNU->GetXaxis()->SetNdivisions(6);
   hPTBTSUCounterActivationTimeNU->GetXaxis()->CenterLabels();
 
-  hPTBTSUCounterHitRateSL = new TProfile("PTBTSUCounterRateSL","PTB TSU counter hit Rate (per millislice) (South Low)_\"\"_none;Counter number; No. hits per millislice",6,1,7);
+  hPTBTSUCounterHitRateSL = new TProfile("PTB_TSUSL_Hits_Mean_Counter_All","PTB TSU counter hit Rate (per millislice) (South Low)_\"\"_none;Counter number; No. hits per millislice",6,1,7);
   hPTBTSUCounterHitRateSL->GetXaxis()->SetNdivisions(6);
   hPTBTSUCounterHitRateSL->GetXaxis()->CenterLabels();
-  hPTBTSUCounterActivationTimeSL = new TProfile("PTBTSUCounterActivationTimeSL","PTB counter average activation time (South Low)_\"\"_none;Counter number; Time",6,1,7);
+  hPTBTSUCounterActivationTimeSL = new TProfile("PTB_TSUSL_ActivationTime_Mean_Counter_All","PTB counter average activation time (South Low)_\"\"_none;Counter number; Time",6,1,7);
   hPTBTSUCounterActivationTimeSL->GetXaxis()->SetNdivisions(6);
   hPTBTSUCounterActivationTimeSL->GetXaxis()->CenterLabels();
 
-  hPTBTSUCounterHitRateNL = new TProfile("PTBTSUCounterRateNL","PTB TSU counter hit Rate (per millislice) (North Low)_\"\"_none;Counter number; No. hits per millislice",6,1,7);
+  hPTBTSUCounterHitRateNL = new TProfile("PTB_TSUNL_Hits_Mean_Counter_All","PTB TSU counter hit Rate (per millislice) (North Low)_\"\"_none;Counter number; No. hits per millislice",6,1,7);
   hPTBTSUCounterHitRateNL->GetXaxis()->SetNdivisions(6);
   hPTBTSUCounterHitRateNL->GetXaxis()->CenterLabels();
-  hPTBTSUCounterActivationTimeNL = new TProfile("PTBTSUCounterActivationTimeNL","PTB counter average activation time (North Low)_\"\"_none;Counter number; Time",6,1,7);
+  hPTBTSUCounterActivationTimeNL = new TProfile("PTB_TSUNL_ActivationTime_Mean_Counter_All","PTB counter average activation time (North Low)_\"\"_none;Counter number; Time",6,1,7);
   hPTBTSUCounterActivationTimeNL->GetXaxis()->SetNdivisions(6);
   hPTBTSUCounterActivationTimeNL->GetXaxis()->CenterLabels();
 
-  hPTBTSUCounterHitRateSU = new TProfile("PTBTSUCounterRateSU","PTB TSU counter hit Rate (per millislice) (South Up)_\"\"_none;Counter number; No. hits per millislice",6,1,7);
+  hPTBTSUCounterHitRateSU = new TProfile("PTB_TSUSU_Hits_Mean_Counter_All","PTB TSU counter hit Rate (per millislice) (South Up)_\"\"_none;Counter number; No. hits per millislice",6,1,7);
   hPTBTSUCounterHitRateSU->GetXaxis()->SetNdivisions(6);
   hPTBTSUCounterHitRateSU->GetXaxis()->CenterLabels();
-  hPTBTSUCounterActivationTimeSU = new TProfile("PTBTSUCounterActivationTimeSU","PTB counter average activation time (South Up)_\"\"_none;Counter number; Time",6,1,7);
+  hPTBTSUCounterActivationTimeSU = new TProfile("PTB_TSUSU_ActivationTime_Mean_Counter_All","PTB counter average activation time (South Up)_\"\"_none;Counter number; Time",6,1,7);
   hPTBTSUCounterActivationTimeSU->GetXaxis()->SetNdivisions(6);
   hPTBTSUCounterActivationTimeSU->GetXaxis()->CenterLabels();
 
-  hPTBBSUCounterHitRateRM = new TProfile("PTBBSUCounterRateRM","PTB BSU counter hit Rate (per millislice) (RM)_\"\"_none;Counter number; No. hits per millislice",16,1,17);
+  hPTBBSUCounterHitRateRM = new TProfile("PTB_BSURM_Hits_Mean_Counter_All","PTB BSU counter hit Rate (per millislice) (RM)_\"\"_none;Counter number; No. hits per millislice",16,1,17);
   hPTBBSUCounterHitRateRM->GetXaxis()->SetNdivisions(16);
   hPTBBSUCounterHitRateRM->GetXaxis()->CenterLabels();
-  hPTBBSUCounterActivationTimeRM = new TProfile("PTBBSUCounterActivationTimeRM","PTB counter average activation time (RM)_\"\"_none;Counter number; Time",16,1,17);
+  hPTBBSUCounterActivationTimeRM = new TProfile("PTB_BSURM_ActivationTime_Mean_Counter_All","PTB counter average activation time (RM)_\"\"_none;Counter number; Time",16,1,17);
   hPTBBSUCounterActivationTimeRM->GetXaxis()->SetNdivisions(16);
   hPTBBSUCounterActivationTimeRM->GetXaxis()->CenterLabels();
 
-  hPTBBSUCounterHitRateCU = new TProfile("PTBBSUCounterRateCU","PTB BSU counter hit Rate (per millislice) (CU)_\"\"_none;Counter number; No. hits per millislice",10,1,11);
+  hPTBBSUCounterHitRateCU = new TProfile("PTB_BSUCU_Hits_Mean_Counter_All","PTB BSU counter hit Rate (per millislice) (CU)_\"\"_none;Counter number; No. hits per millislice",10,1,11);
   hPTBBSUCounterHitRateCU->GetXaxis()->SetNdivisions(10);
   hPTBBSUCounterHitRateCU->GetXaxis()->CenterLabels();
-  hPTBBSUCounterActivationTimeCU = new TProfile("PTBBSUCounterActivationTimeCU","PTB counter average activation time (CU)_\"\"_none;Counter number; Time",10,1,11);
+  hPTBBSUCounterActivationTimeCU = new TProfile("PTB_BSU_ActivationTime_Mean_Counter_All","PTB counter average activation time (CU)_\"\"_none;Counter number; Time",10,1,11);
   hPTBBSUCounterActivationTimeCU->GetXaxis()->SetNdivisions(10);
   hPTBBSUCounterActivationTimeCU->GetXaxis()->CenterLabels();
 
-  hPTBBSUCounterHitRateCL = new TProfile("PTBBSUCounterRateCL","PTB BSU counter hit Rate (per millislice) (CL)_\"\"_none;Counter number; No. hits per millislice",13,1,14);
+  hPTBBSUCounterHitRateCL = new TProfile("PTB_BSUCL_Hits_Mean_Counter_All","PTB BSU counter hit Rate (per millislice) (CL)_\"\"_none;Counter number; No. hits per millislice",13,1,14);
   hPTBBSUCounterHitRateCL->GetXaxis()->SetNdivisions(13);
   hPTBBSUCounterHitRateCL->GetXaxis()->CenterLabels();
-  hPTBBSUCounterActivationTimeCL = new TProfile("PTBBSUCounterActivationTimeCL","PTB counter average activation time (CL)_\"\"_none;Counter number; Time",13,1,14);
+  hPTBBSUCounterActivationTimeCL = new TProfile("PTB_BSUCL_ActivationTime_Mean_Counter_All","PTB counter average activation time (CL)_\"\"_none;Counter number; Time",13,1,14);
   hPTBBSUCounterActivationTimeCL->GetXaxis()->SetNdivisions(13);
   hPTBBSUCounterActivationTimeCL->GetXaxis()->CenterLabels();
 
-  hPTBBSUCounterHitRateRL = new TProfile("PTBBSUCounterRateRL","PTB BSU counter hit Rate (per millislice) (RL)_\"\"_none;Counter number; No. hits per millislice",10,1,11);
+  hPTBBSUCounterHitRateRL = new TProfile("PTB_BSURL_Hits_Mean_Counter_All","PTB BSU counter hit Rate (per millislice) (RL)_\"\"_none;Counter number; No. hits per millislice",10,1,11);
   hPTBBSUCounterHitRateRL->GetXaxis()->SetNdivisions(10);
   hPTBBSUCounterHitRateRL->GetXaxis()->CenterLabels();
-  hPTBBSUCounterActivationTimeRL = new TProfile("PTBBSUCounterActivationTimeRL","PTB counter average activation time (RL)_\"\"_none;Counter number; Time",10,1,11);
+  hPTBBSUCounterActivationTimeRL = new TProfile("PTB_BSURL_ActivationTime_Mean_Counter_All","PTB counter average activation time (RL)_\"\"_none;Counter number; Time",10,1,11);
   hPTBBSUCounterActivationTimeRL->GetXaxis()->SetNdivisions(10);
   hPTBBSUCounterActivationTimeRL->GetXaxis()->CenterLabels();
 
-  hPTBTriggerRates = new TProfile("PTBTriggerRates","Muon trigger rates_\"\"_none;Muon trigger name; No. hits per millislice",4,1,5);
+  hPTBTriggerRates = new TProfile("PTB__Hits_Mean_MuonTrigger_All","Muon trigger rates_\"\"_none;Muon trigger name; No. hits per millislice",4,1,5);
   hPTBTriggerRates->GetXaxis()->SetBinLabel(1,"BSU RM-CM");
   hPTBTriggerRates->GetXaxis()->SetBinLabel(2,"TSU NU-SL");
   hPTBTriggerRates->GetXaxis()->SetBinLabel(3,"TSU SU-NL");
@@ -629,7 +582,7 @@ void OnlineMonitoring::MonitoringData::MakeHistograms() {
   fHistArray.Add(hADCMeanChannelAPA3); fHistArray.Add(hADCMeanChannelAPA4);
   fHistArray.Add(hADCRMSChannelAPA1); fHistArray.Add(hADCRMSChannelAPA2);
   fHistArray.Add(hADCRMSChannelAPA3); fHistArray.Add(hADCRMSChannelAPA4);
-  fHistArray.Add(hAvADCAllMillislice); fHistArray.Add(hRCEDNoiseChannel);
+  fHistArray.Add(hRCEDNoiseChannel);
   fHistArray.Add(hAvADCChannelEvent); fHistArray.Add(hTotalRCEHitsChannel);
   fHistArray.Add(hTotalADCEvent); fHistArray.Add(hTotalRCEHitsEvent);
   fHistArray.Add(hAsymmetry); fHistArray.Add(hTimesADCGoesOverThreshold);
@@ -637,12 +590,14 @@ void OnlineMonitoring::MonitoringData::MakeHistograms() {
   fHistArray.Add(hLastSixBitsCheckOn); fHistArray.Add(hLastSixBitsCheckOff);
   fHistArray.Add(hNumMicroslicesInMillislice); 
 
-  fHistArray.Add(hAvWaveformChannelEvent);
-  fHistArray.Add(hWaveformMeanChannel); fHistArray.Add(hWaveformRMSChannel);
-  fHistArray.Add(hSSPDNoiseChannel); fHistArray.Add(hTotalSSPHitsChannel);
-  fHistArray.Add(hTotalWaveformEvent); fHistArray.Add(hTotalSSPHitsEvent);
-  fHistArray.Add(hSSPBitCheckAnd); fHistArray.Add(hSSPBitCheckOr);
-  fHistArray.Add(hTimesWaveformGoesOverThreshold);
+  fHistArray.Add(hWaveformMean);
+  fHistArray.Add(hWaveformRMS);
+  fHistArray.Add(hWaveformPeakHeight);
+  fHistArray.Add(hWaveformIntegral);
+  fHistArray.Add(hWaveformIntegralNorm);
+  fHistArray.Add(hWaveformPedestal);
+  fHistArray.Add(hWaveformNumTicks);
+  fHistArray.Add(hNumberOfTriggers);
 
   fHistArray.Add(hSizeOfFiles); fHistArray.Add(hSizeOfFilesPerEvent);
   fHistArray.Add(hNumSubDetectorsPresent);
@@ -661,64 +616,66 @@ void OnlineMonitoring::MonitoringData::MakeHistograms() {
   fHistArray.Add(hPTBBSUCounterActivationTimeCL); fHistArray.Add(hPTBBSUCounterHitRateCL);
   fHistArray.Add(hPTBBSUCounterActivationTimeRL); fHistArray.Add(hPTBBSUCounterHitRateRL);
 
-  fFigureCaptions["ADCMeanChannelAPA1"] = "Mean ADC values for each channel read out by the RCEs (profiled over all events read)";
-  fFigureCaptions["ADCMeanChannelAPA2"] = "Mean ADC values for each channel read out by the RCEs (profiled over all events read)";
-  fFigureCaptions["ADCMeanChannelAPA3"] = "Mean ADC values for each channel read out by the RCEs (profiled over all events read)";
-  fFigureCaptions["ADCMeanChannelAPA4"] = "Mean ADC values for each channel read out by the RCEs (profiled over all events read)";
-  fFigureCaptions["ADCRMSChannelAPA1"] = "RMS of the ADC values for each channel read out by the RCEs (profiled over all events read)";
-  fFigureCaptions["ADCRMSChannelAPA2"] = "RMS of the ADC values for each channel read out by the RCEs (profiled over all events read)";
-  fFigureCaptions["ADCRMSChannelAPA3"] = "RMS of the ADC values for each channel read out by the RCEs (profiled over all events read)";
-  fFigureCaptions["ADCRMSChannelAPA4"] = "RMS of the ADC values for each channel read out by the RCEs (profiled over all events read)";
-  fFigureCaptions["AvADCAllMillislice"] = "Average RCE ADC across an entire millislice for the first 10000 events (one entry per millislice in each event)";
-  fFigureCaptions["RCEDNoiseChannel"] = "DNoise (difference in ADC between neighbouring channels for the same tick) for the RCE ADCs (profiled over all events read)";
-  fFigureCaptions["AvADCChannelEvent"] = "Average RCE ADC across a channel for an event, shown for the first 100 events";
-  fFigureCaptions["TotalRCEHitsChannel"] = "Total number of RCE hits in each channel across all events";
-  fFigureCaptions["TotalADCEvent"] = "Total RCE ADC recorded for an event across all channels (one entry per event)";
-  fFigureCaptions["TotalRCEHitsEvent"] = "Total number of hits recorded on the RCEs per event (one entry per event)";
-  fFigureCaptions["Asymmetry"] = "Asymmetry of the bipolar pulse measured on the induction planes, by channel (profiled across all events). Zero means completely symmetric pulse";
-  fFigureCaptions["TimesADCGoesOverThreshold"] = "Number of times an RCE hit goes over a set ADC threshold";
-  fFigureCaptions["RCEBitCheckAnd"] = "Check for stuck RCE bits: bits which are always on";
-  fFigureCaptions["RCEBitCheckOr"] = "Check for stuck RCE bits: bits which are always off";
-  fFigureCaptions["LastSixBitsCheckOn"] = "Fraction of all RCE ADC values with the last six bits stuck on (profiled; one entry per ADC)";
-  fFigureCaptions["LastSixBitsCheckOff"] = "Fraction of all RCE ADC values with the last six bits stuck off (profiled; one entry per ADC)";
-  fFigureCaptions["NumMicroslicesInMillislice"] = "Number of microslices in a millislice in this run";
-  fFigureCaptions["AvWaveformChannelEvent"] = "Average SSP ADC across a channel for an event, shown for the first 100 events";
-  fFigureCaptions["WaveformMeanChannel"] = "Mean ADC values for each channel read out by the SSPs (profiled over all events read)";
-  fFigureCaptions["WaveformRMSChannel"] = "RMS of the ADC values for each channel read out by the SSPs (profiled over all events read)";
-  fFigureCaptions["SSPDNoiseChannel"] = "DNoise (difference in ADC between neighbouring channels for the same tick) for the RCE ADCs (profiled over all events read)";
-  fFigureCaptions["TotalSSPHitsChannel"] = "Total number of SSP hits in each channel across all events";
-  fFigureCaptions["TotalWaveformEvent"] = "Total SSP ADC recorded for an event across all channels (one entry per event)";
-  fFigureCaptions["TotalSSPHitsEvent"] = "Total number of hits recorded on the SSPs per event (one entry per event)";
-  fFigureCaptions["SSPBitCheckAnd"] = "Check for stuck SSP bits: bits which are always on";
-  fFigureCaptions["SSPBitCheckOr"] = "Check for stuck SSP bits: bits which are always off";
-  fFigureCaptions["TimesWaveformGoesOverThreshold"] = "Number of times an SSP hit goes over a set ADC threshold";
-  fFigureCaptions["SizeOfFiles"] = "Size of the data files made by the DAQ for the last 20 runs";
-  fFigureCaptions["SizeOfFilesPerEvent"] = "Size of event in each of the last 20 data files made by the DAQ (size of file / number of events in file)";
-  fFigureCaptions["NumSubDetectorsPresent"] = "Number of subdetectors present in each event in the data (one entry per event)";
+  // RCE captions
+  fFigureCaptions["RCE_APA0_ADC_Mean_Channel_All"] = "Mean ADC values for each channel read out by the RCEs (profiled over all events read)";
+  fFigureCaptions["RCE_APA1_ADC_Mean_Channel_All"] = "Mean ADC values for each channel read out by the RCEs (profiled over all events read)";
+  fFigureCaptions["RCE_APA2_ADC_Mean_Channel_All"] = "Mean ADC values for each channel read out by the RCEs (profiled over all events read)";
+  fFigureCaptions["RCE_APA3_ADC_Mean_Channel_All"] = "Mean ADC values for each channel read out by the RCEs (profiled over all events read)";
+  fFigureCaptions["RCE_APA0_ADC_RMS_Channel_All"] = "RMS of the ADC values for each channel read out by the RCEs (profiled over all events read)";
+  fFigureCaptions["RCE_APA1_ADC_RMS_Channel_All"] = "RMS of the ADC values for each channel read out by the RCEs (profiled over all events read)";
+  fFigureCaptions["RCE_APA2_ADC_RMS_Channel_All"] = "RMS of the ADC values for each channel read out by the RCEs (profiled over all events read)";
+  fFigureCaptions["RCE_APA3_ADC_RMS_Channel_All"] = "RMS of the ADC values for each channel read out by the RCEs (profiled over all events read)";
+  fFigureCaptions["RCE__ADC_DNoise_Channel_All"] = "DNoise (difference in ADC between neighbouring channels for the same tick) for the RCE ADCs (profiled over all events read)";
+  fFigureCaptions["RCE__ADC_Mean_Event_First100"] = "Average RCE ADC across a channel for an event, shown for the first 100 events";
+  fFigureCaptions["RCE__Hits_Total_Channel_All"] = "Total number of RCE hits in each channel across all events";
+  fFigureCaptions["RCE__ADC_Total__All"] = "Total RCE ADC recorded for an event across all channels (one entry per event)";
+  fFigureCaptions["RCE__Hits_Total__All"] = "Total number of hits recorded on the RCEs per event (one entry per event)";
+  fFigureCaptions["RCE__ADC_Asymmetry__All"] = "Asymmetry of the bipolar pulse measured on the induction planes, by channel (profiled across all events). Zero means completely symmetric pulse";
+  fFigureCaptions["RCE__ADC_TimesOverThreshold__All"] = "Number of times an RCE hit goes over a set ADC threshold";
+  fFigureCaptions["RCE__ADCBit_On_Channel_All"] = "Check for stuck RCE bits: bits which are always on";
+  fFigureCaptions["RCE__ADCBit_Off_Channel_All"] = "Check for stuck RCE bits: bits which are always off";
+  fFigureCaptions["RCE__ADCLast6Bits_On_Channel_All"] = "Fraction of all RCE ADC values with the last six bits stuck on (profiled; one entry per ADC)";
+  fFigureCaptions["RCE__ADCLast6Bits_Off_Channel_All"] = "Fraction of all RCE ADC values with the last six bits stuck off (profiled; one entry per ADC)";
+  fFigureCaptions["RCE__Microslices_Total_Millislice_All"] = "Number of microslices in a millislice in this run";
 
-  //Penn board captions
-  fFigureCaptions["PTBTSUCounterActivationTimeWU"] = "Average activation time for the TSU West Up counters";
-  fFigureCaptions["PTBTSUCounterRateWU"] = "Average hit rate in a millislice for the TSU West Up counters";
-  fFigureCaptions["PTBTSUCounterActivationTimeEL"] = "Average activation time for the TSU East Low counters";
-  fFigureCaptions["PTBTSUCounterRateEL"] = "Average hit rate in a millislice for the TSU East Low counters";
-  fFigureCaptions["PTBTSUCounterActivationTimeExtra"] = "Average activation time for the TSU extra counter bits (SHOULD BE EMPTY)";
-  fFigureCaptions["PTBTSUCounterRateExtra"] = "Average hit rate in a millislice for the TSU extra counter bits (SHOULD BE EMPTY)";
-  fFigureCaptions["PTBTSUCounterActivationTimeNU"] = "Average activation time for the TSU North Up counters";
-  fFigureCaptions["PTBTSUCounterRateNU"] = "Average hit rate in a millislice for the TSU North Up counters";
-  fFigureCaptions["PTBTSUCounterActivationTimeSL"] = "Average activation time for the TSU South Low counters";
-  fFigureCaptions["PTBTSUCounterRateSL"] = "Average hit rate in a millislice for the TSU South Low counters";
-  fFigureCaptions["PTBTSUCounterActivationTimeNL"] = "Average activation time for the TSU North Low counters";
-  fFigureCaptions["PTBTSUCounterRateNL"] = "Average hit rate in a millislice for the TSU North Low counters";
-  fFigureCaptions["PTBTSUCounterActivationTimeSU"] = "Average activation time for the TSU North Low counters";
-  fFigureCaptions["PTBTSUCounterRateSU"] = "Average hit rate in a millislice for the TSU North Low counters";
-  fFigureCaptions["PTBBSUCounterActivationTimeRM"] = "Average activation time for the BSU RM counters";
-  fFigureCaptions["PTBBSUCounterRateRM"] = "Average hit rate in a millislice for the BSU RM counters";
-  fFigureCaptions["PTBBSUCounterActivationTimeCU"] = "Average activation time for the BSU CU counters";
-  fFigureCaptions["PTBBSUCounterRateCU"] = "Average hit rate in a millislice for the BSU CU counters";
-  fFigureCaptions["PTBBSUCounterActivationTimeCL"] = "Average activation time for the BSU CL counters";
-  fFigureCaptions["PTBBSUCounterRateCL"] = "Average hit rate in a millislice for the BSU CL counters";
-  fFigureCaptions["PTBBSUCounterActivationTimeRL"] = "Average activation time for the BSU RL counters";
-  fFigureCaptions["PTBBSUCounterRateRL"] = "Average hit rate in a millislice for the BSU RL counters";
-  fFigureCaptions["PTBTriggerRates"] = "Average hit rates per millislice of the muon trigger system";
+  // SSP captions
+  fFigureCaptions["SSP__ADC_Mean_Channel_All"] = "Average waveform across SSP channels (profiled over all events)";
+  fFigureCaptions["SSP__ADC_RMS_Channel_All"] = "RMS of the SSP waveforms (profiled across all events)";
+  fFigureCaptions["SSP__ADC_PeakHeight_Channel_All"] = "Peak height of the SSP waveforms (profiled across all events)";
+  fFigureCaptions["SSP__ADC_Integral_Channel_All"] = "Integral of the SSP waveforms (profiled across all events)";
+  fFigureCaptions["SSP__ADC_IntegralNorm_Channel_All"] = "Normalised integral of the SSP waveforms (profiled across all events)";
+  fFigureCaptions["SSP__ADC_Pedestal_Channel_All"] = "Pedestal of the SSP waveforms (profiled across all events)";
+  fFigureCaptions["SSP__Ticks__Channel_All"] = "Number of ticks in each trigger";
+  fFigureCaptions["SSP__Triggers_Total_Channel_All"] = "Total number of triggers per channel (profiled across all events)";
+
+  // PTB captions
+  fFigureCaptions["PTB_TSUWU_Hits_Mean_Counter_All"] = "Average hit rate in a millislice for the TSU West Up counters";
+  fFigureCaptions["PTB_TSUWU_ActivationTime_Mean_Counter_All"] = "Average activation time for the TSU West Up counters";
+  fFigureCaptions["PTB_TSUEL_Hits_Mean_Counter_All"] = "Average hit rate in a millislice for the TSU East Low counters";
+  fFigureCaptions["PTB_TSUEL_ActivationTime_Mean_Counter_All"] = "Average activation time for the TSU East Low counters";
+  fFigureCaptions["PTB_TSUExtra_Hits_Mean_Counter_All"] = "Average hit rate in a millislice for the TSU extra counter bits (SHOULD BE EMPTY)";
+  fFigureCaptions["PTB_TSUExtra_ActivationTime_Mean_Counter_All"] = "Average activation time for the TSU extra counter bits (SHOULD BE EMPTY)";
+  fFigureCaptions["PTB_TSUNU_Hits_Mean_Counter_All"] = "Average hit rate in a millislice for the TSU North Up counters";
+  fFigureCaptions["PTB_TSUNU_ActivationTime_Mean_Counter_All"] = "Average activation time for the TSU North Up counters";
+  fFigureCaptions["PTB_TSUSL_Hits_Mean_Counter_All"] = "Average hit rate in a millislice for the TSU South Low counters";
+  fFigureCaptions["PTB_TSUSL_ActivationTime_Mean_Counter_All"] = "Average activation time for the TSU South Low counters";
+  fFigureCaptions["PTB_TSUNL_Hits_Mean_Counter_All"] = "Average hit rate in a millislice for the TSU North Low counters";
+  fFigureCaptions["PTB_TSUNL_ActivationTime_Mean_Counter_All"] = "Average activation time for the TSU North Low counters";
+  fFigureCaptions["PTB_TSUSU_Hits_Mean_Counter_All"] = "Average hit rate in a millislice for the TSU North Low counters";
+  fFigureCaptions["PTB_TSUSU_ActivationTime_Mean_Counter_All"] = "Average activation time for the TSU North Low counters";
+  fFigureCaptions["PTB_BSURM_Hits_Mean_Counter_All"] = "Average hit rate in a millislice for the BSU RM counters";
+  fFigureCaptions["PTB_BSURM_ActivationTime_Mean_Counter_All"] = "Average activation time for the BSU RM counters";
+  fFigureCaptions["PTB_BSUCU_Hits_Mean_Counter_All"] = "Average hit rate in a millislice for the BSU CU counters";
+  fFigureCaptions["PTB_BSU_ActivationTime_Mean_Counter_All"] = "Average activation time for the BSU CU counters";
+  fFigureCaptions["PTB_BSUCL_Hits_Mean_Counter_All"] = "Average hit rate in a millislice for the BSU CL counters";
+  fFigureCaptions["PTB_BSUCL_ActivationTime_Mean_Counter_All"] = "Average activation time for the BSU CL counters";
+  fFigureCaptions["PTB_BSURL_Hits_Mean_Counter_All"] = "Average hit rate in a millislice for the BSU RL counters";
+  fFigureCaptions["PTB_BSURL_ActivationTime_Mean_Counter_All"] = "Average activation time for the BSU RL counters";
+  fFigureCaptions["PTB__Hits_Mean_MuonTrigger_All"] = "Average hit rates per millislice of the muon trigger system";
+
+  // General captions
+  fFigureCaptions["General__NumberOfSubdetectors_Total__All"] = "Size of the data files made by the DAQ for the last 20 runs";
+  fFigureCaptions["General__Last20Files_Size_RunSubrun_All"] = "Size of event in each of the last 20 data files made by the DAQ (size of file / number of events in file)";
+  fFigureCaptions["General__Last20Files_SizePerEvent_RunSubrun_All"] = "Number of subdetectors present in each event in the data (one entry per event)";
 
 }

@@ -19,6 +19,8 @@
 #include <vector>
 #include <map>
 #include <bitset>
+#include <utility>
+#include "TMath.h"
 
 #include "OnlineMonitoringBase.cxx"
 
@@ -32,7 +34,7 @@ public:
   std::vector<int> const& NumBlocks() const { return fWindowingNumBlocks; }
   std::vector<std::vector<short> > const& BlockBegin() const { return fWindowingBlockBegin; }
   std::vector<std::vector<short> > const& BlockSize() const { return fWindowingBlockSize; }
-  int NumRCEs() { return fNRCEs; }
+  int NumRCEs() const { return fNRCEs; }
 
 private:
 
@@ -49,18 +51,40 @@ private:
 
 };
 
+struct OnlineMonitoring::Trigger {
+  Trigger();
+  Trigger(int channel, unsigned int peaksum, unsigned int prerise, unsigned int integral, unsigned int pedestal, unsigned int nTicks, double mean, double rms, std::vector<int> adcVector) {
+    Channel = channel;
+    PeakSum = peaksum;
+    Prerise = prerise;
+    Integral = integral;
+    Pedestal = pedestal;
+    NTicks = nTicks;
+    Mean = mean;
+    RMS = rms;
+    ADCs = adcVector;
+  }
+  int Channel;
+  unsigned int PeakSum, Prerise, Integral, Pedestal, NTicks;
+  double Mean, RMS;
+  std::vector<int> ADCs;
+};
+
 class OnlineMonitoring::SSPFormatter {
 public:
 
   // Defualt constructor (may come in handy!)
   SSPFormatter() {}
   SSPFormatter(art::Handle<artdaq::Fragments> const& rawSSP);
-  std::vector<std::vector<int> > const& ADCVector() const { return ADCs; }
-  int NumSSPs() { return fNSSPs; }
+  std::vector<Trigger> Triggers() const { return fTriggers; }
+  std::map<int,std::vector<Trigger> > ChannelTriggers() const { return fChannelTriggers; }
+  int NumSSPs() const { return fNSSPs; }
 
 private:
 
-  std::vector<std::vector<int> > ADCs;
+  //std::unique_ptr<Trigger> fTrigger;
+  std::vector<Trigger> fTriggers;
+  std::map<int,std::vector<Trigger> > fChannelTriggers;
   int fNSSPs;
 
 };

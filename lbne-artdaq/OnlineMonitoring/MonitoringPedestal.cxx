@@ -218,12 +218,9 @@ void OnlineMonitoring::MonitoringPedestal::GeneralMonitoring() {
     	}
       }
     }
-    int i = 0;
-    for(std::multimap<Long_t,std::pair<std::vector<TString>,Long_t> >::iterator mapIt = fileMap.begin(); mapIt != fileMap.end(); ++mapIt) {
+    int i = 1;
+    for(std::multimap<Long_t,std::pair<std::vector<TString>,Long_t> >::iterator mapIt = fileMap.begin(); mapIt != fileMap.end(); ++mapIt, ++i) {
       TString name = mapIt->second.first.at(1)+mapIt->second.first.at(2);
-      if (_verbose)
-	std::cout << "File: modified... " << mapIt->first << ", run " << name << " and size: " << mapIt->second.second << std::endl;
-      ++i;
       std::stringstream cmd; cmd << "TFile::Open(\"" << mapIt->second.first.at(0) << "\"); Events->GetEntriesFast()";
       Int_t entries = gROOT->ProcessLine(cmd.str().c_str());
       hSizeOfFiles->GetXaxis()->SetBinLabel(i,name);

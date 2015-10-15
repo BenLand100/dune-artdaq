@@ -35,6 +35,7 @@
 #include <iostream>
 #include <sstream>
 #include <fstream>
+#include <map>
 
 #include "OnlineMonitoringBase.cxx"
 #include "DataReformatter.hxx"
@@ -93,11 +94,7 @@ private:
   std::map<int,TH1D*> hDebugChannelHists;
 
   // SSP
-  TH1I *hTotalWaveformEvent, *hTotalSSPHitsEvent, *hTotalSSPHitsChannel, *hTimesWaveformGoesOverThreshold;
-  TH2I *hSSPBitCheckAnd, *hSSPBitCheckOr;
-  TH2D *hAvWaveformChannelEvent;
-  TProfile *hWaveformMeanChannel, *hWaveformRMSChannel, *hSSPDNoiseChannel;
-  std::map<int,TProfile*> hWaveformChannel;
+  TProfile *hWaveformMean, *hWaveformRMS, *hWaveformPeakHeight, *hWaveformIntegral, *hWaveformIntegralNorm, *hWaveformPedestal, *hWaveformNumTicks, *hNumberOfTriggers;
 
   // PTB
   TProfile *hPTBTriggerRates;

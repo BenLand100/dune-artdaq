@@ -95,9 +95,6 @@ void OnlineMonitoring::OnlineMonitoring::analyze(art::Event const& evt) {
 
   fEventNumber = evt.event();
 
-  if (_verbose)
-    std::cout << "Event number " << fEventNumber << std::endl;
-
   // Look for RCE millislice fragments
   art::Handle<artdaq::Fragments> rawRCE;
   evt.getByLabel("daq","TPC",rawRCE);
@@ -130,6 +127,9 @@ void OnlineMonitoring::OnlineMonitoring::analyze(art::Event const& evt) {
     fMonitoringData.WriteMonitoringData(evt.run(), evt.subRun());
 
   // Make event display every-so-often
+  // Eventually will check for flag in the PTB monitoring which suggests the event
+  // is interesting enough to make an event display for!
+  // if (ptbformatter.MakeEventDisplay())
   int evdRefreshInterval = std::round((double)fEventDisplayRefreshRate / 1.6e-3);
   if (fEventNumber % evdRefreshInterval == 0)
     fEventDisplay.MakeEventDisplay(rceformatter, fChannelMap, fEventNumber);
