@@ -1,7 +1,6 @@
 #include "lbne-artdaq/Generators/SSP.hh"
-#include "lbne-artdaq/Generators/anlBoard/Log.h"
 #include "lbne-artdaq/Generators/anlBoard/anlExceptions.h"
-#include "lbne-artdaq/Generators/anlBoard/Log.h"
+#include "lbne-artdaq/DAQLogger/DAQLogger.hh"
 
 #include "art/Utilities/Exception.h"
 #include "artdaq/Application/GeneratorMacros.hh"
@@ -27,20 +26,7 @@ lbne::SSP::SSP(fhicl::ParameterSet const & ps)
   board_id_(ps.get<unsigned int>("board_id",0))
 {
   instance_name_for_metrics_ = "SSP " + boost::lexical_cast<std::string>(board_id_);
-  unsigned int verbosity(ps.get<unsigned int>("verbosity",5));
 
-  switch(verbosity){
-  case 0:
-    SSPDAQ::Log::SetErrorStream(*SSPDAQ::Log::junk);
-  case 1:
-    SSPDAQ::Log::SetWarningStream(*SSPDAQ::Log::junk);
-  case 2:
-    SSPDAQ::Log::SetInfoStream(*SSPDAQ::Log::junk);
-  case 3:
-    SSPDAQ::Log::SetDebugStream(*SSPDAQ::Log::junk);
-  case 4:
-    SSPDAQ::Log::SetTraceStream(*SSPDAQ::Log::junk);
-  }
 
   unsigned int interfaceTypeCode(ps.get<unsigned int>("interface_type",999));
 
@@ -125,14 +111,14 @@ void lbne::SSP::ConfigureDAQ(fhicl::ParameterSet const& ps){
   unsigned int millisliceLength=daqConfig.get<unsigned int>("MillisliceLength",0);
 
   if(millisliceLength==0){
-    SSPDAQ::Log::Error()<<"Error: Millislice length not defined in SSP DAQ configuration!"<<std::endl;
+    DAQLogger::LogError("SSP_SSP_generator")<<"Error: Millislice length not defined in SSP DAQ configuration!"<<std::endl;
     throw SSPDAQ::EDAQConfigError("");
   }
 
   unsigned int millisliceOverlap=daqConfig.get<unsigned int>("MillisliceOverlap",0);
   /*
   if(millisliceOverlap==0){
-    SSPDAQ::Log::Error()<<"Error: Millislice overlap not defined in SSP DAQ configuration!"<<std::endl;
+    DAQLogger::LogError("SSP_SSP_generator")<<"Error: Millislice overlap not defined in SSP DAQ configuration!"<<std::endl;
     throw SSPDAQ::EDAQConfigError("");
   }
   */
@@ -140,28 +126,28 @@ void lbne::SSP::ConfigureDAQ(fhicl::ParameterSet const& ps){
   unsigned int useExternalTimestamp=daqConfig.get<unsigned int>("UseExternalTimestamp",2);
 
   if(useExternalTimestamp>1){
-    SSPDAQ::Log::Error()<<"Error: Timestamp source not defined, or invalidly defined, in SSP DAQ configuration!"<<std::endl;
+    DAQLogger::LogError("SSP_SSP_generator")<<"Error: Timestamp source not defined, or invalidly defined, in SSP DAQ configuration!"<<std::endl;
     throw SSPDAQ::EDAQConfigError("");
   }
 
   unsigned int emptyWriteDelay=daqConfig.get<unsigned int>("EmptyWriteDelay",0);
 
   if(emptyWriteDelay==0){
-    SSPDAQ::Log::Error()<<"EmptyWriteDelay not defined in SSP DAQ configuration!"<<std::endl;
+    DAQLogger::LogError("SSP_SSP_generator")<<"EmptyWriteDelay not defined in SSP DAQ configuration!"<<std::endl;
     throw SSPDAQ::EDAQConfigError("");
   }
 
   unsigned int hardwareClockRate=daqConfig.get<unsigned int>("HardwareClockRate",0);
 
   if(hardwareClockRate==1){
-    SSPDAQ::Log::Error()<<"Error: Hardware clock rate not defined in SSP DAQ configuration!"<<std::endl;
+    DAQLogger::LogError("SSP_SSP_generator")<<"Error: Hardware clock rate not defined in SSP DAQ configuration!"<<std::endl;
     throw SSPDAQ::EDAQConfigError("");
   }
 
   unsigned int startOnNOvASync=daqConfig.get<unsigned int>("StartOnNOvASync",2);
 
   if(startOnNOvASync>1){
-    SSPDAQ::Log::Error()<<"Error: StartOnNOvASync not defined, or invalidly defined, in SSP DAQ configuration!"<<std::endl;
+    DAQLogger::LogError("SSP_SSP_generator")<<"Error: StartOnNOvASync not defined, or invalidly defined, in SSP DAQ configuration!"<<std::endl;
     throw SSPDAQ::EDAQConfigError("");
   }
 
@@ -217,7 +203,7 @@ bool lbne::SSP::getNext_(artdaq::FragmentPtrs & frags) {
     ++fNFragmentsSent;
 
     if(!(fNFragmentsSent%1000)){
-      SSPDAQ::Log::Info()<<device_interface_->GetIdentifier()
+      DAQLogger::LogInfo("SSP_SSP_generator")<<device_interface_->GetIdentifier()
 			 <<"Generator sending fragment "<<fNFragmentsSent
 			 <<", calls to GetNext "<<fNGetNextCalls
 			 <<", of which returned null "<<fNNoFragments<<std::endl;
@@ -245,7 +231,7 @@ bool lbne::SSP::getNext_(artdaq::FragmentPtrs & frags) {
   // artdaq::Fragment constructor itself was not altered so as to
   // maintain backward compatibility.
 
-    SSPDAQ::Log::Debug()<<"SSP generator appending event to fragment holder"<<std::endl;
+    DAQLogger::LogDebug("SSP_SSP_generator")<<"SSP generator appending event to fragment holder"<<std::endl;
     
     std::size_t dataLength = millislice.size()-SSPDAQ::MillisliceHeader::sizeInUInts;
     

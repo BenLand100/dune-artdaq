@@ -10,6 +10,7 @@ art_make(
 	${MF_MESSAGELOGGER}
 	${MF_UTILITIES}
 	${Boost_SYSTEM_LIBRARY}
+	lbne-artdaq_DAQLogger
 	-lpthread
 	)
 	

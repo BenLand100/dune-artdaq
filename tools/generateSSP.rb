@@ -16,12 +16,7 @@ def generateSSP(startingFragmentId, boardId, interfaceType, fragmentType)
     board_ip: \"192.168.1.123\"           #Need to set for each board. Normally 192.168.1.1xx
                                           #where xx is device serial number (with leading 0 if appropriate)
 
-    verbosity: 3                          #0=silent, no errors or warnings.
-                                          #1=Errors only, important warnings not printed.
-                                          #2=Warnings and errors only.
-                                          #3=Normal (info on device initialization, run start and stop, periodic performance readout).
-                                          #4=*Very* verbose, ~1 line per hardware event, affects performance.
-                                          #5=Currently same as 4.
+
       #####################
       #Set up DAQ software#
       #####################

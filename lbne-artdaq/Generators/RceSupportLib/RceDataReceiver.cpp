@@ -6,6 +6,7 @@
  */
 
 #include "RceDataReceiver.hh"
+#include "lbne-artdaq/DAQLogger/DAQLogger.hh"
 
 #include <iostream>
 #include <unistd.h>
@@ -19,7 +20,7 @@ struct RceMicrosliceHeader
   uint32_t fw_frame_status[2];
 };
 
-#define RECV_DEBUG(level) if (level <= debug_level_) mf::LogDebug(instance_name_)
+#define RECV_DEBUG(level) if (level <= debug_level_) DAQLogger::LogDebug(instance_name_)
 
 lbne::RceDataReceiver::RceDataReceiver(const std::string& instance_name, int debug_level, uint32_t tick_period_usecs,
 		uint16_t receive_port, uint16_t number_of_microslices_per_millislice) :
@@ -119,7 +120,7 @@ void lbne::RceDataReceiver::stop(void)
 		timeout_count++;
 		if (timeout_count > max_timeout_count)
 		{
-			mf::LogError(instance_name_) << "Timeout waiting for RceDataReceiver thread to suspend readout";
+			DAQLogger::LogError(instance_name_) << "Timeout waiting for RceDataReceiver thread to suspend readout";
 			break;
 		}
 	}
@@ -228,7 +229,7 @@ void lbne::RceDataReceiver::do_accept(void)
 				}
 				else
 				{
-					mf::LogError(instance_name_) << "Got error on asynchronous accept: " << ec;
+					DAQLogger::LogError(instance_name_) << "Got error on asynchronous accept: " << ec;
 				}
 				this->do_accept();
 			}
@@ -270,7 +271,7 @@ void lbne::RceDataReceiver::do_read(void)
 			if (!buffer_available)
 			{
 				buffer_retries++;
-				mf::LogWarning(instance_name_) << "lbne::RceDataReceiver::receiverLoop no buffers available on commit queue";
+				DAQLogger::LogWarning(instance_name_) << "lbne::RceDataReceiver::receiverLoop no buffers available on commit queue";
 			}
 		} while (!buffer_available && (buffer_retries < max_buffer_retries));
 
@@ -286,7 +287,7 @@ void lbne::RceDataReceiver::do_read(void)
 		}
 		else
 		{
-			mf::LogError(instance_name_) << "Failed to obtain new raw buffer for millislice, terminating receiver loop";
+			DAQLogger::LogError(instance_name_) << "Failed to obtain new raw buffer for millislice, terminating receiver loop";
 			// TODO handle error cleanly here
 			return;
 		}
@@ -328,8 +329,8 @@ void lbne::RceDataReceiver::do_read(void)
 				}
 				else
 				{
-					mf::LogError(instance_name_) << "Got error on aysnchronous read: " << ec;
-					mf::LogError(instance_name_) 
+					DAQLogger::LogError(instance_name_) << "Got error on aysnchronous read: " << ec;
+					DAQLogger::LogError(instance_name_) 
 					              << "RECV: state " << (unsigned int)next_receive_state_
 						      << " mslice state " << (unsigned int)millislice_state_
 						      << " uslice " << microslices_recvd_
@@ -370,9 +371,9 @@ void lbne::RceDataReceiver::handle_received_data(std::size_t length)
 	    // Validate the sequence ID - should be incrementing monotonically
 	    if (sequence_id_initialised_ && (sequence_id != last_sequence_id_+1))
 	    {
-	      mf::LogWarning(instance_name_) << "Got mismatch in microslice sequence IDs! Got " << sequence_id << " expected " << last_sequence_id_+1;
-	      mf::LogWarning(instance_name_) << "Receive length at mismatch : " << length;
-	      mf::LogWarning(instance_name_) << "Microslice header at mismatch :"
+	      DAQLogger::LogWarning(instance_name_) << "Got mismatch in microslice sequence IDs! Got " << sequence_id << " expected " << last_sequence_id_+1;
+	      DAQLogger::LogWarning(instance_name_) << "Receive length at mismatch : " << length;
+	      DAQLogger::LogWarning(instance_name_) << "Microslice header at mismatch :"
 					     << " size : 0x"         << std::hex << header->microslice_size << std::dec
 					     << " sequence ID : 0x " << std::hex << header->sequence_id     << std::dec
 					     << " type ID : 0x"      << std::hex << header->type_id         << std::dec
@@ -432,7 +433,7 @@ void lbne::RceDataReceiver::handle_received_data(std::size_t length)
 	default:
 
 		// Should never happen - bug or data corruption
-		mf::LogError(instance_name_) << "Fatal error after async_recv - unrecognised next receive state: " << next_receive_state_;
+		DAQLogger::LogError(instance_name_) << "Fatal error after async_recv - unrecognised next receive state: " << next_receive_state_;
 		return;
 		break;
 	}
