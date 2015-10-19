@@ -84,7 +84,6 @@ private:
   // RCE
   TH1I *hTotalADCEvent, *hTotalRCEHitsEvent, *hTotalRCEHitsChannel, *hTimesADCGoesOverThreshold,  *hNumMicroslicesInMillislice, *hNumNanoslicesInMicroslice, *hNumNanoslicesInMillislice;
   TH2I *hRCEBitCheckAnd, *hRCEBitCheckOr;
-  TH1D *hAvADCAllMillislice;
   TH2D *hAvADCChannelEvent;
   TProfile *hADCMeanChannelAPA1, *hADCMeanChannelAPA2, *hADCMeanChannelAPA3, *hADCMeanChannelAPA4, *hADCRMSChannelAPA1, *hADCRMSChannelAPA2, *hADCRMSChannelAPA3, *hADCRMSChannelAPA4;
   TProfile *hRCEDNoiseChannel, *hAsymmetry, *hLastSixBitsCheckOff, *hLastSixBitsCheckOn;

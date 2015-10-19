@@ -227,7 +227,6 @@ void OnlineMonitoring::MonitoringData::RCEMonitoring(RCEFormatter const& rceform
     if (!millisliceADCs.size()) continue;
     double mean = TMath::Mean(millisliceADCs.begin(),millisliceADCs.end());
     hAvADCMillislice.at(millislice)->Fill(fEventNumber, mean);
-    hAvADCAllMillislice            ->Fill(fEventNumber, mean);
 
     _interestingchannelsfilled = true;
   }
@@ -236,7 +235,7 @@ void OnlineMonitoring::MonitoringData::RCEMonitoring(RCEFormatter const& rceform
 
 void OnlineMonitoring::MonitoringData::SSPMonitoring(SSPFormatter const& sspformatter) {
 
-  // /// Fills all histograms pertaining to SSP hardware monitoring
+  /// Fills all histograms pertaining to SSP hardware monitoring
 
   const std::map<int,std::vector<Trigger> > channelTriggers = sspformatter.ChannelTriggers();
 
