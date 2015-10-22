@@ -33,9 +33,9 @@ namespace OnlineMonitoring {
   // Note -- on the gateway machine the default paths here refer to directories constantly
   // being scanned by cron jobs to upload new monitoring to the web.
   // If wanting to test and develop code, please change the paths!
-  const TString DataDirName   = "/data/lbnedaq/data/";
-  const TString HistSavePath  = "/data/lbnedaq/monitoring/";
-  const TString EVDSavePath   = "/data/lbnedaq/eventDisplay/";
+  const TString DataDirName   = "/storage/data/";
+  const TString HistSavePath  = "/data2/lbnedaq/monitoring/";
+  const TString EVDSavePath   = "/data2/lbnedaq/eventDisplay/";
   const TString ImageType     = ".png";
   const TString PathDelimiter = "_";
 
