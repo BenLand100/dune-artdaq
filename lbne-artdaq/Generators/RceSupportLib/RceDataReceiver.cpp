@@ -287,9 +287,39 @@ void lbne::RceDataReceiver::do_read(void)
 		}
 		else
 		{
-			DAQLogger::LogError(instance_name_) << "Failed to obtain new raw buffer for millislice, terminating receiver loop";
-			// TODO handle error cleanly here
-			return;
+
+		  try {
+		    DAQLogger::LogError(instance_name_) << "Failed to obtain new raw buffer for millislice, terminating receiver loop";
+		  } catch (...) {
+
+		    // JCF, Oct-24-15
+		 
+		    // Swallow the exception... don't want to bring
+		    // down the DAQ if the above error message throws
+		    // an exception during the stop transition, as
+		    // this means the output *.root file is in danger
+		    // of not properly being closed
+   
+		    // However:
+
+		    // At some point we may want to uncomment the code
+		    // below, which basically means that if we can't
+		    // obtain a new raw buffer for the millislice and
+		    // we're in the running state, that it's a fatal
+		    // error which SHOULD throw an exception; since
+		    // "suspend_readout" isn't true, it means the
+		    // exception ought to be captured by
+		    // CommandableFragmentGenerator::getNext(),
+		    // resulting in the output file being properly
+		    // closed
+
+		    // if (! suspend_readout_.load()) {
+		    // ExceptionHandler(ExceptionHandlerRethrow::yes,
+		    // "");
+		    // }
+		  }
+
+		  return;
 		}
 
 	}
