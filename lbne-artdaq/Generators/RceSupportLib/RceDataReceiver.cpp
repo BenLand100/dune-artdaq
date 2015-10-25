@@ -120,7 +120,17 @@ void lbne::RceDataReceiver::stop(void)
 		timeout_count++;
 		if (timeout_count > max_timeout_count)
 		{
+
+		  // JCF, Oct-24-2015
+
+		  // May want to downgrade this to a warning; in the
+		  // meantime, swallow the exception this
+		  // automatically throws
+
+		  try {
 			DAQLogger::LogError(instance_name_) << "Timeout waiting for RceDataReceiver thread to suspend readout";
+		  } catch (...) {
+		  }
 			break;
 		}
 	}
