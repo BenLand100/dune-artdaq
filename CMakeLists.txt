@@ -25,13 +25,32 @@ set(CMAKE_MODULE_PATH
 include(CetCMakeEnv)
 cet_cmake_env()
 
+# Set ZEROMQ_IGNORED to either "TRUE" or "FALSE", depending on whether
+# 0MQ is available on your system (on lbne35t-gateway01.fnal.gov, it
+# IS available); 0MQ is used so lbne-artdaq code can send information
+# up to RunControl
+
+set (ZEROMQ_IGNORED "FALSE")
+
+if (NOT ZEROMQ_IGNORED) 
+message(STATUS "Requiring 0MQ libraries be available for build" )
+
 cet_set_compiler_flags(DIAGS VIGILANT
  WERROR
  NO_UNDEFINED
  EXTRA_FLAGS -pedantic
-# EXTRA_CXX_FLAGS -std=c++11 -D_GLIBCXX_USE_NANOSLEEP
  EXTRA_CXX_FLAGS -D_GLIBCXX_USE_NANOSLEEP
  )
+else()
+message(STATUS "Not requiring 0MQ libraries be available for build; will be unable to communicate to RunControl" )
+
+cet_set_compiler_flags(DIAGS VIGILANT
+ WERROR
+ NO_UNDEFINED
+ EXTRA_FLAGS -pedantic
+ EXTRA_CXX_FLAGS -D_GLIBCXX_USE_NANOSLEEP -DZEROMQ_IGNORED
+ )
+endif()
 
 cet_report_compiler_flags()
 

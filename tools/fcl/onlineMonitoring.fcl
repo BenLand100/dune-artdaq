@@ -18,11 +18,12 @@ physics:
   {
     monitoring:
     {
-      module_type:     "OnlineMonitoring"
+      module_type:                "OnlineMonitoring"
+      MakeTree:                   "false"
+      MonitoringRefreshRate:      500
+      EventDisplayRefreshRate:    100000 #8
     }
   }
   analysis: [ monitoring ] //Directory for histograms
   end_paths: [ analysis ]
 }
-
-physics.analyzers.monitoring.MakeTree: "true"

@@ -1,5 +1,6 @@
 #include "EventPacket.h"
-#include "Log.h"
+#include "lbne-artdaq/DAQLogger/DAQLogger.hh"
+
 void SSPDAQ::EventPacket::SetEmpty(){
   data.clear();
   header.header=0xDEADBEEF;
@@ -11,7 +12,7 @@ void SSPDAQ::EventPacket::DumpHeader(){
   if(peaksum & 0x00800000) {
     peaksum |= 0xFF000000;
   }
-  SSPDAQ::Log::Error()
+  lbne::DAQLogger::LogError("SSP_EventPacket")
     << "=====HEADER=======================================" << std::endl
     << "Header:                             " << header.header   << std::endl
     << "Length:                             " << header.length   << std::endl
@@ -39,16 +40,16 @@ void SSPDAQ::EventPacket::DumpHeader(){
 }
 
 void SSPDAQ::EventPacket::DumpEvent(){
-  SSPDAQ::Log::Error()<<"*****EVENT DUMP***********************************" <<std::endl<<std::endl;
+  lbne::DAQLogger::LogError("SSP_EventPacket")<<"*****EVENT DUMP***********************************" <<std::endl<<std::endl;
   this->DumpHeader();
-  SSPDAQ::Log::Error()<<"=====ADC VALUES===================================" <<std::endl;
+  lbne::DAQLogger::LogError("SSP_EventPacket")<<"=====ADC VALUES===================================" <<std::endl;
 
   unsigned int nADC=data.size()*2;
   unsigned short* adcs=reinterpret_cast<unsigned short*>(&(data[0]));
   for(unsigned int i=0;i<nADC;++i){
-    SSPDAQ::Log::Error()<<adcs[i]<<", ";
+    lbne::DAQLogger::LogError("SSP_EventPacket")<<adcs[i]<<", ";
   }
 
-  SSPDAQ::Log::Error()<<std::endl<<"**************************************************" 
+  lbne::DAQLogger::LogError("SSP_EventPacket")<<std::endl<<"**************************************************" 
 		      <<std::endl<<std::endl;
 }

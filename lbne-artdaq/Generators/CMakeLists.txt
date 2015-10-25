@@ -19,6 +19,7 @@ simple_plugin(SSP "generator"
   ${ART_UTILITIES}
   ${FHICLCPP} 
   ${CETLIB} 
+  lbne-artdaq_DAQLogger
   )
 
 simple_plugin(ToySimulator "generator"
@@ -29,8 +30,6 @@ simple_plugin(ToySimulator "generator"
   ${ART_UTILITIES}
   ${FHICLCPP}
   ${CETLIB}
-  ${MF_MESSAGELOGGER}
-  ${MF_UTILITIES}
   lbne-artdaq_DAQLogger
   )
 
@@ -45,8 +44,8 @@ simple_plugin(TpcRceReceiver "generator"
   ${ARTDAQ-CORE_UTILITIES}
   ${ART_UTILITIES}
   ${FHICLCPP}
-  ${MF_MESSAGELOGGER}
   ${CETLIB}
+  lbne-artdaq_DAQLogger
   )
   
   add_subdirectory(RceSupportLib)

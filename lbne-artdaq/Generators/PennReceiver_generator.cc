@@ -118,7 +118,7 @@ lbne::PennReceiver::PennReceiver(fhicl::ParameterSet const & ps)
 
   // Penn microslice duration
   penn_data_microslice_size_ =
-        ps.get<uint32_t>("penn_data_buffer.daq_microslice_size", 128);
+        ps.get<uint32_t>("penn_data_buffer.daq_microslice_size", 1000);
 
   ptb_pulse_width_ = ps.get<uint32_t>("hardware.pulse_width",2);
 
