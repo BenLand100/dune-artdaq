@@ -16,6 +16,7 @@
 #include "artdaq-core/Data/Fragments.hh"
 
 #include <iostream>
+#include <iomanip>
 #include <vector>
 #include <map>
 #include <bitset>
@@ -34,7 +35,9 @@ public:
   std::vector<int> const& NumBlocks() const { return fWindowingNumBlocks; }
   std::vector<std::vector<short> > const& BlockBegin() const { return fWindowingBlockBegin; }
   std::vector<std::vector<short> > const& BlockSize() const { return fWindowingBlockSize; }
-  int NumRCEs() const { return fNRCEs; }
+
+  int NumRCEs;
+  std::vector<std::string> RCEsWithData;
 
 private:
 
@@ -42,7 +45,6 @@ private:
   void Windowing();
 
   std::vector<std::vector<int> > ADCs;
-  int fNRCEs;
 
   // Windowing
   std::vector<int> fWindowingNumBlocks;
@@ -78,14 +80,15 @@ public:
   SSPFormatter(art::Handle<artdaq::Fragments> const& rawSSP);
   std::vector<Trigger> Triggers() const { return fTriggers; }
   std::map<int,std::vector<Trigger> > ChannelTriggers() const { return fChannelTriggers; }
-  int NumSSPs() const { return fNSSPs; }
+
+  int NumSSPs;
+  std::vector<std::string> SSPsWithData;
 
 private:
 
   //std::unique_ptr<Trigger> fTrigger;
   std::vector<Trigger> fTriggers;
   std::map<int,std::vector<Trigger> > fChannelTriggers;
-  int fNSSPs;
 
 };
 
@@ -98,6 +101,8 @@ public:
   void AnalyzeCounter(int counter_index, double &activation_time, int &hit_rate) const;
   void AnalyzeMuonTrigger(int trigger_number, int &trigger_rate) const;
   int NumTriggers() const { return fMuonTriggerRates.size(); }
+
+  bool PTBData;
 
 private:
 

@@ -11,7 +11,10 @@
 // RCE ----------------------------------------------------------------------------------------------------------------------------------------------------
 OnlineMonitoring::RCEFormatter::RCEFormatter(art::Handle<artdaq::Fragments> const& rawRCE) {
 
-  if (!rawRCE.isValid()) return;
+  if (!rawRCE.isValid()) {
+    NumRCEs = 0;
+    return;
+  }
 
   this->AnalyseADCs(rawRCE);
   this->Windowing();
@@ -20,7 +23,7 @@ OnlineMonitoring::RCEFormatter::RCEFormatter(art::Handle<artdaq::Fragments> cons
 
 void OnlineMonitoring::RCEFormatter::AnalyseADCs(art::Handle<artdaq::Fragments> const& rawRCE) {
 
-  fNRCEs = rawRCE->size();
+  NumRCEs = rawRCE->size();
 
   // Loop over fragments to make a map to save the order the frags are saved in
   std::map<unsigned int, unsigned int> tpcFragmentMap;
@@ -28,6 +31,8 @@ void OnlineMonitoring::RCEFormatter::AnalyseADCs(art::Handle<artdaq::Fragments> 
     const artdaq::Fragment &fragment = ((*rawRCE)[fragIt]);
     unsigned int fragmentID = fragment.fragmentID(); //+ 100;
     tpcFragmentMap.insert(std::pair<unsigned int, unsigned int>(fragmentID,fragIt));
+    std::stringstream stream; stream << std::setfill('0') << std::setw(2) << fragmentID-100;
+    RCEsWithData.push_back(std::string("RCE")+stream.str());
   }
 
   // Loop over channels
@@ -157,17 +162,24 @@ void OnlineMonitoring::RCEFormatter::Windowing() {
 // SSP ----------------------------------------------------------------------------------------------------------------------------------------------------
 OnlineMonitoring::SSPFormatter::SSPFormatter(art::Handle<artdaq::Fragments> const& rawSSP) {
 
-  /// SSPFormatter will take raw SSP artdaq::Fragments and extracts the information, saving useful bits
+  /// SSPFormatter takes raw SSP artdaq::Fragments and extracts the information, saving useful bits
 
-  if (!rawSSP.isValid()) return;
-
-  fNSSPs = rawSSP->size();
+  if (!rawSSP.isValid()) {
+    NumSSPs = 0;
+    return;
+  }
+  NumSSPs = rawSSP->size();
 
   for (unsigned int fragmentNum = 0; fragmentNum < rawSSP->size(); ++fragmentNum) {
 
     // Get the raw fragment
     const artdaq::Fragment fragment = rawSSP->at(fragmentNum);
     lbne::SSPFragment sspfrag(fragment);
+
+    // Note this SSP has data (and format name as DAQ would)
+    std::stringstream stream; stream << std::setfill('0') << std::setw(2) << fragment.fragmentID();
+    SSPsWithData.push_back(std::string("SSP")+stream.str());
+    std::cout << "SSP fragment " << fragmentNum << " has name " << std::string("SSP")+stream.str() << std::endl;
 
     // Get the metadata
     const SSPDAQ::MillisliceHeader* meta = 0;
@@ -181,10 +193,10 @@ OnlineMonitoring::SSPFormatter::SSPFormatter(art::Handle<artdaq::Fragments> cons
 
       const SSPDAQ::EventHeader* triggerHeader = reinterpret_cast<const SSPDAQ::EventHeader*>(dataPointer);
 
-      // Find the (online) channel number
+      // Find the (online) 'channel number' [this doesn't make much sense!]
       int SSPChannel = ((triggerHeader->group2 & 0x000F) >> 0);
       int SSPNumber  = ((triggerHeader->group2 & 0x00F0) >> 4);
-      int channel = (12 * SSPNumber) + SSPChannel;
+      int channel = (12 * (SSPNumber-1)) + SSPChannel;
 
       // Find the information for this trigger
       unsigned int peaksum = ((triggerHeader->group3 & 0x00FF) >> 16) + triggerHeader->peakSumLow;
@@ -228,7 +240,11 @@ OnlineMonitoring::SSPFormatter::SSPFormatter(art::Handle<artdaq::Fragments> cons
 // PTB ----------------------------------------------------------------------------------------------------------------------------------------------------
 OnlineMonitoring::PTBFormatter::PTBFormatter(art::Handle<artdaq::Fragments> const& rawPTB) {
 
-  if (!rawPTB.isValid()) return;
+  if (!rawPTB.isValid()) {
+      PTBData = false;
+      return;
+  }
+  PTBData = true;
 
   //Initialise the trigger rates
   fMuonTriggerRates[1] = 0;
@@ -372,5 +388,3 @@ void OnlineMonitoring::PTBFormatter::CollectMuonTrigger(uint8_t* payload, size_t
   }
   return;
 }
-
-
