@@ -177,9 +177,8 @@ OnlineMonitoring::SSPFormatter::SSPFormatter(art::Handle<artdaq::Fragments> cons
     lbne::SSPFragment sspfrag(fragment);
 
     // Note this SSP has data (and format name as DAQ would)
-    std::stringstream stream; stream << std::setfill('0') << std::setw(2) << fragment.fragmentID();
+    std::stringstream stream; stream << std::setfill('0') << std::setw(2) << fragment.fragmentID()+1;
     SSPsWithData.push_back(std::string("SSP")+stream.str());
-    std::cout << "SSP fragment " << fragmentNum << " has name " << std::string("SSP")+stream.str() << std::endl;
 
     // Get the metadata
     const SSPDAQ::MillisliceHeader* meta = 0;

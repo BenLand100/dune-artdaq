@@ -25,9 +25,13 @@ void OnlineMonitoring::MonitoringData::BeginMonitoring(int run, int subrun) {
   directory << HistSavePath << "Run" << run << "Subrun" << subrun << "/";
   HistSaveDirectory = directory.str();
 
-  // Make the directory to save the files
+  // Make the directories to save the files
   std::ostringstream cmd;
-  cmd << "touch " << directory.str() << "; rm -rf " << directory.str() << "; mkdir " << directory.str();
+  cmd << "touch " << directory.str() << "; rm -rf " << directory.str() << "; mkdir " << directory.str()
+      << "; mkdir " << directory.str() << "General"
+      << "; mkdir " << directory.str() << "RCE"
+      << "; mkdir " << directory.str() << "SSP"
+      << "; mkdir " << directory.str() << "PTB";
   system(cmd.str().c_str());
 
   // Outfile
@@ -387,9 +391,20 @@ void OnlineMonitoring::MonitoringData::WriteMonitoringData(int run, int subrun) 
   /// Writes all the monitoring data currently saved in the data objects
 
   // Make the html for the web pages
-  ofstream imageHTML((HistSaveDirectory+TString("index.html").Data()));
-  imageHTML << "<head><link rel=\"stylesheet\" type=\"text/css\" href=\"../../style/style.css\"><title>35t: Run " << run << ", Subrun " << subrun <<"</title></head>" << std::endl << "<body><div class=\"bannertop\"></div>";
-  imageHTML << "<h1 align=center>Monitoring for Run " << run << ", Subrun " << subrun << "</h1>" << std::endl;
+  ofstream mainHTML((HistSaveDirectory+TString("index.html").Data()));
+  std::map<std::string,std::unique_ptr<ofstream> > componentHTML;
+
+  // Main page
+  mainHTML << "<head><link rel=\"stylesheet\" type=\"text/css\" href=\"../../style/style.css\"><title>35t: Run " << run << ", Subrun " << subrun <<"</title></head>" << std::endl << "<body><div class=\"bannertop\"></div>";
+  mainHTML << "<h1 align=center>Monitoring for Run " << run << ", Subrun " << subrun << "</h1>" << std::endl;
+
+  // Component pages
+  for (auto& component : {"General","RCE","SSP","PTB"}) {
+    mainHTML << "</br><a href=\"" << component << "\">" << component << "</a>" << std::endl;
+    componentHTML[component].reset(new ofstream((HistSaveDirectory+component+TString("/index.html")).Data()));
+    *componentHTML[component] << "<head><link rel=\"stylesheet\" type=\"text/css\" href=\"../../../style/style.css\"><title>35t: Run " << run << ", Subrun " << subrun <<"</title></head>" << std::endl << "<body><div class=\"bannertop\"></div>";
+    *componentHTML[component] << "<h1 align=center>" << component << "</h1>" << std::endl;
+  }
 
   fDataFile->cd();
 
@@ -411,16 +426,21 @@ void OnlineMonitoring::MonitoringData::WriteMonitoringData(int run, int subrun) 
     else fCanvas->SetLogy(0);
     fCanvas->Modified();
     fCanvas->Update();
-    fCanvas->SaveAs(HistSaveDirectory+TString(_h->GetName())+ImageType);
+    fCanvas->SaveAs(HistSaveDirectory+TString(histName->At(0)->GetName())+TString("/")+TString(_h->GetName())+ImageType);
     fDataFile->cd();
     fDataFile->cd(histName->At(0)->GetName());
     _h->Write();
-    imageHTML << "<figure><a href=\"" << (TString(_h->GetName())+ImageType).Data() << "\"><img src=\"" << (TString(_h->GetName())+ImageType).Data() << "\" width=\"650\"></a><figcaption>" << fFigureCaptions.at(_h->GetName()) << "</figcaption></figure>" << std::endl;
+    *componentHTML[histName->At(0)->GetName()] << "<figure><a href=\"" << (TString(_h->GetName())+ImageType).Data() << "\"><img src=\"" << (TString(_h->GetName())+ImageType).Data() << "\" width=\"650\"></a><figcaption>" << fFigureCaptions.at(_h->GetName()) << "</figcaption></figure>" << std::endl;
   }
 
-  imageHTML << "<div class=\"bannerbottom\"></div></body>" << std::endl;
-  imageHTML.flush();
-  imageHTML.close();
+  mainHTML << "<div class=\"bannerbottom\"></div></body>" << std::endl;
+  mainHTML.flush();
+  mainHTML.close();
+  for (auto& component : {"General","RCE","SSP","PTB"}) {
+    *componentHTML.at(component) << "<div class=\"bannerbottom\"></div></body>" << std::endl;
+    componentHTML.at(component)->flush();
+    componentHTML.at(component)->close();
+  }
 
   // Write other histograms
   fDataFile->cd();
