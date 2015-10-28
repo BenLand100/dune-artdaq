@@ -27,6 +27,7 @@
 #include <numeric>
 #include <bitset>
 #include <cmath>
+#include <ctime>
 #include <typeinfo>
 #include <thread>
 #include <stdio.h>
@@ -52,8 +53,6 @@ public:
 
 private:
 
-  art::EventNumber_t fEventNumber;
-
   MonitoringData fMonitoringData;
   EventDisplay fEventDisplay;
   ChannelMap fChannelMap;
@@ -63,6 +62,7 @@ private:
   // Refresh rates
   int fMonitoringRefreshRate;
   int fEventDisplayRefreshRate;
+  int fLastSaveTime;
 
 };
 
@@ -89,11 +89,11 @@ void OnlineMonitoring::OnlineMonitoring::beginSubRun(art::SubRun const& sr) {
   // Make the channel map for this subrun
   fChannelMap.MakeChannelMap();
 
+  fLastSaveTime = std::time(0);
+
 }
 
 void OnlineMonitoring::OnlineMonitoring::analyze(art::Event const& evt) {
-
-  fEventNumber = evt.event();
 
   // Look for RCE millislice fragments
   art::Handle<artdaq::Fragments> rawRCE;
@@ -107,7 +107,7 @@ void OnlineMonitoring::OnlineMonitoring::analyze(art::Event const& evt) {
   art::Handle<artdaq::Fragments> rawPTB;
   evt.getByLabel("daq","TRIGGER",rawPTB);
 
-  fMonitoringData.StartEvent(fEventNumber, fMakeTree);
+  fMonitoringData.StartEvent(evt.event(), fMakeTree);
 
   // Create data formatter objects and fill monitoring data products
   RCEFormatter rceformatter(rawRCE);
@@ -122,21 +122,22 @@ void OnlineMonitoring::OnlineMonitoring::analyze(art::Event const& evt) {
   if (fMakeTree) fMonitoringData.FillTree(rceformatter, sspformatter);
 
   // Write the data out every-so-often
-  int eventRefreshInterval = std::round((double)fMonitoringRefreshRate / 1.6e-3);
-  if (fEventNumber % eventRefreshInterval == 0)
+  if ((std::time(0) - fLastSaveTime) > fMonitoringRefreshRate) {
     fMonitoringData.WriteMonitoringData(evt.run(), evt.subRun());
+    fLastSaveTime = std::time(0);
+  }
 
   // Make event display every-so-often
   // Eventually will check for flag in the PTB monitoring which suggests the event
   // is interesting enough to make an event display for!
   // if (ptbformatter.MakeEventDisplay())
   int evdRefreshInterval = std::round((double)fEventDisplayRefreshRate / 1.6e-3);
-  if (fEventNumber % evdRefreshInterval == 0)
-    fEventDisplay.MakeEventDisplay(rceformatter, fChannelMap, fEventNumber);
+  if (evt.event() % evdRefreshInterval == 0)
+    fEventDisplay.MakeEventDisplay(rceformatter, fChannelMap, evt.event());
 
   // Consider detaching!
   // // Event display -- every 500 events (8 s)
-  // if (fEventNumber % 20 == 0) {
+  // if (evt.event() % 20 == 0) {
   //   std::thread t(&OnlineMonitoring::eventDisplay,this,ADCs,Waveforms);
   //   t.detach();
   // }
