@@ -79,6 +79,10 @@ private:
   bool _interestingchannelsfilled = false;
 
   // Monitoring Data --------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  // General
+  TH1I *hNumSubDetectorsPresent, *hSizeOfFiles, *hSubDetectorsWithData, *hSubDetectorsPresent;
+  TH1D *hSizeOfFilesPerEvent;
+
   // RCE
   TH1I *hTotalADCEvent, *hTotalRCEHitsEvent, *hTotalRCEHitsChannel, *hTimesADCGoesOverThreshold,  *hNumMicroslicesInMillislice, *hNumNanoslicesInMicroslice, *hNumNanoslicesInMillislice;
   TH2I *hRCEBitCheckAnd, *hRCEBitCheckOr;
@@ -106,10 +110,6 @@ private:
   TProfile *hPTBBSUCounterHitRateCU,    *hPTBBSUCounterActivationTimeCU;
   TProfile *hPTBBSUCounterHitRateCL,    *hPTBBSUCounterActivationTimeCL;
   TProfile *hPTBBSUCounterHitRateRL,    *hPTBBSUCounterActivationTimeRL;
-
-  // General
-  TH1I *hNumSubDetectorsPresent, *hSizeOfFiles, *hSubDetectorsWithData;
-  TH1D *hSizeOfFilesPerEvent;
 
 };
 

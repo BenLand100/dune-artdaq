@@ -26,7 +26,7 @@ namespace OnlineMonitoring {
 
   const unsigned int NRCEChannels    = 2048;
   const unsigned int NRCEMillislices = 16;
-  const unsigned int NSSPChannels    = 96;
+  const unsigned int NSSPChannels    = 84;
   const std::vector<int> DebugChannels = {260, 278, 289, 290};
 
   // Paths
@@ -43,6 +43,10 @@ namespace OnlineMonitoring {
     static int const CounterWordSize = 128;
     static int const TriggerWordSize = 32;
   }
+
+  const std::vector<std::string> DAQComponents = {"RCE00","RCE01","RCE02","RCE03","RCE04","RCE05","RCE06","RCE07","RCE08","RCE09","RCE10","RCE11","RCE12","RCE13","RCE14","RCE15",
+						  "SSP01","SSP02","SSP03","SSP04","SSP05","SSP06","SSP07",
+						  "PTB"};
 
 }
 

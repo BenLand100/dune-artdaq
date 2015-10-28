@@ -83,25 +83,19 @@ void OnlineMonitoring::MonitoringData::GeneralMonitoring(RCEFormatter const& rce
 
   /// Fills the general monitoring histograms (i.e. monitoring not specific to a particular hardware component)
 
-  // Subdetectors in each event
+  // Subdetectors with data
   hNumSubDetectorsPresent->Fill(rceformatter.NumRCEs + sspformatter.NumSSPs + ptbformatter.PTBData);
+  for (std::vector<std::string>::const_iterator compIt = DAQComponents.begin(); compIt != DAQComponents.end(); ++compIt)
+    if ( (std::find(rceformatter.RCEsWithData.begin(), rceformatter.RCEsWithData.end(), *compIt) != rceformatter.RCEsWithData.end()) or
+	 (std::find(sspformatter.SSPsWithData.begin(), sspformatter.SSPsWithData.end(), *compIt) != sspformatter.SSPsWithData.end()) or
+	 (*compIt == "PTB" and ptbformatter.PTBData) ) {
+      hSubDetectorsPresent->Fill((*compIt).c_str(),1);
+      hSubDetectorsWithData->SetBinContent(std::distance(DAQComponents.begin(),compIt)+1,1);
+    }
 
   // Fill data just once per run
   if (!filledRunData) {
     filledRunData = true;
-
-    // Data present in the run
-    std::vector<std::string> components = {"RCE00","RCE01","RCE02","RCE03","RCE04","RCE05","RCE06","RCE07","RCE08","RCE09","RCE10","RCE11","RCE12","RCE13","RCE14","RCE15",
-					   "SSP01","SSP02","SSP03","SSP04","SSP05","SSP06","SSP07",
-					   "PTB"};
-    for (std::vector<std::string>::iterator compIt = components.begin(); compIt != components.end(); ++compIt) {
-      hSubDetectorsWithData->GetXaxis()->SetBinLabel(std::distance(components.begin(),compIt)+1, (*compIt).c_str());
-      if ( (std::find(rceformatter.RCEsWithData.begin(), rceformatter.RCEsWithData.end(), *compIt) != rceformatter.RCEsWithData.end()) or
-	   (std::find(sspformatter.SSPsWithData.begin(), sspformatter.SSPsWithData.end(), *compIt) != sspformatter.SSPsWithData.end()) or
-	   (*compIt == "PTB" and ptbformatter.PTBData) )
-	hSubDetectorsWithData->Fill((*compIt).c_str(),1);
-    }
-    hSubDetectorsWithData->GetXaxis()->SetLabelSize(0.025);
 
     // Size of files
     std::multimap<Long_t,std::pair<std::vector<TString>,Long_t>,std::greater<Long_t> > fileMap;
@@ -474,6 +468,19 @@ void OnlineMonitoring::MonitoringData::MakeHistograms() {
   // Define all histograms
   // Nomenclature: Name is used to save the histogram, Title has format : histogramTitle_histDrawOptions_canvasOptions;x-title;y-title;z-title
 
+  // General
+  hNumSubDetectorsPresent = new TH1I("General__NumberOfSubdetectors_Total__All","Number of Subdetectors_\"colz\"_logy;Number of Subdetectors;",24,0,24);
+  hSubDetectorsWithData   = new TH1I("General__SubdetectorsWithData_Present__All","Subdetectors With Data_\"colz\"_none;Subdetectors With Data;",24,0,24);
+  hSubDetectorsPresent    = new TH1I("General__SubdetectorsPresent_Total__All","Subdetectors With Data (per event)_\"colz\"_none;Subdetectors With Data;",24,0,24);
+  hSizeOfFiles            = new TH1I("General__Last20Files_Size_RunSubrun_All","Data File Sizes_\"colz\"_none;Run&Subrun;Size (MB);",20,0,20);
+  hSizeOfFilesPerEvent    = new TH1D("General__Last20Files_SizePerEvent_RunSubrun_All","Size of Event in Data Files_\"colz\"_none;Run&Subrun;Size (MB/event);",20,0,20);
+  for (std::vector<std::string>::const_iterator compIt = DAQComponents.begin(); compIt != DAQComponents.end(); ++compIt) {
+    hSubDetectorsWithData->GetXaxis()->SetBinLabel(std::distance(DAQComponents.begin(),compIt)+1, (*compIt).c_str());
+    hSubDetectorsPresent->GetXaxis()->SetBinLabel(std::distance(DAQComponents.begin(),compIt)+1, (*compIt).c_str());
+  }
+  hSubDetectorsWithData->GetXaxis()->SetLabelSize(0.025);
+  hSubDetectorsPresent->GetXaxis()->SetLabelSize(0.025);
+
   // RCE hists
   hADCMeanChannelAPA1                   = new TProfile("RCE_APA0_ADC_Mean_Channel_All","RCE ADC Mean APA0_\"histl\"_none;Channel;RCE ADC Mean",512,0,511);
   hADCMeanChannelAPA2                   = new TProfile("RCE_APA1_ADC_Mean_Channel_All","RCE ADC Mean APA1_\"histl\"_none;Channel;RCE ADC Mean",512,512,1023);
@@ -515,12 +522,6 @@ void OnlineMonitoring::MonitoringData::MakeHistograms() {
   hWaveformPedestal = new TProfile("SSP__ADC_Pedestal_Channel_All","Waveform Pedestal_\"histl\"_none;Channel;Pedestal",NSSPChannels,0,NSSPChannels);
   hWaveformNumTicks = new TProfile("SSP__Ticks__Channel_All","Num Ticks in Trigger_\"histl\"_none;Number of Ticks",NSSPChannels,0,NSSPChannels);
   hNumberOfTriggers = new TProfile("SSP__Triggers_Total_Channel_All","Number of Triggers_\"histl\"_none;Channel;Number of Triggers",NSSPChannels,0,NSSPChannels);
-
-  // General
-  hNumSubDetectorsPresent = new TH1I("General__NumberOfSubdetectors_Total__All","Number of Subdetectors_\"colz\"_logy;Number of Subdetectors;",24,0,24);
-  hSubDetectorsWithData   = new TH1I("General__SubdetectorsWithData_Total__All","Subdetectors With Data_\"colz\"_none;Subdetectors With Data;",24,0,24);
-  hSizeOfFiles            = new TH1I("General__Last20Files_Size_RunSubrun_All","Data File Sizes_\"colz\"_none;Run&Subrun;Size (MB);",20,0,20);
-  hSizeOfFilesPerEvent    = new TH1D("General__Last20Files_SizePerEvent_RunSubrun_All","Size of Event in Data Files_\"colz\"_none;Run&Subrun;Size (MB/event);",20,0,20);
 
   // PTB hists
   hPTBTSUCounterHitRateWU = new TProfile("PTB_TSUWU_Hits_Mean_Counter_All","PTB TSU counter hit Rate (per millislice) (West Up)_\"\"_none;Counter number; No. hits per millislice",10,1,11);
@@ -607,7 +608,9 @@ void OnlineMonitoring::MonitoringData::MakeHistograms() {
   hPTBTriggerRates->GetXaxis()->SetBinLabel(4,"TSU EL-WU");
 
   // The order the histograms are added will be the order they're displayed on the web!
-  fHistArray.Add(hNumSubDetectorsPresent); fHistArray.Add(hSubDetectorsWithData);
+  fHistArray.Add(hNumSubDetectorsPresent); 
+  fHistArray.Add(hSubDetectorsPresent); fHistArray.Add(hSubDetectorsWithData);
+  fHistArray.Add(hSizeOfFiles); fHistArray.Add(hSizeOfFilesPerEvent);
 
   fHistArray.Add(hADCMeanChannelAPA1); fHistArray.Add(hADCMeanChannelAPA2);
   fHistArray.Add(hADCMeanChannelAPA3); fHistArray.Add(hADCMeanChannelAPA4);
@@ -630,9 +633,6 @@ void OnlineMonitoring::MonitoringData::MakeHistograms() {
   fHistArray.Add(hWaveformNumTicks);
   fHistArray.Add(hNumberOfTriggers);
 
-  fHistArray.Add(hSizeOfFiles); fHistArray.Add(hSizeOfFilesPerEvent);
-
-  // Penn board hists
   fHistArray.Add(hPTBTriggerRates);
   fHistArray.Add(hPTBTSUCounterActivationTimeWU); fHistArray.Add(hPTBTSUCounterHitRateWU);
   fHistArray.Add(hPTBTSUCounterActivationTimeEL); fHistArray.Add(hPTBTSUCounterHitRateEL);
@@ -645,6 +645,13 @@ void OnlineMonitoring::MonitoringData::MakeHistograms() {
   fHistArray.Add(hPTBBSUCounterActivationTimeCU); fHistArray.Add(hPTBBSUCounterHitRateCU);
   fHistArray.Add(hPTBBSUCounterActivationTimeCL); fHistArray.Add(hPTBBSUCounterHitRateCL);
   fHistArray.Add(hPTBBSUCounterActivationTimeRL); fHistArray.Add(hPTBBSUCounterHitRateRL);
+
+  // General captions
+  fFigureCaptions["General__NumberOfSubdetectors_Total__All"] = "Number of subdetectors present in each event in the data (one entry per event)";
+  fFigureCaptions["General__Last20Files_Size_RunSubrun_All"] = "Size of the data files made by the DAQ for the last 20 runs";
+  fFigureCaptions["General__Last20Files_SizePerEvent_RunSubrun_All"] = "Size of event in each of the last 20 data files made by the DAQ (size of file / number of events in file)";
+  fFigureCaptions["General__SubdetectorsWithData_Present__All"] = "Subdetectors with data in run";
+  fFigureCaptions["General__SubdetectorsPresent_Total__All"] = "Subdetectors with data per event";
 
   // RCE captions
   fFigureCaptions["RCE_APA0_ADC_Mean_Channel_All"] = "Mean ADC values for each channel read out by the RCEs (profiled over all events read)";
@@ -702,11 +709,5 @@ void OnlineMonitoring::MonitoringData::MakeHistograms() {
   fFigureCaptions["PTB_BSURL_Hits_Mean_Counter_All"] = "Average hit rate in a millislice for the BSU RL counters";
   fFigureCaptions["PTB_BSURL_ActivationTime_Mean_Counter_All"] = "Average activation time for the BSU RL counters";
   fFigureCaptions["PTB__Hits_Mean_MuonTrigger_All"] = "Average hit rates per millislice of the muon trigger system";
-
-  // General captions
-  fFigureCaptions["General__NumberOfSubdetectors_Total__All"] = "Number of subdetectors present in each event in the data (one entry per event)";
-  fFigureCaptions["General__Last20Files_Size_RunSubrun_All"] = "Size of the data files made by the DAQ for the last 20 runs";
-  fFigureCaptions["General__Last20Files_SizePerEvent_RunSubrun_All"] = "Size of event in each of the last 20 data files made by the DAQ (size of file / number of events in file)";
-  fFigureCaptions["General__SubdetectorsWithData_Total__All"] = "Subdetectors with data";
 
 }
