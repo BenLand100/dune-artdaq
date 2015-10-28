@@ -17,21 +17,29 @@ void OnlineMonitoring::MonitoringData::BeginMonitoring(int run, int subrun) {
   // Set up new subrun
   fHistArray.Clear();
   fCanvas = new TCanvas("canv","",800,600);
-  //receivedData = false; checkedFileSizes = false; _interestingchannelsfilled = false;
-  checkedFileSizes = false;
+  //receivedData = false; _interestingchannelsfilled = false;
+  filledRunData = false;
 
   // Get directory for this run
   std::ostringstream directory;
   directory << HistSavePath << "Run" << run << "Subrun" << subrun << "/";
   HistSaveDirectory = directory.str();
 
-  // Make the directory to save the files
+  // Make the directories to save the files
   std::ostringstream cmd;
-  cmd << "touch " << directory.str() << "; rm -rf " << directory.str() << "; mkdir " << directory.str();
+  cmd << "touch " << directory.str() << "; rm -rf " << directory.str() << "; mkdir " << directory.str()
+      << "; mkdir " << directory.str() << "General"
+      << "; mkdir " << directory.str() << "RCE"
+      << "; mkdir " << directory.str() << "SSP"
+      << "; mkdir " << directory.str() << "PTB";
   system(cmd.str().c_str());
 
   // Outfile
   fDataFile = new TFile(HistSaveDirectory+TString("monitoringRun"+std::to_string(run)+"Subrun"+std::to_string(subrun)+".root"),"RECREATE");
+  fDataFile->mkdir("General");
+  fDataFile->mkdir("RCE");
+  fDataFile->mkdir("SSP");
+  fDataFile->mkdir("PTB");
 
   // Tree
   if (fMakeTree) {
@@ -67,21 +75,36 @@ void OnlineMonitoring::MonitoringData::EndMonitoring() {
 void OnlineMonitoring::MonitoringData::FillTree(RCEFormatter const& rceformatter, SSPFormatter const& sspformatter) {
   fRCEADC = rceformatter.ADCVector();
   // fSSPADC = sspformatter.ADCVector();
-  std::cout << "Number of SSPs is " << sspformatter.NumSSPs() << std::endl;
+  std::cout << "Number of SSPs is " << sspformatter.NumSSPs << std::endl;
   fDataTree->Fill();
 }
 
-void OnlineMonitoring::MonitoringData::GeneralMonitoring() {
+void OnlineMonitoring::MonitoringData::GeneralMonitoring(RCEFormatter const& rceformatter, SSPFormatter const& sspformatter, PTBFormatter const& ptbformatter) {
 
   /// Fills the general monitoring histograms (i.e. monitoring not specific to a particular hardware component)
 
-  hNumSubDetectorsPresent->Fill(fNumSubDetectorsPresent);
+  // Subdetectors in each event
+  hNumSubDetectorsPresent->Fill(rceformatter.NumRCEs + sspformatter.NumSSPs + ptbformatter.PTBData);
 
-  // Size of files
-  if (!checkedFileSizes) {
-    checkedFileSizes = true;
+  // Fill data just once per run
+  if (!filledRunData) {
+    filledRunData = true;
+
+    // Data present in the run
+    std::vector<std::string> components = {"RCE00","RCE01","RCE02","RCE03","RCE04","RCE05","RCE06","RCE07","RCE08","RCE09","RCE10","RCE11","RCE12","RCE13","RCE14","RCE15",
+					   "SSP01","SSP02","SSP03","SSP04","SSP05","SSP06","SSP07",
+					   "PTB"};
+    for (std::vector<std::string>::iterator compIt = components.begin(); compIt != components.end(); ++compIt) {
+      hSubDetectorsWithData->GetXaxis()->SetBinLabel(std::distance(components.begin(),compIt)+1, (*compIt).c_str());
+      if ( (std::find(rceformatter.RCEsWithData.begin(), rceformatter.RCEsWithData.end(), *compIt) != rceformatter.RCEsWithData.end()) or
+	   (std::find(sspformatter.SSPsWithData.begin(), sspformatter.SSPsWithData.end(), *compIt) != sspformatter.SSPsWithData.end()) or
+	   (*compIt == "PTB" and ptbformatter.PTBData) )
+	hSubDetectorsWithData->Fill((*compIt).c_str(),1);
+    }
+    hSubDetectorsWithData->GetXaxis()->SetLabelSize(0.025);
+
+    // Size of files
     std::multimap<Long_t,std::pair<std::vector<TString>,Long_t>,std::greater<Long_t> > fileMap;
-
     TSystemDirectory dataDir("dataDir",DataDirName);
     const TList *files = dataDir.GetListOfFiles();
     if (files) {
@@ -94,6 +117,7 @@ void OnlineMonitoring::MonitoringData::GeneralMonitoring() {
     	if ( !file->IsDirectory() && fileName.EndsWith(".root") && !fileName.BeginsWith("lbne_r-") ) {
 	  const TString path = DataDirName+TString(file->GetName());
     	  gSystem->GetPathInfo(path.Data(),&id,&size,&flags,&modified);
+	  size /= 1e6;
 	  TObjArray *splitName = path.Tokenize(PathDelimiter);
 	  if (splitName->GetEntriesFast() == 1)
 	    continue;
@@ -120,7 +144,9 @@ void OnlineMonitoring::MonitoringData::RCEMonitoring(RCEFormatter const& rceform
 
   /// Fills all histograms pertaining to RCE hardware monitoring
 
+  // Variables for event
   const std::vector<std::vector<int> > ADCs = rceformatter.ADCVector();
+  int totalADC = 0, totalRCEHitsEvent = 0, timesADCGoesOverThreshold = 0;
 
   for (unsigned int channel = 0; channel < ADCs.size(); channel++) {
 
@@ -129,10 +155,10 @@ void OnlineMonitoring::MonitoringData::RCEMonitoring(RCEFormatter const& rceform
 
     // Variables for channel
     bool peak = false;
-    int tTotalRCEHitsChannel = 0;
-    bool tBitCheckAnd = 0xFFFF, tBitCheckOr = 0;
-    double tAsymmetry = 0;
-    double tADCsum = 0, tADCdiff = 0;
+    int totalRCEHitsChannel = 0;
+    bool bitCheckAnd = 0xFFFF, bitCheckOr = 0;
+    double asymmetry = 0;
+    double ADCsum = 0, ADCdiff = 0;
 
     // Find the mean and RMS of ADCs for this channel
     double mean = TMath::Mean(ADCs.at(channel).begin(),ADCs.at(channel).end());
@@ -152,22 +178,22 @@ void OnlineMonitoring::MonitoringData::RCEMonitoring(RCEFormatter const& rceform
       	hDebugChannelHists.at(channel)->Fill(tick,ADC);
 
       // Increase variables
-      fTotalADC += ADC;
+      totalADC += ADC;
       if (ADC > fThreshold) {
-	++tTotalRCEHitsChannel;
-	++fTotalRCEHitsEvent;
+	++totalRCEHitsChannel;
+	++totalRCEHitsEvent;
       }
 
       // Times over threshold
       if ( (ADC > fThreshold) && !peak ) {
-	++fTimesADCGoesOverThreshold;
+	++timesADCGoesOverThreshold;
 	peak = true;
       }
       if ( tick && (ADC < ADCs.at(channel).at(tick-1)) && peak ) peak = false;
 
       // Bit check
-      tBitCheckAnd &= ADC;
-      tBitCheckOr  |= ADC;
+      bitCheckAnd &= ADC;
+      bitCheckOr  |= ADC;
 
       // Check last 6 bits
       int mask1 = 0xFFC0, mask2 = 0x003F;
@@ -186,11 +212,11 @@ void OnlineMonitoring::MonitoringData::RCEMonitoring(RCEFormatter const& rceform
     hADCRMSChannelAPA3      ->Fill(channel,rms);
     hADCRMSChannelAPA4      ->Fill(channel,rms);
     hAvADCChannelEvent  ->Fill(fEventNumber,channel,mean);
-    hTotalRCEHitsChannel->Fill(channel+1,tTotalRCEHitsChannel);
+    hTotalRCEHitsChannel->Fill(channel+1,totalRCEHitsChannel);
     int tbit = 1;
     for (int bitIt = 0; bitIt < 16; ++bitIt) {
-      hRCEBitCheckAnd->Fill(channel,bitIt,(tBitCheckAnd & tbit));
-      hRCEBitCheckOr ->Fill(channel,bitIt,(tBitCheckOr & tbit));
+      hRCEBitCheckAnd->Fill(channel,bitIt,(bitCheckAnd & tbit));
+      hRCEBitCheckOr ->Fill(channel,bitIt,(bitCheckOr & tbit));
       tbit <<= 1;
     }
 
@@ -199,21 +225,21 @@ void OnlineMonitoring::MonitoringData::RCEMonitoring(RCEFormatter const& rceform
       // Loop over the ticks within the block
       for (int tick = rceformatter.BlockBegin().at(channel).at(block); tick < rceformatter.BlockBegin().at(channel).at(block)+rceformatter.BlockSize().at(channel).at(block); tick++) {
 	if (fIsInduction) {
-	  tADCdiff += ADCs.at(channel).at(tick);
-	  tADCsum += abs(ADCs.at(channel).at(tick));
+	  ADCdiff += ADCs.at(channel).at(tick);
+	  ADCsum += abs(ADCs.at(channel).at(tick));
 	}
       } // End of tick loop
     } // End of block loop
 
-    if (fIsInduction && tADCsum) tAsymmetry = (double)tADCdiff / (double)tADCsum;
-    hAsymmetry->Fill(channel+1,tAsymmetry);
+    if (fIsInduction && ADCsum) asymmetry = (double)ADCdiff / (double)ADCsum;
+    hAsymmetry->Fill(channel+1,asymmetry);
 
   }
 
   // Fill hists for event
-  hTotalADCEvent            ->Fill(fTotalADC);
-  hTotalRCEHitsEvent        ->Fill(fTotalRCEHitsEvent);
-  hTimesADCGoesOverThreshold->Fill(fTimesADCGoesOverThreshold);
+  hTotalADCEvent            ->Fill(totalADC);
+  hTotalRCEHitsEvent        ->Fill(totalRCEHitsEvent);
+  hTimesADCGoesOverThreshold->Fill(timesADCGoesOverThreshold);
 
   // Find average ADCs for each millislice
   for (unsigned int millislice = 0; millislice < ADCs.size()/128; ++millislice) {
@@ -365,9 +391,20 @@ void OnlineMonitoring::MonitoringData::WriteMonitoringData(int run, int subrun) 
   /// Writes all the monitoring data currently saved in the data objects
 
   // Make the html for the web pages
-  ofstream imageHTML((HistSaveDirectory+TString("index.html").Data()));
-  imageHTML << "<head><link rel=\"stylesheet\" type=\"text/css\" href=\"../../style/style.css\"><title>35t: Run " << run << ", Subrun " << subrun <<"</title></head>" << std::endl << "<body><div class=\"bannertop\"></div>";
-  imageHTML << "<h1 align=center>Monitoring for Run " << run << ", Subrun " << subrun << "</h1>" << std::endl;
+  ofstream mainHTML((HistSaveDirectory+TString("index.html").Data()));
+  std::map<std::string,std::unique_ptr<ofstream> > componentHTML;
+
+  // Main page
+  mainHTML << "<head><link rel=\"stylesheet\" type=\"text/css\" href=\"../../style/style.css\"><title>35t: Run " << run << ", Subrun " << subrun <<"</title></head>" << std::endl << "<body><div class=\"bannertop\"></div>";
+  mainHTML << "<h1 align=center>Monitoring for Run " << run << ", Subrun " << subrun << "</h1>" << std::endl;
+
+  // Component pages
+  for (auto& component : {"General","RCE","SSP","PTB"}) {
+    mainHTML << "</br><a href=\"" << component << "\">" << component << "</a>" << std::endl;
+    componentHTML[component].reset(new ofstream((HistSaveDirectory+component+TString("/index.html")).Data()));
+    *componentHTML[component] << "<head><link rel=\"stylesheet\" type=\"text/css\" href=\"../../../style/style.css\"><title>35t: Run " << run << ", Subrun " << subrun <<"</title></head>" << std::endl << "<body><div class=\"bannertop\"></div>";
+    *componentHTML[component] << "<h1 align=center>" << component << "</h1>" << std::endl;
+  }
 
   fDataFile->cd();
 
@@ -379,26 +416,35 @@ void OnlineMonitoring::MonitoringData::WriteMonitoringData(int run, int subrun) 
     fCanvas->cd();
     TH1 *_h = (TH1*)fHistArray.At(histIt);
     TObjArray *histTitle = TString(_h->GetTitle()).Tokenize(PathDelimiter);
+    TObjArray *histName = TString(_h->GetName()).Tokenize(PathDelimiter);
     _h->Draw((char*)histTitle->At(1)->GetName());
     TPaveText *canvTitle = new TPaveText(0.05,0.92,0.6,0.98,"NDC");
     canvTitle->AddText((std::string(histTitle->At(0)->GetName())+": Run "+std::to_string(run)+", SubRun "+std::to_string(subrun)).c_str());
+    canvTitle->SetBorderSize(1);
     canvTitle->Draw();
     if (strstr(histTitle->At(2)->GetName(),"logy")) fCanvas->SetLogy(1);
     else fCanvas->SetLogy(0);
     fCanvas->Modified();
     fCanvas->Update();
-    fCanvas->SaveAs(HistSaveDirectory+TString(_h->GetName())+ImageType);
+    fCanvas->SaveAs(HistSaveDirectory+TString(histName->At(0)->GetName())+TString("/")+TString(_h->GetName())+ImageType);
     fDataFile->cd();
+    fDataFile->cd(histName->At(0)->GetName());
     _h->Write();
-    imageHTML << "<figure><a href=\"" << (TString(_h->GetName())+ImageType).Data() << "\"><img src=\"" << (TString(_h->GetName())+ImageType).Data() << "\" width=\"650\"></a><figcaption>" << fFigureCaptions.at(_h->GetName()) << "</figcaption></figure>" << std::endl;
+    *componentHTML[histName->At(0)->GetName()] << "<figure><a href=\"" << (TString(_h->GetName())+ImageType).Data() << "\"><img src=\"" << (TString(_h->GetName())+ImageType).Data() << "\" width=\"650\"></a><figcaption>" << fFigureCaptions.at(_h->GetName()) << "</figcaption></figure>" << std::endl;
   }
 
-  imageHTML << "<div class=\"bannerbottom\"></div></body>" << std::endl;
-  imageHTML.flush();
-  imageHTML.close();
+  mainHTML << "<div class=\"bannerbottom\"></div></body>" << std::endl;
+  mainHTML.flush();
+  mainHTML.close();
+  for (auto& component : {"General","RCE","SSP","PTB"}) {
+    *componentHTML.at(component) << "<div class=\"bannerbottom\"></div></body>" << std::endl;
+    componentHTML.at(component)->flush();
+    componentHTML.at(component)->close();
+  }
 
   // Write other histograms
   fDataFile->cd();
+  fDataFile->cd("RCE");
   for (unsigned int interestingchannel = 0; interestingchannel < DebugChannels.size(); ++interestingchannel)
     hDebugChannelHists.at(DebugChannels.at(interestingchannel))->Write();
   for (unsigned int channel = 0; channel < NRCEChannels; ++channel)
@@ -417,25 +463,8 @@ void OnlineMonitoring::MonitoringData::WriteMonitoringData(int run, int subrun) 
 void OnlineMonitoring::MonitoringData::StartEvent(int eventNumber, bool maketree) {
   fEventNumber = eventNumber;
   fMakeTree = maketree;
-  this->Reset();
-}
-
-void OnlineMonitoring::MonitoringData::Reset() {
-
   fRCEADC.clear();
   fSSPADC.clear();
-
-  fTotalADC = 0;
-  fTotalWaveform = 0;
-
-  fTotalRCEHitsEvent = 0;
-  fTotalSSPHitsEvent = 0;
-
-  fTimesADCGoesOverThreshold = 0;
-  fTimesWaveformGoesOverThreshold = 0;
-
-  fNumSubDetectorsPresent = 0;
-
 }
 
 void OnlineMonitoring::MonitoringData::MakeHistograms() {
@@ -469,13 +498,13 @@ void OnlineMonitoring::MonitoringData::MakeHistograms() {
   hLastSixBitsCheckOn                   = new TProfile("RCE__ADCLast6Bits_On_Channel_All","Last Six RCE ADC Bits On_\"colz\"_none;Channel;Fraction of ADCs with stuck bits",NRCEChannels,0,NRCEChannels);
   hLastSixBitsCheckOff                  = new TProfile("RCE__ADCLast6Bits_Off_Channel_All","Last Six RCE ADC Bits Off_\"colz\"_none;Channel;Fraction of ADCs with stuck bits",NRCEChannels,0,NRCEChannels);
   for (unsigned int channel = 0; channel < NRCEChannels; ++channel)
-    hADCChannel[channel]                = new TProfile("ADCChannel"+TString(std::to_string(channel)),"RCE ADC v Tick for Channel "+TString(std::to_string(channel))+";Tick;ADC;",5000,0,5000);
+    hADCChannel[channel]                = new TProfile("RCE_ADCChannel"+TString(std::to_string(channel)),"RCE ADC v Tick for Channel "+TString(std::to_string(channel))+";Tick;ADC;",5000,0,5000);
   for (unsigned int millislice = 0; millislice < NRCEMillislices; ++millislice) {
-    hAvADCMillislice[millislice]        = new TH1D("AvADCMillislice"+TString(std::to_string(millislice)),"Av ADC for Millislice "+TString(std::to_string(millislice))+";Event;Av ADC;",10000,0,10000);
-    hAvADCMillisliceChannel[millislice] = new TH1D("AvADCMillisliceChannel"+TString(std::to_string(millislice)),"Av ADC v Channel for Millislice "+TString(std::to_string(millislice))+";Channel;Av ADC;",128,0,128);
+    hAvADCMillislice[millislice]        = new TH1D("RCE_AvADCMillislice"+TString(std::to_string(millislice)),"Av ADC for Millislice "+TString(std::to_string(millislice))+";Event;Av ADC;",10000,0,10000);
+    hAvADCMillisliceChannel[millislice] = new TH1D("RCE_AvADCMillisliceChannel"+TString(std::to_string(millislice)),"Av ADC v Channel for Millislice "+TString(std::to_string(millislice))+";Channel;Av ADC;",128,0,128);
   }
   for (std::vector<int>::const_iterator debugchannel = DebugChannels.begin(); debugchannel != DebugChannels.end(); ++debugchannel)
-    hDebugChannelHists[(*debugchannel)] = new TH1D("Channel"+TString(std::to_string(*debugchannel))+"SingleEvent","Channel "+TString(std::to_string(*debugchannel))+" for Single Event",5000,0,5000);
+    hDebugChannelHists[(*debugchannel)] = new TH1D("RCE_Channel"+TString(std::to_string(*debugchannel))+"SingleEvent","Channel "+TString(std::to_string(*debugchannel))+" for Single Event",5000,0,5000);
 
   // SSP hists
   hWaveformMean = new TProfile("SSP__ADC_Mean_Channel_All","SSP ADC Mean_\"histl\"_none;Channel;Average Waveform",NSSPChannels,0,NSSPChannels);
@@ -488,9 +517,10 @@ void OnlineMonitoring::MonitoringData::MakeHistograms() {
   hNumberOfTriggers = new TProfile("SSP__Triggers_Total_Channel_All","Number of Triggers_\"histl\"_none;Channel;Number of Triggers",NSSPChannels,0,NSSPChannels);
 
   // General
-  hNumSubDetectorsPresent = new TH1I("General__NumberOfSubdetectors_Total__All","Number of Subdetectors_\"colz\"_logy;Number of Subdetectors;",25,0,25);
-  hSizeOfFiles            = new TH1I("General__Last20Files_Size_RunSubrun_All","Data File Sizes_\"colz\"_none;Run&Subrun;Size (bytes);",20,0,20);
-  hSizeOfFilesPerEvent    = new TH1D("General__Last20Files_SizePerEvent_RunSubrun_All","Size of Event in Data Files_\"colz\"_none;Run&Subrun;Size (bytes/event);",20,0,20);
+  hNumSubDetectorsPresent = new TH1I("General__NumberOfSubdetectors_Total__All","Number of Subdetectors_\"colz\"_logy;Number of Subdetectors;",24,0,24);
+  hSubDetectorsWithData   = new TH1I("General__SubdetectorsWithData_Total__All","Subdetectors With Data_\"colz\"_none;Subdetectors With Data;",24,0,24);
+  hSizeOfFiles            = new TH1I("General__Last20Files_Size_RunSubrun_All","Data File Sizes_\"colz\"_none;Run&Subrun;Size (MB);",20,0,20);
+  hSizeOfFilesPerEvent    = new TH1D("General__Last20Files_SizePerEvent_RunSubrun_All","Size of Event in Data Files_\"colz\"_none;Run&Subrun;Size (MB/event);",20,0,20);
 
   // PTB hists
   hPTBTSUCounterHitRateWU = new TProfile("PTB_TSUWU_Hits_Mean_Counter_All","PTB TSU counter hit Rate (per millislice) (West Up)_\"\"_none;Counter number; No. hits per millislice",10,1,11);
@@ -577,6 +607,8 @@ void OnlineMonitoring::MonitoringData::MakeHistograms() {
   hPTBTriggerRates->GetXaxis()->SetBinLabel(4,"TSU EL-WU");
 
   // The order the histograms are added will be the order they're displayed on the web!
+  fHistArray.Add(hNumSubDetectorsPresent); fHistArray.Add(hSubDetectorsWithData);
+
   fHistArray.Add(hADCMeanChannelAPA1); fHistArray.Add(hADCMeanChannelAPA2);
   fHistArray.Add(hADCMeanChannelAPA3); fHistArray.Add(hADCMeanChannelAPA4);
   fHistArray.Add(hADCRMSChannelAPA1); fHistArray.Add(hADCRMSChannelAPA2);
@@ -599,7 +631,6 @@ void OnlineMonitoring::MonitoringData::MakeHistograms() {
   fHistArray.Add(hNumberOfTriggers);
 
   fHistArray.Add(hSizeOfFiles); fHistArray.Add(hSizeOfFilesPerEvent);
-  fHistArray.Add(hNumSubDetectorsPresent);
 
   // Penn board hists
   fHistArray.Add(hPTBTriggerRates);
@@ -673,8 +704,9 @@ void OnlineMonitoring::MonitoringData::MakeHistograms() {
   fFigureCaptions["PTB__Hits_Mean_MuonTrigger_All"] = "Average hit rates per millislice of the muon trigger system";
 
   // General captions
-  fFigureCaptions["General__NumberOfSubdetectors_Total__All"] = "Size of the data files made by the DAQ for the last 20 runs";
-  fFigureCaptions["General__Last20Files_Size_RunSubrun_All"] = "Size of event in each of the last 20 data files made by the DAQ (size of file / number of events in file)";
-  fFigureCaptions["General__Last20Files_SizePerEvent_RunSubrun_All"] = "Number of subdetectors present in each event in the data (one entry per event)";
+  fFigureCaptions["General__NumberOfSubdetectors_Total__All"] = "Number of subdetectors present in each event in the data (one entry per event)";
+  fFigureCaptions["General__Last20Files_Size_RunSubrun_All"] = "Size of the data files made by the DAQ for the last 20 runs";
+  fFigureCaptions["General__Last20Files_SizePerEvent_RunSubrun_All"] = "Size of event in each of the last 20 data files made by the DAQ (size of file / number of events in file)";
+  fFigureCaptions["General__SubdetectorsWithData_Total__All"] = "Subdetectors with data";
 
 }

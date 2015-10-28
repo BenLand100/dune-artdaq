@@ -118,7 +118,7 @@ void OnlineMonitoring::OnlineMonitoring::analyze(art::Event const& evt) {
   if (rawRCE.isValid()) fMonitoringData.RCEMonitoring(rceformatter);
   if (rawSSP.isValid()) fMonitoringData.SSPMonitoring(sspformatter);
   if (rawPTB.isValid()) fMonitoringData.PTBMonitoring(ptbformatter);
-  fMonitoringData.GeneralMonitoring();
+  fMonitoringData.GeneralMonitoring(rceformatter, sspformatter, ptbformatter);
   if (fMakeTree) fMonitoringData.FillTree(rceformatter, sspformatter);
 
   // Write the data out every-so-often

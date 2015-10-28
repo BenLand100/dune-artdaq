@@ -36,6 +36,7 @@
 #include <sstream>
 #include <fstream>
 #include <map>
+#include <algorithm>
 
 #include "OnlineMonitoringBase.cxx"
 #include "DataReformatter.hxx"
@@ -46,13 +47,13 @@ public:
   void BeginMonitoring(int run, int subrun);
   void EndMonitoring();
   void FillTree(RCEFormatter const& rce_formatter, SSPFormatter const& ssp_formatter);
+  void GeneralMonitoring(RCEFormatter const& rceformatter, SSPFormatter const& sspformatter, PTBFormatter const& ptbformatter);
   void GeneralMonitoring();
   void RCEMonitoring(RCEFormatter const& rce_formatter);
   void SSPMonitoring(SSPFormatter const& ssp_formatter);
   void PTBMonitoring(PTBFormatter const& ptb_formatter);
   void MakeHistograms();
   void StartEvent(int eventNumber, bool maketree);
-  void Reset();
   void WriteMonitoringData(int run, int subrun);
 
 private:
@@ -68,14 +69,11 @@ private:
   std::map<std::string,std::string> fFigureCaptions;
   TCanvas* fCanvas;
 
-  // Variables for monitoring
-  int fTotalADC, fTotalWaveform;
-  int fTotalRCEHitsEvent, fTotalSSPHitsEvent;
-  int fTimesADCGoesOverThreshold, fTimesWaveformGoesOverThreshold;
-  int fNumSubDetectorsPresent;
   std::vector<std::vector<int> > fRCEADC, fSSPADC;
 
-  bool checkedFileSizes;
+  bool filledRunData;
+
+  // crap to sort out
   int fThreshold = 10;
   bool fIsInduction = true;
   bool _interestingchannelsfilled = false;
@@ -110,7 +108,7 @@ private:
   TProfile *hPTBBSUCounterHitRateRL,    *hPTBBSUCounterActivationTimeRL;
 
   // General
-  TH1I *hNumSubDetectorsPresent, *hSizeOfFiles;
+  TH1I *hNumSubDetectorsPresent, *hSizeOfFiles, *hSubDetectorsWithData;
   TH1D *hSizeOfFilesPerEvent;
 
 };
