@@ -88,8 +88,9 @@ private:
   TH2I *hRCEBitCheckAnd, *hRCEBitCheckOr;
   TH2D *hAvADCChannelEvent;
   TProfile *hADCMeanChannelAPA1, *hADCMeanChannelAPA2, *hADCMeanChannelAPA3, *hADCMeanChannelAPA4, *hADCRMSChannelAPA1, *hADCRMSChannelAPA2, *hADCRMSChannelAPA3, *hADCRMSChannelAPA4;
+  TProfile2D *hADCChannel;
   TProfile *hRCEDNoiseChannel, *hAsymmetry, *hLastSixBitsCheckOff, *hLastSixBitsCheckOn;
-  std::map<int,TProfile*> hADCChannel;
+  std::map<int,TProfile*> hADCChannelMap;
   std::map<int,TH1D*> hAvADCMillislice;
   std::map<int,TH1D*> hAvADCMillisliceChannel;
   std::map<int,TH1D*> hDebugChannelHists;
