@@ -409,13 +409,13 @@ void OnlineMonitoring::MonitoringData::WriteMonitoringData(int run, int subrun, 
   std::map<std::string,std::unique_ptr<ofstream> > componentHTML;
   mainHTML << "<head><link rel=\"stylesheet\" type=\"text/css\" href=\"../../style/style.css\"><title>35t: Run " << run << ", Subrun " << subrun <<"</title></head>" << std::endl << "<body><a href=\"http://lbne-dqm.fnal.gov\">" << std::endl << "  <div class=\"bannertop\"></div>" << std::endl << "</a>" << std::endl;
   mainHTML << "<h1 align=center>Monitoring for Run " << run << ", Subrun " << subrun << "</h1>" << std::endl;
-  mainHTML << "<center>Run started " << fRunStartTime << "; monitoring last updated " << writeOutTime << " (" << eventsProcessed << " events processed)</center>" << std::endl;
+  mainHTML << "<center>Run started " << fRunStartTime << "; monitoring last updated " << writeOutTime << " (" << eventsProcessed << " events processed)</center></br>" << std::endl;
   for (auto& component : {"General","RCE","SSP","PTB"}) {
     mainHTML << "</br><a href=\"" << component << "\">" << component << "</a>" << std::endl;
     componentHTML[component].reset(new ofstream((HistSaveDirectory+component+TString("/index.html")).Data()));
     *componentHTML[component] << "<head><link rel=\"stylesheet\" type=\"text/css\" href=\"../../../style/style.css\"><title>35t: Run " << run << ", Subrun " << subrun <<"</title></head>" << std::endl << "<body><a href=\"http://lbne-dqm.fnal.gov\">" << std::endl << "  <div class=\"bannertop\"></div>" << std::endl << "</a></br>" << std::endl;;
     *componentHTML[component] << "<h1 align=center>" << component << "</h1>" << std::endl;
-    *componentHTML[component] << "<center>Run " << run << ", Subrun " << subrun << " started " << fRunStartTime << "; monitoring last updated " << writeOutTime <<  "</center>" << std::endl;
+    *componentHTML[component] << "<center>Run " << run << ", Subrun " << subrun << " started " << fRunStartTime << "; monitoring last updated " << writeOutTime <<  "</center></br>" << "Events processed: " << eventsProcessed << "</br>" << std::endl;
   }
 
   fDataFile->cd();
