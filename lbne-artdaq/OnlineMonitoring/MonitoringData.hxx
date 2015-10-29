@@ -37,6 +37,8 @@
 #include <fstream>
 #include <map>
 #include <algorithm>
+#include <ctime>
+#include <time.h>
 
 #include "OnlineMonitoringBase.cxx"
 #include "DataReformatter.hxx"
@@ -59,6 +61,7 @@ public:
 private:
 
   int fEventNumber;
+  std::string fRunStartTime;
 
   // Data handling
   TFile* fDataFile;
@@ -78,7 +81,7 @@ private:
   bool fIsInduction = true;
   bool _interestingchannelsfilled = false;
 
-  // Monitoring Data --------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  // Monitoring Data ------------------------------------------------------------------------------------------------------------------------------------------------------------
   // General
   TH1I *hNumSubDetectorsPresent, *hSizeOfFiles, *hSubDetectorsWithData, *hSubDetectorsPresent;
   TH1D *hSizeOfFilesPerEvent;
