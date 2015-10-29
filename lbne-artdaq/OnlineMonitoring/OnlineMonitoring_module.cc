@@ -63,6 +63,7 @@ private:
   int fMonitoringRefreshRate;
   int fEventDisplayRefreshRate;
   int fLastSaveTime;
+  bool fSavedFirstMonitoring;
 
 };
 
@@ -89,7 +90,9 @@ void OnlineMonitoring::OnlineMonitoring::beginSubRun(art::SubRun const& sr) {
   // Make the channel map for this subrun
   fChannelMap.MakeChannelMap();
 
+  // Monitoring data write out
   fLastSaveTime = std::time(0);
+  fSavedFirstMonitoring = false;
 
 }
 
@@ -122,7 +125,8 @@ void OnlineMonitoring::OnlineMonitoring::analyze(art::Event const& evt) {
   if (fMakeTree) fMonitoringData.FillTree(rceformatter, sspformatter);
 
   // Write the data out every-so-often
-  if ((std::time(0) - fLastSaveTime) > fMonitoringRefreshRate) {
+  if ( (!fSavedFirstMonitoring and ((std::time(0) - fLastSaveTime) > 180)) or ((std::time(0) - fLastSaveTime) > fMonitoringRefreshRate) ) {
+    if (!fSavedFirstMonitoring) fSavedFirstMonitoring = true;
     fMonitoringData.WriteMonitoringData(evt.run(), evt.subRun());
     fLastSaveTime = std::time(0);
   }
