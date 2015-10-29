@@ -53,6 +53,8 @@ public:
 
 private:
 
+  int fEventNumber;
+
   MonitoringData fMonitoringData;
   EventDisplay fEventDisplay;
   ChannelMap fChannelMap;
@@ -98,6 +100,8 @@ void OnlineMonitoring::OnlineMonitoring::beginSubRun(art::SubRun const& sr) {
 
 void OnlineMonitoring::OnlineMonitoring::analyze(art::Event const& evt) {
 
+  fEventNumber = evt.event();
+
   // Look for RCE millislice fragments
   art::Handle<artdaq::Fragments> rawRCE;
   evt.getByLabel("daq","TPC",rawRCE);
@@ -110,7 +114,7 @@ void OnlineMonitoring::OnlineMonitoring::analyze(art::Event const& evt) {
   art::Handle<artdaq::Fragments> rawPTB;
   evt.getByLabel("daq","TRIGGER",rawPTB);
 
-  fMonitoringData.StartEvent(evt.event(), fMakeTree);
+  fMonitoringData.StartEvent(fEventNumber, fMakeTree);
 
   // Create data formatter objects and fill monitoring data products
   RCEFormatter rceformatter(rawRCE);
@@ -127,7 +131,7 @@ void OnlineMonitoring::OnlineMonitoring::analyze(art::Event const& evt) {
   // Write the data out every-so-often
   if ( (!fSavedFirstMonitoring and ((std::time(0) - fLastSaveTime) > 180)) or ((std::time(0) - fLastSaveTime) > fMonitoringRefreshRate) ) {
     if (!fSavedFirstMonitoring) fSavedFirstMonitoring = true;
-    fMonitoringData.WriteMonitoringData(evt.run(), evt.subRun());
+    fMonitoringData.WriteMonitoringData(evt.run(), evt.subRun(), fEventNumber);
     fLastSaveTime = std::time(0);
   }
 
@@ -136,12 +140,12 @@ void OnlineMonitoring::OnlineMonitoring::analyze(art::Event const& evt) {
   // is interesting enough to make an event display for!
   // if (ptbformatter.MakeEventDisplay())
   int evdRefreshInterval = std::round((double)fEventDisplayRefreshRate / 1.6e-3);
-  if (evt.event() % evdRefreshInterval == 0)
-    fEventDisplay.MakeEventDisplay(rceformatter, fChannelMap, evt.event());
+  if (fEventNumber % evdRefreshInterval == 0)
+    fEventDisplay.MakeEventDisplay(rceformatter, fChannelMap, fEventNumber);
 
   // Consider detaching!
   // // Event display -- every 500 events (8 s)
-  // if (evt.event() % 20 == 0) {
+  // if (fEventNumber % 20 == 0) {
   //   std::thread t(&OnlineMonitoring::eventDisplay,this,ADCs,Waveforms);
   //   t.detach();
   // }
@@ -153,7 +157,7 @@ void OnlineMonitoring::OnlineMonitoring::analyze(art::Event const& evt) {
 void OnlineMonitoring::OnlineMonitoring::endSubRun(art::SubRun const& sr) {
 
   // Save the data at the end of the subrun
-  fMonitoringData.WriteMonitoringData(sr.run(), sr.subRun());
+  fMonitoringData.WriteMonitoringData(sr.run(), sr.subRun(), fEventNumber);
 
   // Clear up
   fMonitoringData.EndMonitoring();

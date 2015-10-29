@@ -56,7 +56,7 @@ public:
   void PTBMonitoring(PTBFormatter const& ptb_formatter);
   void MakeHistograms();
   void StartEvent(int eventNumber, bool maketree);
-  void WriteMonitoringData(int run, int subrun);
+  void WriteMonitoringData(int run, int subrun, int eventsProcessed);
 
 private:
 
