@@ -474,7 +474,7 @@ void OnlineMonitoring::MonitoringData::MakeHistograms() {
   hSubDetectorsWithData = new TH1I("General__SubdetectorsWithData_Present__All","Subdetectors With Data_\"colz\"_none;Subdetectors With Data;",24,0,24);
   hSubDetectorsWithData->GetXaxis()->SetLabelSize(0.025);
   fFigureCaptions["General__SubdetectorsWithData_Present__All"] = "Subdetectors with data in run";
-  hSubDetectorsPresent = new TH1I("General__SubdetectorsPresent_Total__All","Subdetectors With Data (per event)_\"colz\"_none;Subdetectors With Data;",24,0,24);
+  hSubDetectorsPresent = new TH1I("General__SubdetectorsPresent_Total__All","Subdetectors With Data (per event)_\"colz\"_logy;Subdetectors With Data;",24,0,24);
   hSubDetectorsPresent->GetXaxis()->SetLabelSize(0.025);
   fFigureCaptions["General__SubdetectorsPresent_Total__All"] = "Subdetectors with data per event";
   for (std::vector<std::string>::const_iterator compIt = DAQComponents.begin(); compIt != DAQComponents.end(); ++compIt) {
@@ -520,23 +520,23 @@ void OnlineMonitoring::MonitoringData::MakeHistograms() {
     hDebugChannelHists[(*debugchannel)] = new TH1D("RCE_Channel"+TString(std::to_string(*debugchannel))+"SingleEvent","Channel "+TString(std::to_string(*debugchannel))+" for Single Event",5000,0,5000);
 
   // SSP hists
-  hWaveformMean = new TProfile("SSP__ADC_Mean_Channel_All","SSP ADC Mean_\"histl\"_none;Channel;Average Waveform",NSSPChannels,0,NSSPChannels);
+  hWaveformMean = new TProfile("SSP__ADC_Mean_Channel_All","SSP ADC Mean_\"hist\"_none;Channel;Average Waveform",NSSPChannels,0,NSSPChannels);
   fFigureCaptions["SSP__ADC_Mean_Channel_All"] = "Average waveform across SSP channels (profiled over all events)";
-  hWaveformRMS = new TProfile("SSP__ADC_RMS_Channel_All","SSP ADC RMS_\"histl\"_none;Channel;RMS of Waveform",NSSPChannels,0,NSSPChannels);
+  hWaveformRMS = new TProfile("SSP__ADC_RMS_Channel_All","SSP ADC RMS_\"hist\"_none;Channel;RMS of Waveform",NSSPChannels,0,NSSPChannels);
   fFigureCaptions["SSP__ADC_RMS_Channel_All"] = "RMS of the SSP waveforms (profiled across all events)";
-  hWaveformPeakHeight = new TProfile("SSP__ADC_PeakHeight_Channel_All","Waveform Peak Height_\"histl\"_none;Channel;Peak Height",NSSPChannels,0,NSSPChannels);
+  hWaveformPeakHeight = new TProfile("SSP__ADC_PeakHeight_Channel_All","Waveform Peak Height_\"hist\"_none;Channel;Peak Height",NSSPChannels,0,NSSPChannels);
   fFigureCaptions["SSP__ADC_PeakHeight_Channel_All"] = "Peak height of the SSP waveforms (profiled across all events)";
-  hWaveformIntegral = new TProfile("SSP__ADC_Integral_Channel_All","Waveform Integral_\"histl\"_none;Channel;Integral",NSSPChannels,0,NSSPChannels);
+  hWaveformIntegral = new TProfile("SSP__ADC_Integral_Channel_All","Waveform Integral_\"hist\"_none;Channel;Integral",NSSPChannels,0,NSSPChannels);
   fFigureCaptions["SSP__ADC_Integral_Channel_All"] = "Integral of the SSP waveforms (profiled across all events)";
-  hWaveformIntegralNorm = new TProfile("SSP__ADC_IntegralNorm_Channel_All","Waveform Integral (normalised by window size)_\"histl\"_none;Channel;Integral",NSSPChannels,0,NSSPChannels);
+  hWaveformIntegralNorm = new TProfile("SSP__ADC_IntegralNorm_Channel_All","Waveform Integral (normalised by window size)_\"hist\"_none;Channel;Integral",NSSPChannels,0,NSSPChannels);
   fFigureCaptions["SSP__ADC_IntegralNorm_Channel_All"] = "Normalised integral of the SSP waveforms (profiled across all events)";
-  hWaveformPedestal = new TProfile("SSP__ADC_Pedestal_Channel_All","Waveform Pedestal_\"histl\"_none;Channel;Pedestal",NSSPChannels,0,NSSPChannels);
+  hWaveformPedestal = new TProfile("SSP__ADC_Pedestal_Channel_All","Waveform Pedestal_\"hist\"_none;Channel;Pedestal",NSSPChannels,0,NSSPChannels);
   fFigureCaptions["SSP__ADC_Pedestal_Channel_All"] = "Pedestal of the SSP waveforms (profiled across all events)";
-  hWaveformNumTicks = new TProfile("SSP__Ticks__Channel_All","Num Ticks in Trigger_\"histl\"_none;Number of Ticks",NSSPChannels,0,NSSPChannels);
+  hWaveformNumTicks = new TProfile("SSP__Ticks__Channel_All","Num Ticks in Trigger_\"hist\"_none;Number of Ticks",NSSPChannels,0,NSSPChannels);
   fFigureCaptions["SSP__Ticks__Channel_All"] = "Number of ticks in each trigger";
-  hNumberOfTriggers = new TH1I("SSP__Triggers_Total_Channel_All","Number of Triggers_\"histl\"_none;Channel;Number of Triggers",NSSPChannels,0,NSSPChannels);
+  hNumberOfTriggers = new TH1I("SSP__Triggers_Total_Channel_All","Number of Triggers_\"hist\"_none;Channel;Number of Triggers",NSSPChannels,0,NSSPChannels);
   fFigureCaptions["SSP__Triggers_Total_Channel_All"] = "Total number of triggers per channel";
-  hTriggerFraction = new TProfile("SSP__Triggers_Fraction_Channel_All","Fraction of Events With Trigger_\"histl\"_none;Channel;Number of Triggers",NSSPChannels,0,NSSPChannels);
+  hTriggerFraction = new TProfile("SSP__Triggers_Fraction_Channel_All","Fraction of Events With Trigger_\"hist\"_none;Channel;Number of Triggers",NSSPChannels,0,NSSPChannels);
   fFigureCaptions["SSP__Triggers_Fraction_Channel_All"] = "Fraction of events with a trigger for each channel";
 
   // PTB hists
