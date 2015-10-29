@@ -26,7 +26,10 @@ void SSPDAQ::DeviceInterface::OpenSlowControl(){
   device=devman.OpenDevice(fCommType,fDeviceId,true);
   
   if(!device){
-    lbne::DAQLogger::LogError("SSP_DeviceInterface")<<"Unable to get handle to device; giving up!"<<std::endl;
+    try {
+      lbne::DAQLogger::LogError("SSP_DeviceInterface")<<"Unable to get handle to device; giving up!"<<std::endl;
+    } catch (...) {}
+
     throw(ENoSuchDevice());
   }
 
@@ -47,8 +50,10 @@ void SSPDAQ::DeviceInterface::Initialize(){
   device=devman.OpenDevice(fCommType,fDeviceId);
   
   if(!device){
-    lbne::DAQLogger::LogError("SSP_DeviceInterface")<<"Unable to get handle to device; giving up!"<<std::endl;
-    throw(ENoSuchDevice());
+    try {
+      lbne::DAQLogger::LogError("SSP_DeviceInterface")<<"Unable to get handle to device; giving up!"<<std::endl;
+    } catch (...) {}
+      throw(ENoSuchDevice());
   }
 
   fDevice=device;
@@ -287,8 +292,11 @@ void SSPDAQ::DeviceInterface::ReadEvents(unsigned long runStartTime){
 	else if(events_prevSlice.size()){
 	  events_prevSlice.back().DumpEvent();
 	}
-	lbne::DAQLogger::LogError("SSP_DeviceInterface")<<this->GetIdentifier()<<"Error: Event seen with timestamp less than start of first available slice ("
+	try {
+	  lbne::DAQLogger::LogError("SSP_DeviceInterface")<<this->GetIdentifier()<<"Error: Event seen with timestamp less than start of first available slice ("
 			    <<eventTime<<" vs "<<millisliceStartTime-millisliceLengthInTicks<<")!"<<std::endl;
+	} catch (...) {}
+
 	event.DumpEvent();
 	throw(EEventReadError("Bad timestamp"));
       }
@@ -483,8 +491,11 @@ void SSPDAQ::DeviceInterface::ReadEventFromDevice(EventPacket& event){
       usleep(1000); //1ms
       timeWaited+=1000;
       if(timeWaited>10000000){ //10s
+
+	try {
 	lbne::DAQLogger::LogError("SSP_DeviceInterface")<<this->GetIdentifier()<<"SSP delayed 10s between issuing header word and full header; giving up"
 			    <<std::endl;
+	} catch (...) {}
 	event.SetEmpty();
 	throw(EEventReadError());
       }
@@ -494,8 +505,10 @@ void SSPDAQ::DeviceInterface::ReadEventFromDevice(EventPacket& event){
   //Get header from device and check it is the right length
   fDevice->DeviceReceive(data,headerReadSize);
   if(data.size()!=headerReadSize){
+    try {
     lbne::DAQLogger::LogError("SSP_DeviceInterface")<<this->GetIdentifier()<<"SSP returned truncated header even though FIFO queue is of sufficient length!"
 			<<std::endl;
+    } catch (...) {}
     event.SetEmpty();
     throw(EEventReadError());
   }
@@ -514,8 +527,10 @@ void SSPDAQ::DeviceInterface::ReadEventFromDevice(EventPacket& event){
       usleep(1000); //1ms
       timeWaited+=1000;
       if(timeWaited>10000000){ //10s
+	try {
 	lbne::DAQLogger::LogError("SSP_DeviceInterface")<<this->GetIdentifier()<<"SSP delayed 10s between issuing header and full event; giving up"
 			    <<std::endl;
+	} catch (...) {}
 	event.DumpHeader();
 	event.SetEmpty();
 	throw(EEventReadError());
@@ -527,8 +542,11 @@ void SSPDAQ::DeviceInterface::ReadEventFromDevice(EventPacket& event){
   fDevice->DeviceReceive(data,bodyReadSize);
 
   if(data.size()!=bodyReadSize){
-    lbne::DAQLogger::LogError("SSP_DeviceInterface")<<this->GetIdentifier()<<"SSP returned truncated event even though FIFO queue is of sufficient length!"
+    try {
+      lbne::DAQLogger::LogError("SSP_DeviceInterface")<<this->GetIdentifier()<<"SSP returned truncated event even though FIFO queue is of sufficient length!"
 			<<std::endl;
+    } catch (...) {}
+
     event.SetEmpty();
     throw(EEventReadError());
   }
@@ -608,8 +626,10 @@ void SSPDAQ::DeviceInterface::SetRegisterArrayByName(std::string name, unsigned 
 void SSPDAQ::DeviceInterface::SetRegisterArrayByName(std::string name, std::vector<unsigned int> values){
   SSPDAQ::RegMap::Register reg=(SSPDAQ::RegMap::Get())[name];
   if(reg.Size()!=values.size()){
-    lbne::DAQLogger::LogError("SSP_DeviceInterface")<<"Request to set named register array "<<name<<", length "<<reg.Size()
+    try {
+      lbne::DAQLogger::LogError("SSP_DeviceInterface")<<"Request to set named register array "<<name<<", length "<<reg.Size()
   			<<"with vector of "<<values.size()<<" values!"<<std::endl;
+    } catch (...) {}
     throw(std::invalid_argument(""));
   }
   this->SetRegisterArray(reg[0],values);
