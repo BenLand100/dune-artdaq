@@ -282,6 +282,7 @@ void OnlineMonitoring::MonitoringData::SSPMonitoring(SSPFormatter const& sspform
 
     // Fill channel level hists
     hNumberOfTriggers->Fill(channel,triggers.size());
+    hTriggerFraction->Fill(channel,triggers.size());
 
   }
 
@@ -388,12 +389,8 @@ void OnlineMonitoring::MonitoringData::WriteMonitoringData(int run, int subrun) 
   // Make the html for the web pages
   ofstream mainHTML((HistSaveDirectory+TString("index.html").Data()));
   std::map<std::string,std::unique_ptr<ofstream> > componentHTML;
-
-  // Main page
   mainHTML << "<head><link rel=\"stylesheet\" type=\"text/css\" href=\"../../style/style.css\"><title>35t: Run " << run << ", Subrun " << subrun <<"</title></head>" << std::endl << "<body><div class=\"bannertop\"></div>";
   mainHTML << "<h1 align=center>Monitoring for Run " << run << ", Subrun " << subrun << "</h1>" << std::endl;
-
-  // Component pages
   for (auto& component : {"General","RCE","SSP","PTB"}) {
     mainHTML << "</br><a href=\"" << component << "\">" << component << "</a>" << std::endl;
     componentHTML[component].reset(new ofstream((HistSaveDirectory+component+TString("/index.html")).Data()));
@@ -470,17 +467,24 @@ void OnlineMonitoring::MonitoringData::MakeHistograms() {
   // Nomenclature: Name is used to save the histogram, Title has format : histogramTitle_histDrawOptions_canvasOptions;x-title;y-title;z-title
 
   // General
-  hNumSubDetectorsPresent = new TH1I("General__NumberOfSubdetectors_Total__All","Number of Subdetectors_\"colz\"_logy;Number of Subdetectors;",24,0,24);
-  hSubDetectorsWithData   = new TH1I("General__SubdetectorsWithData_Present__All","Subdetectors With Data_\"colz\"_none;Subdetectors With Data;",24,0,24);
-  hSubDetectorsPresent    = new TH1I("General__SubdetectorsPresent_Total__All","Subdetectors With Data (per event)_\"colz\"_none;Subdetectors With Data;",24,0,24);
-  hSizeOfFiles            = new TH1I("General__Last20Files_Size_RunSubrun_All","Data File Sizes_\"colz\"_none;Run&Subrun;Size (MB);",20,0,20);
-  hSizeOfFilesPerEvent    = new TH1D("General__Last20Files_SizePerEvent_RunSubrun_All","Size of Event in Data Files_\"colz\"_none;Run&Subrun;Size (MB/event);",20,0,20);
+  hNumSubDetectorsPresent = new TH1I("General__NumberOfSubdetectors_Total__All","Number of Subdetectors_\"colz\"_logy;Number of Subdetectors;",25,0,25);
+  hNumSubDetectorsPresent->GetXaxis()->SetNdivisions(25);
+  hNumSubDetectorsPresent->GetXaxis()->CenterLabels();
+  fFigureCaptions["General__NumberOfSubdetectors_Total__All"] = "Number of subdetectors present in each event in the data (one entry per event)";
+  hSubDetectorsWithData = new TH1I("General__SubdetectorsWithData_Present__All","Subdetectors With Data_\"colz\"_none;Subdetectors With Data;",24,0,24);
+  hSubDetectorsWithData->GetXaxis()->SetLabelSize(0.025);
+  fFigureCaptions["General__SubdetectorsWithData_Present__All"] = "Subdetectors with data in run";
+  hSubDetectorsPresent = new TH1I("General__SubdetectorsPresent_Total__All","Subdetectors With Data (per event)_\"colz\"_none;Subdetectors With Data;",24,0,24);
+  hSubDetectorsPresent->GetXaxis()->SetLabelSize(0.025);
+  fFigureCaptions["General__SubdetectorsPresent_Total__All"] = "Subdetectors with data per event";
   for (std::vector<std::string>::const_iterator compIt = DAQComponents.begin(); compIt != DAQComponents.end(); ++compIt) {
     hSubDetectorsWithData->GetXaxis()->SetBinLabel(std::distance(DAQComponents.begin(),compIt)+1, (*compIt).c_str());
     hSubDetectorsPresent->GetXaxis()->SetBinLabel(std::distance(DAQComponents.begin(),compIt)+1, (*compIt).c_str());
   }
-  hSubDetectorsWithData->GetXaxis()->SetLabelSize(0.025);
-  hSubDetectorsPresent->GetXaxis()->SetLabelSize(0.025);
+  hSizeOfFiles = new TH1I("General__Last20Files_Size_RunSubrun_All","Data File Sizes_\"colz\"_none;Run&Subrun;Size (MB);",20,0,20);
+  fFigureCaptions["General__Last20Files_Size_RunSubrun_All"] = "Size of the data files made by the DAQ for the last 20 runs";
+  hSizeOfFilesPerEvent = new TH1D("General__Last20Files_SizePerEvent_RunSubrun_All","Size of Event in Data Files_\"colz\"_none;Run&Subrun;Size (MB/event);",20,0,20);
+  fFigureCaptions["General__Last20Files_SizePerEvent_RunSubrun_All"] = "Size of event in each of the last 20 data files made by the DAQ (size of file / number of events in file)";
 
   // RCE hists
   hADCMeanChannelAPA1                   = new TProfile("RCE_APA0_ADC_Mean_Channel_All","RCE ADC Mean APA0_\"histl\"_none;Channel;RCE ADC Mean",512,0,511);
@@ -491,7 +495,7 @@ void OnlineMonitoring::MonitoringData::MakeHistograms() {
   hADCRMSChannelAPA2                    = new TProfile("RCE_APA1_ADC_RMS_Channel_All","RCE ADC RMS APA1_\"histl\"_none;Channel;RCE ADC RMS",512,512,1023);
   hADCRMSChannelAPA3                    = new TProfile("RCE_APA2_ADC_RMS_Channel_All","RCE ADC RMS APA2_\"histl\"_none;Channel;RCE ADC RMS",512,1024,1535);
   hADCRMSChannelAPA4                    = new TProfile("RCE_APA3_ADC_RMS_Channel_All","RCE ADC RMS APA3_\"histl\"_none;Channel;RCE ADC RMS",512,1536,2047);
-  hADCChannel                           = new TH2D("RCE__ADC_Total_Channel_All","ADC vs Channel_\"colz\"_none;Channel;ADC Value",NRCEChannels,0,NRCEChannels,2000,0,2000);
+  hADCChannel                           = new TH2D("RCE__ADC_Value_Channel_All","ADC vs Channel_\"colz\"_none;Channel;ADC Value",NRCEChannels,0,NRCEChannels,2000,0,2000);
   hAvADCChannelEvent                    = new TH2D("RCE__ADC_Mean_Event_First100","Average RCE ADC Value_\"colz\"_none;Event;Channel",100,0,100,NRCEChannels,0,NRCEChannels);
   hRCEDNoiseChannel                     = new TProfile("RCE__ADC_DNoise_Channel_All","RCE DNoise_\"colz\"_none;Channel;DNoise",NRCEChannels,0,NRCEChannels);
   hTotalADCEvent                        = new TH1I("RCE__ADC_Total__All","Total RCE ADC_\"colz\"_logy;Total ADC;",100,0,1000000000);
@@ -517,13 +521,23 @@ void OnlineMonitoring::MonitoringData::MakeHistograms() {
 
   // SSP hists
   hWaveformMean = new TProfile("SSP__ADC_Mean_Channel_All","SSP ADC Mean_\"histl\"_none;Channel;Average Waveform",NSSPChannels,0,NSSPChannels);
+  fFigureCaptions["SSP__ADC_Mean_Channel_All"] = "Average waveform across SSP channels (profiled over all events)";
   hWaveformRMS = new TProfile("SSP__ADC_RMS_Channel_All","SSP ADC RMS_\"histl\"_none;Channel;RMS of Waveform",NSSPChannels,0,NSSPChannels);
+  fFigureCaptions["SSP__ADC_RMS_Channel_All"] = "RMS of the SSP waveforms (profiled across all events)";
   hWaveformPeakHeight = new TProfile("SSP__ADC_PeakHeight_Channel_All","Waveform Peak Height_\"histl\"_none;Channel;Peak Height",NSSPChannels,0,NSSPChannels);
+  fFigureCaptions["SSP__ADC_PeakHeight_Channel_All"] = "Peak height of the SSP waveforms (profiled across all events)";
   hWaveformIntegral = new TProfile("SSP__ADC_Integral_Channel_All","Waveform Integral_\"histl\"_none;Channel;Integral",NSSPChannels,0,NSSPChannels);
+  fFigureCaptions["SSP__ADC_Integral_Channel_All"] = "Integral of the SSP waveforms (profiled across all events)";
   hWaveformIntegralNorm = new TProfile("SSP__ADC_IntegralNorm_Channel_All","Waveform Integral (normalised by window size)_\"histl\"_none;Channel;Integral",NSSPChannels,0,NSSPChannels);
+  fFigureCaptions["SSP__ADC_IntegralNorm_Channel_All"] = "Normalised integral of the SSP waveforms (profiled across all events)";
   hWaveformPedestal = new TProfile("SSP__ADC_Pedestal_Channel_All","Waveform Pedestal_\"histl\"_none;Channel;Pedestal",NSSPChannels,0,NSSPChannels);
+  fFigureCaptions["SSP__ADC_Pedestal_Channel_All"] = "Pedestal of the SSP waveforms (profiled across all events)";
   hWaveformNumTicks = new TProfile("SSP__Ticks__Channel_All","Num Ticks in Trigger_\"histl\"_none;Number of Ticks",NSSPChannels,0,NSSPChannels);
-  hNumberOfTriggers = new TProfile("SSP__Triggers_Total_Channel_All","Number of Triggers_\"histl\"_none;Channel;Number of Triggers",NSSPChannels,0,NSSPChannels);
+  fFigureCaptions["SSP__Ticks__Channel_All"] = "Number of ticks in each trigger";
+  hNumberOfTriggers = new TH1I("SSP__Triggers_Total_Channel_All","Number of Triggers_\"histl\"_none;Channel;Number of Triggers",NSSPChannels,0,NSSPChannels);
+  fFigureCaptions["SSP__Triggers_Total_Channel_All"] = "Total number of triggers per channel";
+  hTriggerFraction = new TProfile("SSP__Triggers_Fraction_Channel_All","Fraction of Events With Trigger_\"histl\"_none;Channel;Number of Triggers",NSSPChannels,0,NSSPChannels);
+  fFigureCaptions["SSP__Triggers_Fraction_Channel_All"] = "Fraction of events with a trigger for each channel";
 
   // PTB hists
   hPTBTSUCounterHitRateWU = new TProfile("PTB_TSUWU_Hits_Mean_Counter_All","PTB TSU counter hit Rate (per millislice) (West Up)_\"\"_none;Counter number; No. hits per millislice",10,1,11);
@@ -627,14 +641,11 @@ void OnlineMonitoring::MonitoringData::MakeHistograms() {
   fHistArray.Add(hLastSixBitsCheckOn); fHistArray.Add(hLastSixBitsCheckOff);
   fHistArray.Add(hNumMicroslicesInMillislice); 
 
-  fHistArray.Add(hWaveformMean);
-  fHistArray.Add(hWaveformRMS);
-  fHistArray.Add(hWaveformPeakHeight);
-  fHistArray.Add(hWaveformIntegral);
-  fHistArray.Add(hWaveformIntegralNorm);
-  fHistArray.Add(hWaveformPedestal);
+  fHistArray.Add(hWaveformMean); fHistArray.Add(hWaveformRMS);
+  fHistArray.Add(hWaveformPeakHeight); fHistArray.Add(hWaveformPedestal);
+  fHistArray.Add(hWaveformIntegral); fHistArray.Add(hWaveformIntegralNorm);
+  fHistArray.Add(hNumberOfTriggers); fHistArray.Add(hTriggerFraction);
   fHistArray.Add(hWaveformNumTicks);
-  fHistArray.Add(hNumberOfTriggers);
 
   fHistArray.Add(hPTBTriggerRates);
   fHistArray.Add(hPTBTSUCounterActivationTimeWU); fHistArray.Add(hPTBTSUCounterHitRateWU);
@@ -649,13 +660,6 @@ void OnlineMonitoring::MonitoringData::MakeHistograms() {
   fHistArray.Add(hPTBBSUCounterActivationTimeCL); fHistArray.Add(hPTBBSUCounterHitRateCL);
   fHistArray.Add(hPTBBSUCounterActivationTimeRL); fHistArray.Add(hPTBBSUCounterHitRateRL);
 
-  // General captions
-  fFigureCaptions["General__NumberOfSubdetectors_Total__All"] = "Number of subdetectors present in each event in the data (one entry per event)";
-  fFigureCaptions["General__Last20Files_Size_RunSubrun_All"] = "Size of the data files made by the DAQ for the last 20 runs";
-  fFigureCaptions["General__Last20Files_SizePerEvent_RunSubrun_All"] = "Size of event in each of the last 20 data files made by the DAQ (size of file / number of events in file)";
-  fFigureCaptions["General__SubdetectorsWithData_Present__All"] = "Subdetectors with data in run";
-  fFigureCaptions["General__SubdetectorsPresent_Total__All"] = "Subdetectors with data per event";
-
   // RCE captions
   fFigureCaptions["RCE_APA0_ADC_Mean_Channel_All"] = "Mean ADC values for each channel read out by the RCEs (profiled over all events read)";
   fFigureCaptions["RCE_APA1_ADC_Mean_Channel_All"] = "Mean ADC values for each channel read out by the RCEs (profiled over all events read)";
@@ -665,7 +669,7 @@ void OnlineMonitoring::MonitoringData::MakeHistograms() {
   fFigureCaptions["RCE_APA1_ADC_RMS_Channel_All"] = "RMS of the ADC values for each channel read out by the RCEs (profiled over all events read)";
   fFigureCaptions["RCE_APA2_ADC_RMS_Channel_All"] = "RMS of the ADC values for each channel read out by the RCEs (profiled over all events read)";
   fFigureCaptions["RCE_APA3_ADC_RMS_Channel_All"] = "RMS of the ADC values for each channel read out by the RCEs (profiled over all events read)";
-  fFigureCaptions["RCE__ADC_Total_Channel_All"] = "ADC value for each channel (one entry per tick); averaged over all events";
+  fFigureCaptions["RCE__ADC_Value_Channel_All"] = "ADC value for each channel (one entry per tick)";
   fFigureCaptions["RCE__ADC_DNoise_Channel_All"] = "DNoise (difference in ADC between neighbouring channels for the same tick) for the RCE ADCs (profiled over all events read)";
   fFigureCaptions["RCE__ADC_Mean_Event_First100"] = "Average RCE ADC across a channel for an event, shown for the first 100 events";
   fFigureCaptions["RCE__Hits_Total_Channel_All"] = "Total number of RCE hits in each channel across all events";
@@ -678,16 +682,6 @@ void OnlineMonitoring::MonitoringData::MakeHistograms() {
   fFigureCaptions["RCE__ADCLast6Bits_On_Channel_All"] = "Fraction of all RCE ADC values with the last six bits stuck on (profiled; one entry per ADC)";
   fFigureCaptions["RCE__ADCLast6Bits_Off_Channel_All"] = "Fraction of all RCE ADC values with the last six bits stuck off (profiled; one entry per ADC)";
   fFigureCaptions["RCE__Microslices_Total_Millislice_All"] = "Number of microslices in a millislice in this run";
-
-  // SSP captions
-  fFigureCaptions["SSP__ADC_Mean_Channel_All"] = "Average waveform across SSP channels (profiled over all events)";
-  fFigureCaptions["SSP__ADC_RMS_Channel_All"] = "RMS of the SSP waveforms (profiled across all events)";
-  fFigureCaptions["SSP__ADC_PeakHeight_Channel_All"] = "Peak height of the SSP waveforms (profiled across all events)";
-  fFigureCaptions["SSP__ADC_Integral_Channel_All"] = "Integral of the SSP waveforms (profiled across all events)";
-  fFigureCaptions["SSP__ADC_IntegralNorm_Channel_All"] = "Normalised integral of the SSP waveforms (profiled across all events)";
-  fFigureCaptions["SSP__ADC_Pedestal_Channel_All"] = "Pedestal of the SSP waveforms (profiled across all events)";
-  fFigureCaptions["SSP__Ticks__Channel_All"] = "Number of ticks in each trigger";
-  fFigureCaptions["SSP__Triggers_Total_Channel_All"] = "Total number of triggers per channel (profiled across all events)";
 
   // PTB captions
   fFigureCaptions["PTB_TSUWU_Hits_Mean_Counter_All"] = "Average hit rate in a millislice for the TSU West Up counters";

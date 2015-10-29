@@ -95,7 +95,8 @@ private:
   std::map<int,TH1D*> hDebugChannelHists;
 
   // SSP
-  TProfile *hWaveformMean, *hWaveformRMS, *hWaveformPeakHeight, *hWaveformIntegral, *hWaveformIntegralNorm, *hWaveformPedestal, *hWaveformNumTicks, *hNumberOfTriggers;
+  TProfile *hWaveformMean, *hWaveformRMS, *hWaveformPeakHeight, *hWaveformIntegral, *hWaveformIntegralNorm, *hWaveformPedestal, *hWaveformNumTicks, *hTriggerFraction;
+  TH1I *hNumberOfTriggers;
 
   // PTB
   TProfile *hPTBTriggerRates;

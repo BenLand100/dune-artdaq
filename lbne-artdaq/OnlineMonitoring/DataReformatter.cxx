@@ -170,6 +170,9 @@ OnlineMonitoring::SSPFormatter::SSPFormatter(art::Handle<artdaq::Fragments> cons
   }
   NumSSPs = rawSSP->size();
 
+  for (unsigned int sspchan = 0; sspchan < NSSPChannels; ++sspchan)
+    fChannelTriggers[sspchan] = {};
+
   for (unsigned int fragmentNum = 0; fragmentNum < rawSSP->size(); ++fragmentNum) {
 
     // Get the raw fragment
@@ -227,7 +230,7 @@ OnlineMonitoring::SSPFormatter::SSPFormatter(art::Handle<artdaq::Fragments> cons
       // Save the information for this trigger in the reformatter object
       Trigger trigger(channel, peaksum, prerise, integral, pedestal, nTicks, mean, rms, adcVector);
       fTriggers.push_back(trigger);
-      fChannelTriggers[channel].push_back(trigger);
+      fChannelTriggers.at(channel).push_back(trigger);
 
     } // triggers
 
