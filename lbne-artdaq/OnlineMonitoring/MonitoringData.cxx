@@ -415,7 +415,7 @@ void OnlineMonitoring::MonitoringData::WriteMonitoringData(int run, int subrun, 
     componentHTML[component].reset(new ofstream((HistSaveDirectory+component+TString("/index.html")).Data()));
     *componentHTML[component] << "<head><link rel=\"stylesheet\" type=\"text/css\" href=\"../../../style/style.css\"><title>35t: Run " << run << ", Subrun " << subrun <<"</title></head>" << std::endl << "<body><a href=\"http://lbne-dqm.fnal.gov\">" << std::endl << "  <div class=\"bannertop\"></div>" << std::endl << "</a></br>" << std::endl;;
     *componentHTML[component] << "<h1 align=center>" << component << "</h1>" << std::endl;
-    *componentHTML[component] << "<center>Run " << run << ", Subrun " << subrun << " started " << fRunStartTime << "; monitoring last updated " << writeOutTime <<  "</center></br>" << "Events processed: " << eventsProcessed << "</br>" << std::endl;
+    *componentHTML[component] << "<center>Run " << run << ", Subrun " << subrun << " started " << fRunStartTime << "; monitoring last updated " << writeOutTime <<  "</br>" << "Events processed: " << eventsProcessed << "</center></br>" << std::endl;
   }
 
   fDataFile->cd();
