@@ -29,6 +29,8 @@
 #include <TFile.h>
 #include <TLegend.h>
 #include <TTree.h>
+#include <TLine.h>
+#include <TFrame.h>
 
 #include "messagefacility/MessageLogger/MessageLogger.h"
 
@@ -37,6 +39,8 @@
 #include <fstream>
 #include <map>
 #include <algorithm>
+#include <ctime>
+#include <time.h>
 
 #include "OnlineMonitoringBase.cxx"
 #include "DataReformatter.hxx"
@@ -54,11 +58,12 @@ public:
   void PTBMonitoring(PTBFormatter const& ptb_formatter);
   void MakeHistograms();
   void StartEvent(int eventNumber, bool maketree);
-  void WriteMonitoringData(int run, int subrun);
+  void WriteMonitoringData(int run, int subrun, int eventsProcessed);
 
 private:
 
   int fEventNumber;
+  std::string fRunStartTime;
 
   // Data handling
   TFile* fDataFile;
@@ -78,7 +83,7 @@ private:
   bool fIsInduction = true;
   bool _interestingchannelsfilled = false;
 
-  // Monitoring Data --------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  // Monitoring Data ------------------------------------------------------------------------------------------------------------------------------------------------------------
   // General
   TH1I *hNumSubDetectorsPresent, *hSizeOfFiles, *hSubDetectorsWithData, *hSubDetectorsPresent;
   TH1D *hSizeOfFilesPerEvent;
@@ -86,9 +91,8 @@ private:
   // RCE
   TH1I *hTotalADCEvent, *hTotalRCEHitsEvent, *hTotalRCEHitsChannel, *hTimesADCGoesOverThreshold,  *hNumMicroslicesInMillislice, *hNumNanoslicesInMicroslice, *hNumNanoslicesInMillislice;
   TH2I *hRCEBitCheckAnd, *hRCEBitCheckOr;
-  TH2D *hAvADCChannelEvent;
+  TH2D *hAvADCChannelEvent, *hADCChannel;
   TProfile *hADCMeanChannelAPA1, *hADCMeanChannelAPA2, *hADCMeanChannelAPA3, *hADCMeanChannelAPA4, *hADCRMSChannelAPA1, *hADCRMSChannelAPA2, *hADCRMSChannelAPA3, *hADCRMSChannelAPA4;
-  TProfile2D *hADCChannel;
   TProfile *hRCEDNoiseChannel, *hAsymmetry, *hLastSixBitsCheckOff, *hLastSixBitsCheckOn;
   std::map<int,TProfile*> hADCChannelMap;
   std::map<int,TH1D*> hAvADCMillislice;
@@ -96,7 +100,8 @@ private:
   std::map<int,TH1D*> hDebugChannelHists;
 
   // SSP
-  TProfile *hWaveformMean, *hWaveformRMS, *hWaveformPeakHeight, *hWaveformIntegral, *hWaveformIntegralNorm, *hWaveformPedestal, *hWaveformNumTicks, *hNumberOfTriggers;
+  TProfile *hWaveformMean, *hWaveformRMS, *hWaveformPeakHeight, *hWaveformIntegral, *hWaveformIntegralNorm, *hWaveformPedestal, *hWaveformNumTicks, *hTriggerFraction;
+  TH1I *hNumberOfTriggers;
 
   // PTB
   TProfile *hPTBTriggerRates;

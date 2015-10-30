@@ -27,6 +27,7 @@
 #include <numeric>
 #include <bitset>
 #include <cmath>
+#include <ctime>
 #include <typeinfo>
 #include <thread>
 #include <stdio.h>
@@ -52,7 +53,7 @@ public:
 
 private:
 
-  art::EventNumber_t fEventNumber;
+  int fEventNumber;
 
   MonitoringData fMonitoringData;
   EventDisplay fEventDisplay;
@@ -63,6 +64,8 @@ private:
   // Refresh rates
   int fMonitoringRefreshRate;
   int fEventDisplayRefreshRate;
+  int fLastSaveTime;
+  bool fSavedFirstMonitoring;
 
 };
 
@@ -88,6 +91,10 @@ void OnlineMonitoring::OnlineMonitoring::beginSubRun(art::SubRun const& sr) {
 
   // Make the channel map for this subrun
   fChannelMap.MakeChannelMap();
+
+  // Monitoring data write out
+  fLastSaveTime = std::time(0);
+  fSavedFirstMonitoring = false;
 
 }
 
@@ -122,9 +129,11 @@ void OnlineMonitoring::OnlineMonitoring::analyze(art::Event const& evt) {
   if (fMakeTree) fMonitoringData.FillTree(rceformatter, sspformatter);
 
   // Write the data out every-so-often
-  int eventRefreshInterval = std::round((double)fMonitoringRefreshRate / 1.6e-3);
-  if (fEventNumber % eventRefreshInterval == 0)
-    fMonitoringData.WriteMonitoringData(evt.run(), evt.subRun());
+  if ( (!fSavedFirstMonitoring and ((std::time(0) - fLastSaveTime) > 180)) or ((std::time(0) - fLastSaveTime) > fMonitoringRefreshRate) ) {
+    if (!fSavedFirstMonitoring) fSavedFirstMonitoring = true;
+    fMonitoringData.WriteMonitoringData(evt.run(), evt.subRun(), fEventNumber);
+    fLastSaveTime = std::time(0);
+  }
 
   // Make event display every-so-often
   // Eventually will check for flag in the PTB monitoring which suggests the event
@@ -148,7 +157,7 @@ void OnlineMonitoring::OnlineMonitoring::analyze(art::Event const& evt) {
 void OnlineMonitoring::OnlineMonitoring::endSubRun(art::SubRun const& sr) {
 
   // Save the data at the end of the subrun
-  fMonitoringData.WriteMonitoringData(sr.run(), sr.subRun());
+  fMonitoringData.WriteMonitoringData(sr.run(), sr.subRun(), fEventNumber);
 
   // Clear up
   fMonitoringData.EndMonitoring();
