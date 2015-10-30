@@ -434,6 +434,15 @@ void OnlineMonitoring::MonitoringData::WriteMonitoringData(int run, int subrun, 
     canvTitle->AddText((std::string(histTitle->At(0)->GetName())+": Run "+std::to_string(run)+", SubRun "+std::to_string(subrun)).c_str());
     canvTitle->SetBorderSize(1);
     canvTitle->Draw();
+    fCanvas->Update();
+    TLine line = TLine();
+    line.SetLineColor(2);
+    line.SetLineWidth(1);
+    line.SetLineStyle(7);
+    if (strstr(histName->At(0)->GetName(),"SSP"))
+      for (unsigned int sspchan = 0; sspchan <= NSSPChannels; sspchan+=12) line.DrawLine(sspchan,fCanvas->GetFrame()->GetY1(),sspchan,fCanvas->GetFrame()->GetY2());
+    else if (strstr(histName->At(0)->GetName(),"RCE"))// and strstr(histName->At(4)->GetName(),"Channel"))
+      for (unsigned int rcechan = 0; rcechan <= NRCEChannels; rcechan+=128) line.DrawLine(rcechan,fCanvas->GetFrame()->GetY1(),rcechan,fCanvas->GetFrame()->GetY2());
     if (strstr(histTitle->At(2)->GetName(),"logy")) fCanvas->SetLogy(1);
     else fCanvas->SetLogy(0);
     fCanvas->Modified();

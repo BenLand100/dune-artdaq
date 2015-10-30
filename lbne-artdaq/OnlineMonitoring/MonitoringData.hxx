@@ -29,6 +29,8 @@
 #include <TFile.h>
 #include <TLegend.h>
 #include <TTree.h>
+#include <TLine.h>
+#include <TFrame.h>
 
 #include "messagefacility/MessageLogger/MessageLogger.h"
 
