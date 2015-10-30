@@ -200,7 +200,7 @@ void lbne::RceClient::send_xml(std::string const & xml_frag)
 			if (errorContent) {
 				DAQLogger::LogError(instance_name_) << "Got error response from RCE: " << errorContent;
 			} else {
-				DAQLogger::LogError(instance_name_) << "Got error response from RCE but cannot parse content";
+				DAQLogger::LogError(instance_name_) << "Got error resposne from RCE but cannot parse content";
 			}
 			xmlFree(errorContent);
 	      }

@@ -246,32 +246,17 @@ void lbne::TpcRceReceiver::stop(void)
 
 #ifndef NO_RCE_CLIENT
 
-	// JCF, Oct-28-2015
-
-	// Wrap the send_command() functions in a try-catch block; if
-	// an exception thrown by DAQLogger::LogError inside these
-	// functions escapes from stop(), the boardreader process in
-	// which this is embedded will terminate, bringing down the
-	// DAQ and endangering the proper closing of the output root
-	// file
-
-	try {
-
-	  // Instruct the DPM to stop
-	  dpm_client_->send_command("SetRunState", "Stopped");
+	// Instruct the DPM to stope
+	dpm_client_->send_command("SetRunState", "Stopped");
 	
-	  if (dtm_client_enable_)
-	    {
-	      //dtm_client_->send_command("SetRunState", "Stopped");
-	      //dtm_client_->send_command("Stop");
+	if (dtm_client_enable_)
+	{
+	  //dtm_client_->send_command("SetRunState", "Stopped");
+	  //dtm_client_->send_command("Stop");
 
-	    }
-	
-	  //dpm_client_->send_command("STOP");
-	} catch (...) {
-	  ExceptionHandler(ExceptionHandlerRethrow::no,
-			   "");
 	}
+	
+	//dpm_client_->send_command("STOP");
 #endif
 
 	// Stop the data receiver.
@@ -365,10 +350,7 @@ bool lbne::TpcRceReceiver::getNext_(artdaq::FragmentPtrs & frags) {
 	  }
 	  else
 	  {
-	    try {
 		  DAQLogger::LogError(instance_name_) << "Cannot map raw buffer with data address" << (void*)recvd_buffer->dataPtr() << " back onto fragment";
-	    } catch (...) {
-	    }
 		  return true;
 	  }
   }

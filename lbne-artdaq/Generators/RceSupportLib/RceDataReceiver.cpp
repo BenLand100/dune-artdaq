@@ -323,18 +323,10 @@ void lbne::RceDataReceiver::do_read(void)
 		    // resulting in the output file being properly
 		    // closed
 
-		    // JCF, Oct-28-2015
-
-		    // This is that point - as Tingjun pointed out,
-		    // there have been runs where this error occurs
-		    // during running, and the fragment generator is
-		    // then essentially dead, even though the run
-		    // continues
-
-		    if (! suspend_readout_.load()) {
-		      ExceptionHandler(ExceptionHandlerRethrow::yes,
-				       "");
-		    }
+		    // if (! suspend_readout_.load()) {
+		    // ExceptionHandler(ExceptionHandlerRethrow::yes,
+		    // "");
+		    // }
 		  }
 
 		  return;
