@@ -12,6 +12,7 @@
 // RCConnection::Get() function
 
 #include "zmq.hpp"
+#include "I3JSON.hh"
 
 #include <string>
 #include <memory>
@@ -31,8 +32,16 @@ public:
   void SendMessage(const std::string& service, const std::string& msg, 
 		   const std::string& severity);
 
+  template <typename T>
   void SendMetric(const std::string& service, const std::string& varname, 
-		  const std::string& value);
+		  const T& value) {
+
+    std::string varname_nospaces = varname;
+    std::replace( varname_nospaces.begin(), varname_nospaces.end(), ' ', '.');
+    std::string json_msg = MetricToRCJSON<T>(service, varname_nospaces, value);
+    Send(json_msg);
+  }
+
 
 private:
   RCConnection();  // Guarantee the class completely controls its own

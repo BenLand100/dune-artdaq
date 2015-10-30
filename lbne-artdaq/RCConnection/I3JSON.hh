@@ -24,6 +24,8 @@
 #include <ostream>
 #include <string>
 #include <vector>
+#include <sstream>
+#include <iomanip>
 #include <boost/optional.hpp>
 #include <boost/none.hpp>
 #include <boost/version.hpp>
@@ -107,13 +109,31 @@ std::ostream& operator<<(std::ostream& os, const value_t& value);
   std::string MsgToRCJSON(const std::string& label, const std::string& msg,
 			  const std::string& severity); 
 
+  std::string Timestamp();
+
   // JCF, 6/11/15
 
   // MetricToRCJSON is similar to MsgToRCJSON except that rather than
   // a message with a severity level, there's a key-value pair
 
+  template <typename T>
   std::string MetricToRCJSON(const std::string& label, const std::string& varname,
-			     const std::string& value);
+			     const T& value) { 
+
+    object_t json_msg;
+
+    json_msg["type"] = "moni";
+    json_msg["service"] = label.c_str();
+    json_msg["varname"] = varname.c_str();
+    json_msg["value"] = value;
+    json_msg["t"] = Timestamp();
+
+    std::ostringstream json_msg_oss;
+    json_msg_oss << json_msg;
+
+    return json_msg_oss.str();
+  }
+
 }
 
 
