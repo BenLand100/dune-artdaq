@@ -21,6 +21,7 @@ physics:
       module_type:                "OnlineMonitoring"
       MakeTree:                   "false"
       MonitoringRefreshRate:      500
+      InitialMonitoringUpdate:    30
       EventDisplayRefreshRate:    100000 #8
     }
   }

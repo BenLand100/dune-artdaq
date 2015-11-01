@@ -63,6 +63,7 @@ private:
 
   // Refresh rates
   int fMonitoringRefreshRate;
+  int fInitialMonitoringUpdate;
   int fEventDisplayRefreshRate;
   int fLastSaveTime;
   bool fSavedFirstMonitoring;
@@ -78,6 +79,7 @@ OnlineMonitoring::OnlineMonitoring::OnlineMonitoring(fhicl::ParameterSet const& 
 
 void OnlineMonitoring::OnlineMonitoring::reconfigure(fhicl::ParameterSet const& p) {
   fMonitoringRefreshRate = p.get<int>("MonitoringRefreshRate");
+  fInitialMonitoringUpdate = p.get<int>("InitialMonitoringUpdate");
   fEventDisplayRefreshRate = p.get<int>("EventDisplayRefreshRate");
   fMakeTree = p.get<bool>("MakeTree");
 }
@@ -129,7 +131,7 @@ void OnlineMonitoring::OnlineMonitoring::analyze(art::Event const& evt) {
   if (fMakeTree) fMonitoringData.FillTree(rceformatter, sspformatter);
 
   // Write the data out every-so-often
-  if ( (!fSavedFirstMonitoring and ((std::time(0) - fLastSaveTime) > 180)) or ((std::time(0) - fLastSaveTime) > fMonitoringRefreshRate) ) {
+  if ( (!fSavedFirstMonitoring and ((std::time(0) - fLastSaveTime) > fInitialMonitoringUpdate)) or ((std::time(0) - fLastSaveTime) > fMonitoringRefreshRate) ) {
     if (!fSavedFirstMonitoring) fSavedFirstMonitoring = true;
     fMonitoringData.WriteMonitoringData(evt.run(), evt.subRun(), fEventNumber);
     fLastSaveTime = std::time(0);
