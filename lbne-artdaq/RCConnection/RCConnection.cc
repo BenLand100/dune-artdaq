@@ -49,15 +49,6 @@ namespace lbne {
     Send(json_msg);
   }
 
-  void RCConnection::SendMetric(const std::string& service, const std::string& varname, 
-				const std::string& value) {
-
-    std::string varname_nospaces = varname;
-    std::replace( varname_nospaces.begin(), varname_nospaces.end(), ' ', '.');
-    std::string json_msg = MetricToRCJSON(service, varname_nospaces, value);
-    Send(json_msg);
-  }
-
 
   void RCConnection::InitConnection() {
 
