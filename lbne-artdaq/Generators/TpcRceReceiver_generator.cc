@@ -330,8 +330,17 @@ bool lbne::TpcRceReceiver::getNext_(artdaq::FragmentPtrs & frags) {
 		  // This error message throws an exception, which
 		  // means the boardreader process, when queried, will
 		  // return an error state
+		  
+		  // JCF, Nov-4-2015
 
-		  DAQLogger::LogError(instance_name_) << "RceDataReceiver object found in exception state";
+		  // Instead of throwing an exception via
+		  // DAQLogger::LogError, throw an std::runtime_error,
+		  // as this won't have to compete with messages on
+		  // the receive thread (presumably run amok at this
+		  // point)
+
+		  throw std::runtime_error("RceDataReceiver object found in exception state");
+
 		}
 
 		return false;
