@@ -51,7 +51,7 @@ void OnlineMonitoring::MonitoringData::BeginMonitoring(int run, int subrun) {
   fDataFile->mkdir("PTB");
 
   // Tree
-  if (fMakeTree) {
+  if (fDetailedMonitoring) {
     fDataTree = new TTree("RawData","Raw Data");
     fDataTree->Branch("RCE",&fRCEADC);
     fDataTree->Branch("SSP",&fSSPADC);
@@ -71,8 +71,9 @@ void OnlineMonitoring::MonitoringData::EndMonitoring() {
   // Free up all used memory
   // for (unsigned int interestingchannel = 0; interestingchannel < DebugChannels.size(); ++interestingchannel)
   //   hDebugChannelHists.at(DebugChannels.at(interestingchannel))->Delete();
-  for (unsigned int channel = 0; channel < NRCEChannels; ++channel)
-    hADCChannelMap.at(channel)->Delete();
+  if (fDetailedMonitoring)
+    for (unsigned int channel = 0; channel < NRCEChannels; ++channel)
+      hADCChannelMap.at(channel)->Delete();
 
   fDataFile->Close();
   delete fDataTree;
@@ -172,13 +173,14 @@ void OnlineMonitoring::MonitoringData::RCEMonitoring(RCEFormatter const& rceform
       int ADC = ADCs.at(channel).at(tick);
 
       // Fill hists for tick
-      hADCChannelMap.at(channel)->Fill(tick,ADC);
+      if (fDetailedMonitoring)
+	hADCChannelMap.at(channel)->Fill(tick,ADC);
       if (channel && !ADCs.at(channel-1).empty() && tick < ADCs.at(channel-1).size())
 	hRCEDNoiseChannel->Fill(channel,ADC-ADCs.at(channel-1).at(tick));
       hADCChannel->Fill(channel,ADC,1);
 
       // Debug
-      if (!_interestingchannelsfilled && std::find(DebugChannels.begin(), DebugChannels.end(), channel) != DebugChannels.end())
+      if (fDetailedMonitoring and !_interestingchannelsfilled and std::find(DebugChannels.begin(), DebugChannels.end(), channel) != DebugChannels.end())
       	hDebugChannelHists.at(channel)->Fill(tick,ADC);
 
       // Increase variables
@@ -246,19 +248,21 @@ void OnlineMonitoring::MonitoringData::RCEMonitoring(RCEFormatter const& rceform
   hTimesADCGoesOverThreshold->Fill(timesADCGoesOverThreshold);
 
   // Find average ADCs for each millislice
-  for (unsigned int millislice = 0; millislice < ADCs.size()/128; ++millislice) {
-    std::vector<int> millisliceADCs;
-    for (unsigned int channel = millislice*128; channel < (millislice*128)+127; ++channel)
-      if (ADCs.at(channel).size()) {
-	double millisliceMean = TMath::Mean(ADCs.at(channel).begin(),ADCs.at(channel).end());
-	millisliceADCs.push_back(millisliceMean);
-	hAvADCMillisliceChannel.at(millislice)->Fill(channel%128, millisliceMean);
-      }
-    if (!millisliceADCs.size()) continue;
-    double mean = TMath::Mean(millisliceADCs.begin(),millisliceADCs.end());
-    hAvADCMillislice.at(millislice)->Fill(fEventNumber, mean);
+  if (fDetailedMonitoring) {
+    for (unsigned int millislice = 0; millislice < ADCs.size()/128; ++millislice) {
+      std::vector<int> millisliceADCs;
+      for (unsigned int channel = millislice*128; channel < (millislice*128)+127; ++channel)
+	if (ADCs.at(channel).size()) {
+	  double millisliceMean = TMath::Mean(ADCs.at(channel).begin(),ADCs.at(channel).end());
+	  millisliceADCs.push_back(millisliceMean);
+	  hAvADCMillisliceChannel.at(millislice)->Fill(channel%128, millisliceMean);
+	}
+      if (!millisliceADCs.size()) continue;
+      double mean = TMath::Mean(millisliceADCs.begin(),millisliceADCs.end());
+      hAvADCMillislice.at(millislice)->Fill(fEventNumber, mean);
 
-    _interestingchannelsfilled = true;
+      _interestingchannelsfilled = true;
+    }
   }
 
 }
@@ -421,7 +425,7 @@ void OnlineMonitoring::MonitoringData::WriteMonitoringData(int run, int subrun, 
   fDataFile->cd();
 
   // Write the tree
-  if (fMakeTree) fDataTree->Write();
+  if (fDetailedMonitoring) fDataTree->Write();
 
   // Save all the histograms as images and write to file
   for (int histIt = 0; histIt < fHistArray.GetEntriesFast(); ++histIt) {
@@ -474,10 +478,12 @@ void OnlineMonitoring::MonitoringData::WriteMonitoringData(int run, int subrun, 
   // Write other histograms
   fDataFile->cd();
   fDataFile->cd("RCE");
-  for (unsigned int interestingchannel = 0; interestingchannel < DebugChannels.size(); ++interestingchannel)
-    hDebugChannelHists.at(DebugChannels.at(interestingchannel))->Write();
-  for (unsigned int channel = 0; channel < NRCEChannels; ++channel)
-    hADCChannelMap.at(channel)->Write();
+  if (fDetailedMonitoring) {
+    for (unsigned int interestingchannel = 0; interestingchannel < DebugChannels.size(); ++interestingchannel)
+      hDebugChannelHists.at(DebugChannels.at(interestingchannel))->Write();
+    for (unsigned int channel = 0; channel < NRCEChannels; ++channel)
+      hADCChannelMap.at(channel)->Write();
+  }
 
   // Add run file
   ofstream tmp((HistSaveDirectory+TString("run").Data()));
@@ -489,9 +495,9 @@ void OnlineMonitoring::MonitoringData::WriteMonitoringData(int run, int subrun, 
 
 }
 
-void OnlineMonitoring::MonitoringData::StartEvent(int eventNumber, bool maketree) {
+void OnlineMonitoring::MonitoringData::StartEvent(int eventNumber, bool detailedMonitoring) {
   fEventNumber = eventNumber;
-  fMakeTree = maketree;
+  fDetailedMonitoring = detailedMonitoring;
   fRCEADC.clear();
   fSSPADC.clear();
 }
@@ -547,14 +553,16 @@ void OnlineMonitoring::MonitoringData::MakeHistograms() {
   hRCEBitCheckOr                        = new TH2I("RCE__ADCBit_Off_Channel_All","RCE ADC Bits Always Off_\"colz\"_none;Channel;Bit",NRCEChannels,0,NRCEChannels,16,0,16);
   hLastSixBitsCheckOn                   = new TProfile("RCE__ADCLast6Bits_On_Channel_All","Last Six RCE ADC Bits On_\"colz\"_none;Channel;Fraction of ADCs with stuck bits",NRCEChannels,0,NRCEChannels);
   hLastSixBitsCheckOff                  = new TProfile("RCE__ADCLast6Bits_Off_Channel_All","Last Six RCE ADC Bits Off_\"colz\"_none;Channel;Fraction of ADCs with stuck bits",NRCEChannels,0,NRCEChannels);
-  for (unsigned int channel = 0; channel < NRCEChannels; ++channel)
-    hADCChannelMap[channel]                = new TProfile("RCE_ADCChannel"+TString(std::to_string(channel)),"RCE ADC v Tick for Channel "+TString(std::to_string(channel))+";Tick;ADC;",5000,0,5000);
-  for (unsigned int millislice = 0; millislice < NRCEMillislices; ++millislice) {
-    hAvADCMillislice[millislice]        = new TH1D("RCE_AvADCMillislice"+TString(std::to_string(millislice)),"Av ADC for Millislice "+TString(std::to_string(millislice))+";Event;Av ADC;",10000,0,10000);
-    hAvADCMillisliceChannel[millislice] = new TH1D("RCE_AvADCMillisliceChannel"+TString(std::to_string(millislice)),"Av ADC v Channel for Millislice "+TString(std::to_string(millislice))+";Channel;Av ADC;",128,0,128);
+  if (fDetailedMonitoring) {
+    for (unsigned int channel = 0; channel < NRCEChannels; ++channel)
+      hADCChannelMap[channel]                = new TProfile("RCE_ADCChannel"+TString(std::to_string(channel)),"RCE ADC v Tick for Channel "+TString(std::to_string(channel))+";Tick;ADC;",5000,0,5000);
+    for (unsigned int millislice = 0; millislice < NRCEMillislices; ++millislice) {
+      hAvADCMillislice[millislice]        = new TH1D("RCE_AvADCMillislice"+TString(std::to_string(millislice)),"Av ADC for Millislice "+TString(std::to_string(millislice))+";Event;Av ADC;",10000,0,10000);
+      hAvADCMillisliceChannel[millislice] = new TH1D("RCE_AvADCMillisliceChannel"+TString(std::to_string(millislice)),"Av ADC v Channel for Millislice "+TString(std::to_string(millislice))+";Channel;Av ADC;",128,0,128);
   }
-  for (std::vector<int>::const_iterator debugchannel = DebugChannels.begin(); debugchannel != DebugChannels.end(); ++debugchannel)
-    hDebugChannelHists[(*debugchannel)] = new TH1D("RCE_Channel"+TString(std::to_string(*debugchannel))+"SingleEvent","Channel "+TString(std::to_string(*debugchannel))+" for Single Event",5000,0,5000);
+    for (std::vector<int>::const_iterator debugchannel = DebugChannels.begin(); debugchannel != DebugChannels.end(); ++debugchannel)
+      hDebugChannelHists[(*debugchannel)] = new TH1D("RCE_Channel"+TString(std::to_string(*debugchannel))+"SingleEvent","Channel "+TString(std::to_string(*debugchannel))+" for Single Event",5000,0,5000);
+  }
 
   // SSP hists
   hWaveformMean = new TProfile("SSP__ADC_Mean_Channel_All","SSP ADC Mean_\"hist\"_none;Channel;Average Waveform",NSSPChannels,0,NSSPChannels);

@@ -59,7 +59,7 @@ private:
   EventDisplay fEventDisplay;
   ChannelMap fChannelMap;
 
-  bool fMakeTree;
+  bool fDetailedMonitoring;
 
   // Refresh rates
   int fMonitoringRefreshRate;
@@ -81,7 +81,7 @@ void OnlineMonitoring::OnlineMonitoring::reconfigure(fhicl::ParameterSet const& 
   fMonitoringRefreshRate = p.get<int>("MonitoringRefreshRate");
   fInitialMonitoringUpdate = p.get<int>("InitialMonitoringUpdate");
   fEventDisplayRefreshRate = p.get<int>("EventDisplayRefreshRate");
-  fMakeTree = p.get<bool>("MakeTree");
+  fDetailedMonitoring = p.get<bool>("MakeTree");
 }
 
 void OnlineMonitoring::OnlineMonitoring::beginSubRun(art::SubRun const& sr) {
@@ -116,7 +116,7 @@ void OnlineMonitoring::OnlineMonitoring::analyze(art::Event const& evt) {
   art::Handle<artdaq::Fragments> rawPTB;
   evt.getByLabel("daq","TRIGGER",rawPTB);
 
-  fMonitoringData.StartEvent(fEventNumber, fMakeTree);
+  fMonitoringData.StartEvent(fEventNumber, fDetailedMonitoring);
 
   // Create data formatter objects and fill monitoring data products
   RCEFormatter rceformatter(rawRCE);
@@ -128,7 +128,7 @@ void OnlineMonitoring::OnlineMonitoring::analyze(art::Event const& evt) {
   if (rawSSP.isValid()) fMonitoringData.SSPMonitoring(sspformatter);
   if (rawPTB.isValid()) fMonitoringData.PTBMonitoring(ptbformatter);
   fMonitoringData.GeneralMonitoring(rceformatter, sspformatter, ptbformatter);
-  if (fMakeTree) fMonitoringData.FillTree(rceformatter, sspformatter);
+  if (fDetailedMonitoring) fMonitoringData.FillTree(rceformatter, sspformatter);
 
   // Write the data out every-so-often
   if ( (!fSavedFirstMonitoring and ((std::time(0) - fLastSaveTime) > fInitialMonitoringUpdate)) or ((std::time(0) - fLastSaveTime) > fMonitoringRefreshRate) ) {

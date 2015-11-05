@@ -67,7 +67,7 @@ private:
 
   // Data handling
   TFile* fDataFile;
-  bool fMakeTree;
+  bool fDetailedMonitoring;
   TTree* fDataTree;
   TString HistSaveDirectory;
   TObjArray fHistArray;
