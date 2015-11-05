@@ -439,10 +439,18 @@ void OnlineMonitoring::MonitoringData::WriteMonitoringData(int run, int subrun, 
     line.SetLineColor(2);
     line.SetLineWidth(1);
     line.SetLineStyle(7);
+    TText text = TText();
+    text.SetTextColor(2);
     if (strstr(histName->At(0)->GetName(),"SSP"))
-      for (unsigned int sspchan = 0; sspchan <= NSSPChannels; sspchan+=12) line.DrawLine(sspchan,fCanvas->GetFrame()->GetY1(),sspchan,fCanvas->GetFrame()->GetY2());
+      for (unsigned int sspchan = 0; sspchan <= NSSPChannels; sspchan+=12) {
+	line.DrawLine(sspchan,fCanvas->GetFrame()->GetY1(),sspchan,fCanvas->GetFrame()->GetY2());
+	text.DrawText(sspchan+2,fCanvas->GetFrame()->GetY1()+0.001,(std::to_string((int)sspchan/12)).c_str());
+      }
     else if (strstr(histName->At(0)->GetName(),"RCE"))// and strstr(histName->At(4)->GetName(),"Channel"))
-      for (unsigned int rcechan = 0; rcechan <= NRCEChannels; rcechan+=128) line.DrawLine(rcechan,fCanvas->GetFrame()->GetY1(),rcechan,fCanvas->GetFrame()->GetY2());
+      for (unsigned int rcechan = 0; rcechan <= NRCEChannels; rcechan+=128) {
+	line.DrawLine(rcechan,fCanvas->GetFrame()->GetY1(),rcechan,fCanvas->GetFrame()->GetY2());
+	text.DrawText(rcechan+5,fCanvas->GetFrame()->GetY1()+0.001,(std::to_string((int)rcechan/128)).c_str());
+      }
     if (strstr(histTitle->At(2)->GetName(),"logy")) fCanvas->SetLogy(1);
     else fCanvas->SetLogy(0);
     fCanvas->Modified();
