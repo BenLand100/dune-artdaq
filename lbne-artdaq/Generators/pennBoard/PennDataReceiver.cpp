@@ -261,6 +261,8 @@ void lbne::PennDataReceiver::run_service(void)
 
 void lbne::PennDataReceiver::do_accept(void)
 {
+  RECV_DEBUG(1) << "lbne::PennDataReceiver::do_accept starting";
+
   // JCF, Jul-29-2015
 
   // The "Timeout on async_accept" message appears many, many times --

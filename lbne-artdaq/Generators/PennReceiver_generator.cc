@@ -192,11 +192,11 @@ lbne::PennReceiver::PennReceiver(fhicl::ParameterSet const & ps)
 		  penn_client_host_addr_, penn_client_host_port_, penn_client_timeout_usecs_));
 
   // What does this actually do? FLushes the registers?
-  penn_client_->send_command("HardReset");
+  //  penn_client_->send_command("HardReset");
+  penn_client_->send_command("SoftReset");
   sleep(1);
   std::ostringstream config_frag;
   this->generate_config_frag(config_frag);
-  penn_client_->send_config(config_frag.str());
 
 #ifndef PENN_EMULATOR
   bool rate_test = false;
@@ -210,9 +210,21 @@ lbne::PennReceiver::PennReceiver(fhicl::ParameterSet const & ps)
 #endif //!PENN_EMULATOR
 
   // Create a PennDataReceiver instance
+  // This should be where the PTB connects. 
   data_receiver_ =
     std::unique_ptr<lbne::PennDataReceiver>(new lbne::PennDataReceiver(receiver_debug_level, receiver_tick_period_usecs_, penn_data_dest_port_,
 								       millislice_size_, millislice_overlap_size_, rate_test));
+
+
+  // Sleep for a short while to give time for the DataReceiver to be ready to 
+  // receive connections
+  // Half a second?
+  usleep(500000);
+
+  DAQLogger::LogDebug("PennReceiver") << "Sending the configuration to the PTB";
+  // Can I send the coonfiguration after creating the receiver?
+  penn_client_->send_config(config_frag.str());
+  DAQLogger::LogDebug("PennReceiver") << "Configuration sent to the PTB";
 
 }
 
