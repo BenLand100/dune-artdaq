@@ -704,6 +704,9 @@ void lbne::PennDataReceiver::handle_received_data(std::size_t length)
 	    // The argument remains set to "false", although in fact
 	    // it turns out the bytes didn't need to be reversed
 
+		RECV_DEBUG(1) << "Processing the microslice.  " << nextReceiveStateToString(next_receive_state_)
+						  << " on length  " << length
+						  << " bytes_to_check " << bytes_to_check;
 
 	    uint8_t* split_ptr = 
 	      uslice.sampleTimeSplitAndCountTwice(boundary_time_, remaining_size_,

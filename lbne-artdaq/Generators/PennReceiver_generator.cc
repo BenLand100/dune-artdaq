@@ -59,6 +59,8 @@ lbne::PennReceiver::PennReceiver(fhicl::ParameterSet const & ps)
   // boardreader printouts
   int receiver_debug_level =
 	ps.get<int>("receiver_debug_level", 0);
+  DAQLogger::LogInfo("PennReceiver") << "Debug level set to " << receiver_debug_level;
+
   reporting_interval_fragments_ =
     ps.get<uint32_t>("reporting_interval_fragments", 100);
   reporting_interval_time_ = 
