@@ -2,6 +2,7 @@ BEGIN_PROLOG
 
 triggerselector:{
     module_type:     "TriggerSelector"
+    KeepNextEvent: true #When true keeps the event in which a trigger is found AND the next event
     NumTriggers: 2
     trig_0:
     {

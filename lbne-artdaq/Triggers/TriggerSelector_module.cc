@@ -53,6 +53,8 @@ private:
   int fNumTriggers;
   std::vector<std::string> fTriggerModuleLabels;
   std::vector<std::string> fTriggerInstanceNames;
+  bool fKeepNextEvent;
+  bool fLastEventDecision;
 
 };
 
@@ -73,6 +75,8 @@ trig::TriggerSelector::TriggerSelector(fhicl::ParameterSet const & p)
     std::string triggerInstanceName = p.get<std::string>(trig_config_name.str() + ".instance_name");
     fTriggerInstanceNames.push_back(triggerInstanceName);
   }
+  fKeepNextEvent = p.get<bool>("KeepNextEvent", true);
+  fLastEventDecision = false;
 }
 
 void trig::TriggerSelector::printParams(){
@@ -145,10 +149,19 @@ bool trig::TriggerSelector::filter(art::Event & evt)
   std::cerr << my_ostringstream.str();
 
   if(fNumTriggers == numTriggersPassed){
-    std::cerr << "PASS" << std::endl;
+    std::cerr << "PASS event " << evt.id() << std::endl;
+    fLastEventDecision = true;
     return true;
   }
-  else return false;
+  else if(fLastEventDecision == true){
+    std::cerr << "PASS event " << evt.id() << " as last event was passed" << std::endl;
+    fLastEventDecision = false;
+    return true;
+  }
+  else{
+    fLastEventDecision = false;
+    return false;
+  }
 }
 
 
