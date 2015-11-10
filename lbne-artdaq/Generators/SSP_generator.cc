@@ -111,14 +111,19 @@ void lbne::SSP::ConfigureDAQ(fhicl::ParameterSet const& ps){
   unsigned int millisliceLength=daqConfig.get<unsigned int>("MillisliceLength",0);
 
   if(millisliceLength==0){
-    DAQLogger::LogError("SSP_SSP_generator")<<"Error: Millislice length not defined in SSP DAQ configuration!"<<std::endl;
-    throw SSPDAQ::EDAQConfigError("");
+    
+    try {
+      DAQLogger::LogError("SSP_SSP_generator")<<"Error: Millislice length not defined in SSP DAQ configuration!"<<std::endl;
+    } catch (...) {}
+      throw SSPDAQ::EDAQConfigError("");
   }
 
   unsigned int millisliceOverlap=daqConfig.get<unsigned int>("MillisliceOverlap",0);
   /*
   if(millisliceOverlap==0){
+  try {
     DAQLogger::LogError("SSP_SSP_generator")<<"Error: Millislice overlap not defined in SSP DAQ configuration!"<<std::endl;
+} catch (...) {}
     throw SSPDAQ::EDAQConfigError("");
   }
   */
@@ -126,29 +131,37 @@ void lbne::SSP::ConfigureDAQ(fhicl::ParameterSet const& ps){
   unsigned int useExternalTimestamp=daqConfig.get<unsigned int>("UseExternalTimestamp",2);
 
   if(useExternalTimestamp>1){
-    DAQLogger::LogError("SSP_SSP_generator")<<"Error: Timestamp source not defined, or invalidly defined, in SSP DAQ configuration!"<<std::endl;
-    throw SSPDAQ::EDAQConfigError("");
+    try{
+      DAQLogger::LogError("SSP_SSP_generator")<<"Error: Timestamp source not defined, or invalidly defined, in SSP DAQ configuration!"<<std::endl;
+    } catch(...) {}
+      throw SSPDAQ::EDAQConfigError("");
   }
 
   unsigned int emptyWriteDelay=daqConfig.get<unsigned int>("EmptyWriteDelay",0);
 
   if(emptyWriteDelay==0){
-    DAQLogger::LogError("SSP_SSP_generator")<<"EmptyWriteDelay not defined in SSP DAQ configuration!"<<std::endl;
-    throw SSPDAQ::EDAQConfigError("");
+    try {
+      DAQLogger::LogError("SSP_SSP_generator")<<"EmptyWriteDelay not defined in SSP DAQ configuration!"<<std::endl;
+    } catch(...) {}
+      throw SSPDAQ::EDAQConfigError("");
   }
 
   unsigned int hardwareClockRate=daqConfig.get<unsigned int>("HardwareClockRate",0);
 
   if(hardwareClockRate==1){
-    DAQLogger::LogError("SSP_SSP_generator")<<"Error: Hardware clock rate not defined in SSP DAQ configuration!"<<std::endl;
-    throw SSPDAQ::EDAQConfigError("");
+    try {
+      DAQLogger::LogError("SSP_SSP_generator")<<"Error: Hardware clock rate not defined in SSP DAQ configuration!"<<std::endl;
+    } catch (...) {}
+      throw SSPDAQ::EDAQConfigError("");
   }
 
   unsigned int startOnNOvASync=daqConfig.get<unsigned int>("StartOnNOvASync",2);
 
   if(startOnNOvASync>1){
-    DAQLogger::LogError("SSP_SSP_generator")<<"Error: StartOnNOvASync not defined, or invalidly defined, in SSP DAQ configuration!"<<std::endl;
-    throw SSPDAQ::EDAQConfigError("");
+    try {
+      DAQLogger::LogError("SSP_SSP_generator")<<"Error: StartOnNOvASync not defined, or invalidly defined, in SSP DAQ configuration!"<<std::endl;
+    } catch (...) {}
+      throw SSPDAQ::EDAQConfigError("");
   }
 
 

@@ -15,7 +15,9 @@ void SSPDAQ::USBDevice::Open(bool slowControlOnly){
   fSlowControlOnly=slowControlOnly;
 
   if(FT_OpenEx(fCommChannel.SerialNumber,FT_OPEN_BY_SERIAL_NUMBER, &(fCommChannel.ftHandle)) != FT_OK){
-    lbne::DAQLogger::LogError("SSP_USBDevice")<<"Error opening USB comm path"<<std::endl;
+    try {
+      lbne::DAQLogger::LogError("SSP_USBDevice")<<"Error opening USB comm path"<<std::endl;
+    } catch (...) {}
     throw(SSPDAQ::EFTDIError("Failed to open USB comm channel"));
   }
 
@@ -41,7 +43,9 @@ void SSPDAQ::USBDevice::Open(bool slowControlOnly){
   }   
   if (hasFailed) {								 
     // Error during control path setup, close already open device and throw
-    lbne::DAQLogger::LogError("SSP_USBDevice")<<"Error configuring USB comm channel parameters!"<<std::endl;
+    try {
+      lbne::DAQLogger::LogError("SSP_USBDevice")<<"Error configuring USB comm channel parameters!"<<std::endl;
+    } catch (...) {}
     FT_Close(commHandle);
     throw(SSPDAQ::EFTDIError("Failed to configure USB comm channel"));
   }
@@ -55,7 +59,9 @@ void SSPDAQ::USBDevice::Open(bool slowControlOnly){
   // Open the Data Path
   if (FT_OpenEx(fDataChannel.SerialNumber,FT_OPEN_BY_SERIAL_NUMBER, &(fDataChannel.ftHandle)) != FT_OK) {
     //Error opening data path; close already-open comm path and throw 
-    lbne::DAQLogger::LogError("SSP_USBDevice")<<"Error opening USB data path"<<std::endl;
+    try {
+      lbne::DAQLogger::LogError("SSP_USBDevice")<<"Error opening USB data path"<<std::endl;
+    } catch (...) {}
     FT_Close(commHandle);
     throw(SSPDAQ::EFTDIError("Failed to open USB data channel"));
   }
@@ -80,7 +86,9 @@ void SSPDAQ::USBDevice::Open(bool slowControlOnly){
       // Error during data path setup, close already open devices
       FT_Close(dataHandle);
       FT_Close(commHandle);
-      lbne::DAQLogger::LogError("SSP_USBDevice")<<"Error configuring USB data channel parameters"<<std::endl;
+      try {
+	lbne::DAQLogger::LogError("SSP_USBDevice")<<"Error configuring USB data channel parameters"<<std::endl;
+      } catch (...) {}
       throw(SSPDAQ::EFTDIError("Failed to configure USB data channel"));
     }
     else{
@@ -100,13 +108,17 @@ void SSPDAQ::USBDevice::Close(){
   this->DevicePurgeComm();
   
   if(FT_Close(fCommChannel.ftHandle)!=FT_OK){
-    lbne::DAQLogger::LogError("SSP_USBDevice")<<"Failed to close USB comm channel"<<std::endl;
+    try {
+      lbne::DAQLogger::LogError("SSP_USBDevice")<<"Failed to close USB comm channel"<<std::endl;
+    } catch (...) {}
     throw(SSPDAQ::EFTDIError("Failed to close comm channel"));
   }
 
   if(!fSlowControlOnly){
     if(FT_Close(fDataChannel.ftHandle)!=FT_OK){
-      lbne::DAQLogger::LogError("SSP_USBDevice")<<"Failed to close USB data channel"<<std::endl;
+      try {
+	lbne::DAQLogger::LogError("SSP_USBDevice")<<"Failed to close USB data channel"<<std::endl;
+      } catch (...) {}
       throw(SSPDAQ::EFTDIError("Failed to close data channel"));
     }  
   }
@@ -128,7 +140,9 @@ void SSPDAQ::USBDevice::DeviceQueueStatus(unsigned int* numWords)
 {
   unsigned int numBytes;
   if(FT_GetQueueStatus(fDataChannel.ftHandle, &numBytes)!=FT_OK){
+    try {
     lbne::DAQLogger::LogError("SSP_USBDevice")<<"Error getting queue length from USB device"<<std::endl;
+    } catch (...) {}
     throw(EFTDIError("Error getting queue length from USB device"));
   }
   (*numWords)=numBytes/sizeof(unsigned int);
@@ -142,7 +156,9 @@ void SSPDAQ::USBDevice::DeviceReceive(std::vector<unsigned int>& data, unsigned 
 
   if(FT_Read(fDataChannel.ftHandle, (void*)buf, size*sizeof(unsigned int), &dataReturned)!=FT_OK){
     delete[] buf;
-    lbne::DAQLogger::LogError("SSP_USBDevice")<<"FTDI fault on data receive"<<std::endl;
+    try {
+      lbne::DAQLogger::LogError("SSP_USBDevice")<<"FTDI fault on data receive"<<std::endl;
+    } catch (...) {}
     throw(EFTDIError("FTDI fault on data receive"));
   }
 
@@ -313,7 +329,9 @@ void SSPDAQ::USBDevice::SendReceive(SSPDAQ::CtrlPacket& tx, SSPDAQ::CtrlPacket& 
 	lbne::DAQLogger::LogWarning("SSP_USBDevice")<<"Send/receive failed "<<timesTried<<" times on USB link, retrying..."<<std::endl;
       }
       else{
+	try {
 	lbne::DAQLogger::LogError("SSP_USBDevice")<<"Send/receive failed on USB link, giving up."<<std::endl;
+	} catch (...) {}
 	throw;
       }
     }
@@ -326,7 +344,9 @@ void SSPDAQ::USBDevice::SendUSB (SSPDAQ::CtrlPacket& tx, unsigned int txSize)
 	// Send TX data over FTDI control path
 	if(FT_Write(fCommChannel.ftHandle, (char*)&tx, txSize, &txSizeWritten)!=FT_OK
 	   ||txSizeWritten!=txSize){
-	  lbne::DAQLogger::LogError("SSP_USBDevice")<<"Failed to send data on USB comm channel!"<<std::endl;
+	  try {
+	    lbne::DAQLogger::LogError("SSP_USBDevice")<<"Failed to send data on USB comm channel!"<<std::endl;
+	  } catch (...) {}
 	  throw(EFTDIError("Failed to send data on USB comm channel"));
 	}
 }
@@ -338,7 +358,9 @@ void SSPDAQ::USBDevice::ReceiveUSB (SSPDAQ::CtrlPacket& rx, unsigned int rxSizeE
 	// Request RX data over FTDI control path
 	if(errorCode!=FT_OK
 	   ||rxSizeReturned!=rxSizeExpected){
-	  lbne::DAQLogger::LogError("SSP_USBDevice")<<"Failed to receive data on USB comm channel!"<<std::endl;
+	  try {
+	    lbne::DAQLogger::LogError("SSP_USBDevice")<<"Failed to receive data on USB comm channel!"<<std::endl;
+	  } catch (...) {}
 	  throw(EFTDIError("Failed to receive data on USB comm channel"));
 	}
 }
@@ -382,7 +404,9 @@ void SSPDAQ::USBDevice::DevicePurge(FT_DEVICE_LIST_INFO_NODE& channel){
   } while (!done);
 
   if(hasFailed){
-    lbne::DAQLogger::LogError("SSP_USBDevice")<<"Error purging USB device queue"<<std::endl;
+    try {
+      lbne::DAQLogger::LogError("SSP_USBDevice")<<"Error purging USB device queue"<<std::endl;
+    } catch (...) {}
     throw(EFTDIError("Error purging USB device queue"));
   }
 	
