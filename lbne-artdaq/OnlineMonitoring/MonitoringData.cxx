@@ -76,7 +76,8 @@ void OnlineMonitoring::MonitoringData::EndMonitoring() {
       hADCChannelMap.at(channel)->Delete();
 
   fDataFile->Close();
-  delete fDataTree;
+  if (fDetailedMonitoring)
+    delete fDataTree;
   delete fDataFile;
   delete fCanvas;
 

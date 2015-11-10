@@ -106,12 +106,12 @@ void OnlineMonitoring::RCEFormatter::Windowing() {
     int blockstartcheck = 0;
     int endofblockcheck = 0;
 
-    for (int tick = 0; tick < (int)ADCs.at(channel).size(); ++tick) {
+    for (unsigned int tick = 0; tick < ADCs.at(channel).size(); ++tick) {
       // Windowing code (taken from raw.cxx::ZeroSuppression)
       if (blockstartcheck == 0) {
 	if (ADCs.at(channel).at(tick) > fWindowingZeroThresholdSigned) {
 	  if (tmpNumBlocks > 0) {
-	    if (tick-fWindowingNearestNeighbour <= tmpBlockBegin[tmpNumBlocks-1] + tmpBlockSize[tmpNumBlocks-1]+1) {
+	    if ((int)tick-fWindowingNearestNeighbour <= tmpBlockBegin[tmpNumBlocks-1] + tmpBlockSize[tmpNumBlocks-1]+1) {
 	      tmpNumBlocks--;
 	      tmpBlockSize[tmpNumBlocks] = tick - tmpBlockBegin[tmpNumBlocks] + 1;
 	      blockstartcheck = 1;
@@ -140,7 +140,8 @@ void OnlineMonitoring::RCEFormatter::Windowing() {
 	    ++tmpBlockSize[tmpNumBlocks];
 	  }
 	  //block has ended
-	  else if ( std::abs(ADCs.at(channel).at(tick+1)) <= fWindowingZeroThresholdSigned || std::abs(ADCs.at(channel).at(tick+2)) <= fWindowingZeroThresholdSigned) {  
+	  else if ( (tick+1 < ADCs.at(channel).size() and std::abs(ADCs.at(channel).at(tick+1)) <= fWindowingZeroThresholdSigned) or
+		    (tick+2 < ADCs.at(channel).size() and std::abs(ADCs.at(channel).at(tick+2)) <= fWindowingZeroThresholdSigned) ) {  
 	    endofblockcheck = 0;
 	    blockstartcheck = 0;
 	    ++tmpNumBlocks;
