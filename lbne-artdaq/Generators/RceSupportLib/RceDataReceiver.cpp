@@ -364,15 +364,14 @@ void lbne::RceDataReceiver::do_read(void)
 				}
 				else
 				{
-					DAQLogger::LogError(instance_name_) << "Got error on aysnchronous read: " << ec;
-					DAQLogger::LogError(instance_name_) 
-					              << "RECV: state " << (unsigned int)next_receive_state_
-						      << " mslice state " << (unsigned int)millislice_state_
-						      << " uslice " << microslices_recvd_
-						      << " uslice size " << microslice_size_recvd_
-						      << " mslice size " << millislice_size_recvd_
-						      << " addr " << current_write_ptr_
-						      << " next recv size " << next_receive_size_;
+				  DAQLogger::LogError(instance_name_) << "Got error on aysnchronous read: " << ec << "\n" 
+								      << "RECV: state " << (unsigned int)next_receive_state_
+								      << " mslice state " << (unsigned int)millislice_state_
+								      << " uslice " << microslices_recvd_
+								      << " uslice size " << microslice_size_recvd_
+								      << " mslice size " << millislice_size_recvd_
+								      << " addr " << current_write_ptr_
+								      << " next recv size " << next_receive_size_;
 
 				}
 
