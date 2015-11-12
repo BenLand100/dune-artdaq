@@ -192,11 +192,11 @@ void OnlineMonitoring::MonitoringData::RCEMonitoring(RCEFormatter const& rceform
       }
 
       // Times over threshold
-      if ( (ADC > fThreshold) && !peak ) {
+      if ( (ADC > fThreshold) and !peak ) {
 	++timesADCGoesOverThreshold;
 	peak = true;
       }
-      if ( tick && (ADC < ADCs.at(channel).at(tick-1)) && peak ) peak = false;
+      if ( tick and (ADC < ADCs.at(channel).at(tick-1)) and peak ) peak = false;
 
       // Bit check
       bitCheckAnd &= ADC;
@@ -228,9 +228,9 @@ void OnlineMonitoring::MonitoringData::RCEMonitoring(RCEFormatter const& rceform
     }
 
     // Loop over blocks to look at the asymmetry
-    for (int block = 0; block < rceformatter.NumBlocks().at(channel); block++) {
+    for (int block = 0; block < rceformatter.NumBlocks().at(channel); ++block) {
       // Loop over the ticks within the block
-      for (int tick = rceformatter.BlockBegin().at(channel).at(block); tick < rceformatter.BlockBegin().at(channel).at(block)+rceformatter.BlockSize().at(channel).at(block); tick++) {
+      for (int tick = rceformatter.BlockBegin().at(channel).at(block); tick < rceformatter.BlockBegin().at(channel).at(block)+rceformatter.BlockSize().at(channel).at(block); ++tick) {
 	if (fIsInduction) {
 	  ADCdiff += ADCs.at(channel).at(tick);
 	  ADCsum += abs(ADCs.at(channel).at(tick));
@@ -578,7 +578,7 @@ void OnlineMonitoring::MonitoringData::MakeHistograms() {
   fFigureCaptions["SSP__ADC_IntegralNorm_Channel_All"] = "Normalised integral of the SSP waveforms (profiled across all events)";
   hWaveformPedestal = new TProfile("SSP__ADC_Pedestal_Channel_All","Waveform Pedestal_\"hist\"_none;Channel;Pedestal",NSSPChannels,0,NSSPChannels);
   fFigureCaptions["SSP__ADC_Pedestal_Channel_All"] = "Pedestal of the SSP waveforms (profiled across all events)";
-  hWaveformNumTicks = new TProfile("SSP__Ticks__Channel_All","Num Ticks in Trigger_\"hist\"_none;Number of Ticks",NSSPChannels,0,NSSPChannels);
+  hWaveformNumTicks = new TProfile("SSP__Ticks__Channel_All","Num Ticks in Trigger_\"hist\"_none;Channel;Number of Ticks",NSSPChannels,0,NSSPChannels);
   fFigureCaptions["SSP__Ticks__Channel_All"] = "Number of ticks in each trigger";
   hNumberOfTriggers = new TH1I("SSP__Triggers_Total_Channel_All","Number of Triggers_\"hist\"_none;Channel;Number of Triggers",NSSPChannels,0,NSSPChannels);
   fFigureCaptions["SSP__Triggers_Total_Channel_All"] = "Total number of triggers per channel";
