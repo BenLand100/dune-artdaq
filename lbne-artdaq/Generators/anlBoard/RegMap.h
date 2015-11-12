@@ -40,8 +40,10 @@ class RegMap{
     //Allow implicit conversion to unsigned int for scalar registers
     operator unsigned int(){
       if(fSize>1){
-	lbne::DAQLogger::LogError("SSP_RegMap")<<"Attempt to access SSP register array at "
+	try {
+	  lbne::DAQLogger::LogError("SSP_RegMap")<<"Attempt to access SSP register array at "
 			    <<std::hex<<fAddress<<std::dec<<" as scalar!"<<std::endl;
+	} catch (...) {}
 	throw(std::invalid_argument(""));
       }
       return fAddress;
@@ -50,9 +52,11 @@ class RegMap{
     //Indexing returns another register with correct address offset and size 1
     Register operator[](unsigned int i) const{
       if(i>=fSize){
-	lbne::DAQLogger::LogError("SSP_RegMap")<<"Attempt to access SSP register at "
+	try {
+	  lbne::DAQLogger::LogError("SSP_RegMap")<<"Attempt to access SSP register at "
 			    <<std::hex<<fAddress<<std::dec<<" index "<<i
 			    <<", beyond end of array (size is "<<fSize<<")"<<std::endl;
+	} catch (...) {}
       }
       return Register(fAddress+0x4*i,fReadMask,fWriteMask,fOffset,1);
     }
@@ -103,8 +107,10 @@ class RegMap{
   //Get registers using variable names...
   Register operator[](std::string name){
     if(fNamed.find(name)==fNamed.end()){
-      lbne::DAQLogger::LogError("SSP_RegMap")<<"Attempt to access named SSP register "<<name
+      try {
+	lbne::DAQLogger::LogError("SSP_RegMap")<<"Attempt to access named SSP register "<<name
 			  <<", which does not exist!"<<std::endl;
+      } catch (...) {}
       throw(std::invalid_argument(""));
     }
     return fNamed[name];

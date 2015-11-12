@@ -12,7 +12,8 @@ void SSPDAQ::EventPacket::DumpHeader(){
   if(peaksum & 0x00800000) {
     peaksum |= 0xFF000000;
   }
-  lbne::DAQLogger::LogError("SSP_EventPacket")
+  try {
+    lbne::DAQLogger::LogError("SSP_EventPacket")
     << "=====HEADER=======================================" << std::endl
     << "Header:                             " << header.header   << std::endl
     << "Length:                             " << header.length   << std::endl
@@ -37,19 +38,29 @@ void SSPDAQ::EventPacket::DumpHeader(){
     << "Internal timestamp:                 " << ((uint64_t)((uint64_t)header.intTimestamp[3] << 32)) + ((uint64_t)((uint64_t)header.intTimestamp[2]) << 16) + ((uint64_t)((uint64_t)header.intTimestamp[1])) <<" ("<<header.intTimestamp[3]<<" "<<header.intTimestamp[2]<<" "<<header.intTimestamp[1]<<")"<<std::endl 
     << "=================================================="<< std::endl
     << std::endl;
+  } catch (...) {}
 }
 
 void SSPDAQ::EventPacket::DumpEvent(){
-  lbne::DAQLogger::LogError("SSP_EventPacket")<<"*****EVENT DUMP***********************************" <<std::endl<<std::endl;
+  try {
+    lbne::DAQLogger::LogError("SSP_EventPacket")<<"*****EVENT DUMP***********************************" <<std::endl<<std::endl;
+  } catch (...) {}
+
   this->DumpHeader();
-  lbne::DAQLogger::LogError("SSP_EventPacket")<<"=====ADC VALUES===================================" <<std::endl;
+  try {
+    lbne::DAQLogger::LogError("SSP_EventPacket")<<"=====ADC VALUES===================================" <<std::endl;
+  } catch (...) {}
 
   unsigned int nADC=data.size()*2;
   unsigned short* adcs=reinterpret_cast<unsigned short*>(&(data[0]));
   for(unsigned int i=0;i<nADC;++i){
+    try {
     lbne::DAQLogger::LogError("SSP_EventPacket")<<adcs[i]<<", ";
+    } catch (...) {}
   }
 
-  lbne::DAQLogger::LogError("SSP_EventPacket")<<std::endl<<"**************************************************" 
+  try {
+    lbne::DAQLogger::LogError("SSP_EventPacket")<<std::endl<<"**************************************************" 
 		      <<std::endl<<std::endl;
+  } catch (...) {}
 }
