@@ -15,18 +15,12 @@
 
   filter: [  prescaletrigger ]
 
-  output: [ stream1 , stream2 ]
+  output: [ stream1 ]
 
   end_paths: [ output ]
 }
 
-services : {
-  user:         @local::lbne35t_simulation_services
-  Timing:       {}
-  RandomNumberGenerator: {} 
-  message:      @local::standard_info
-
-}
+services : { }
 
 outputs:
 {
@@ -36,13 +30,6 @@ outputs:
     fileName: "PreScaleTrigger_pass.root"
     SelectedEvents: { SelectEvents: [ "filter" ] }
   }
-  stream2:
-  {
-    module_type: RootOutput
-    fileName: "PreScaleTrigger_fail.root"
-    SelectedEvents: { SelectEvents: [ "!filter" ] }
-  }
-
 }
 
 
