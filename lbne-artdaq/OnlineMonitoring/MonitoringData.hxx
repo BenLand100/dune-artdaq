@@ -29,6 +29,11 @@
 #include <TFile.h>
 #include <TLegend.h>
 #include <TTree.h>
+#include <TLine.h>
+#include <TFrame.h>
+#include <TGraph.h>
+#include <TMultiGraph.h>
+#include <TLegend.h>
 
 #include "messagefacility/MessageLogger/MessageLogger.h"
 
@@ -37,6 +42,8 @@
 #include <fstream>
 #include <map>
 #include <algorithm>
+#include <ctime>
+#include <time.h>
 
 #include "OnlineMonitoringBase.cxx"
 #include "DataReformatter.hxx"
@@ -54,20 +61,23 @@ public:
   void PTBMonitoring(PTBFormatter const& ptb_formatter);
   void MakeHistograms();
   void StartEvent(int eventNumber, bool maketree);
-  void WriteMonitoringData(int run, int subrun);
+  void WriteMonitoringData(int run, int subrun, int eventsProcessed);
 
 private:
 
   int fEventNumber;
+  std::string fRunStartTime;
 
   // Data handling
   TFile* fDataFile;
-  bool fMakeTree;
+  bool fDetailedMonitoring;
   TTree* fDataTree;
   TString HistSaveDirectory;
   TObjArray fHistArray;
+
   std::map<std::string,std::string> fFigureCaptions;
   TCanvas* fCanvas;
+  std::map<std::string,TLegend*> fFigureLegends;
 
   std::vector<std::vector<int> > fRCEADC, fSSPADC;
 
@@ -78,20 +88,25 @@ private:
   bool fIsInduction = true;
   bool _interestingchannelsfilled = false;
 
-  // Monitoring Data --------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  // Monitoring Data ------------------------------------------------------------------------------------------------------------------------------------------------------------
+  // General
+  TH1I *hNumSubDetectorsPresent, *hSizeOfFiles, *hSubDetectorsWithData, *hSubDetectorsPresent;
+  TH1D *hSizeOfFilesPerEvent;
+
   // RCE
   TH1I *hTotalADCEvent, *hTotalRCEHitsEvent, *hTotalRCEHitsChannel, *hTimesADCGoesOverThreshold,  *hNumMicroslicesInMillislice, *hNumNanoslicesInMicroslice, *hNumNanoslicesInMillislice;
   TH2I *hRCEBitCheckAnd, *hRCEBitCheckOr;
-  TH2D *hAvADCChannelEvent;
+  TH2D *hAvADCChannelEvent, *hADCChannel;
   TProfile *hADCMeanChannelAPA1, *hADCMeanChannelAPA2, *hADCMeanChannelAPA3, *hADCMeanChannelAPA4, *hADCRMSChannelAPA1, *hADCRMSChannelAPA2, *hADCRMSChannelAPA3, *hADCRMSChannelAPA4;
   TProfile *hRCEDNoiseChannel, *hAsymmetry, *hLastSixBitsCheckOff, *hLastSixBitsCheckOn;
-  std::map<int,TProfile*> hADCChannel;
+  std::map<int,TProfile*> hADCChannelMap;
   std::map<int,TH1D*> hAvADCMillislice;
   std::map<int,TH1D*> hAvADCMillisliceChannel;
   std::map<int,TH1D*> hDebugChannelHists;
 
   // SSP
-  TProfile *hWaveformMean, *hWaveformRMS, *hWaveformPeakHeight, *hWaveformIntegral, *hWaveformIntegralNorm, *hWaveformPedestal, *hWaveformNumTicks, *hNumberOfTriggers;
+  TProfile *hWaveformMean, *hWaveformRMS, *hWaveformPeakHeight, *hWaveformIntegral, *hWaveformIntegralNorm, *hWaveformPedestal, *hWaveformNumTicks, *hTriggerFraction;
+  TH1I *hNumberOfTriggers;
 
   // PTB
   TProfile *hPTBTriggerRates;
@@ -107,9 +122,9 @@ private:
   TProfile *hPTBBSUCounterHitRateCL,    *hPTBBSUCounterActivationTimeCL;
   TProfile *hPTBBSUCounterHitRateRL,    *hPTBBSUCounterActivationTimeRL;
 
-  // General
-  TH1I *hNumSubDetectorsPresent, *hSizeOfFiles, *hSubDetectorsWithData;
-  TH1D *hSizeOfFilesPerEvent;
+  //Timing sync plots
+  TGraph *hTimeSyncsSSPs[NSSPs];
+  TGraph *hTimeSyncsAverageSSPs[NSSPs];
 
 };
 

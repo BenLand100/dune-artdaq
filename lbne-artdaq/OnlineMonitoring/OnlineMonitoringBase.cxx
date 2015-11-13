@@ -26,16 +26,17 @@ namespace OnlineMonitoring {
 
   const unsigned int NRCEChannels    = 2048;
   const unsigned int NRCEMillislices = 16;
-  const unsigned int NSSPChannels    = 96;
+  const unsigned int NSSPChannels    = 84;
+  const unsigned int NSSPs = 7;
   const std::vector<int> DebugChannels = {260, 278, 289, 290};
 
   // Paths
   // Note -- on the gateway machine the default paths here refer to directories constantly
   // being scanned by cron jobs to upload new monitoring to the web.
   // If wanting to test and develop code, please change the paths!
-  const TString DataDirName   = "/storage/data/";
-  const TString HistSavePath  = "/data2/lbnedaq/monitoring/";
-  const TString EVDSavePath   = "/data2/lbnedaq/eventDisplay/";
+  const TString DataDirName   = "/data/lbnedaq/scratch/dbrailsf/om/data/in/";
+  const TString HistSavePath  = "/data/lbnedaq/scratch/dbrailsf/om/data/";
+  const TString EVDSavePath   = "/data/lbnedaq/scratch/dbrailsf/om/data/";
   const TString ImageType     = ".png";
   const TString PathDelimiter = "_";
 
@@ -43,6 +44,10 @@ namespace OnlineMonitoring {
     static int const CounterWordSize = 128;
     static int const TriggerWordSize = 32;
   }
+
+  const std::vector<std::string> DAQComponents = {"RCE00","RCE01","RCE02","RCE03","RCE04","RCE05","RCE06","RCE07","RCE08","RCE09","RCE10","RCE11","RCE12","RCE13","RCE14","RCE15",
+						  "SSP01","SSP02","SSP03","SSP04","SSP05","SSP06","SSP07",
+						  "PTB"};
 
 }
 
