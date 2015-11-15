@@ -32,6 +32,7 @@ public:
   RCEFormatter() {}
   RCEFormatter(art::Handle<artdaq::Fragments> const& rawRCE);
   std::vector<std::vector<int> > const& ADCVector() const { return ADCs; }
+  std::vector<std::vector<unsigned long> > const& TimestampVector() const { return fTimeStamps; }
   std::vector<int> const& NumBlocks() const { return fWindowingNumBlocks; }
   std::vector<std::vector<short> > const& BlockBegin() const { return fWindowingBlockBegin; }
   std::vector<std::vector<short> > const& BlockSize() const { return fWindowingBlockSize; }
@@ -45,6 +46,7 @@ private:
   void Windowing();
 
   std::vector<std::vector<int> > ADCs;
+  std::vector<std::vector<unsigned long> > fTimeStamps;
 
   // Windowing
   std::vector<int> fWindowingNumBlocks;
@@ -70,8 +72,8 @@ struct OnlineMonitoring::Trigger {
   int Channel;
   unsigned int PeakSum, Prerise, Integral, Pedestal, NTicks;
   double Mean, RMS;
-  unsigned long Timestamp;
   std::vector<int> ADCs;
+  unsigned long Timestamp;
 };
 
 class OnlineMonitoring::SSPFormatter {
@@ -110,11 +112,6 @@ private:
 
   void CollectCounterBits(uint8_t* payload, size_t payload_size);
   void CollectMuonTrigger(uint8_t* payload, size_t payload_size);
-  void ReverseBits(std::bitset<TypeSizes::TriggerWordSize> &bits);
-  void ReverseBits(std::bitset<TypeSizes::CounterWordSize> &bits);
-  void ReverseBits(std::bitset<8> &bits);
-
-
   std::vector<std::bitset<TypeSizes::CounterWordSize> > fCounterBits;
   std::vector<int> fCounterTimes;
   std::vector<std::bitset<TypeSizes::TriggerWordSize> > fMuonTriggerBits;

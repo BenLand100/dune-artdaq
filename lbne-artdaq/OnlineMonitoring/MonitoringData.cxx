@@ -264,10 +264,20 @@ void OnlineMonitoring::MonitoringData::RCEMonitoring(RCEFormatter const& rceform
   const std::vector<std::vector<int> > ADCs = rceformatter.ADCVector();
   int totalADC = 0, totalRCEHitsEvent = 0, timesADCGoesOverThreshold = 0;
 
+  unsigned int NChannelsPerRCE = NRCEChannels/NRCEs;
+
+  //The timestamps
+  const std::vector<std::vector<unsigned long> > timestamps = rceformatter.TimestampVector();
+
   for (unsigned int channel = 0; channel < ADCs.size(); channel++) {
 
     if (!ADCs.at(channel).size())
       continue;
+
+
+    std::vector<int>::const_iterator max_it = std::max_element(ADCs.at(channel).begin(),ADCs.at(channel).end());
+    int index = std::distance(ADCs.at(channel).begin(), max_it);
+    std::cout<<"RCE: " << channel/NChannelsPerRCE <<" Channel: " << channel << "  max_ADC: " << (*max_it) << "  timestamp: " << timestamps.at(channel).at(index) << std::endl;
 
     // Variables for channel
     bool peak = false;
@@ -303,11 +313,11 @@ void OnlineMonitoring::MonitoringData::RCEMonitoring(RCEFormatter const& rceform
       }
 
       // Times over threshold
-      if ( (ADC > fThreshold) && !peak ) {
+      if ( (ADC > fThreshold) and !peak ) {
 	++timesADCGoesOverThreshold;
 	peak = true;
       }
-      if ( tick && (ADC < ADCs.at(channel).at(tick-1)) && peak ) peak = false;
+      if ( tick and (ADC < ADCs.at(channel).at(tick-1)) and peak ) peak = false;
 
       // Bit check
       bitCheckAnd &= ADC;
@@ -339,9 +349,9 @@ void OnlineMonitoring::MonitoringData::RCEMonitoring(RCEFormatter const& rceform
     }
 
     // Loop over blocks to look at the asymmetry
-    for (int block = 0; block < rceformatter.NumBlocks().at(channel); block++) {
+    for (int block = 0; block < rceformatter.NumBlocks().at(channel); ++block) {
       // Loop over the ticks within the block
-      for (int tick = rceformatter.BlockBegin().at(channel).at(block); tick < rceformatter.BlockBegin().at(channel).at(block)+rceformatter.BlockSize().at(channel).at(block); tick++) {
+      for (int tick = rceformatter.BlockBegin().at(channel).at(block); tick < rceformatter.BlockBegin().at(channel).at(block)+rceformatter.BlockSize().at(channel).at(block); ++tick) {
 	if (fIsInduction) {
 	  ADCdiff += ADCs.at(channel).at(tick);
 	  ADCsum += abs(ADCs.at(channel).at(tick));
@@ -536,73 +546,22 @@ void OnlineMonitoring::MonitoringData::WriteMonitoringData(int run, int subrun, 
 
   fDataFile->cd();
 
-  /*
-  //Now we have done all of this we need to check if the graphs contain information.  If not, don't add them to the object array
-  for (unsigned int i = 0; i < NSSPs; i++){
-    if (hTimeSyncsSSPs[i]->GetN() > 0) fHistArray.Add(hTimeSyncsSSPs[i]);
-    std::cout<<"NPoints: " << hTimeSyncsSSPs[i]->GetN() << std::endl;
-    std::string caption = Form("Difference between max and min average channel times as a function of the min average channel time (SSP %i)",i);
-    fFigureCaptions[hTimeSyncsSSPs[i]->GetName()] = caption;
-  }
-  */
-
   // Write the tree
   if (fDetailedMonitoring) fDataTree->Write();
 
   // Save all the histograms as images and write to file
   for (int histIt = 0; histIt < fHistArray.GetEntriesFast(); ++histIt) {
-    TObject *_h = (TH1*)fHistArray.At(histIt);
-    //We need to know if the object we pulled out is also an TObjArray.  If that is the case we need to loop over the contents of that object array and draw those to the same canvas
-
     fCanvas->cd();
+    TH1 *_h = (TH1*)fHistArray.At(histIt);
     TObjArray *histTitle = TString(_h->GetTitle()).Tokenize(PathDelimiter);
     TObjArray *histName = TString(_h->GetName()).Tokenize(PathDelimiter);
-    /*
-    if (_h->IsA() == TMultiGraph::Class()){
-      TMultiGraph *graph = (TMultiGraph*) fHistArray.At(histIt);
-      TIter next(graph->GetListOfGraphs());
-      while (TObject *obj = next()){
-        TGraph *graph = (TGraph*) obj;
-        std::cout<<"NEntries: " << graph->GetN() << std::endl;
-      }
-    }
-    */
-    /*
-    TObjArray *histTitle;
-    TObjArray *histName;
-    if (_h->IsA() == TObjArray::Class()){
-      TObjArray* obj_array = (TObjArray*)fHistArray.At(histIt);
-      histName = TString(obj_array->GetName()).Tokenize(PathDelimiter);
-      std::cout<<"Got array with: " << obj_array->GetEntriesFast() << std::endl;
-      for (int arrayIt = 0; arrayIt < obj_array->GetEntriesFast(); arrayIt++){
-        std::cout<<"Got to here"<<std::endl;
-        TObject *array_obj = (TObject*)obj_array->At(arrayIt);
-        if (array_obj) std::cout<<"Got obj"<<std::endl;
-        histTitle = TString(array_obj->GetTitle()).Tokenize(PathDelimiter);
-        TObjArray* draw_array = TString(histTitle->At(1)->GetName()).Tokenize("\"");
-        TString draw_command = (TString)draw_array->At(0)->GetName();
-//        TString draw_command = (TString)histTitle->At(1)->GetName().Tokenize("\"")->At(0)->GetName();
-        if (arrayIt > 0) draw_command += "same";
-        std::cout<<draw_command<<std::endl;
-        //DrawObject(array_obj,run,subrun,componentHTML,extra_draw);
-        array_obj->Draw(draw_command);
-        //_h->Draw((char*)histTitle->At(1)->GetName());
-      }
-    }
-
-    else{
-      histTitle = TString(_h->GetTitle()).Tokenize(PathDelimiter);
-      histName = TString(_h->GetName()).Tokenize(PathDelimiter);
-      _h->Draw((char*)histTitle->At(1)->GetName());
-    }
-    */
     _h->Draw((char*)histTitle->At(1)->GetName());
     TPaveText *canvTitle = new TPaveText(0.05,0.92,0.6,0.98,"NDC");
     canvTitle->AddText((std::string(histTitle->At(0)->GetName())+": Run "+std::to_string(run)+", SubRun "+std::to_string(subrun)).c_str());
     canvTitle->SetBorderSize(1);
     canvTitle->Draw();
     if (fFigureLegends[_h->GetName()]) {
-      std::cout<<"Drawing legend for: " << histName->At(0)->GetName() << std::endl;
+      //std::cout<<"Drawing legend for: " << histName->At(0)->GetName() << std::endl;
       fCanvas->SetRightMargin(0.2);
       fFigureLegends[_h->GetName()]->Draw();
     }
@@ -631,7 +590,6 @@ void OnlineMonitoring::MonitoringData::WriteMonitoringData(int run, int subrun, 
     fDataFile->cd();
     fDataFile->cd(histName->At(0)->GetName());
     _h->Write();
-    fCanvas->SetRightMargin(0.);
     *componentHTML[histName->At(0)->GetName()] << "<figure><a href=\"" << (TString(_h->GetName())+ImageType).Data() << "\"><img src=\"" << (TString(_h->GetName())+ImageType).Data() << "\" width=\"650\"></a><figcaption>" << fFigureCaptions.at(_h->GetName()) << "</figcaption></figure>" << std::endl;
   }
 
@@ -746,7 +704,7 @@ void OnlineMonitoring::MonitoringData::MakeHistograms() {
   fFigureCaptions["SSP__ADC_IntegralNorm_Channel_All"] = "Normalised integral of the SSP waveforms (profiled across all events)";
   hWaveformPedestal = new TProfile("SSP__ADC_Pedestal_Channel_All","Waveform Pedestal_\"hist\"_none;Channel;Pedestal",NSSPChannels,0,NSSPChannels);
   fFigureCaptions["SSP__ADC_Pedestal_Channel_All"] = "Pedestal of the SSP waveforms (profiled across all events)";
-  hWaveformNumTicks = new TProfile("SSP__Ticks__Channel_All","Num Ticks in Trigger_\"hist\"_none;Number of Ticks",NSSPChannels,0,NSSPChannels);
+  hWaveformNumTicks = new TProfile("SSP__Ticks__Channel_All","Num Ticks in Trigger_\"hist\"_none;Channel;Number of Ticks",NSSPChannels,0,NSSPChannels);
   fFigureCaptions["SSP__Ticks__Channel_All"] = "Number of ticks in each trigger";
   hNumberOfTriggers = new TH1I("SSP__Triggers_Total_Channel_All","Number of Triggers_\"hist\"_none;Channel;Number of Triggers",NSSPChannels,0,NSSPChannels);
   fFigureCaptions["SSP__Triggers_Total_Channel_All"] = "Total number of triggers per channel";
@@ -832,10 +790,10 @@ void OnlineMonitoring::MonitoringData::MakeHistograms() {
   hPTBBSUCounterActivationTimeRL->GetXaxis()->CenterLabels();
 
   hPTBTriggerRates = new TProfile("PTB__Hits_Mean_MuonTrigger_All","Muon trigger rates_\"\"_none;Muon trigger name; No. hits per millislice",4,1,5);
-  hPTBTriggerRates->GetXaxis()->SetBinLabel(4,"BSU RM-CM");
-  hPTBTriggerRates->GetXaxis()->SetBinLabel(3,"TSU NU-SL");
-  hPTBTriggerRates->GetXaxis()->SetBinLabel(2,"TSU SU-NL");
-  hPTBTriggerRates->GetXaxis()->SetBinLabel(1,"TSU EL-WU");
+  hPTBTriggerRates->GetXaxis()->SetBinLabel(1,"BSU RM-CM");
+  hPTBTriggerRates->GetXaxis()->SetBinLabel(2,"TSU NU-SL");
+  hPTBTriggerRates->GetXaxis()->SetBinLabel(3,"TSU SU-NL");
+  hPTBTriggerRates->GetXaxis()->SetBinLabel(4,"TSU EL-WU");
 
   // The order the histograms are added will be the order they're displayed on the web!
   fHistArray.Add(hNumSubDetectorsPresent); 
@@ -971,7 +929,4 @@ void OnlineMonitoring::MonitoringData::MakeHistograms() {
   fFigureCaptions[sspTimeSyncsAverageArray->GetName()] = "Average SSP trigger time - average channel trigger time for all SSPs";
   fHistArray.Add(sspTimeSyncsAverageArray);
 
-
 }
-
-

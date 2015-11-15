@@ -26,6 +26,7 @@ namespace OnlineMonitoring {
 
   const unsigned int NRCEChannels    = 2048;
   const unsigned int NRCEMillislices = 16;
+  const unsigned int NRCEs = 16;
   const unsigned int NSSPChannels    = 84;
   const unsigned int NSSPs = 7;
   const std::vector<int> DebugChannels = {260, 278, 289, 290};
@@ -34,9 +35,14 @@ namespace OnlineMonitoring {
   // Note -- on the gateway machine the default paths here refer to directories constantly
   // being scanned by cron jobs to upload new monitoring to the web.
   // If wanting to test and develop code, please change the paths!
+  const TString DataDirName   = "/storage/data/";
+  const TString HistSavePath  = "/data2/lbnedaq/monitoring/";
+  const TString EVDSavePath   = "/data2/lbnedaq/eventDisplay/";
+  /*
   const TString DataDirName   = "/data/lbnedaq/scratch/dbrailsf/om/data/in/";
   const TString HistSavePath  = "/data/lbnedaq/scratch/dbrailsf/om/data/";
   const TString EVDSavePath   = "/data/lbnedaq/scratch/dbrailsf/om/data/";
+  */
   const TString ImageType     = ".png";
   const TString PathDelimiter = "_";
 

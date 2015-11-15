@@ -74,7 +74,6 @@ private:
   TTree* fDataTree;
   TString HistSaveDirectory;
   TObjArray fHistArray;
-
   std::map<std::string,std::string> fFigureCaptions;
   TCanvas* fCanvas;
   std::map<std::string,TLegend*> fFigureLegends;

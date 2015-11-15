@@ -1,4 +1,3 @@
-
 ////////////////////////////////////////////////////////////////////////
 // File:   DataReformatter.cxx
 // Author: Mike Wallbank (July 2015)
@@ -41,6 +40,8 @@ void OnlineMonitoring::RCEFormatter::AnalyseADCs(art::Handle<artdaq::Fragments> 
 
     // Vector of ADC values for this channel
     std::vector<int> adcVector;
+    //And the timestamps
+    std::vector<unsigned long> timestampVector;
 
     // Find the fragment ID and the sample for this channel
     unsigned int fragmentID = (unsigned int)((chanIt/128)+100);
@@ -75,8 +76,11 @@ void OnlineMonitoring::RCEFormatter::AnalyseADCs(art::Handle<artdaq::Fragments> 
 	  uint16_t adc = std::numeric_limits<uint16_t>::max();
 	  bool success = microslice->nanosliceSampleValue(nanoIt, sample, adc);
 
-	  if (success)
+	  if (success){
 	    adcVector.push_back((int)adc);
+     unsigned long timestamp = microslice->nanosliceNova_timestamp(nanoIt);
+     timestampVector.push_back(timestamp);
+   }
 
 	} // nanoslice loop
 
@@ -85,6 +89,7 @@ void OnlineMonitoring::RCEFormatter::AnalyseADCs(art::Handle<artdaq::Fragments> 
     } // analyse fragment loop
 
     ADCs.push_back(adcVector);
+    fTimeStamps.push_back(timestampVector);
 
   } // channel loop
 
@@ -98,7 +103,7 @@ void OnlineMonitoring::RCEFormatter::Windowing() {
   const int fWindowingZeroThresholdSigned = 10;
   int fWindowingNearestNeighbour = 4;
 
-  for (unsigned int channel = 0; channel < ADCs.size(); ++channel) {
+  for (int channel = 0; channel < (int)ADCs.size(); ++channel) {
 
     // Define variables for the windowing
     std::vector<short> tmpBlockBegin((ADCs.at(channel).size()/2)+1);
@@ -107,12 +112,12 @@ void OnlineMonitoring::RCEFormatter::Windowing() {
     int blockstartcheck = 0;
     int endofblockcheck = 0;
 
-    for (unsigned int tick = 0; tick < ADCs.at(channel).size(); ++tick) {
+    for (int tick = 0; tick < (int)ADCs.at(channel).size(); ++tick) {
       // Windowing code (taken from raw.cxx::ZeroSuppression)
       if (blockstartcheck == 0) {
 	if (ADCs.at(channel).at(tick) > fWindowingZeroThresholdSigned) {
 	  if (tmpNumBlocks > 0) {
-	    if ((int)tick-fWindowingNearestNeighbour <= tmpBlockBegin[tmpNumBlocks-1] + tmpBlockSize[tmpNumBlocks-1]+1) {
+	    if (tick-fWindowingNearestNeighbour <= tmpBlockBegin[tmpNumBlocks-1] + tmpBlockSize[tmpNumBlocks-1]+1) {
 	      tmpNumBlocks--;
 	      tmpBlockSize[tmpNumBlocks] = tick - tmpBlockBegin[tmpNumBlocks] + 1;
 	      blockstartcheck = 1;
@@ -141,8 +146,8 @@ void OnlineMonitoring::RCEFormatter::Windowing() {
 	    ++tmpBlockSize[tmpNumBlocks];
 	  }
 	  //block has ended
-	  else if ( (tick+1 < ADCs.at(channel).size() and std::abs(ADCs.at(channel).at(tick+1)) <= fWindowingZeroThresholdSigned) or
-		    (tick+2 < ADCs.at(channel).size() and std::abs(ADCs.at(channel).at(tick+2)) <= fWindowingZeroThresholdSigned) ) {  
+	  else if ( (tick+1 < (int)ADCs.at(channel).size() and std::abs(ADCs.at(channel).at(tick+1)) <= fWindowingZeroThresholdSigned) or
+		    (tick+2 < (int)ADCs.at(channel).size() and std::abs(ADCs.at(channel).at(tick+2)) <= fWindowingZeroThresholdSigned) ) {  
 	    endofblockcheck = 0;
 	    blockstartcheck = 0;
 	    ++tmpNumBlocks;
@@ -279,13 +284,9 @@ OnlineMonitoring::PTBFormatter::PTBFormatter(art::Handle<artdaq::Fragments> cons
     //Loop over the payloads
     for (uint32_t ip = 0; ip < n_frames; ip++){
       //Get the actual payload
-
       payload_data = msf.payload(ip, type, timestamp, payload_size);
 
       unsigned int payload_type = (unsigned int) type;
-      if (type==2){
-        //lbne::PennMicroSlice::Payload_Header* payload_header = reinterpret_cast<lbne::PennMicroSlice::Payload_Header*>(pl_ptr);
-      }
       //Loop over the words in the payload
       if (!((payload_data != nullptr) && payload_size)) continue;
       switch (payload_type){
@@ -362,21 +363,12 @@ void OnlineMonitoring::PTBFormatter::AnalyzeMuonTrigger(int trigger_number, int&
 
 void OnlineMonitoring::PTBFormatter::CollectCounterBits(uint8_t* payload, size_t payload_size) {
   std::bitset<TypeSizes::CounterWordSize> bits;
-
-//  for (size_t ib = 0; ib < payload_size; ib++){
   for (size_t ib = 0; ib < payload_size; ib++){
     std::bitset<TypeSizes::CounterWordSize> byte = payload[ib];
-    //std::cout<<std::bitset<8>(payload[ib])<<std::endl;
-    //std::cout<<byte<<std::endl;
     //bits ^= (byte << 8*(payload_size-(ib+1)));
     bits ^= (byte << 8*ib);
-    //std::cout<<std::bitset<8>(payload[ib])<<std::endl;
+
   }
-  std::cout<<bits<<std::endl;
-  //std::cout<<std::endl;
-  //std::cout<<bits<<std::endl;
-  //ReverseBits(bits);
-  //std::cout<<bits<<std::endl<<std::endl;
 
   fCounterBits.push_back(bits);
   return;
@@ -385,19 +377,11 @@ void OnlineMonitoring::PTBFormatter::CollectCounterBits(uint8_t* payload, size_t
 void OnlineMonitoring::PTBFormatter::CollectMuonTrigger(uint8_t* payload, size_t payload_size) {
   std::bitset<TypeSizes::TriggerWordSize> bits;
   for (size_t ib = 0; ib < payload_size; ib++){
-    //std::bitset<8> new_bits = payload[ib];
-    //ReverseBits(new_bits);
     std::bitset<TypeSizes::TriggerWordSize> byte = payload[ib];
-    //std::bitset<TypeSizes::TriggerWordSize> byte;
-    //for (int i = 0; i < 8; i++) byte[i] = new_bits[i];
-    //byte=new_bits<<8;
     bits ^= (byte << 8*ib);
-    //bits ^= (byte << 8*(payload_size-(ib+1)));
+    //bits ^= (byte << 8*(payload_size-(ib)));
     //std::cout<<std::bitset<8>(payload[ib])<<std::endl;
   }
-  //std::cout<<std::endl;
-  //ReverseBits(bits);
-  //std::cout<<bits<<std::endl<<std::endl;
   //Bits collected, now get the trigger type
   std::bitset<TypeSizes::TriggerWordSize> trigger_type_bits; 
   trigger_type_bits ^= (bits >> (TypeSizes::TriggerWordSize - 5));
@@ -407,39 +391,12 @@ void OnlineMonitoring::PTBFormatter::CollectMuonTrigger(uint8_t* payload, size_t
     std::bitset<TypeSizes::TriggerWordSize> muon_trigger_bits;
     //Shift the bits left by 5 first to remove the trigger type bits
     muon_trigger_bits ^= (bits << 5);
-    //std::cout<<muon_trigger_bits<<std::endl;
     //Now we need to shift the entire thing set to the LSB so we can record the number
     //The muon trigger pattern words are 4 bits
     muon_trigger_bits >>= (TypeSizes::TriggerWordSize-4);
     int muon_trigger = static_cast<int>(muon_trigger_bits.to_ulong());
     fMuonTriggerRates[muon_trigger]++;
+
   }
   return;
-}
-
-void OnlineMonitoring::PTBFormatter::ReverseBits(std::bitset<TypeSizes::TriggerWordSize> &bits){
-  for (unsigned int i = 0; i < bits.size()/2; i++){
-    bool bit_up = bits[i];
-    bool bit_down = bits[bits.size()-1-i];
-    bits[i] = bit_down;
-    bits[bits.size()-1-i] = bit_up;
-  }
-}
-
-void OnlineMonitoring::PTBFormatter::ReverseBits(std::bitset<TypeSizes::CounterWordSize> &bits){
-  for (unsigned int i = 0; i < bits.size()/2; i++){
-    bool bit_up = bits[i];
-    bool bit_down = bits[bits.size()-1-i];
-    bits[i] = bit_down;
-    bits[bits.size()-1-i] = bit_up;
-  }
-}
-
-void OnlineMonitoring::PTBFormatter::ReverseBits(std::bitset<8> &bits){
-  for (unsigned int i = 0; i < bits.size()/2; i++){
-    bool bit_up = bits[i];
-    bool bit_down = bits[bits.size()-1-i];
-    bits[i] = bit_down;
-    bits[bits.size()-1-i] = bit_up;
-  }
 }
