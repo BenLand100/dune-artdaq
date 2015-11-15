@@ -343,7 +343,7 @@ void OnlineMonitoring::PTBFormatter::AnalyzeCounter(int counter_index, double& a
       //Also record the activation time if it is the first time the counter has been hit
       if (hit_rate==1){
         //We need the array index to fetch the timestamp of the payload
-        int index = std::distance(countIt, fCounterBits.end());
+        int index = std::distance(fCounterBits.begin(), countIt);
         activation_time = fCounterTimes.at(index);
       }
     }
