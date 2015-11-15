@@ -31,6 +31,9 @@
 #include <TTree.h>
 #include <TLine.h>
 #include <TFrame.h>
+#include <TGraph.h>
+#include <TMultiGraph.h>
+#include <TLegend.h>
 
 #include "messagefacility/MessageLogger/MessageLogger.h"
 
@@ -73,6 +76,7 @@ private:
   TObjArray fHistArray;
   std::map<std::string,std::string> fFigureCaptions;
   TCanvas* fCanvas;
+  std::map<std::string,TLegend*> fFigureLegends;
 
   std::vector<std::vector<int> > fRCEADC, fSSPADC;
 
@@ -116,6 +120,10 @@ private:
   TProfile *hPTBBSUCounterHitRateCU,    *hPTBBSUCounterActivationTimeCU;
   TProfile *hPTBBSUCounterHitRateCL,    *hPTBBSUCounterActivationTimeCL;
   TProfile *hPTBBSUCounterHitRateRL,    *hPTBBSUCounterActivationTimeRL;
+
+  //Timing sync plots
+  TGraph *hTimeSyncsSSPs[NSSPs];
+  TGraph *hTimeSyncsAverageSSPs[NSSPs];
 
 };
 

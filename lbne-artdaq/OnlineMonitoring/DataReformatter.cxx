@@ -196,6 +196,9 @@ OnlineMonitoring::SSPFormatter::SSPFormatter(art::Handle<artdaq::Fragments> cons
 
       const SSPDAQ::EventHeader* triggerHeader = reinterpret_cast<const SSPDAQ::EventHeader*>(dataPointer);
 
+      //DBB: Get the NOvA timestamp
+      unsigned long nova_timestamp = ((unsigned long)triggerHeader->timestamp[3] << 48) + ((unsigned long)triggerHeader->timestamp[2] << 32) + ((unsigned long)triggerHeader->timestamp[1] << 16) + ((unsigned long)triggerHeader->timestamp[0] << 0);
+
       // Find the (online) 'channel number' [this doesn't make much sense!]
       int SSPChannel = ((triggerHeader->group2 & 0x000F) >> 0);
       int SSPNumber  = ((triggerHeader->group2 & 0x00F0) >> 4);
@@ -229,7 +232,7 @@ OnlineMonitoring::SSPFormatter::SSPFormatter(art::Handle<artdaq::Fragments> cons
       dataPointer += nTicks / 2;
 
       // Save the information for this trigger in the reformatter object
-      Trigger trigger(channel, peaksum, prerise, integral, pedestal, nTicks, mean, rms, adcVector);
+      Trigger trigger(channel, peaksum, prerise, integral, pedestal, nTicks, mean, rms, adcVector, nova_timestamp);
       fTriggers.push_back(trigger);
       fChannelTriggers.at(channel).push_back(trigger);
 

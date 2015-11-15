@@ -55,7 +55,7 @@ private:
 
 struct OnlineMonitoring::Trigger {
   Trigger();
-  Trigger(int channel, unsigned int peaksum, unsigned int prerise, unsigned int integral, unsigned int pedestal, unsigned int nTicks, double mean, double rms, std::vector<int> adcVector) {
+  Trigger(int channel, unsigned int peaksum, unsigned int prerise, unsigned int integral, unsigned int pedestal, unsigned int nTicks, double mean, double rms, std::vector<int> adcVector, unsigned long timestamp) {
     Channel = channel;
     PeakSum = peaksum;
     Prerise = prerise;
@@ -65,11 +65,13 @@ struct OnlineMonitoring::Trigger {
     Mean = mean;
     RMS = rms;
     ADCs = adcVector;
+    Timestamp = timestamp;
   }
   int Channel;
   unsigned int PeakSum, Prerise, Integral, Pedestal, NTicks;
   double Mean, RMS;
   std::vector<int> ADCs;
+  unsigned long Timestamp;
 };
 
 class OnlineMonitoring::SSPFormatter {

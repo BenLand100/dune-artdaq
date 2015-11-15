@@ -27,6 +27,7 @@ namespace OnlineMonitoring {
   const unsigned int NRCEChannels    = 2048;
   const unsigned int NRCEMillislices = 16;
   const unsigned int NSSPChannels    = 84;
+  const unsigned int NSSPs = 7;
   const std::vector<int> DebugChannels = {260, 278, 289, 290};
 
   // Paths
