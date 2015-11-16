@@ -37,6 +37,7 @@ lbne::RceDataReceiver::RceDataReceiver(const std::string& instance_name, int deb
 	run_receiver_(true),
 	suspend_readout_(false),
 	readout_suspended_(false),
+	exception_(false),
 	recv_socket_(0)
 {
 	RECV_DEBUG(1) << "lbne::RceDataReceiver constructor";
@@ -310,23 +311,17 @@ void lbne::RceDataReceiver::do_read(void)
 		    // this means the output *.root file is in danger
 		    // of not properly being closed
    
-		    // However:
+		    // JCF, Nov-3-2015: 
 
-		    // At some point we may want to uncomment the code
-		    // below, which basically means that if we can't
-		    // obtain a new raw buffer for the millislice and
-		    // we're in the running state, that it's a fatal
-		    // error which SHOULD throw an exception; since
-		    // "suspend_readout" isn't true, it means the
-		    // exception ought to be captured by
-		    // CommandableFragmentGenerator::getNext(),
-		    // resulting in the output file being properly
-		    // closed
+		    // However: since we can't obtain a new raw buffer
+		    // for the millislice at this point, then if we're
+		    // in the running state, we'll set the exception_
+		    // flag, so getNext will know to stop the run
 
-		    // if (! suspend_readout_.load()) {
-		    // ExceptionHandler(ExceptionHandlerRethrow::yes,
-		    // "");
-		    // }
+		    if (! suspend_readout_.load()) {
+		      DAQLogger::LogInfo(instance_name_) << "Setting exception to true; suspend_readout is false";
+		      set_exception(true);
+		    }
 		  }
 
 		  return;
@@ -369,15 +364,14 @@ void lbne::RceDataReceiver::do_read(void)
 				}
 				else
 				{
-					DAQLogger::LogError(instance_name_) << "Got error on aysnchronous read: " << ec;
-					DAQLogger::LogError(instance_name_) 
-					              << "RECV: state " << (unsigned int)next_receive_state_
-						      << " mslice state " << (unsigned int)millislice_state_
-						      << " uslice " << microslices_recvd_
-						      << " uslice size " << microslice_size_recvd_
-						      << " mslice size " << millislice_size_recvd_
-						      << " addr " << current_write_ptr_
-						      << " next recv size " << next_receive_size_;
+				  DAQLogger::LogError(instance_name_) << "Got error on aysnchronous read: " << ec << "\n" 
+								      << "RECV: state " << (unsigned int)next_receive_state_
+								      << " mslice state " << (unsigned int)millislice_state_
+								      << " uslice " << microslices_recvd_
+								      << " uslice size " << microslice_size_recvd_
+								      << " mslice size " << millislice_size_recvd_
+								      << " addr " << current_write_ptr_
+								      << " next recv size " << next_receive_size_;
 
 				}
 

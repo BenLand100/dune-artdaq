@@ -167,23 +167,5 @@ ostream& operator<<(ostream& os, const value_t& value)
 
     return json_msg_oss.str();
   }
-
-  std::string MetricToRCJSON(const std::string& label, const std::string& varname,
-			     const std::string& value) { 
-
-    object_t json_msg;
-
-    json_msg["type"] = "moni";
-    json_msg["service"] = label.c_str();
-    json_msg["varname"] = varname.c_str();
-    json_msg["value"] = value.c_str();
-    json_msg["t"] = Timestamp();
-
-    std::ostringstream json_msg_oss;
-    json_msg_oss << json_msg;
-
-    return json_msg_oss.str();
-  }
-
 }
 

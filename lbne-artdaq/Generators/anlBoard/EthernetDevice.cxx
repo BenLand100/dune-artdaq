@@ -222,7 +222,9 @@ void SSPDAQ::EthernetDevice::SendReceive(SSPDAQ::CtrlPacket& tx, SSPDAQ::CtrlPac
 	lbne::DAQLogger::LogWarning("SSP_EthernetDevice")<<"Send/receive failed "<<timesTried<<" times on Ethernet link, retrying..."<<std::endl;
       }
       else{
-	lbne::DAQLogger::LogError("SSP_EthernetDevice")<<"Send/receive failed on Ethernet link, giving up."<<std::endl;
+	try {
+	  lbne::DAQLogger::LogError("SSP_EthernetDevice")<<"Send/receive failed on Ethernet link, giving up."<<std::endl;
+	} catch (...) {}
 	throw;
       }
     }

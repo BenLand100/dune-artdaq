@@ -27,6 +27,12 @@ simple_plugin(SSPDump "module" lbne-raw-data_Overlays
   ${ART_FRAMEWORK_SERVICES_OPTIONAL_TFILESERVICE_SERVICE}
 )
 
+simple_plugin(SparsifySSP "module" lbne-raw-data_Overlays 
+  ${ART_FRAMEWORK_SERVICES_REGISTRY}
+  ${ART_FRAMEWORK_SERVICES_OPTIONAL}
+  ${ART_FRAMEWORK_SERVICES_OPTIONAL_TFILESERVICE_SERVICE}
+)
+
 simple_plugin(ToyDump "module")
 
 # simple_plugin(BasicMetrics "module"

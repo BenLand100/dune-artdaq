@@ -297,11 +297,21 @@ bool lbne::TpcRceReceiver::getNext_(artdaq::FragmentPtrs & frags) {
       }
     }
   }
-  while (!buffer_available && !should_stop());
+  while (!buffer_available && !should_stop() && !data_receiver_->exception());
 
-  // If stopping, Check if there are any filled buffers available (i.e. fragments received but not processed)
-  // and print a warning, then return false to indicate no more fragments to process
-  if (should_stop()) {
+
+  // If stopping (or if an exception occurred in the RceDataReceiver
+  // object), check if there are any filled buffers available
+  // (i.e. fragments received but not processed) and print a warning,
+  // then return false to indicate no more fragments to process
+
+  // JCF, Nov-3-2015
+
+  // Additionally, if the RceDataReceiver object is in an exception
+  // state, set the exception state for the fragment generator itself,
+  // so no more attempts at collecting data will take place
+
+  if (should_stop() || data_receiver_->exception()) {
 
 		if( data_receiver_->filled_buffers_available() > 0)
 		{
@@ -312,7 +322,28 @@ bool lbne::TpcRceReceiver::getNext_(artdaq::FragmentPtrs & frags) {
 	    	DAQLogger::LogInfo(instance_name_) << "No unprocessed filled buffers available at end of run";
 		}
 
-	return false;
+		if (data_receiver_->exception()) {
+		  set_exception(true);
+
+		  // JCF, Nov-3-2015
+
+		  // This error message throws an exception, which
+		  // means the boardreader process, when queried, will
+		  // return an error state
+		  
+		  // JCF, Nov-4-2015
+
+		  // Instead of throwing an exception via
+		  // DAQLogger::LogError, throw an std::runtime_error,
+		  // as this won't have to compete with messages on
+		  // the receive thread (presumably run amok at this
+		  // point)
+
+		  throw std::runtime_error("RceDataReceiver object found in exception state");
+
+		}
+
+		return false;
   }
 
 

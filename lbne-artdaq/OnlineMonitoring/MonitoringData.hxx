@@ -65,6 +65,8 @@ public:
 
 private:
 
+  void ConstructTMultiGraphs();
+
   int fEventNumber;
   std::string fRunStartTime;
 

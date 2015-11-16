@@ -13,6 +13,16 @@
 #include <libxml/parser.h>
 #include <libxml/tree.h>
 
+// JCF, Nov-10-2015
+
+// All the DAQLogger::LogError calls (except those in the constructor)
+// are now wrapped within a try-catch block; the reason for this is
+// that exceptions thrown from this class will be uncaught, resulting
+// in program termination and therefore an unclean program shutdown
+// (i.e., an improperly closed output root file). Of course, we don't
+// care about this if we're at the constructor stage, i.e., just
+// starting up.
+
 lbne::RceClient::RceClient(const std::string& instance_name, const std::string& host_name,
 		const std::string& port_or_service, const unsigned int timeout_usecs) :
 	instance_name_(instance_name),
@@ -105,7 +115,10 @@ lbne::RceClient::~RceClient()
 	}
 	catch (boost::system::system_error& e)
 	{
+	  try {
 		DAQLogger::LogError(instance_name_) << "Exception caught closing RceClient connection:" << e.what();
+	  } catch (...) {
+	  }
 	}
 }
 
@@ -178,7 +191,10 @@ void lbne::RceClient::send_xml(std::string const & xml_frag)
 	}
 
 	if (doc == NULL) {
+	  try {
 		DAQLogger::LogError(instance_name_) << "Failed to parse XML response (length: " <<  response.length() << ")";
+	  } catch (...) {
+	  }
 		DAQLogger::LogDebug(instance_name_) << response;
 	}
 	else
@@ -198,9 +214,15 @@ void lbne::RceClient::send_xml(std::string const & xml_frag)
 			//xmlNode* error_node = cur_node->children;
 			xmlChar* errorContent = xmlNodeGetContent(cur_node);
 			if (errorContent) {
+			  try {
 				DAQLogger::LogError(instance_name_) << "Got error response from RCE: " << errorContent;
+			  } catch (...) {
+			  }
 			} else {
-				DAQLogger::LogError(instance_name_) << "Got error resposne from RCE but cannot parse content";
+			  try {
+				DAQLogger::LogError(instance_name_) << "Got error response from RCE but cannot parse content";
+			  } catch (...) {
+			  }
 			}
 			xmlFree(errorContent);
 	      }
@@ -283,20 +305,32 @@ std::size_t lbne::RceClient::send(std::string const & send_str)
 	if (error == boost::asio::error::eof)
 	{
 		// Connection closed by peer
+	  try {
 		DAQLogger::LogError(instance_name_) << "Connection closed by RCE";
+	  } catch (...) {
+	  }
 	}
 	else if (error == boost::asio::error::operation_aborted)
 	{
 		// Timeout signalled by deadline actor
+	  try {
 		DAQLogger::LogError(instance_name_) << "Timeout sending message to RCE";
+	  } catch (...) {
+	  }
 	}
 	else if (error)
 	{
+	  try {
 		DAQLogger::LogError(instance_name_) << "Error sending message to RCE: " << error.message();
+	  } catch (...) {
+	  }
 	}
 	else if (send_len != send_str.size())
 	{
+	  try {
 		DAQLogger::LogError(instance_name_) << "Size mismatch when sending transaction: wrote " << send_len << " expected " << send_str.size();
+	  } catch (...) {
+	  }
 	}
 
 	return send_len;
@@ -364,7 +398,10 @@ void lbne::RceClient::set_param_(std::string const & name, std::string const & e
 	// Parse the response to ensure the command was acknowledged
 	if (!response_is_ack(response, "SET"))
 	{
+	  try {
 		DAQLogger::LogError(instance_name_) << "SET command failed: " << response;
+	  } catch (...) {
+	  }
 	}
 
 }
