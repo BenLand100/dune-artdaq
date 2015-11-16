@@ -38,11 +38,6 @@ namespace OnlineMonitoring {
   const TString DataDirName   = "/storage/data/";
   const TString HistSavePath  = "/data2/lbnedaq/monitoring/";
   const TString EVDSavePath   = "/data2/lbnedaq/eventDisplay/";
-  /*
-  const TString DataDirName   = "/data/lbnedaq/scratch/dbrailsf/om/data/in/";
-  const TString HistSavePath  = "/data/lbnedaq/scratch/dbrailsf/om/data/";
-  const TString EVDSavePath   = "/data/lbnedaq/scratch/dbrailsf/om/data/";
-  */
   const TString ImageType     = ".png";
   const TString PathDelimiter = "_";
 
@@ -50,6 +45,10 @@ namespace OnlineMonitoring {
     static int const CounterWordSize = 128;
     static int const TriggerWordSize = 32;
   }
+
+  const long PTBHitIgnoreTime = 7; //In nova timestamp units.  The coversion between nova and normal time is 1 timestamp:(16.625) ns.  The ignore time needs to be 400ns so its calculated in nova units as (400)/57.1 = 7 ticks
+
+  const double NNanoSecondsPerNovaTick = 57.1;  //This value is used to calculate PTBHitIgnoreTime above
 
   const std::vector<std::string> DAQComponents = {"RCE00","RCE01","RCE02","RCE03","RCE04","RCE05","RCE06","RCE07","RCE08","RCE09","RCE10","RCE11","RCE12","RCE13","RCE14","RCE15",
 						  "SSP01","SSP02","SSP03","SSP04","SSP05","SSP06","SSP07",

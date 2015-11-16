@@ -432,8 +432,8 @@ void OnlineMonitoring::MonitoringData::PTBMonitoring(PTBFormatter const& ptb_for
   if (ptb_formatter.NumTriggers() == 0)
     return;
 
-  double activation_time = 0;
-  int hit_rate = 0;
+  unsigned long activation_time = 0;
+  double hit_rate = 0;
 
   for (int i = 0; i < 97; i++) {
 
@@ -498,18 +498,25 @@ void OnlineMonitoring::MonitoringData::PTBMonitoring(PTBFormatter const& ptb_for
     }
 
     //Now do the triggers
-    int trigger_rate = 0;
+    double trigger_rate = 0;
+    for (unsigned int trigger_index= 1; trigger_index <= 4; trigger_index++){
+      ptb_formatter.AnalyzeMuonTrigger(trigger_index-1,trigger_rate);
+      hPTBTriggerRates->Fill(trigger_index,trigger_rate);
+
+    }
+    /*
     ptb_formatter.AnalyzeMuonTrigger(1,trigger_rate);
     hPTBTriggerRates->Fill(1,trigger_rate);
 
     ptb_formatter.AnalyzeMuonTrigger(2,trigger_rate);
     hPTBTriggerRates->Fill(2,trigger_rate);
 
-    ptb_formatter.AnalyzeMuonTrigger(4,trigger_rate);
+    ptb_formatter.AnalyzeMuonTrigger(3,trigger_rate);
     hPTBTriggerRates->Fill(3,trigger_rate);
 
-    ptb_formatter.AnalyzeMuonTrigger(8,trigger_rate);
+    ptb_formatter.AnalyzeMuonTrigger(4,trigger_rate);
     hPTBTriggerRates->Fill(4,trigger_rate);
+    */
 
   }
 
@@ -712,88 +719,89 @@ void OnlineMonitoring::MonitoringData::MakeHistograms() {
   fFigureCaptions["SSP__Triggers_Fraction_Channel_All"] = "Fraction of events with a trigger for each channel";
 
   // PTB hists
-  hPTBTSUCounterHitRateWU = new TProfile("PTB_TSUWU_Hits_Mean_Counter_All","PTB TSU counter hit Rate (per millislice) (West Up)_\"\"_none;Counter number; No. hits per millislice",10,1,11);
+  hPTBTSUCounterHitRateWU = new TProfile("PTB_TSUWU_Hits_Mean_Counter_All","PTB TSU counter hit rate (Hz) (West Up)_\"\"_none;Counter number; Hite rate (Hz)",10,1,11);
   hPTBTSUCounterHitRateWU->GetXaxis()->SetNdivisions(10);
   hPTBTSUCounterHitRateWU->GetXaxis()->CenterLabels();
   hPTBTSUCounterActivationTimeWU = new TProfile("PTB_TSUWU_ActivationTime_Mean_Counter_All","PTB counter average activation time (West Up)_\"\"_none;Counter number; Time",10,1,11);
   hPTBTSUCounterActivationTimeWU->GetXaxis()->SetNdivisions(10);
   hPTBTSUCounterActivationTimeWU->GetXaxis()->CenterLabels();
 
-  hPTBTSUCounterHitRateEL = new TProfile("PTB_TSUEL_Hits_Mean_Counter_All","PTB TSU counter hit Rate (per millislice) (East Low)_\"\"_none;Counter number; No. hits per millislice",10,1,11);
+  hPTBTSUCounterHitRateEL = new TProfile("PTB_TSUEL_Hits_Mean_Counter_All","PTB TSU counter hit rate (Hz) (East Low)_\"\"_none;Counter number; Hit rate (Hz)",10,1,11);
   hPTBTSUCounterHitRateEL->GetXaxis()->SetNdivisions(10);
   hPTBTSUCounterHitRateEL->GetXaxis()->CenterLabels();
   hPTBTSUCounterActivationTimeEL = new TProfile("PTB_TSUEL_ActivationTime_Mean_Counter_All","PTB counter average activation time (East Low)_\"\"_none;Counter number; Time",10,1,11);
   hPTBTSUCounterActivationTimeEL->GetXaxis()->SetNdivisions(10);
   hPTBTSUCounterActivationTimeEL->GetXaxis()->CenterLabels();
 
-  hPTBTSUCounterHitRateExtra = new TProfile("PTB_TSUExtra_Hits_Mean_Counter_All","PTB TSU counter hit Rate (per millislice) (Empty counter bits - SHOULD BE EMPTY)_\"\"_none;Counter number; No. hits per millislice",4,1,5);
+  hPTBTSUCounterHitRateExtra = new TProfile("PTB_TSUExtra_Hits_Mean_Counter_All","PTB TSU counter hit rate (Hz) (Empty counter bits - SHOULD BE EMPTY)_\"\"_none;Counter number; Hit rate (Hz)",4,1,5);
   hPTBTSUCounterHitRateExtra->GetXaxis()->SetNdivisions(4);
   hPTBTSUCounterHitRateExtra->GetXaxis()->CenterLabels();
   hPTBTSUCounterActivationTimeExtra = new TProfile("PTB_TSUExtra_ActivationTime_Mean_Counter_All","PTB counter average activation time (Empty counter bits - SHOULD BE EMPTY)_\"\"_none;Counter number; Time",4,1,5);
   hPTBTSUCounterActivationTimeExtra->GetXaxis()->SetNdivisions(4);
   hPTBTSUCounterActivationTimeExtra->GetXaxis()->CenterLabels();
 
-  hPTBTSUCounterHitRateNU = new TProfile("PTB_TSUNU_Hits_Mean_Counter_All","PTB TSU counter hit Rate (per millislice) (North Up)_\"\"_none;Counter number; No. hits per millislice",6,1,7);
+  hPTBTSUCounterHitRateNU = new TProfile("PTB_TSUNU_Hits_Mean_Counter_All","PTB TSU counter hit rate (Hz) (North Up)_\"\"_none;Counter number; Hit rate (Hz)",6,1,7);
   hPTBTSUCounterHitRateNU->GetXaxis()->SetNdivisions(6);
   hPTBTSUCounterHitRateNU->GetXaxis()->CenterLabels();
   hPTBTSUCounterActivationTimeNU = new TProfile("PTB_TSUNU_ActivationTime_Mean_Counter_All","PTB counter average activation time (North Up)_\"\"_none;Counter number; Time",6,1,7);
   hPTBTSUCounterActivationTimeNU->GetXaxis()->SetNdivisions(6);
   hPTBTSUCounterActivationTimeNU->GetXaxis()->CenterLabels();
 
-  hPTBTSUCounterHitRateSL = new TProfile("PTB_TSUSL_Hits_Mean_Counter_All","PTB TSU counter hit Rate (per millislice) (South Low)_\"\"_none;Counter number; No. hits per millislice",6,1,7);
+  hPTBTSUCounterHitRateSL = new TProfile("PTB_TSUSL_Hits_Mean_Counter_All","PTB TSU counter hit rate (Hz) (South Low)_\"\"_none;Counter number; Hit rate (Hz)",6,1,7);
   hPTBTSUCounterHitRateSL->GetXaxis()->SetNdivisions(6);
   hPTBTSUCounterHitRateSL->GetXaxis()->CenterLabels();
   hPTBTSUCounterActivationTimeSL = new TProfile("PTB_TSUSL_ActivationTime_Mean_Counter_All","PTB counter average activation time (South Low)_\"\"_none;Counter number; Time",6,1,7);
   hPTBTSUCounterActivationTimeSL->GetXaxis()->SetNdivisions(6);
   hPTBTSUCounterActivationTimeSL->GetXaxis()->CenterLabels();
 
-  hPTBTSUCounterHitRateNL = new TProfile("PTB_TSUNL_Hits_Mean_Counter_All","PTB TSU counter hit Rate (per millislice) (North Low)_\"\"_none;Counter number; No. hits per millislice",6,1,7);
+  hPTBTSUCounterHitRateNL = new TProfile("PTB_TSUNL_Hits_Mean_Counter_All","PTB TSU counter hit rate (Hz) (North Low)_\"\"_none;Counter number; Hit rate (Hz)",6,1,7);
   hPTBTSUCounterHitRateNL->GetXaxis()->SetNdivisions(6);
   hPTBTSUCounterHitRateNL->GetXaxis()->CenterLabels();
   hPTBTSUCounterActivationTimeNL = new TProfile("PTB_TSUNL_ActivationTime_Mean_Counter_All","PTB counter average activation time (North Low)_\"\"_none;Counter number; Time",6,1,7);
   hPTBTSUCounterActivationTimeNL->GetXaxis()->SetNdivisions(6);
   hPTBTSUCounterActivationTimeNL->GetXaxis()->CenterLabels();
 
-  hPTBTSUCounterHitRateSU = new TProfile("PTB_TSUSU_Hits_Mean_Counter_All","PTB TSU counter hit Rate (per millislice) (South Up)_\"\"_none;Counter number; No. hits per millislice",6,1,7);
+  hPTBTSUCounterHitRateSU = new TProfile("PTB_TSUSU_Hits_Mean_Counter_All","PTB TSU counter hit rate (Hz) (South Up)_\"\"_none;Counter number; Hit rate (Hz)",6,1,7);
   hPTBTSUCounterHitRateSU->GetXaxis()->SetNdivisions(6);
   hPTBTSUCounterHitRateSU->GetXaxis()->CenterLabels();
   hPTBTSUCounterActivationTimeSU = new TProfile("PTB_TSUSU_ActivationTime_Mean_Counter_All","PTB counter average activation time (South Up)_\"\"_none;Counter number; Time",6,1,7);
   hPTBTSUCounterActivationTimeSU->GetXaxis()->SetNdivisions(6);
   hPTBTSUCounterActivationTimeSU->GetXaxis()->CenterLabels();
 
-  hPTBBSUCounterHitRateRM = new TProfile("PTB_BSURM_Hits_Mean_Counter_All","PTB BSU counter hit Rate (per millislice) (RM)_\"\"_none;Counter number; No. hits per millislice",16,1,17);
+  hPTBBSUCounterHitRateRM = new TProfile("PTB_BSURM_Hits_Mean_Counter_All","PTB BSU counter hit rate (Hz) (RM)_\"\"_none;Counter number; Hit rate (Hz)",16,1,17);
   hPTBBSUCounterHitRateRM->GetXaxis()->SetNdivisions(16);
   hPTBBSUCounterHitRateRM->GetXaxis()->CenterLabels();
   hPTBBSUCounterActivationTimeRM = new TProfile("PTB_BSURM_ActivationTime_Mean_Counter_All","PTB counter average activation time (RM)_\"\"_none;Counter number; Time",16,1,17);
   hPTBBSUCounterActivationTimeRM->GetXaxis()->SetNdivisions(16);
   hPTBBSUCounterActivationTimeRM->GetXaxis()->CenterLabels();
 
-  hPTBBSUCounterHitRateCU = new TProfile("PTB_BSUCU_Hits_Mean_Counter_All","PTB BSU counter hit Rate (per millislice) (CU)_\"\"_none;Counter number; No. hits per millislice",10,1,11);
+  hPTBBSUCounterHitRateCU = new TProfile("PTB_BSUCU_Hits_Mean_Counter_All","PTB BSU counter hit rate (Hz) (CU)_\"\"_none;Counter number; Hit rate (Hz)",10,1,11);
   hPTBBSUCounterHitRateCU->GetXaxis()->SetNdivisions(10);
   hPTBBSUCounterHitRateCU->GetXaxis()->CenterLabels();
   hPTBBSUCounterActivationTimeCU = new TProfile("PTB_BSU_ActivationTime_Mean_Counter_All","PTB counter average activation time (CU)_\"\"_none;Counter number; Time",10,1,11);
   hPTBBSUCounterActivationTimeCU->GetXaxis()->SetNdivisions(10);
   hPTBBSUCounterActivationTimeCU->GetXaxis()->CenterLabels();
 
-  hPTBBSUCounterHitRateCL = new TProfile("PTB_BSUCL_Hits_Mean_Counter_All","PTB BSU counter hit Rate (per millislice) (CL)_\"\"_none;Counter number; No. hits per millislice",13,1,14);
+  hPTBBSUCounterHitRateCL = new TProfile("PTB_BSUCL_Hits_Mean_Counter_All","PTB BSU counter hit rate (Hz) (CL)_\"\"_none;Counter number; Hit rate (Hz)",13,1,14);
   hPTBBSUCounterHitRateCL->GetXaxis()->SetNdivisions(13);
   hPTBBSUCounterHitRateCL->GetXaxis()->CenterLabels();
   hPTBBSUCounterActivationTimeCL = new TProfile("PTB_BSUCL_ActivationTime_Mean_Counter_All","PTB counter average activation time (CL)_\"\"_none;Counter number; Time",13,1,14);
   hPTBBSUCounterActivationTimeCL->GetXaxis()->SetNdivisions(13);
   hPTBBSUCounterActivationTimeCL->GetXaxis()->CenterLabels();
 
-  hPTBBSUCounterHitRateRL = new TProfile("PTB_BSURL_Hits_Mean_Counter_All","PTB BSU counter hit Rate (per millislice) (RL)_\"\"_none;Counter number; No. hits per millislice",10,1,11);
+  hPTBBSUCounterHitRateRL = new TProfile("PTB_BSURL_Hits_Mean_Counter_All","PTB BSU counter hit rate (Hz) (RL)_\"\"_none;Counter number; Hit rate (Hz)",10,1,11);
   hPTBBSUCounterHitRateRL->GetXaxis()->SetNdivisions(10);
   hPTBBSUCounterHitRateRL->GetXaxis()->CenterLabels();
   hPTBBSUCounterActivationTimeRL = new TProfile("PTB_BSURL_ActivationTime_Mean_Counter_All","PTB counter average activation time (RL)_\"\"_none;Counter number; Time",10,1,11);
   hPTBBSUCounterActivationTimeRL->GetXaxis()->SetNdivisions(10);
   hPTBBSUCounterActivationTimeRL->GetXaxis()->CenterLabels();
 
-  hPTBTriggerRates = new TProfile("PTB__Hits_Mean_MuonTrigger_All","Muon trigger rates_\"\"_none;Muon trigger name; No. hits per millislice",4,1,5);
-  hPTBTriggerRates->GetXaxis()->SetBinLabel(1,"BSU RM-CM");
-  hPTBTriggerRates->GetXaxis()->SetBinLabel(2,"TSU NU-SL");
-  hPTBTriggerRates->GetXaxis()->SetBinLabel(3,"TSU SU-NL");
-  hPTBTriggerRates->GetXaxis()->SetBinLabel(4,"TSU EL-WU");
+  hPTBTriggerRates = new TProfile("PTB__Hits_Mean_MuonTrigger_All","Muon trigger rates_\"\"_none;Muon trigger name; Hit rate (Hz)",4,1,5);
+
+  hPTBTriggerRates->GetXaxis()->SetBinLabel(1,"TSU EL-WU");
+  hPTBTriggerRates->GetXaxis()->SetBinLabel(2,"TSU SU-NL");
+  hPTBTriggerRates->GetXaxis()->SetBinLabel(3,"TSU SL-NU");
+  hPTBTriggerRates->GetXaxis()->SetBinLabel(4,"BSU RM-CM");
 
   // The order the histograms are added will be the order they're displayed on the web!
   fHistArray.Add(hNumSubDetectorsPresent); 
