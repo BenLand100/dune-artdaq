@@ -78,7 +78,8 @@ void OnlineMonitoring::RCEFormatter::AnalyseADCs(art::Handle<artdaq::Fragments> 
 
 	  if (success){
 	    adcVector.push_back((int)adc);
-     unsigned long timestamp = microslice->nanosliceNova_timestamp(nanoIt);
+     //unsigned long timestamp = microslice->nanosliceNova_timestamp(nanoIt);
+     unsigned long timestamp = 1000;
      timestampVector.push_back(timestamp);
    }
 
