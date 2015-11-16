@@ -32,6 +32,7 @@ public:
   RCEFormatter() {}
   RCEFormatter(art::Handle<artdaq::Fragments> const& rawRCE);
   std::vector<std::vector<int> > const& ADCVector() const { return ADCs; }
+  std::vector<std::vector<unsigned long> > const& TimestampVector() const { return fTimeStamps; }
   std::vector<int> const& NumBlocks() const { return fWindowingNumBlocks; }
   std::vector<std::vector<short> > const& BlockBegin() const { return fWindowingBlockBegin; }
   std::vector<std::vector<short> > const& BlockSize() const { return fWindowingBlockSize; }
@@ -45,6 +46,7 @@ private:
   void Windowing();
 
   std::vector<std::vector<int> > ADCs;
+  std::vector<std::vector<unsigned long> > fTimeStamps;
 
   // Windowing
   std::vector<int> fWindowingNumBlocks;
@@ -98,11 +100,13 @@ class OnlineMonitoring::PTBFormatter {
 public:
 
   // Defualt constructor (may come in handy!)
-  PTBFormatter() {}
+  PTBFormatter() :
+    fNTotalTicks(0) {}
   PTBFormatter(art::Handle<artdaq::Fragments> const& rawPTB);
-  void AnalyzeCounter(int counter_index, double &activation_time, int &hit_rate) const;
-  void AnalyzeMuonTrigger(int trigger_number, int &trigger_rate) const;
+  void AnalyzeCounter(int counter_index, unsigned long &activation_time, double &hit_rate) const;
+  void AnalyzeMuonTrigger(int trigger_number, double &trigger_rate) const;
   int NumTriggers() const { return fMuonTriggerRates.size(); }
+  long double GetTotalSeconds() { return fNTotalTicks * NNanoSecondsPerNovaTick/(1000*1000*1000); };
 
   bool PTBData;
 
@@ -111,10 +115,12 @@ private:
   void CollectCounterBits(uint8_t* payload, size_t payload_size);
   void CollectMuonTrigger(uint8_t* payload, size_t payload_size);
   std::vector<std::bitset<TypeSizes::CounterWordSize> > fCounterBits;
-  std::vector<int> fCounterTimes;
+  std::vector<unsigned long> fCounterTimes;
   std::vector<std::bitset<TypeSizes::TriggerWordSize> > fMuonTriggerBits;
   std::map<int,int> fMuonTriggerRates;
-  std::vector<int> fMuonTriggerTimes;
+  std::vector<unsigned long> fMuonTriggerTimes;
+  long double fTimeSliceSize;
+  unsigned long fNTotalTicks;
 
 };
 
