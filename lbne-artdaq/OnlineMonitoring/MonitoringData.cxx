@@ -893,17 +893,10 @@ void OnlineMonitoring::MonitoringData::MakeHistograms() {
   fFigureCaptions["PTB__Hits_Mean_MuonTrigger_All"] = "Average hit rates per millislice of the muon trigger system";
 
   //Timing sync plots
-<<<<<<< HEAD
-  TMultiGraph *sspTimeSyncsArray = new TMultiGraph();
-  sspTimeSyncsArray->SetName("General__Time_Sync_SSP");
-  sspTimeSyncsArray->SetTitle("Max-min average trigger times for all SSPs_\"AL\"_none;Min average channel time;(Max-min) channel time");
-  TLegend *sspTimeSyncsArrayLegend = new TLegend(0.8,0.5,0.9,0.9);
-=======
   //TMultiGraph *sspTimeSyncsArray = new TMultiGraph();
   //sspTimeSyncsArray->SetName("General__Time_Sync_SSP");
   //sspTimeSyncsArray->SetTitle("Max-min average trigger times for all SSPs_\"AL\"_none;Min average channel time;(Max-min) channel time");
   //TLegend *sspTimeSyncsArrayLegend = new TLegend(0.8,0.5,0.9,0.9);
->>>>>>> origin/develop
 
   for (unsigned int i = 0; i < NSSPs; i++){
     hTimeSyncsSSPs[i] = new TGraph();
@@ -916,43 +909,9 @@ void OnlineMonitoring::MonitoringData::MakeHistograms() {
     hTimeSyncsSSPs[i]->SetMarkerColor(i+1);
     hTimeSyncsSSPs[i]->SetLineStyle(i+2);
     hTimeSyncsSSPs[i]->SetLineWidth(2);
-<<<<<<< HEAD
-    sspTimeSyncsArray->Add(hTimeSyncsSSPs[i]);
-    TString ssp_legend_label = Form("SSP %i",i+1);
-    sspTimeSyncsArrayLegend->AddEntry(hTimeSyncsSSPs[i], ssp_legend_label, "l");
-
-  }
-  fFigureLegends[sspTimeSyncsArray->GetName()] = sspTimeSyncsArrayLegend;
-  fFigureCaptions[sspTimeSyncsArray->GetName()] = "Max-min average trigger times for all SSPs";
-  fHistArray.Add(sspTimeSyncsArray);
-
-  TMultiGraph *sspTimeSyncsAverageArray = new TMultiGraph();
-  sspTimeSyncsAverageArray->SetName("General__Time_Sync_SSP_Average");
-  sspTimeSyncsAverageArray->SetTitle("Average SSP trigger time - average channel trigger time_\"AL\"_none;Average channel trigger time;SSP average trigger time - average channel trigger time");
-  TLegend *sspTimeSyncsAverageArrayLegend = new TLegend(0.8,0.5,0.9,0.9);
-  for (unsigned int i = 0; i < NSSPs; i++){
-    hTimeSyncsAverageSSPs[i] = new TGraph();
-    std::string hTimeSyncsAverageSSPsTitle = Form("Average SSP trigger time - average channel trigger time for SSP %i_\"AL\"_none;Average channel trigger time;SSP average trigger time - average channel trigger time",i);
-    //std::string hTimeSyncsAverageSSPsTitle = "Max-min average trigger times for all SSPs_\"AL*\"_none;Min average channel time;(Max-min) channel time";
-    std::string hTimeSyncsAverageSSPsName = Form("General__Time_Sync_SSP_%i_Average",i);
-    hTimeSyncsAverageSSPs[i]->SetName(hTimeSyncsAverageSSPsName.c_str());
-    hTimeSyncsAverageSSPs[i]->SetTitle(hTimeSyncsAverageSSPsTitle.c_str());
-    hTimeSyncsAverageSSPs[i]->SetLineColor(i+1);
-    hTimeSyncsAverageSSPs[i]->SetMarkerColor(i+1);
-    hTimeSyncsAverageSSPs[i]->SetLineStyle(i+2);
-    hTimeSyncsAverageSSPs[i]->SetLineWidth(2);
-    TString ssp_legend_label = Form("SSP %i",i+1);
-    sspTimeSyncsAverageArray->Add(hTimeSyncsAverageSSPs[i]);
-    sspTimeSyncsAverageArrayLegend->AddEntry(hTimeSyncsAverageSSPs[i], ssp_legend_label, "l");
-  }
-  fFigureLegends[sspTimeSyncsAverageArray->GetName()] = sspTimeSyncsAverageArrayLegend;
-  fFigureCaptions[sspTimeSyncsAverageArray->GetName()] = "Average SSP trigger time - average channel trigger time for all SSPs";
-  fHistArray.Add(sspTimeSyncsAverageArray);
-=======
     //sspTimeSyncsArray->Add(hTimeSyncsSSPs[i]);
     //TString ssp_legend_label = Form("SSP %i",i+1);
     //sspTimeSyncsArrayLegend->AddEntry(hTimeSyncsSSPs[i], ssp_legend_label, "l");
->>>>>>> origin/develop
 
   }
   //fFigureLegends[sspTimeSyncsArray->GetName()] = sspTimeSyncsArrayLegend;
