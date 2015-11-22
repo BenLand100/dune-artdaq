@@ -114,6 +114,9 @@ lbne::TpcRceReceiver::TpcRceReceiver(fhicl::ParameterSet const & ps)
   number_of_microslices_per_millislice_ =
 	ps.get<uint16_t>("number_of_microslices_per_millislice", 10);
 
+  number_of_microslices_per_trigger_ =
+	ps.get<uint16_t>("number_of_microslices_per_trigger", 10);
+
   reporting_interval_fragments_ =
     ps.get<uint32_t>("reporting_interval_fragments", 100);
 
@@ -156,6 +159,7 @@ lbne::TpcRceReceiver::TpcRceReceiver(fhicl::ParameterSet const & ps)
 
   // Tell the DPM to read its configuration file
   dpm_client_->send_command("ReadXmlFile", rce_xml_config_file_);
+  dpm_client_->send_command("SoftReset");
 
   dpm_client_->send_command("ConfigFebAsic");
 
@@ -163,6 +167,12 @@ lbne::TpcRceReceiver::TpcRceReceiver(fhicl::ParameterSet const & ps)
   std::ostringstream config_frag;
   config_frag << "<DataDpm><DataBuffer><RunMode>" << rce_daq_mode_ << "</RunMode></DataBuffer></DataDpm>";
   dpm_client_->send_config(config_frag.str());
+
+  if(rce_daq_mode_=="Trigger"){
+    config_frag<< "<DataDpm><DataBuffer><RunMode>" << rce_daq_mode_ << "</RunMode></DataBuffer></DataDpm>";
+    dpm_client_->send_config(config_frag.str());    
+  }
+    
 
 #endif
 
