@@ -82,7 +82,7 @@ private:
 
   std::vector<std::vector<int> > fRCEADC, fSSPADC;
 
-  bool filledRunData;
+  bool filledRunData, filledRunDataRCE;
 
   // crap to sort out
   int fThreshold = 10;
@@ -93,12 +93,14 @@ private:
   // General
   TH1I *hNumSubDetectorsPresent, *hSizeOfFiles, *hSubDetectorsWithData, *hSubDetectorsPresent;
   TH1D *hSizeOfFilesPerEvent;
+  TGraph *hTimeSyncsSSPs[NSSPs], *hTimeSyncsAverageSSPs[NSSPs];
 
   // RCE
   TH1I *hTotalADCEvent, *hTotalRCEHitsEvent, *hTotalRCEHitsChannel, *hTimesADCGoesOverThreshold,  *hNumMicroslicesInMillislice, *hNumNanoslicesInMicroslice, *hNumNanoslicesInMillislice;
   TH2I *hRCEBitCheckAnd, *hRCEBitCheckOr;
-  TH2D *hAvADCChannelEvent, *hADCChannel;
+  TH2D *hAvADCChannelEvent, *hADCChannel, *hTickRatioChannel;
   TProfile *hADCMeanChannelAPA1, *hADCMeanChannelAPA2, *hADCMeanChannelAPA3, *hADCMeanChannelAPA4, *hADCRMSChannelAPA1, *hADCRMSChannelAPA2, *hADCRMSChannelAPA3, *hADCRMSChannelAPA4;
+  TProfile2D *hFFTChannelRCE00;
   TProfile *hRCEDNoiseChannel, *hAsymmetry, *hLastSixBitsCheckOff, *hLastSixBitsCheckOn;
   std::map<int,TProfile*> hADCChannelMap;
   std::map<int,TH1D*> hAvADCMillislice;
@@ -122,10 +124,6 @@ private:
   TProfile *hPTBBSUCounterHitRateCU,    *hPTBBSUCounterActivationTimeCU;
   TProfile *hPTBBSUCounterHitRateCL,    *hPTBBSUCounterActivationTimeCL;
   TProfile *hPTBBSUCounterHitRateRL,    *hPTBBSUCounterActivationTimeRL;
-
-  //Timing sync plots
-  TGraph *hTimeSyncsSSPs[NSSPs];
-  TGraph *hTimeSyncsAverageSSPs[NSSPs];
 
 };
 

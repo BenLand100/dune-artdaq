@@ -19,6 +19,7 @@ void OnlineMonitoring::MonitoringData::BeginMonitoring(int run, int subrun) {
   fCanvas = new TCanvas("canv","",800,600);
   //receivedData = false; _interestingchannelsfilled = false;
   filledRunData = false;
+  filledRunDataRCE = false;
 
   // Get start time of run
   time_t rawtime;
@@ -159,9 +160,8 @@ void OnlineMonitoring::MonitoringData::GeneralMonitoring(RCEFormatter const& rce
   std::map<int,long double> average_ssp_times; //ssp number to average ssp trigger time map
 
   // Loop over channels
-  for (unsigned int i = 0; i < NSSPs; i++){
+  for (unsigned int i = 0; i < NSSPs; ++i)
     average_ssp_times[i] = 0.;
-  }
   long double average_ssp_trigger_time = 0.; //The average of ALL triggers (on all channels for a single ssp)
   unsigned int NSSPTriggers = 0; //Number of triggers on an ssp
 
@@ -176,7 +176,7 @@ void OnlineMonitoring::MonitoringData::GeneralMonitoring(RCEFormatter const& rce
 
     //Don't do arithmetic when there is no arithmetic to do
     if (triggers.size() == 0) continue;
-    else NChannelsWithTrigger++;
+    else ++NChannelsWithTrigger;
 
     long double average_channel_time = 0;
     // Loop over triggers
@@ -241,14 +241,14 @@ void OnlineMonitoring::MonitoringData::GeneralMonitoring(RCEFormatter const& rce
   //Calculate the average of all ssp times
   long double average_of_average_ssps_times = 0;
   unsigned int NSSPsWithTriggers = 0;
-  for (std::map<int,long double>::iterator mapIt = average_ssp_times.begin(); mapIt != average_ssp_times.end(); mapIt++){
+  for (std::map<int,long double>::iterator mapIt = average_ssp_times.begin(); mapIt != average_ssp_times.end(); ++mapIt){
     if ((*mapIt).second > 0){
       average_of_average_ssps_times += (*mapIt).second;
       NSSPsWithTriggers++;
     }
   }
   if (NSSPsWithTriggers) average_of_average_ssps_times /= NSSPsWithTriggers;
-  for (std::map<int,long double>::iterator mapIt = average_ssp_times.begin(); mapIt != average_ssp_times.end(); mapIt++){
+  for (std::map<int,long double>::iterator mapIt = average_ssp_times.begin(); mapIt != average_ssp_times.end(); ++mapIt){
     if ((*mapIt).second > 0){
       int plot_index = std::distance(average_ssp_times.begin(), mapIt);
       hTimeSyncsAverageSSPs[plot_index]->SetPoint(hTimeSyncsAverageSSPs[plot_index]->GetN(), average_of_average_ssps_times,(*mapIt).second-average_of_average_ssps_times);
@@ -262,22 +262,40 @@ void OnlineMonitoring::MonitoringData::RCEMonitoring(RCEFormatter const& rceform
 
   // Variables for event
   const std::vector<std::vector<int> > ADCs = rceformatter.ADCVector();
+  const std::vector<std::vector<unsigned long> > timestamps = rceformatter.TimestampVector();
   int totalADC = 0, totalRCEHitsEvent = 0, timesADCGoesOverThreshold = 0;
 
-  //unsigned int NChannelsPerRCE = NRCEChannels/NRCEs;
+  if (!filledRunDataRCE) {
+    filledRunDataRCE = true;
 
-  //The timestamps
-  const std::vector<std::vector<unsigned long> > timestamps = rceformatter.TimestampVector();
+    // FFT
+    const double sampPeriod = 0.5; //us
+    int numBins = 1000;
+    TH1D* hData = new TH1D("hData","",numBins,0,numBins*sampPeriod);
+    TH1D* hFFTData = new TH1D("hFFTData","",numBins,0,numBins);
+    for (unsigned int channel = 0; channel < ADCs.size(); ++channel) {
+      hData->Reset();
+      for (unsigned int tick = 0; tick < ADCs.at(channel).size(); ++tick)
+	hData->SetBinContent(tick+1,ADCs.at(channel).at(tick));
+      hData->FFT(hFFTData,"MAG");
+      for (int bin = 1; bin < hFFTData->GetNbinsX(); ++bin){
+	double frequency = 2. * bin / (double) hFFTData->GetNbinsX();
+	hFFTChannelRCE00->Fill(channel,frequency,hFFTData->GetBinContent(bin+1));
+      }
+    }
+  }
 
-  for (unsigned int channel = 0; channel < ADCs.size(); channel++) {
+  // Highest number of ticks across all channels
+  unsigned int maxNumTicks = (*std::max_element(ADCs.begin(), ADCs.end(), [](std::vector<int> A, std::vector<int> B) { return A.size() < B.size(); })).size();
+
+  for (unsigned int channel = 0; channel < ADCs.size(); ++channel) {
 
     if (!ADCs.at(channel).size())
       continue;
 
-
-    std::vector<int>::const_iterator max_it = std::max_element(ADCs.at(channel).begin(),ADCs.at(channel).end());
-    //int index = std::distance(ADCs.at(channel).begin(), max_it);
-    //std::cout<<"RCE: " << channel/NChannelsPerRCE <<" Channel: " << channel << "  max_ADC: " << (*max_it) << "  timestamp: " << timestamps.at(channel).at(index) << std::endl;
+    // std::vector<int>::const_iterator max_it = std::max_element(ADCs.at(channel).begin(),ADCs.at(channel).end());
+    // int index = std::distance(ADCs.at(channel).begin(), max_it);
+    // std::cout<<"RCE: " << channel/NChannelsPerRCE <<" Channel: " << channel << "  max_ADC: " << (*max_it) << "  timestamp: " << timestamps.at(channel).at(index) << std::endl;
 
     // Variables for channel
     bool peak = false;
@@ -290,7 +308,7 @@ void OnlineMonitoring::MonitoringData::RCEMonitoring(RCEFormatter const& rceform
     double mean = TMath::Mean(ADCs.at(channel).begin(),ADCs.at(channel).end());
     double rms  = TMath::RMS (ADCs.at(channel).begin(),ADCs.at(channel).end());
 
-    for (unsigned int tick = 0; tick < ADCs.at(channel).size(); tick++) {
+    for (unsigned int tick = 0; tick < ADCs.at(channel).size(); ++tick) {
 
       int ADC = ADCs.at(channel).at(tick);
 
@@ -347,6 +365,10 @@ void OnlineMonitoring::MonitoringData::RCEMonitoring(RCEFormatter const& rceform
       hRCEBitCheckOr ->Fill(channel,bitIt,(bitCheckOr & tbit));
       tbit <<= 1;
     }
+
+    // Get tick ratio
+    double tickRatio = ADCs.at(channel).size() / (double)maxNumTicks;
+    hTickRatioChannel->Fill(channel,tickRatio);
 
     // Loop over blocks to look at the asymmetry
     for (int block = 0; block < rceformatter.NumBlocks().at(channel); ++block) {
@@ -435,7 +457,7 @@ void OnlineMonitoring::MonitoringData::PTBMonitoring(PTBFormatter const& ptb_for
   unsigned long activation_time = 0;
   double hit_rate = 0;
 
-  for (int i = 0; i < 97; i++) {
+  for (int i = 0; i < 97; ++i) {
 
     ptb_formatter.AnalyzeCounter(i,activation_time,hit_rate);
 
@@ -502,21 +524,7 @@ void OnlineMonitoring::MonitoringData::PTBMonitoring(PTBFormatter const& ptb_for
     for (unsigned int trigger_index= 1; trigger_index <= 4; trigger_index++){
       ptb_formatter.AnalyzeMuonTrigger(trigger_index-1,trigger_rate);
       hPTBTriggerRates->Fill(trigger_index,trigger_rate);
-
     }
-    /*
-    ptb_formatter.AnalyzeMuonTrigger(1,trigger_rate);
-    hPTBTriggerRates->Fill(1,trigger_rate);
-
-    ptb_formatter.AnalyzeMuonTrigger(2,trigger_rate);
-    hPTBTriggerRates->Fill(2,trigger_rate);
-
-    ptb_formatter.AnalyzeMuonTrigger(3,trigger_rate);
-    hPTBTriggerRates->Fill(3,trigger_rate);
-
-    ptb_formatter.AnalyzeMuonTrigger(4,trigger_rate);
-    hPTBTriggerRates->Fill(4,trigger_rate);
-    */
 
   }
 
@@ -676,7 +684,10 @@ void OnlineMonitoring::MonitoringData::MakeHistograms() {
   hADCRMSChannelAPA2                    = new TProfile("RCE_APA1_ADC_RMS_Channel_All","RCE ADC RMS APA1_\"histl\"_none;Channel;RCE ADC RMS",512,512,1023);
   hADCRMSChannelAPA3                    = new TProfile("RCE_APA2_ADC_RMS_Channel_All","RCE ADC RMS APA2_\"histl\"_none;Channel;RCE ADC RMS",512,1024,1535);
   hADCRMSChannelAPA4                    = new TProfile("RCE_APA3_ADC_RMS_Channel_All","RCE ADC RMS APA3_\"histl\"_none;Channel;RCE ADC RMS",512,1536,2047);
+  hFFTChannelRCE00                      = new TProfile2D("RCE_RCE00_ADC_FFT_Channel_FirstEvent","ADC FFT for RCE00_\"colz\"_none;Channel;FFT (MHz)",128,0,128,100,0,1);
+  hFFTChannelRCE00->GetZaxis()->SetRangeUser(0,5000);
   hADCChannel                           = new TH2D("RCE__ADC_Value_Channel_All","ADC vs Channel_\"colz\"_none;Channel;ADC Value",NRCEChannels,0,NRCEChannels,2000,0,2000);
+  hTickRatioChannel                     = new TH2D("RCE__NumberOfTicks_Ratio_Channel_All","Ratio of Number of Tick to Max In Event_\"hist\"_none;Channel;Number of Ticks/Max Number of Ticks in Event",NRCEChannels,0,NRCEChannels,101,0,1.01);
   hAvADCChannelEvent                    = new TH2D("RCE__ADC_Mean_Event_First100","Average RCE ADC Value_\"colz\"_none;Event;Channel",100,0,100,NRCEChannels,0,NRCEChannels);
   hRCEDNoiseChannel                     = new TProfile("RCE__ADC_DNoise_Channel_All","RCE DNoise_\"colz\"_none;Channel;DNoise",NRCEChannels,0,NRCEChannels);
   hTotalADCEvent                        = new TH1I("RCE__ADC_Total__All","Total RCE ADC_\"colz\"_logy;Total ADC;",100,0,1000000000);
@@ -816,8 +827,8 @@ void OnlineMonitoring::MonitoringData::MakeHistograms() {
   fHistArray.Add(hADCMeanChannelAPA3); fHistArray.Add(hADCMeanChannelAPA4);
   fHistArray.Add(hADCRMSChannelAPA1); fHistArray.Add(hADCRMSChannelAPA2);
   fHistArray.Add(hADCRMSChannelAPA3); fHistArray.Add(hADCRMSChannelAPA4);
-  fHistArray.Add(hADCChannel);
-  fHistArray.Add(hRCEDNoiseChannel);
+  fHistArray.Add(hADCChannel); fHistArray.Add(hFFTChannelRCE00);
+  fHistArray.Add(hTickRatioChannel); fHistArray.Add(hRCEDNoiseChannel);
   fHistArray.Add(hAvADCChannelEvent); fHistArray.Add(hTotalRCEHitsChannel);
   fHistArray.Add(hTotalADCEvent); fHistArray.Add(hTotalRCEHitsEvent);
   fHistArray.Add(hAsymmetry); fHistArray.Add(hTimesADCGoesOverThreshold);
@@ -853,6 +864,8 @@ void OnlineMonitoring::MonitoringData::MakeHistograms() {
   fFigureCaptions["RCE_APA1_ADC_RMS_Channel_All"] = "RMS of the ADC values for each channel read out by the RCEs (profiled over all events read)";
   fFigureCaptions["RCE_APA2_ADC_RMS_Channel_All"] = "RMS of the ADC values for each channel read out by the RCEs (profiled over all events read)";
   fFigureCaptions["RCE_APA3_ADC_RMS_Channel_All"] = "RMS of the ADC values for each channel read out by the RCEs (profiled over all events read)";
+  fFigureCaptions["RCE_RCE00_ADC_FFT_Channel_FirstEvent"] = "FFT of ADC values in RCE00";
+  fFigureCaptions["RCE__NumberOfTicks_Ratio_Channel_All"] = "Number of ticks in a particular channel as ratio of maximum number of ticks across all channels in the event (filled once per channel per event) -- should be 1";
   fFigureCaptions["RCE__ADC_Value_Channel_All"] = "ADC value for each channel (one entry per tick)";
   fFigureCaptions["RCE__ADC_DNoise_Channel_All"] = "DNoise (difference in ADC between neighbouring channels for the same tick) for the RCE ADCs (profiled over all events read)";
   fFigureCaptions["RCE__ADC_Mean_Event_First100"] = "Average RCE ADC across a channel for an event, shown for the first 100 events";
@@ -898,7 +911,7 @@ void OnlineMonitoring::MonitoringData::MakeHistograms() {
   //sspTimeSyncsArray->SetTitle("Max-min average trigger times for all SSPs_\"AL\"_none;Min average channel time;(Max-min) channel time");
   //TLegend *sspTimeSyncsArrayLegend = new TLegend(0.8,0.5,0.9,0.9);
 
-  for (unsigned int i = 0; i < NSSPs; i++){
+  for (unsigned int i = 0; i < NSSPs; ++i){
     hTimeSyncsSSPs[i] = new TGraph();
     std::string hTimeSyncsSSPsTitle = Form("Max-min average trigger times for SSP %i_\"AL*\"_none;Min average channel time;(Max-min) channel time",i);
     //std::string hTimeSyncsSSPsTitle = "Max-min average trigger times for all SSPs_\"AL*\"_none;Min average channel time;(Max-min) channel time";
@@ -922,7 +935,7 @@ void OnlineMonitoring::MonitoringData::MakeHistograms() {
   //sspTimeSyncsAverageArray->SetName("General__Time_Sync_SSP_Average");
   //sspTimeSyncsAverageArray->SetTitle("Average SSP trigger time - average channel trigger time_\"AL\"_none;Average channel trigger time;SSP average trigger time - average channel trigger time");
   //TLegend *sspTimeSyncsAverageArrayLegend = new TLegend(0.8,0.5,0.9,0.9);
-  for (unsigned int i = 0; i < NSSPs; i++){
+  for (unsigned int i = 0; i < NSSPs; ++i){
     hTimeSyncsAverageSSPs[i] = new TGraph();
     std::string hTimeSyncsAverageSSPsTitle = Form("Average SSP trigger time - average channel trigger time for SSP %i_\"AL\"_none;Average channel trigger time;SSP average trigger time - average channel trigger time",i);
     //std::string hTimeSyncsAverageSSPsTitle = "Max-min average trigger times for all SSPs_\"AL*\"_none;Min average channel time;(Max-min) channel time";
@@ -951,7 +964,7 @@ void OnlineMonitoring::MonitoringData::ConstructTMultiGraphs(){
   sspTimeSyncsArray->SetName("General__Time_Sync_SSP");
   sspTimeSyncsArray->SetTitle("Max-min average trigger times for all SSPs_\"AL\"_none;Min average channel time;(Max-min) channel time");
   TLegend *sspTimeSyncsArrayLegend = new TLegend(0.8,0.5,0.9,0.9);
-  for (unsigned int i = 0; i < NSSPs; i++){
+  for (unsigned int i = 0; i < NSSPs; ++i){
     if (hTimeSyncsSSPs[i]->GetN() > 0){
       should_draw = true;
       sspTimeSyncsArray->Add(hTimeSyncsSSPs[i]);
@@ -965,13 +978,12 @@ void OnlineMonitoring::MonitoringData::ConstructTMultiGraphs(){
     fHistArray.Add(sspTimeSyncsArray);
   }
 
-
   should_draw = false;
   TMultiGraph *sspTimeSyncsAverageArray = new TMultiGraph();
   sspTimeSyncsAverageArray->SetName("General__Time_Sync_SSP_Average");
   sspTimeSyncsAverageArray->SetTitle("Average SSP trigger time - average channel trigger time_\"AL\"_none;Average channel trigger time;SSP average trigger time - average channel trigger time");
   TLegend *sspTimeSyncsAverageArrayLegend = new TLegend(0.8,0.5,0.9,0.9);
-  for (unsigned int i = 0; i < NSSPs; i++){
+  for (unsigned int i = 0; i < NSSPs; ++i){
     if (hTimeSyncsAverageSSPs[i]->GetN() > 0){
       should_draw = true;
       TString ssp_legend_label = Form("SSP %i",i+1);
