@@ -19,7 +19,6 @@ void OnlineMonitoring::MonitoringData::BeginMonitoring(int run, int subrun) {
   fCanvas = new TCanvas("canv","",800,600);
   //receivedData = false; _interestingchannelsfilled = false;
   filledRunData = false;
-  filledRunDataRCE = false;
 
   // Get start time of run
   time_t rawtime;
@@ -256,7 +255,7 @@ void OnlineMonitoring::MonitoringData::GeneralMonitoring(RCEFormatter const& rce
   }
 }
 
-void OnlineMonitoring::MonitoringData::RCEMonitoring(RCEFormatter const& rceformatter) {
+void OnlineMonitoring::MonitoringData::RCEMonitoring(RCEFormatter const& rceformatter, int timeIntoRun) {
 
   /// Fills all histograms pertaining to RCE hardware monitoring
 
@@ -265,15 +264,16 @@ void OnlineMonitoring::MonitoringData::RCEMonitoring(RCEFormatter const& rceform
   const std::vector<std::vector<unsigned long> > timestamps = rceformatter.TimestampVector();
   int totalADC = 0, totalRCEHitsEvent = 0, timesADCGoesOverThreshold = 0;
 
-  if (!filledRunDataRCE) {
-    filledRunDataRCE = true;
+  if (timeIntoRun % 30 == 0) {
 
     // FFT
     const double sampPeriod = 0.5; //us
     int numBins = 1000;
-    TH1D* hData = new TH1D("hData","",numBins,0,numBins*sampPeriod);
-    TH1D* hFFTData = new TH1D("hFFTData","",numBins,0,numBins);
+    TH1F* hData = new TH1F("hData","",numBins,0,numBins*sampPeriod);
+    TH1F* hFFTData = new TH1F("hFFTData","",numBins,0,numBins);
     for (unsigned int channel = 0; channel < ADCs.size(); ++channel) {
+      if (!ADCs.at(channel).size())
+	continue;
       hData->Reset();
       for (unsigned int tick = 0; tick < ADCs.at(channel).size(); ++tick)
 	hData->SetBinContent(tick+1,ADCs.at(channel).at(tick));
@@ -975,7 +975,7 @@ void OnlineMonitoring::MonitoringData::ConstructTMultiGraphs(){
   if (should_draw){
     fFigureLegends[sspTimeSyncsArray->GetName()] = sspTimeSyncsArrayLegend;
     fFigureCaptions[sspTimeSyncsArray->GetName()] = "Max-min average trigger times for all SSPs";
-    fHistArray.Add(sspTimeSyncsArray);
+    //fHistArray.Add(sspTimeSyncsArray);
   }
 
   should_draw = false;
@@ -994,6 +994,6 @@ void OnlineMonitoring::MonitoringData::ConstructTMultiGraphs(){
   if (should_draw){
     fFigureLegends[sspTimeSyncsAverageArray->GetName()] = sspTimeSyncsAverageArrayLegend;
     fFigureCaptions[sspTimeSyncsAverageArray->GetName()] = "Average SSP trigger time - average channel trigger time for all SSPs";
-    fHistArray.Add(sspTimeSyncsAverageArray);
+    //fHistArray.Add(sspTimeSyncsAverageArray);
   }
 }

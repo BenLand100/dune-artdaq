@@ -56,7 +56,7 @@ public:
   void FillTree(RCEFormatter const& rce_formatter, SSPFormatter const& ssp_formatter);
   void GeneralMonitoring(RCEFormatter const& rceformatter, SSPFormatter const& sspformatter, PTBFormatter const& ptbformatter);
   void GeneralMonitoring();
-  void RCEMonitoring(RCEFormatter const& rce_formatter);
+  void RCEMonitoring(RCEFormatter const& rce_formatter, int timeIntoRun);
   void SSPMonitoring(SSPFormatter const& ssp_formatter);
   void PTBMonitoring(PTBFormatter const& ptb_formatter);
   void MakeHistograms();
@@ -82,7 +82,7 @@ private:
 
   std::vector<std::vector<int> > fRCEADC, fSSPADC;
 
-  bool filledRunData, filledRunDataRCE;
+  bool filledRunData;
 
   // crap to sort out
   int fThreshold = 10;
