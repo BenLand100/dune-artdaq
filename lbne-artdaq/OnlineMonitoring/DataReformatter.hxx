@@ -31,8 +31,8 @@ public:
   // Defualt constructor (may come in handy!)
   RCEFormatter() {}
   RCEFormatter(art::Handle<artdaq::Fragments> const& rawRCE);
-  std::vector<std::vector<int> > const& ADCVector() const { return ADCs; }
-  std::vector<std::vector<unsigned long> > const& TimestampVector() const { return fTimeStamps; }
+  std::vector<std::vector<int> > const& ADCVector() const { return fADCs; }
+  std::vector<std::vector<unsigned long> > const& TimestampVector() const { return fTimestamps; }
   std::vector<int> const& NumBlocks() const { return fWindowingNumBlocks; }
   std::vector<std::vector<short> > const& BlockBegin() const { return fWindowingBlockBegin; }
   std::vector<std::vector<short> > const& BlockSize() const { return fWindowingBlockSize; }
@@ -45,8 +45,8 @@ private:
   void AnalyseADCs(art::Handle<artdaq::Fragments> const& rawRCE);
   void Windowing();
 
-  std::vector<std::vector<int> > ADCs;
-  std::vector<std::vector<unsigned long> > fTimeStamps;
+  std::vector<std::vector<int> > fADCs;
+  std::vector<std::vector<unsigned long> > fTimestamps;
 
   // Windowing
   std::vector<int> fWindowingNumBlocks;
@@ -57,7 +57,16 @@ private:
 
 struct OnlineMonitoring::Trigger {
   Trigger();
-  Trigger(int channel, unsigned int peaksum, unsigned int prerise, unsigned int integral, unsigned int pedestal, unsigned int nTicks, double mean, double rms, std::vector<int> adcVector, unsigned long timestamp) {
+  Trigger(int channel,
+	  unsigned int peaksum,
+	  unsigned int prerise,
+	  unsigned int integral,
+	  unsigned int pedestal,
+	  unsigned int nTicks,
+	  double mean,
+	  double rms,
+	  std::vector<int> adcVector,
+	  unsigned long timestamp) {
     Channel = channel;
     PeakSum = peaksum;
     Prerise = prerise;

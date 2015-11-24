@@ -70,18 +70,16 @@ void OnlineMonitoring::RCEFormatter::AnalyseADCs(art::Handle<artdaq::Fragments> 
 
 	for (unsigned int nanoIt = 0; nanoIt < nNanoSlices; ++nanoIt) {
 
-	  // receivedData = true;
-
 	  // Get the ADC value
 	  uint16_t adc = std::numeric_limits<uint16_t>::max();
 	  bool success = microslice->nanosliceSampleValue(nanoIt, sample, adc);
 
 	  if (success){
 	    adcVector.push_back((int)adc);
-     //unsigned long timestamp = microslice->nanosliceNova_timestamp(nanoIt);
-     unsigned long timestamp = 1000;
-     timestampVector.push_back(timestamp);
-   }
+	    //unsigned long timestamp = microslice->nanosliceNova_timestamp(nanoIt);
+	    unsigned long timestamp = 1000;
+	    timestampVector.push_back(timestamp);
+	  }
 
 	} // nanoslice loop
 
@@ -89,13 +87,10 @@ void OnlineMonitoring::RCEFormatter::AnalyseADCs(art::Handle<artdaq::Fragments> 
 
     } // analyse fragment loop
 
-    ADCs.push_back(adcVector);
-    fTimeStamps.push_back(timestampVector);
+    fADCs.push_back(adcVector);
+    fTimestamps.push_back(timestampVector);
 
   } // channel loop
-
-  // if (!receivedData && fEventNumber%1000==0)
-  //   mf::LogWarning("Monitoring") << "No nanoslices have been made after " << fEventNumber << " events";
 
 }
 
@@ -104,19 +99,19 @@ void OnlineMonitoring::RCEFormatter::Windowing() {
   const int fWindowingZeroThresholdSigned = 10;
   int fWindowingNearestNeighbour = 4;
 
-  for (int channel = 0; channel < (int)ADCs.size(); ++channel) {
+  for (int channel = 0; channel < (int)fADCs.size(); ++channel) {
 
     // Define variables for the windowing
-    std::vector<short> tmpBlockBegin((ADCs.at(channel).size()/2)+1);
-    std::vector<short> tmpBlockSize((ADCs.at(channel).size()/2)+1);
+    std::vector<short> tmpBlockBegin((fADCs.at(channel).size()/2)+1);
+    std::vector<short> tmpBlockSize((fADCs.at(channel).size()/2)+1);
     int tmpNumBlocks = 0;
     int blockstartcheck = 0;
     int endofblockcheck = 0;
 
-    for (int tick = 0; tick < (int)ADCs.at(channel).size(); ++tick) {
+    for (int tick = 0; tick < (int)fADCs.at(channel).size(); ++tick) {
       // Windowing code (taken from raw.cxx::ZeroSuppression)
       if (blockstartcheck == 0) {
-	if (ADCs.at(channel).at(tick) > fWindowingZeroThresholdSigned) {
+	if (fADCs.at(channel).at(tick) > fWindowingZeroThresholdSigned) {
 	  if (tmpNumBlocks > 0) {
 	    if (tick-fWindowingNearestNeighbour <= tmpBlockBegin[tmpNumBlocks-1] + tmpBlockSize[tmpNumBlocks-1]+1) {
 	      tmpNumBlocks--;
@@ -137,7 +132,7 @@ void OnlineMonitoring::RCEFormatter::Windowing() {
 	}
       }
       else if (blockstartcheck == 1) {
-	if (ADCs.at(channel).at(tick) > fWindowingZeroThresholdSigned) {
+	if (fADCs.at(channel).at(tick) > fWindowingZeroThresholdSigned) {
 	  ++tmpBlockSize[tmpNumBlocks];
 	  endofblockcheck = 0;
 	}
@@ -147,8 +142,8 @@ void OnlineMonitoring::RCEFormatter::Windowing() {
 	    ++tmpBlockSize[tmpNumBlocks];
 	  }
 	  //block has ended
-	  else if ( (tick+1 < (int)ADCs.at(channel).size() and std::abs(ADCs.at(channel).at(tick+1)) <= fWindowingZeroThresholdSigned) or
-		    (tick+2 < (int)ADCs.at(channel).size() and std::abs(ADCs.at(channel).at(tick+2)) <= fWindowingZeroThresholdSigned) ) {  
+	  else if ( (tick+1 < (int)fADCs.at(channel).size() and std::abs(fADCs.at(channel).at(tick+1)) <= fWindowingZeroThresholdSigned) or
+		    (tick+2 < (int)fADCs.at(channel).size() and std::abs(fADCs.at(channel).at(tick+2)) <= fWindowingZeroThresholdSigned) ) {  
 	    endofblockcheck = 0;
 	    blockstartcheck = 0;
 	    ++tmpNumBlocks;

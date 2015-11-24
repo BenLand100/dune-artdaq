@@ -65,7 +65,7 @@ public:
 
 private:
 
-  void ConstructTMultiGraphs();
+  void ConstructTimingSyncGraphs();
 
   int fEventNumber;
   std::string fRunStartTime;
@@ -76,8 +76,8 @@ private:
   TTree* fDataTree;
   TString HistSaveDirectory;
   TObjArray fHistArray;
-  std::map<std::string,std::string> fFigureCaptions;
   TCanvas* fCanvas;
+  std::map<std::string,std::string> fFigureCaptions;
   std::map<std::string,TLegend*> fFigureLegends;
 
   std::vector<std::vector<int> > fRCEADC, fSSPADC;
@@ -93,12 +93,12 @@ private:
   // General
   TH1I *hNumSubDetectorsPresent, *hSizeOfFiles, *hSubDetectorsWithData, *hSubDetectorsPresent;
   TH1D *hSizeOfFilesPerEvent;
-  TGraph *hTimeSyncsSSPs[NSSPs], *hTimeSyncsAverageSSPs[NSSPs];
+  TGraph *hTimeSyncSSPs[NSSPs], *hTimeSyncAverageSSPs[NSSPs];
 
   // RCE
   TH1I *hTotalADCEvent, *hTotalRCEHitsEvent, *hTotalRCEHitsChannel, *hTimesADCGoesOverThreshold,  *hNumMicroslicesInMillislice, *hNumNanoslicesInMicroslice, *hNumNanoslicesInMillislice;
   TH2I *hRCEBitCheckAnd, *hRCEBitCheckOr;
-  TH2D *hAvADCChannelEvent, *hADCChannel, *hTickRatioChannel;
+  TH2D *hAvADCChannelEvent, *hADCChannel, *hTickRatioChannel, *hTickTotalChannel;
   TProfile *hADCMeanChannelAPA1, *hADCMeanChannelAPA2, *hADCMeanChannelAPA3, *hADCMeanChannelAPA4, *hADCRMSChannelAPA1, *hADCRMSChannelAPA2, *hADCRMSChannelAPA3, *hADCRMSChannelAPA4;
   TProfile2D *hFFTChannelRCE00;
   TProfile *hRCEDNoiseChannel, *hAsymmetry, *hLastSixBitsCheckOff, *hLastSixBitsCheckOn;
