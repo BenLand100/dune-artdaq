@@ -38,6 +38,29 @@
 
 namespace lbne {    
 
+typedef struct MuonTriggerMaskConfig {
+  std::string id;
+  std::string id_mask;
+  uint8_t     logic;
+  uint8_t     prescale;
+  uint64_t    g1_mask_tsu;
+  uint64_t    g1_mask_bsu;
+  uint8_t     g1_logic;
+  uint64_t    g2_mask_tsu;
+  uint64_t    g2_mask_bsu;
+  uint8_t     g2_logic;
+} MuonTriggerMaskConfig;
+
+typedef struct CalibChannelConfig {
+  std::string id;
+  std::string id_mask;
+  bool        enabled;
+  uint32_t    period;
+} CalibChannelConfig;
+
+
+
+
   class PennReceiver : public artdaq::CommandableFragmentGenerator {
   public:
     explicit PennReceiver(fhicl::ParameterSet const & ps);
@@ -73,18 +96,54 @@ namespace lbne {
     std::string penn_client_host_addr_;
     std::string penn_client_host_port_;
     uint32_t	penn_client_timeout_usecs_;
-    // trigger options
-    bool        penn_mode_calibration_;
-    bool        penn_mode_external_triggers_;
-    bool        penn_mode_muon_triggers_;
-    // channel masks
-    uint64_t    penn_hit_mask_bsu_;
-    uint64_t    penn_hit_mask_tsu_;
-    // microslice duration
-    uint32_t    penn_data_microslice_size_;
+
+    /// Data buffer options
     // data stream connection
     std::string penn_data_dest_host_;
     uint16_t    penn_data_dest_port_;
+    // microslice duration
+    uint32_t    penn_data_microslice_size_;
+    // Number max number of frames in each microslice
+    // FIXME: Check if it is necessary.
+    // Probably going to be removed
+    uint32_t    penn_data_dest_rollover_;
+
+    uint32_t ptb_pulse_width_;
+
+    /// Channel masks
+    uint64_t    penn_channel_mask_bsu_;
+    uint64_t    penn_channel_mask_tsu_;
+
+    /// External trigger options
+    // These are triggers that are received on the trigger-in channels
+    uint8_t     penn_ext_triggers_mask_;
+    bool        penn_ext_triggers_echo_;
+
+    /// Calibrations
+    uint16_t    penn_calib_period_;
+    uint8_t     penn_calib_channel_mask_;
+    uint8_t     penn_calib_pulse_width_;
+
+
+
+    /// Muon trigger configuration
+    // number of trigger masks configured
+    uint32_t penn_muon_num_triggers_;
+    // size (in clock ticks) of the trigger out pulse
+    uint8_t penn_trig_out_pulse_width_;
+    // Number of clock ticks to keep input signal high after rise.
+    // Accounts for timing offsets between the panels.
+    uint32_t penn_trig_in_window_;
+    // Number of clock ticks that input signal is forced locked low after
+    // a successful pulse. Accounts for afterpulses (reflections?) from the panels.
+    uint32_t penn_trig_lockdown_window_;
+
+    std::vector<MuonTriggerMaskConfig>  muon_triggers_;
+    
+    // -- This is immutable. Hardware limitation
+    const uint32_t penn_num_calibration_channels_ = 4;
+    std::vector<CalibChannelConfig>     calib_channels_;
+
 
     ////BOARDREADER OPTIONS
     //

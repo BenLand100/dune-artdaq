@@ -3,8 +3,10 @@ BEGIN_PROLOG
 prescale_trigger:
 {
   module_type: "PreScaleTrigger"
+  PassAllEvents: true
   PreScale: 10
   UseRndmPreScale: true
+  Verbose: true
 }
 
 END_PROLOG

@@ -61,6 +61,7 @@ simple_plugin(PennReceiver "generator"
   ${FHICLCPP}
   ${MF_MESSAGELOGGER}
   ${CETLIB}
+  lbne-artdaq_DAQLogger
   )
 
 

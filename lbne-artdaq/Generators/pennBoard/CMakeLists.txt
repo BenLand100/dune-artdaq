@@ -12,6 +12,7 @@ art_make(
 	${Boost_SYSTEM_LIBRARY}
 	-lpthread
 	lbne-raw-data_Overlays
+	lbne-artdaq_DAQLogger
 	)
 	
  add_subdirectory(emulator)

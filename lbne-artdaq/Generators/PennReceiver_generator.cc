@@ -1,4 +1,5 @@
 #include "lbne-artdaq/Generators/PennReceiver.hh"
+#include "lbne-artdaq/DAQLogger/DAQLogger.hh"
 
 #include "lbne-raw-data/Overlays/PennMilliSliceWriter.hh"
 #include "lbne-raw-data/Overlays/PennMilliSliceFragment.hh"
@@ -35,35 +36,12 @@ lbne::PennReceiver::PennReceiver(fhicl::ParameterSet const & ps)
 
   // config stream connection parameters
   penn_client_host_addr_ =
-	ps.get<std::string>("penn_client_host_addr", "localhost");
+	ps.get<std::string>("penn_client_host_addr", "192.168.1.2");
   penn_client_host_port_ =
-	ps.get<std::string>("penn_client_host_port", "9999");
+	ps.get<std::string>("penn_client_host_port", "8992");
   penn_client_timeout_usecs_ =
 	ps.get<uint32_t>("penn_client_timeout_usecs", 0);
 
-  // Penn trigger options
-  penn_mode_calibration_ =
-    ps.get<bool>("penn_mode_calibration", false);
-  penn_mode_external_triggers_ =
-    ps.get<bool>("penn_mode_external_triggers", false);
-  penn_mode_muon_triggers_ =
-    ps.get<bool>("penn_mode_muon_triggers", false);
-
-  // Penn hit masks
-  penn_hit_mask_bsu_ =
-    ps.get<uint64_t>("penn_hit_mask_bsu", 0x0003FFFFFFFFFFFF);
-  penn_hit_mask_tsu_ =
-    ps.get<uint64_t>("penn_hit_mask_tsu", 0x000000FFFFFFFFFF);
-  
-  // Penn microslice duration
-  penn_data_microslice_size_ =
-        ps.get<uint32_t>("penn_data_microslice_size", 7);
-
-  // data stream connection parameters
-  penn_data_dest_host_ =
-	ps.get<std::string>("penn_data_dest_host", "127.0.0.1");
-  penn_data_dest_port_ =
-	ps.get<uint16_t>("penn_data_dest_port", 8989);
 
   ////////////////////////////
   // BOARDREADER OPTIONS
@@ -81,6 +59,8 @@ lbne::PennReceiver::PennReceiver(fhicl::ParameterSet const & ps)
   // boardreader printouts
   int receiver_debug_level =
 	ps.get<int>("receiver_debug_level", 0);
+  DAQLogger::LogInfo("PennReceiver") << "Debug level set to " << receiver_debug_level;
+
   reporting_interval_fragments_ =
     ps.get<uint32_t>("reporting_interval_fragments", 100);
   reporting_interval_time_ = 
@@ -95,11 +75,10 @@ lbne::PennReceiver::PennReceiver(fhicl::ParameterSet const & ps)
     ps.get<bool>("use_fragments_as_raw_buffer", true);
 #ifdef REBLOCK_PENN_USLICE
   if(use_fragments_as_raw_buffer_ == false) {
-    mf::LogError("PennReceiver") << "use_fragments_as_raw_buffer == false has not been implemented";
+    DAQLogger::LogError("PennReceiver") << "use_fragments_as_raw_buffer == false has not been implemented";
     //TODO handle error cleanly here    
   }
 #endif
-
 
   ////////////////////////////
   // EMULATOR OPTIONS
@@ -126,17 +105,98 @@ lbne::PennReceiver::PennReceiver(fhicl::ParameterSet const & ps)
   penn_data_debug_partial_recv_ =
         ps.get<bool>("penn_data_debug_partial_recv", false);
 
+  ///
+  /// Penn board options
+  ///
+
+  // -- data stream connection parameters
+  penn_data_dest_host_ =
+  ps.get<std::string>("penn_data_buffer.daq_host", "lbnedaq5");
+  penn_data_dest_port_ =
+  ps.get<uint16_t>("penn_data_buffer.daq_port", 8992);
+
+  penn_data_dest_rollover_ = 
+    ps.get<uint32_t>("penn_data_buffer.daq_rollover",80);
+
+  // Penn microslice duration
+  penn_data_microslice_size_ =
+        ps.get<uint32_t>("penn_data_buffer.daq_microslice_size", 1000);
+
+  ptb_pulse_width_ = ps.get<uint32_t>("hardware.pulse_width",2);
+
+  // -- Channel masks
+  penn_channel_mask_bsu_ =
+    ps.get<uint64_t>("channel_mask.BSU", 0x1FFFFFFFFFFFF);
+  penn_channel_mask_tsu_ =
+    ps.get<uint64_t>("channel_mask.TSU", 0xFFFFFFFFFFFF);
+
+  // -- How to deal with external triggers
+  penn_ext_triggers_mask_ = ps.get<uint8_t>("external_triggers.mask",0x1F);
+  penn_ext_triggers_echo_ = ps.get<bool>("external_triggers.echo_triggers",false);
+
+  // -- Calibrations
+  for (uint32_t i = 1; i <= penn_num_calibration_channels_; ++i) {
+    CalibChannelConfig channel;
+    std::ostringstream channel_name;
+    channel_name << "calibrations.C";
+    channel_name << i;
+
+    channel.id           = ps.get<std::string>(channel_name.str() + ".id");
+    channel.id_mask   = ps.get<std::string>(channel_name.str() + ".id_mask");
+    channel.enabled      = ps.get<bool>(channel_name.str() + ".enabled");
+    channel.period       = ps.get<uint32_t>(channel_name.str() + ".period");
+
+    calib_channels_.push_back(channel);
+  }
+
+  // -- Muon triggers
+  // This is the more elaborated part:
+  // First grab the global parameters
+  penn_muon_num_triggers_ = ps.get<uint32_t>("muon_triggers.num_triggers",4);
+  //  penn_trig_out_pulse_width_ = ps.get<uint8_t>("muon_triggers.trig_out_width",2);
+  penn_trig_in_window_ = ps.get<uint32_t>("muon_triggers.trig_window",3);
+  penn_trig_lockdown_window_ = ps.get<uint32_t>("muon_triggers.trig_lockdown",3);
+
+  // And now grab the individual trigger mask configuration
+  for (uint32_t i = 0; i < penn_muon_num_triggers_; ++i) {
+    MuonTriggerMaskConfig mask;
+    std::ostringstream trig_name;
+    trig_name << "muon_triggers.trigger_";
+    trig_name << i;
+
+    std::string first_param = trig_name.str() + ".id";
+    
+    mask.id           = ps.get<std::string>(trig_name.str() + ".id");
+    mask.id_mask      = ps.get<std::string>(trig_name.str() + ".id_mask");
+    mask.prescale     = ps.get<uint8_t>(trig_name.str() + ".prescale");
+    mask.logic        = ps.get<uint8_t>(trig_name.str() + ".logic");
+    mask.g1_logic     = ps.get<uint8_t>(trig_name.str() + ".group1.logic");
+    mask.g1_mask_bsu  = ps.get<uint64_t>(trig_name.str() + ".group1.BSU");
+    mask.g1_mask_tsu  = ps.get<uint64_t>(trig_name.str() + ".group1.TSU");
+    mask.g2_logic     = ps.get<uint8_t>(trig_name.str() + ".group2.logic");
+    mask.g2_mask_bsu  = ps.get<uint64_t>(trig_name.str() + ".group2.BSU");
+    mask.g2_mask_tsu  = ps.get<uint64_t>(trig_name.str() + ".group2.TSU");
+
+    muon_triggers_.push_back(mask);
+
+  }
+
+
+   ///
+   /// -- Configuration loaded.
+   ///
 
 
   // Create an PENN client instance
   penn_client_ = std::unique_ptr<lbne::PennClient>(new lbne::PennClient(
 		  penn_client_host_addr_, penn_client_host_port_, penn_client_timeout_usecs_));
 
-  penn_client_->send_command("HardReset");
+  // What does this actually do? FLushes the registers?
+  //  penn_client_->send_command("HardReset");
+  penn_client_->send_command("SoftReset");
   sleep(1);
   std::ostringstream config_frag;
   this->generate_config_frag(config_frag);
-  penn_client_->send_config(config_frag.str());
 
 #ifndef PENN_EMULATOR
   bool rate_test = false;
@@ -150,15 +210,27 @@ lbne::PennReceiver::PennReceiver(fhicl::ParameterSet const & ps)
 #endif //!PENN_EMULATOR
 
   // Create a PennDataReceiver instance
-  data_receiver_ = 
+  // This should be where the PTB connects. 
+  data_receiver_ =
     std::unique_ptr<lbne::PennDataReceiver>(new lbne::PennDataReceiver(receiver_debug_level, receiver_tick_period_usecs_, penn_data_dest_port_,
 								       millislice_size_, millislice_overlap_size_, rate_test));
+
+
+  // Sleep for a short while to give time for the DataReceiver to be ready to 
+  // receive connections
+  // Half a second?
+  usleep(500000);
+
+  DAQLogger::LogDebug("PennReceiver") << "Sending the configuration to the PTB";
+  // Can I send the coonfiguration after creating the receiver?
+  penn_client_->send_config(config_frag.str());
+  DAQLogger::LogDebug("PennReceiver") << "Configuration sent to the PTB";
 
 }
 
 void lbne::PennReceiver::start(void)
 {
-	mf::LogDebug("PennReceiver") << "start() called";
+	DAQLogger::LogDebug("PennReceiver") << "start() called";
 
 	// Tell the data receiver to drain any unused buffers from the empty queue
 	data_receiver_->release_empty_buffers();
@@ -170,7 +242,7 @@ void lbne::PennReceiver::start(void)
 	raw_to_frag_map_.clear();
 
 	// Pre-commit buffers to the data receiver object - creating either fragments or raw buffers depending on raw buffer mode
-	mf::LogDebug("PennReceiver") << "Pre-committing " << raw_buffer_precommit_ << " buffers of size " << raw_buffer_size_ << " to receiver";
+	DAQLogger::LogDebug("PennReceiver") << "Pre-committing " << raw_buffer_precommit_ << " buffers of size " << raw_buffer_size_ << " to receiver";
 	empty_buffer_low_mark_ = 0;
 	for (unsigned int i = 0; i < raw_buffer_precommit_; i++)
 	{
@@ -183,7 +255,7 @@ void lbne::PennReceiver::start(void)
 		{
 			raw_buffer = lbne::PennRawBufferPtr(new PennRawBuffer(raw_buffer_size_));
 		}
-		mf::LogDebug("PennReceiver") << "Pre-commiting raw buffer " << i << " at address " << (void*)(raw_buffer->dataPtr());
+		DAQLogger::LogDebug("PennReceiver") << "Pre-commiting raw buffer " << i << " at address " << (void*)(raw_buffer->dataPtr());
 		data_receiver_->commit_empty_buffer(raw_buffer);
 		empty_buffer_low_mark_++;
 	}
@@ -198,29 +270,29 @@ void lbne::PennReceiver::start(void)
 	data_receiver_->start();
 
 	// Send start command to PENN
-	penn_client_->send_command("SoftReset");
-	penn_client_->send_command("SetRunState", "Enable");
+	//penn_client_->send_command("SoftReset");
+	penn_client_->send_command("StartRun");
 
 }
 
 void lbne::PennReceiver::stop(void)
 {
-	mf::LogInfo("PennReceiver") << "stop() called";
+  DAQLogger::LogInfo("PennReceiver") << "stop() called";
 
 	// Instruct the PENN to stop
-	penn_client_->send_command("SetRunState", "Stopped");
+	penn_client_->send_command("StopRun");
 
 	// Stop the data receiver.
 	data_receiver_->stop();
 
-	mf::LogInfo("PennReceiver") << "Low water mark on empty buffer queue is " << empty_buffer_low_mark_;
+	DAQLogger::LogInfo("PennReceiver") << "Low water mark on empty buffer queue is " << empty_buffer_low_mark_;
 
 	auto elapsed_msecs = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - start_time_).count();
 	double elapsed_secs = ((double)elapsed_msecs) / 1000;
 	double rate = ((double)millislices_received_) / elapsed_secs;
 	double data_rate_mbs = ((double)total_bytes_received_) / ((1024*1024) * elapsed_secs);
 
-	mf::LogInfo("PennReceiver") << "Received " << millislices_received_ << " millislices in "
+	DAQLogger::LogInfo("PennReceiver") << "Received " << millislices_received_ << " millislices in "
 			      << elapsed_secs << " seconds, rate "
 			      << rate << " Hz, total data " << total_bytes_received_ << " bytes, rate " << data_rate_mbs << " MB/s";
 
@@ -243,7 +315,7 @@ bool lbne::PennReceiver::getNext_(artdaq::FragmentPtrs & frags) {
 	    (reporting_interval_time_ * 1000))
 	  {
 	    report_time_ = std::chrono::high_resolution_clock::now();
-	    mf::LogInfo("PennReceiver") << "Received " << millislices_received_ << " millislices so far";
+	    DAQLogger::LogInfo("PennReceiver") << "Received " << millislices_received_ << " millislices so far";
 	  }
       }
   }
@@ -255,11 +327,11 @@ bool lbne::PennReceiver::getNext_(artdaq::FragmentPtrs & frags) {
 
 		if( data_receiver_->filled_buffers_available() > 0)
 		{
-			mf::LogWarning("PennRecevier") << "getNext_ stopping while there were still filled buffers available";
+		  DAQLogger::LogWarning("PennRecevier") << "getNext_ stopping while there were still filled buffers available";
 		}
 		else
 		{
-		        mf::LogInfo("PennReceiver") << "No unprocessed filled buffers available at end of run";
+		  DAQLogger::LogInfo("PennReceiver") << "No unprocessed filled buffers available at end of run";
 		}
 
 	return false;
@@ -270,7 +342,7 @@ bool lbne::PennReceiver::getNext_(artdaq::FragmentPtrs & frags) {
   // an empty list
   if (recvd_buffer->size() == 0)
   {
-	  mf::LogWarning("PennReceiver") << "getNext_ : no data received in raw buffer";
+	  DAQLogger::LogWarning("PennReceiver") << "getNext_ : no data received in raw buffer";
 	  return true;
   }
 
@@ -307,7 +379,7 @@ bool lbne::PennReceiver::getNext_(artdaq::FragmentPtrs & frags) {
 	  }
 	  else
 	  {
-		  mf::LogError("PennReciver") << "Cannot map raw buffer with data address" << (void*)recvd_buffer->dataPtr() << " back onto fragment";
+		  DAQLogger::LogError("PennReciver") << "Cannot map raw buffer with data address" << (void*)recvd_buffer->dataPtr() << " back onto fragment";
 		  return true;
 	  }
   }
@@ -337,7 +409,7 @@ bool lbne::PennReceiver::getNext_(artdaq::FragmentPtrs & frags) {
 	  auto elapsed_msecs = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - start_time_).count();
 	  double elapsed_secs = ((double)elapsed_msecs)/1000;
 
-	  mf::LogInfo("PennReceiver") << "Received " << millislices_received_ << " millislices, "
+	  DAQLogger::LogInfo("PennReceiver") << "Received " << millislices_received_ << " millislices, "
 			  << float(total_bytes_received_)/(1024*1024) << " MB in " << elapsed_secs << " seconds";
   }
 
@@ -398,7 +470,7 @@ uint32_t lbne::PennReceiver::format_millislice_from_raw_buffer(uint16_t* src_add
   for (uint32_t udx = 0; udx < number_of_microslices_to_generate_; ++udx) {
     microslice_writer_ptr = millislice_writer.reserveMicroSlice(MICROSLICE_BUFFER_SIZE);
     if (microslice_writer_ptr.get() == 0) {
-      mf::LogError("PennReceiver")
+      DAQLogger::LogError("PennReceiver")
         << "Unable to create microslice number " << udx;
     }
     else {
@@ -416,7 +488,7 @@ uint32_t lbne::PennReceiver::format_millislice_from_raw_buffer(uint16_t* src_add
   // Check if we have overrun the end of the raw buffer
   if (sample_addr > (src_addr + src_size))
   {
-	  mf::LogError("PennReceiver")
+	  DAQLogger::LogError("PennReceiver")
 	  	  << "Raw buffer overrun during millislice formatting by " << ((src_addr + src_size) - sample_addr);
   }
   millislice_writer.finalize();
@@ -449,26 +521,76 @@ uint32_t lbne::PennReceiver::validate_millislice_from_fragment_buffer(uint8_t* d
 }
 
 void lbne::PennReceiver::generate_config_frag(std::ostringstream& config_frag) {
+  // I don't understand what is going on here. Has to be
+  // restructured for the configuration currently being used in the PTBreader software
 
-  config_frag << "<RunMode>" << " "
-	      << " <Calibrations>" << (penn_mode_calibration_       ? "True" : "False") << "</Calibrations>" << " "
-	      << " <ExtTriggers>"  << (penn_mode_external_triggers_ ? "True" : "False") << "</ExtTriggers>"  << " "
-	      << " <MuonTriggers>" << (penn_mode_muon_triggers_     ? "True" : "False") << "</MuonTriggers>" << " "
-	      << "</RunMode>" << " ";
+  // The config wrapper is added by the PennClient class just prior to send.
+ // config_frag << "<config>";
+  config_frag << "<Hardware>"
+	      << "<PulseWidth>" << ptb_pulse_width_ << "</PulseWidth>"
+	      << "</Hardware>";
 
-  config_frag << "<MuonTriggers>" << " "
-	      << " <HitMaskBSU>" << penn_hit_mask_bsu_ << "</HitMaskBSU>" << " "
-	      << " <HitMaskTSU>" << penn_hit_mask_tsu_ << "</HitMaskTSU>" << " "
-	      << "</MuonTriggers>" << " ";
+  // -- DataBuffer section. Controls the reader itself
+  config_frag << "<DataBuffer>"
+      << "<DaqHost>" << penn_data_dest_host_ << "</DaqHost>"
+      << "<DaqPort>" << penn_data_dest_port_ << "</DaqPort>"
+      // FIXME: Add missing variables
+      // Should we have a rollover or just use a microslice size for time?
+      << "<RollOver>" << penn_data_dest_rollover_ << "</RollOver>"
+      << "<MicroSliceDuration>" << penn_data_microslice_size_ << "</MicroSliceDuration>"
+      << "</DataBuffer>";
 
-  config_frag << "<DataBuffer>" << " "
-	      << " <DaqHost>" << penn_data_dest_host_ << "</DaqHost>" << " "
-	      << " <DaqPort>" << penn_data_dest_port_ << "</DaqPort>" << " "
-	      << "</DataBuffer>" << " ";
+  // -- Channel masks section. Controls the reader itself
+  config_frag << "<ChannelMask>"
+	      << "<BSU>0x" << std::hex << static_cast<uint64_t>(penn_channel_mask_bsu_) << std::dec << "</BSU>"
+	      << "<TSU>0x" << std::hex << static_cast<uint64_t>(penn_channel_mask_tsu_) << std::dec << "</TSU>"
+      << "</ChannelMask>";
 
-  config_frag << "<Microslice>" << " "
-	      << " <Duration>" << penn_data_microslice_size_ << "</Duration>" << " "
-	      << "</Microslice>" << " ";
+  // -- Muon trigger section
+
+
+  config_frag << "<MuonTriggers num_triggers=\"" << penn_muon_num_triggers_ << "\">"
+	      << "<TriggerWindow>0x" << std::hex << penn_trig_in_window_  << std::dec << "</TriggerWindow>"
+	      << "<LockdownWindow>0x" << std::hex << penn_trig_lockdown_window_  << std::dec << "</LockdownWindow>";
+  for (size_t i = 0; i < penn_muon_num_triggers_; ++i) {
+    // I would rather put masks as hex strings to be easier to understand
+    config_frag << "<TriggerMask id=\"" << muon_triggers_.at(i).id << "\" mask=\"" << muon_triggers_.at(i).id_mask <<  "\">"
+		<< "<ExtLogic>0x" << std::hex << static_cast<int>(muon_triggers_.at(i).logic) << std::dec << "</ExtLogic>"
+		<< "<Prescale>0x" << std::hex << static_cast<uint32_t>(muon_triggers_.at(i).prescale) << std::dec << "</Prescale>"
+		<< "<group1><Logic>0x" << std::hex << static_cast<int>(muon_triggers_.at(i).g1_logic) << std::dec << "</Logic>"
+		<< "<BSU>0x" << std::hex << static_cast<uint64_t>(muon_triggers_.at(i).g1_mask_bsu) << std::dec << "</BSU>"
+		<< "<TSU>0x" << std::hex << static_cast<uint64_t>(muon_triggers_.at(i).g1_mask_tsu) << std::dec << "</TSU></group1>"
+		<< "<group2><Logic>0x" << std::hex << static_cast<int>(muon_triggers_.at(i).g2_logic) << std::dec << "</Logic>"
+		<< "<BSU>0x" << std::hex << static_cast<uint64_t>(muon_triggers_.at(i).g2_mask_bsu) << std::dec << "</BSU>"
+		<< "<TSU>0x" << std::hex << static_cast<uint64_t>(muon_triggers_.at(i).g2_mask_tsu) << std::dec << "</TSU></group2>"
+        << "</TriggerMask>";
+  }
+  config_frag << "</MuonTriggers>";
+
+  // -- External triggers
+  
+  std::string status_bool = (penn_ext_triggers_echo_)?"true":"false";
+  config_frag << "<ExtTriggers>"
+	      << "<Mask>0x" << std::hex << static_cast<uint32_t>(penn_ext_triggers_mask_) << std::dec << "</Mask>"
+	      << "<EchoTriggers>" <<  status_bool << "</EchoTriggers>"
+	      << "</ExtTriggers>";
+  
+  // -- Calibration channels
+  config_frag << "<Calibrations>";
+  for (size_t i = 0; i < penn_num_calibration_channels_; ++i) {
+    status_bool = (calib_channels_.at(i).enabled)?"true":"false";
+    config_frag << "<CalibrationMask id=\"" << calib_channels_.at(i).id << "\""
+		<< " mask=\"" << calib_channels_.at(i).id_mask << "\">"
+		<< "<enabled>" << status_bool << "</enabled>"
+		<< "<period>0x" << std::hex << calib_channels_.at(i).period << std::dec << "</period>"
+		<< "</CalibrationMask>";
+  } 
+  config_frag << "</Calibrations>";
+
+
+  // And finally close the tag
+  //config_frag << "</config>";
+
 }
 
 void lbne::PennReceiver::generate_config_frag_emulator(std::ostringstream& config_frag) {
