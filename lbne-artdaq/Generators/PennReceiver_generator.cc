@@ -20,6 +20,8 @@
 #include <thread>
 #include <unistd.h>
 
+//#define __PTB_BOARD_READER_DEVEL_MODE__
+
 lbne::PennReceiver::PennReceiver(fhicl::ParameterSet const & ps)
   :
   CommandableFragmentGenerator(ps),
@@ -224,7 +226,9 @@ lbne::PennReceiver::PennReceiver(fhicl::ParameterSet const & ps)
   DAQLogger::LogDebug("PennReceiver") << "Sending the configuration to the PTB";
   // Can I send the coonfiguration after creating the receiver?
   penn_client_->send_config(config_frag.str());
-  DAQLogger::LogDebug("PennReceiver") << "Configuration sent to the PTB";
+#ifdef __PTB_BOARD_READER_DEVEL_MODE__
+ DAQLogger::LogDebug("PennReceiver") << "Configuration sent to the PTB";
+#endif
 
 }
 
@@ -315,7 +319,7 @@ bool lbne::PennReceiver::getNext_(artdaq::FragmentPtrs & frags) {
 	    (reporting_interval_time_ * 1000))
 	  {
 	    report_time_ = std::chrono::high_resolution_clock::now();
-	    DAQLogger::LogInfo("PennReceiver") << "Received " << millislices_received_ << " millislices so far";
+	    DAQLogger::LogDebug("PennReceiver") << "Received " << millislices_received_ << " millislices so far";
 	  }
       }
   }

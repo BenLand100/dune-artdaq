@@ -17,12 +17,11 @@
 #include "lbne-raw-data/Overlays/PennMicroSlice.hh"
 #include "lbne-raw-data/Overlays/Utilities.hh"
 
-// JCF, Jul-14-2015: I promoted mf::LogDebug up to mf::LogInfo here
+//#define __PTB_BOARD_READER_DEVEL_MODE__
 
-// ...and later swapped out mf::LogInfo for DAQLogger::LogInfo
 
 // Lower level means more verbosity
-#define RECV_DEBUG(level) if (level <= debug_level_) DAQLogger::LogInfo("PennDataReceiver")
+#define RECV_DEBUG(level) if (level <= debug_level_) DAQLogger::LogDebug("PennDataReceiver")
 
 
 lbne::PennDataReceiver::PennDataReceiver(int debug_level, uint32_t tick_period_usecs,
@@ -44,6 +43,8 @@ lbne::PennDataReceiver::PennDataReceiver(int debug_level, uint32_t tick_period_u
     rate_test_(rate_test),
     millislice_overlap_size_(millislice_overlap_size)
 {
+
+
   RECV_DEBUG(1) << "lbne::PennDataReceiver constructor";
 
   //in this instance millislice_size_ is the number of bits that need to rollover to start a new microslice
@@ -94,7 +95,7 @@ lbne::PennDataReceiver::~PennDataReceiver()
   // Wait for thread running receiver IO service to terminate
   receiver_thread_->join();
 
-  RECV_DEBUG(1) << "lbne::PennDataReceiver destructor: receiver thread joined OK";
+  RECV_DEBUG(3) << "lbne::PennDataReceiver destructor: receiver thread joined OK";
 
 }
 
@@ -107,7 +108,7 @@ void lbne::PennDataReceiver::start(void)
   // Clean up current buffer state of any partially-completed readouts in previous runs
   if (current_raw_buffer_ != nullptr)
   {
-    RECV_DEBUG(2) << "TpcPennReceiver::start: dropping unused or partially filled buffer containing "
+    RECV_DEBUG(1) << "TpcPennReceiver::start: dropping unused or partially filled buffer containing "
         << microslices_recvd_ << " microslices";
     current_raw_buffer_.reset();
     millislice_state_ = MillisliceEmpty;
@@ -129,7 +130,7 @@ void lbne::PennDataReceiver::start(void)
   next_receive_state_ = ReceiveMicrosliceHeader;
   next_receive_size_  = sizeof(lbne::PennMicroSlice::Header);
 
-  RECV_DEBUG(1) << "lbne::PennDataReceiver::start: Next receive state : " << nextReceiveStateToString(ReceiveMicrosliceHeader);
+  RECV_DEBUG(2) << "lbne::PennDataReceiver::start: Next receive state : " << nextReceiveStateToString(ReceiveMicrosliceHeader);
 
   // Initialise this to make sure we can count number of 'full' microslices
   microslice_seen_timestamp_word_ = false;
@@ -194,8 +195,9 @@ void lbne::PennDataReceiver::stop(void)
   double elapsed_secs = ((double)elapsed_msecs) / 1000;
   double rate = ((double)millislices_recvd_) / elapsed_secs;
 
-  RECV_DEBUG(0) << "lbne::PennDataRecevier::stop : last sequence id was " << (unsigned int)last_sequence_id_;
-  RECV_DEBUG(0) << "lbne::PennDataReceiver::stop : received " << millislices_recvd_ << " millislices in "
+  RECV_DEBUG(1) << "lbne::PennDataRecevier::stop : last sequence id was " << (unsigned int)last_sequence_id_;
+
+  DAQLogger::LogInfo("PennReceiver")  << "lbne::PennDataReceiver::stop : received " << millislices_recvd_ << " millislices in "
       << elapsed_secs << " seconds, rate "
       << rate << " Hz";
 
@@ -262,7 +264,7 @@ void lbne::PennDataReceiver::run_service(void)
 
 void lbne::PennDataReceiver::do_accept(void)
 {
-  RECV_DEBUG(1) << "lbne::PennDataReceiver::do_accept starting";
+  RECV_DEBUG(5) << "lbne::PennDataReceiver::do_accept starting";
 
   // JCF, Jul-29-2015
 
@@ -282,7 +284,7 @@ void lbne::PennDataReceiver::do_accept(void)
 
   // Exit if shutting receiver down
   if (!run_receiver_.load()) {
-    RECV_DEBUG(1) << "Stopping do_accept() at entry";
+    RECV_DEBUG(4) << "Stopping do_accept() at entry";
     return;
   }
 
@@ -456,7 +458,7 @@ void lbne::PennDataReceiver::do_read(void)
       {
     if (!ec)
     {
-      RECV_DEBUG(2) << "Received " << length << " bytes on socket";
+      RECV_DEBUG(4) << "Received " << length << " bytes on socket";
 
       this->handle_received_data(length);
 
@@ -466,12 +468,12 @@ void lbne::PennDataReceiver::do_read(void)
     {
       if (ec == boost::asio::error::eof)
       {
-        RECV_DEBUG(1) << "Client socket closed the connection";
+        DAQLogger::LogWarning("PennDataReceiver") << "Client socket closed the connection";
         this->do_accept();
       }
       else if (ec == boost::asio::error::operation_aborted)
       {
-        RECV_DEBUG(3) << "Timeout on read from data socket";
+        RECV_DEBUG(4) << "Timeout on read from data socket";
         this->do_read();
       }
       else
@@ -498,7 +500,10 @@ void lbne::PennDataReceiver::handle_received_data(std::size_t length)
   microslice_size_recvd_ += length;
   millislice_size_recvd_ += length;
 
+
+#ifdef __PTB_BOARD_READER_DEVEL_MODE__
   display_bits(current_write_ptr_, length, "PennDataReceiver");
+#endif
 
   //make pointer to the start of the current object (Header, Payload_Header, Payload*)
   if(!state_start_ptr_)
@@ -661,7 +666,7 @@ void lbne::PennDataReceiver::handle_received_data(std::size_t length)
     case ReceiveMicroslicePayload:
     {
       //got a full microslice (complete size checks already done)
-      RECV_DEBUG(1) << "Complete payload received for microslice " << microslices_recvd_ << " length " << state_nbytes_recvd_;
+      RECV_DEBUG(3) << "Complete payload received for microslice " << microslices_recvd_ << " length " << state_nbytes_recvd_;
       microslices_recvd_++;
 
       //TODO add a better way of getting a start time, to calculate millislice boundaries from (presumably read the Penn)
@@ -714,7 +719,7 @@ void lbne::PennDataReceiver::handle_received_data(std::size_t length)
       // The argument remains set to "false", although in fact
       // it turns out the bytes didn't need to be reversed
 
-      RECV_DEBUG(1) << "Processing the microslice.  " << nextReceiveStateToString(next_receive_state_)
+      RECV_DEBUG(2) << "Processing the microslice.  " << nextReceiveStateToString(next_receive_state_)
 						      << " on length  " << length
 						      << " bytes_to_check " << bytes_to_check;
 
@@ -965,7 +970,7 @@ void lbne::PennDataReceiver::check_deadline(void)
   }
   else
   {
-    RECV_DEBUG(1) << "Deadline actor terminating";
+    DAQLogger::LogInfo("PennDataReceiver")  << "Deadline actor terminating";
   }
 }
 
