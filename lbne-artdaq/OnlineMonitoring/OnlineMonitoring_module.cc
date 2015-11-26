@@ -124,7 +124,7 @@ void OnlineMonitoring::OnlineMonitoring::analyze(art::Event const& evt) {
   PTBFormatter ptbformatter(rawPTB);
 
   // Fill the data products in the monitoring data
-  if (rawRCE.isValid()) fMonitoringData.RCEMonitoring(rceformatter);
+  if (rawRCE.isValid()) fMonitoringData.RCEMonitoring(rceformatter, std::time(0)-fLastSaveTime);
   if (rawSSP.isValid()) fMonitoringData.SSPMonitoring(sspformatter);
   if (rawPTB.isValid()) fMonitoringData.PTBMonitoring(ptbformatter);
   fMonitoringData.GeneralMonitoring(rceformatter, sspformatter, ptbformatter);

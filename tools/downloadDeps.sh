@@ -20,21 +20,22 @@ starttime=`date`
 cd ${productdir}
 
 prods="\
-mpich v3_1_4 -f Linux64bit+2.6-2.12 -z ${productdir} -q ${basequal2}:${build_type}
-xmlrpc_c v1_33_16 -f Linux64bit+2.6-2.12 -z ${productdir} -q ${basequal2}:${build_type}"
+mpich v3_1_4a -f Linux64bit+2.6-2.12 -z ${productdir} -q ${basequal2}:${build_type}
+xmlrpc_c v1_33_16b -f Linux64bit+2.6-2.12 -z ${productdir} -q ${basequal2}:${build_type}"
 
 # Some tarfiles have names that deviate from the standard "template",
 # so we can't use the download function's algorithm
 
 prods2="\
 smc_compiler/v6_1_0/smc_compiler-6.1.0-noarch.tar.bz2
-TRACE/v3_05_00/TRACE-3.05.00-slf6-x86_64-${basequal2}.tar.bz2
-cetbuildtools/v4_12_05/cetbuildtools-4.12.05-noarch.tar.bz2
-cetbuildtools/v4_12_06/cetbuildtools-4.12.06-noarch.tar.bz2
+TRACE/v3_05_00a/TRACE-3.05.00a-slf6-x86_64-${basequal2}.tar.bz2
+cetbuildtools/v4_14_02/cetbuildtools-4.14.02-noarch.tar.bz2
+cetbuildtools/v4_17_01/cetbuildtools-4.17.01-noarch.tar.bz2
 cmake/v3_2_1/cmake-3.2.1-slf6-x86_64.tar.bz2
+cmake/v3_3_2/cmake-3.3.2-slf6-x86_64.tar.bz2
 cetpkgsupport/v1_08_05/cetpkgsupport-1.08.05-noarch.tar.bz2
-artdaq_ganglia_plugin/v1_0_8/artdaq_ganglia_plugin-1.0.8-slf6-x86_64-e7-g371-s15-prof.tar.bz2
-artdaq_utilities/v1_00_00/artdaq_utilities-1.00.00-slf6-x86_64-e7-s15-prof.tar.bz2
+artdaq_ganglia_plugin/v1_0_10/artdaq_ganglia_plugin-1.0.10-slf6-x86_64-e7-g371-s15-prof.tar.bz2
+artdaq_utilities/v1_00_04/artdaq_utilities-1.00.04-slf6-x86_64-e7-s15-prof.tar.bz2
 ganglia/v3_7_1/ganglia-3.7.1-slf6-x86_64.tar.bz2
 "
 
