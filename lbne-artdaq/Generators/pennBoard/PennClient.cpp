@@ -14,6 +14,8 @@
 #include <libxml/parser.h>
 #include <libxml/tree.h>
 
+//#define __PTB_DEVEL_MODE__
+
 lbne::PennClient::PennClient(const std::string& host_name, const std::string& port_or_service, const unsigned int timeout_usecs) :
 	socket_(io_service_),
 	deadline_(io_service_),
@@ -40,7 +42,7 @@ lbne::PennClient::PennClient(const std::string& host_name, const std::string& po
 		while ((endpoint_iter != end) && (socket_.is_open() == false))
 		{
 			tcp::endpoint endpoint = *endpoint_iter++;
-			DAQLogger::LogInfo("PennClient") << "Connecting to PENN at " << endpoint;
+			DAQLogger::LogInfo("PennClient") << "Connecting to PTB at " << endpoint;
 
 			// If a client timeout is specified, set the deadline timer appropriately
 			this->set_deadline();
@@ -64,7 +66,7 @@ lbne::PennClient::PennClient(const std::string& host_name, const std::string& po
 			if (error == boost::asio::error::operation_aborted)
 			{
 				socket_.close();
-				DAQLogger::LogError("PennClient") << "Timeout establishing client connection to PENN at " << endpoint;
+				DAQLogger::LogError("PennClient") << "Timeout establishing client connection to PTB at " << endpoint;
 				// TODO replace with exception
 			}
 			// If another error occurred during connect - throw an exception
@@ -76,7 +78,7 @@ lbne::PennClient::PennClient(const std::string& host_name, const std::string& po
 
 				// Swallow exception thrown; does not necessarily prevent datataking
 				try {
-				  DAQLogger::LogError("PennClient") << "Error establishing connection to PENN at " << endpoint << " : " << error.message();
+				  DAQLogger::LogError("PennClient") << "Error establishing connection to PTB at " << endpoint << " : " << error.message();
 				} catch (...) {} // Swallow
 			}
 		}
@@ -143,7 +145,10 @@ void lbne::PennClient::send_command(std::string const & command)
 
 void lbne::PennClient::send_config(std::string const & config)
 {
-	DAQLogger::LogInfo("PennClient") << "Sending config: " << config;
+#ifdef __PTB_DEVEL_MODE__
+	DAQLogger::LogDebug("PennClient") << "Sending config: " << config;
+#endif
+
 	std::ostringstream config_frag;
 	config_frag << "<config>" << config << "</config>";
 

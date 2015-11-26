@@ -108,7 +108,7 @@ void lbne::PennDataReceiver::start(void)
   // Clean up current buffer state of any partially-completed readouts in previous runs
   if (current_raw_buffer_ != nullptr)
   {
-    RECV_DEBUG(1) << "TpcPennReceiver::start: dropping unused or partially filled buffer containing "
+    RECV_DEBUG(1) << "::start: dropping unused or partially filled buffer containing "
         << microslices_recvd_ << " microslices";
     current_raw_buffer_.reset();
     millislice_state_ = MillisliceEmpty;
@@ -130,7 +130,7 @@ void lbne::PennDataReceiver::start(void)
   next_receive_state_ = ReceiveMicrosliceHeader;
   next_receive_size_  = sizeof(lbne::PennMicroSlice::Header);
 
-  RECV_DEBUG(2) << "lbne::PennDataReceiver::start: Next receive state : " << nextReceiveStateToString(ReceiveMicrosliceHeader);
+  RECV_DEBUG(2) << "::start: Next receive state : " << nextReceiveStateToString(ReceiveMicrosliceHeader);
 
   // Initialise this to make sure we can count number of 'full' microslices
   microslice_seen_timestamp_word_ = false;
@@ -197,7 +197,7 @@ void lbne::PennDataReceiver::stop(void)
 
   RECV_DEBUG(1) << "lbne::PennDataRecevier::stop : last sequence id was " << (unsigned int)last_sequence_id_;
 
-  DAQLogger::LogInfo("PennReceiver")  << "lbne::PennDataReceiver::stop : received " << millislices_recvd_ << " millislices in "
+  DAQLogger::LogInfo("PennDataReceiver")  << "lbne::PennDataReceiver::stop : received " << millislices_recvd_ << " millislices in "
       << elapsed_secs << " seconds, rate "
       << rate << " Hz";
 
@@ -907,12 +907,12 @@ void lbne::PennDataReceiver::suspend_readout(bool await_restart)
 
   if (await_restart)
   {
-    RECV_DEBUG(2) << "TpcPennReceiver::suspend_readout: awaiting restart or shutdown";
+    RECV_DEBUG(2) << "::suspend_readout: awaiting restart or shutdown";
     while (suspend_readout_.load() && run_receiver_.load())
     {
       usleep(tick_period_usecs_);
     }
-    RECV_DEBUG(2) << "TpcPennReceiver::suspend_readout: restart or shutdown detected, exiting wait loop";
+    RECV_DEBUG(2) << "::suspend_readout: restart or shutdown detected, exiting wait loop";
   }
 
 }
