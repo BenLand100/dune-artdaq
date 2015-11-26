@@ -413,8 +413,8 @@ bool lbne::PennReceiver::getNext_(artdaq::FragmentPtrs & frags) {
 	  auto elapsed_msecs = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - start_time_).count();
 	  double elapsed_secs = ((double)elapsed_msecs)/1000;
 
-	  DAQLogger::LogInfo("PennReceiver") << "Received " << millislices_received_ << " millislices, "
-			  << float(total_bytes_received_)/(1024*1024) << " MB in " << elapsed_secs << " seconds";
+//	  DAQLogger::LogInfo("PennReceiver") << "Received " << millislices_received_ << " millislices, "
+//			  << float(total_bytes_received_)/(1024*1024) << " MB in " << elapsed_secs << " seconds";
   }
 
   // Recycle the raw buffer onto the commit queue for re-use by the receiver.
