@@ -436,73 +436,76 @@ void OnlineMonitoring::MonitoringData::PTBMonitoring(PTBFormatter const& ptb_for
 
   unsigned long activation_time = 0;
   double hit_rate = 0;
+  int counterNumber = 0;
 
   for (int i = 0; i < 97; ++i) {
 
     ptb_formatter.AnalyzeCounter(i,activation_time,hit_rate);
 
-    //Now we need to fill the relevant histograms :(
-    if (i>=0 && i<=9){
-      //Dealing with the WU TSU counters
-      hPTBTSUCounterHitRateWU->Fill(i+1,hit_rate);
-      hPTBTSUCounterActivationTimeWU->Fill(i+1,activation_time);
+    if (i < 7 and (activation_time != 0 or hit_rate != 0))
+      mf::LogError("Monitoring") << "A bit in the PTB payload below bit 7 is set!  Something has gone wrong...";
+
+    // Fill the relevant histograms for this counter
+    if (std::find(CounterPos::TSUWU.begin(),CounterPos::TSUWU.end(),i) != CounterPos::TSUWU.end()) {
+      counterNumber = std::distance(CounterPos::TSUWU.begin(),std::find(CounterPos::TSUWU.begin(),CounterPos::TSUWU.end(),i)) + 1;
+      hPTBTSUCounterHitRateWU->Fill(counterNumber,hit_rate);
+      hPTBTSUCounterActivationTimeWU->Fill(counterNumber,activation_time);
     }
-    else if (i>=10 && i<=19){
-      //Dealing with the EL TSU counters
-      hPTBTSUCounterHitRateEL->Fill(i+1-10,hit_rate);
-      hPTBTSUCounterActivationTimeEL->Fill(i+1-10,activation_time);
+    else if (std::find(CounterPos::TSUEL.begin(),CounterPos::TSUEL.end(),i) != CounterPos::TSUEL.end()) {
+      counterNumber = std::distance(CounterPos::TSUEL.begin(),std::find(CounterPos::TSUEL.begin(),CounterPos::TSUEL.end(),i)) + 1;
+      hPTBTSUCounterHitRateEL->Fill(counterNumber,hit_rate);
+      hPTBTSUCounterActivationTimeEL->Fill(counterNumber,activation_time);
     }
-    else if (i>=20 && i<=23){
-      //Dealing with the EL TSU counters
-      hPTBTSUCounterHitRateExtra->Fill(i+1-20,hit_rate);
-      hPTBTSUCounterActivationTimeExtra->Fill(i+1-20,activation_time);
+    else if (std::find(CounterPos::TSUExtra.begin(),CounterPos::TSUExtra.end(),i) != CounterPos::TSUExtra.end()) {
+      counterNumber = std::distance(CounterPos::TSUExtra.begin(),std::find(CounterPos::TSUExtra.begin(),CounterPos::TSUExtra.end(),i)) + 1;
+      hPTBTSUCounterHitRateExtra->Fill(counterNumber,hit_rate);
+      hPTBTSUCounterActivationTimeExtra->Fill(counterNumber,activation_time);
     }
-    else if (i>=24 && i<=29){
-      //Dealing with the NU TSU counters
-      hPTBTSUCounterHitRateNU->Fill(i+1-24,hit_rate);
-      hPTBTSUCounterActivationTimeNU->Fill(i+1-24,activation_time);
+    else if (std::find(CounterPos::TSUNU.begin(),CounterPos::TSUNU.end(),i) != CounterPos::TSUNU.end()) {
+      counterNumber = std::distance(CounterPos::TSUNU.begin(),std::find(CounterPos::TSUNU.begin(),CounterPos::TSUNU.end(),i)) + 1;
+      hPTBTSUCounterHitRateNU->Fill(counterNumber,hit_rate);
+      hPTBTSUCounterActivationTimeNU->Fill(counterNumber,activation_time);
     }
-    else if (i>=30 && i<=35){
-      //Dealing with the SL TSU counters
-      hPTBTSUCounterHitRateSL->Fill(i+1-30,hit_rate);
-      hPTBTSUCounterActivationTimeSL->Fill(i+1-30,activation_time);
+    else if (std::find(CounterPos::TSUSL.begin(),CounterPos::TSUSL.end(),i) != CounterPos::TSUSL.end()) {
+      counterNumber = std::distance(CounterPos::TSUSL.begin(),std::find(CounterPos::TSUSL.begin(),CounterPos::TSUSL.end(),i)) + 1;
+      hPTBTSUCounterHitRateSL->Fill(counterNumber,hit_rate);
+      hPTBTSUCounterActivationTimeSL->Fill(counterNumber,activation_time);
     }
-    else if (i>=36 && i<=41){
-      //Dealing with the NL TSU counters
-      hPTBTSUCounterHitRateNL->Fill(i+1-36,hit_rate);
-      hPTBTSUCounterActivationTimeNL->Fill(i+1-36,activation_time);
+    else if (std::find(CounterPos::TSUNL.begin(),CounterPos::TSUNL.end(),i) != CounterPos::TSUNL.end()) {
+      counterNumber = std::distance(CounterPos::TSUNL.begin(),std::find(CounterPos::TSUNL.begin(),CounterPos::TSUNL.end(),i)) + 1;
+      hPTBTSUCounterHitRateNL->Fill(counterNumber,hit_rate);
+      hPTBTSUCounterActivationTimeNL->Fill(counterNumber,activation_time);
     }
-    else if (i>=42 && i<=47){
-      //Dealing with the SU TSU counters
-      hPTBTSUCounterHitRateSU->Fill(i+1-42,hit_rate);
-      hPTBTSUCounterActivationTimeSU->Fill(i+1-42,activation_time);
+    else if (std::find(CounterPos::TSUSU.begin(),CounterPos::TSUSU.end(),i) != CounterPos::TSUSU.end()) {
+      counterNumber = std::distance(CounterPos::TSUSU.begin(),std::find(CounterPos::TSUSU.begin(),CounterPos::TSUSU.end(),i)) + 1;
+      hPTBTSUCounterHitRateSU->Fill(counterNumber,hit_rate);
+      hPTBTSUCounterActivationTimeSU->Fill(counterNumber,activation_time);
     }
-    //In the word map, the BSU counters are 0 indexed, but start at 48.  Let the compiler do that maths
-    else if (i>=0+48 && i<=15+48){
-      //Dealing with the RM BSU counters
-      hPTBBSUCounterHitRateRM->Fill(i+1-(0+48),hit_rate);
-      hPTBBSUCounterActivationTimeRM->Fill(i+1-(0+48),activation_time);
+    else if (std::find(CounterPos::BSURM.begin(),CounterPos::BSURM.end(),i) != CounterPos::BSURM.end()) {
+      counterNumber = std::distance(CounterPos::BSURM.begin(),std::find(CounterPos::BSURM.begin(),CounterPos::BSURM.end(),i)) + 1;
+      hPTBBSUCounterHitRateRM->Fill(counterNumber,hit_rate);
+      hPTBBSUCounterActivationTimeRM->Fill(counterNumber,activation_time);
     }
-    else if (i>=16+48 && i<=25+48){
-      //Dealing with the CU BSU counters
-      hPTBBSUCounterHitRateCU->Fill(i+1-(16+48),hit_rate);
-      hPTBBSUCounterActivationTimeCU->Fill(i+1-(16+48),activation_time);
+    else if (std::find(CounterPos::BSUCU.begin(),CounterPos::BSUCU.end(),i) != CounterPos::BSUCU.end()) {
+      counterNumber = std::distance(CounterPos::BSUCU.begin(),std::find(CounterPos::BSUCU.begin(),CounterPos::BSUCU.end(),i)) + 1;
+      hPTBBSUCounterHitRateCU->Fill(counterNumber,hit_rate);
+      hPTBBSUCounterActivationTimeCU->Fill(counterNumber,activation_time);
     }
-    else if (i>=26+48 && i<=38+48){
-      //Dealing with the CL BSU counters
-      hPTBBSUCounterHitRateCL->Fill(i+1-(26+48),hit_rate);
-      hPTBBSUCounterActivationTimeCL->Fill(i+1-(26+48),activation_time);
+    else if (std::find(CounterPos::BSUCL.begin(),CounterPos::BSUCL.end(),i) != CounterPos::BSUCL.end()) {
+      counterNumber = std::distance(CounterPos::BSUCL.begin(),std::find(CounterPos::BSUCL.begin(),CounterPos::BSUCL.end(),i)) + 1;
+      hPTBBSUCounterHitRateCL->Fill(counterNumber,hit_rate);
+      hPTBBSUCounterActivationTimeCL->Fill(counterNumber,activation_time);
     }
-    else if (i>=39+48 && i<=48+48){
-      //Dealing with the RL BSU counters
-      hPTBBSUCounterHitRateRL->Fill(i+1-(39+48),hit_rate);
-      hPTBBSUCounterActivationTimeRL->Fill(i+1-(39+48),activation_time);
+    else if (std::find(CounterPos::BSURL.begin(),CounterPos::BSURL.end(),i) != CounterPos::BSURL.end()) {
+      counterNumber = std::distance(CounterPos::BSURL.begin(),std::find(CounterPos::BSURL.begin(),CounterPos::BSURL.end(),i)) + 1;
+      hPTBBSUCounterHitRateRL->Fill(counterNumber,hit_rate);
+      hPTBBSUCounterActivationTimeRL->Fill(counterNumber,activation_time);
     }
 
-    //Now do the triggers
+    // Triggers
     double trigger_rate = 0;
-    for (unsigned int trigger_index= 1; trigger_index <= 4; trigger_index++){
-      ptb_formatter.AnalyzeMuonTrigger(trigger_index-1,trigger_rate);
+    for (int trigger_index= 1; trigger_index <= 4; trigger_index++){
+      ptb_formatter.AnalyzeMuonTrigger(TMath::Power(2,trigger_index-1),trigger_rate);
       hPTBTriggerRates->Fill(trigger_index,trigger_rate);
     }
 
@@ -653,7 +656,7 @@ void OnlineMonitoring::MonitoringData::MakeHistograms() {
   hSizeOfFilesPerEvent = new TH1D("General__Last20Files_SizePerEvent_RunSubrun_All","Size of Event in Data Files_\"colz\"_none;Run&Subrun;Size (MB/event);",20,0,20);
   fFigureCaptions["General__Last20Files_SizePerEvent_RunSubrun_All"] = "Size of event in each of the last 20 data files made by the DAQ (size of file / number of events in file)";
   // SSP time sync
-  for (unsigned int ssp = 0; ssp < NSSPs; ++ssp){
+  for (unsigned int ssp = 0; ssp < NSSPs; ++ssp) {
     hTimeSyncSSPs[ssp] = new TGraph();
     hTimeSyncSSPs[ssp]->SetName(("General_SSP"+std::to_string(ssp)+"_TimeSync_Difference_MinChannelTime_All").c_str());
     hTimeSyncSSPs[ssp]->SetTitle("Max -- Min Average Trigger Times for SSP "+ssp);
@@ -730,89 +733,111 @@ void OnlineMonitoring::MonitoringData::MakeHistograms() {
   fFigureCaptions["SSP__Triggers_Fraction_Channel_All"] = "Fraction of events with a trigger for each channel";
 
   // PTB hists
-  hPTBTSUCounterHitRateWU = new TProfile("PTB_TSUWU_Hits_Mean_Counter_All","PTB TSU counter hit rate (Hz) (West Up)_\"\"_none;Counter number; Hite rate (Hz)",10,1,11);
+  hPTBTSUCounterHitRateWU = new TProfile("PTB_TSUWU_Hits_Mean_Counter_All","TSU WU Counter Hit Rate_\"\"_none;Counter number;Hit Rate (Hz)",10,1,11);
   hPTBTSUCounterHitRateWU->GetXaxis()->SetNdivisions(10);
   hPTBTSUCounterHitRateWU->GetXaxis()->CenterLabels();
-  hPTBTSUCounterActivationTimeWU = new TProfile("PTB_TSUWU_ActivationTime_Mean_Counter_All","PTB counter average activation time (West Up)_\"\"_none;Counter number; Time",10,1,11);
+  fFigureCaptions["PTB_TSUWU_Hits_Mean_Counter_All"] = "Average hit rate in a millislice for the TSU West Up counters";
+  hPTBTSUCounterActivationTimeWU = new TProfile("PTB_TSUWU_ActivationTime_Mean_Counter_All","TSU WU Average Activation Time_\"\"_none;Counter number;Time",10,1,11);
   hPTBTSUCounterActivationTimeWU->GetXaxis()->SetNdivisions(10);
   hPTBTSUCounterActivationTimeWU->GetXaxis()->CenterLabels();
+  fFigureCaptions["PTB_TSUWU_ActivationTime_Mean_Counter_All"] = "Average activation time for the TSU West Up counters";
 
-  hPTBTSUCounterHitRateEL = new TProfile("PTB_TSUEL_Hits_Mean_Counter_All","PTB TSU counter hit rate (Hz) (East Low)_\"\"_none;Counter number; Hit rate (Hz)",10,1,11);
+  hPTBTSUCounterHitRateEL = new TProfile("PTB_TSUEL_Hits_Mean_Counter_All","TSU EL Counter Hit Rate_\"\"_none;Counter number;Hit rate (Hz)",10,1,11);
   hPTBTSUCounterHitRateEL->GetXaxis()->SetNdivisions(10);
   hPTBTSUCounterHitRateEL->GetXaxis()->CenterLabels();
-  hPTBTSUCounterActivationTimeEL = new TProfile("PTB_TSUEL_ActivationTime_Mean_Counter_All","PTB counter average activation time (East Low)_\"\"_none;Counter number; Time",10,1,11);
+  fFigureCaptions["PTB_TSUEL_Hits_Mean_Counter_All"] = "Average hit rate in a millislice for the TSU East Low counters";
+  hPTBTSUCounterActivationTimeEL = new TProfile("PTB_TSUEL_ActivationTime_Mean_Counter_All","TSU EL Average Activation Time_\"\"_none;Counter number;Time",10,1,11);
   hPTBTSUCounterActivationTimeEL->GetXaxis()->SetNdivisions(10);
   hPTBTSUCounterActivationTimeEL->GetXaxis()->CenterLabels();
+  fFigureCaptions["PTB_TSUEL_ActivationTime_Mean_Counter_All"] = "Average activation time for the TSU East Low counters";
 
-  hPTBTSUCounterHitRateExtra = new TProfile("PTB_TSUExtra_Hits_Mean_Counter_All","PTB TSU counter hit rate (Hz) (Empty counter bits - SHOULD BE EMPTY)_\"\"_none;Counter number; Hit rate (Hz)",4,1,5);
+  hPTBTSUCounterHitRateExtra = new TProfile("PTB_TSUExtra_Hits_Mean_Counter_All","TSU Empty Counter Bits Hit Rate_\"\"_none;Counter number;Hit rate (Hz)",4,1,5);
   hPTBTSUCounterHitRateExtra->GetXaxis()->SetNdivisions(4);
   hPTBTSUCounterHitRateExtra->GetXaxis()->CenterLabels();
-  hPTBTSUCounterActivationTimeExtra = new TProfile("PTB_TSUExtra_ActivationTime_Mean_Counter_All","PTB counter average activation time (Empty counter bits - SHOULD BE EMPTY)_\"\"_none;Counter number; Time",4,1,5);
+  fFigureCaptions["PTB_TSUExtra_Hits_Mean_Counter_All"] = "Average hit rate in a millislice for the TSU extra counter bits (SHOULD BE EMPTY)";
+  hPTBTSUCounterActivationTimeExtra = new TProfile("PTB_TSUExtra_ActivationTime_Mean_Counter_All","TSU Empty Counter Bits Average Activation Time_\"\"_none;Counter number;Time",4,1,5);
   hPTBTSUCounterActivationTimeExtra->GetXaxis()->SetNdivisions(4);
   hPTBTSUCounterActivationTimeExtra->GetXaxis()->CenterLabels();
+  fFigureCaptions["PTB_TSUExtra_ActivationTime_Mean_Counter_All"] = "Average activation time for the TSU extra counter bits (SHOULD BE EMPTY)";
 
-  hPTBTSUCounterHitRateNU = new TProfile("PTB_TSUNU_Hits_Mean_Counter_All","PTB TSU counter hit rate (Hz) (North Up)_\"\"_none;Counter number; Hit rate (Hz)",6,1,7);
+  hPTBTSUCounterHitRateNU = new TProfile("PTB_TSUNU_Hits_Mean_Counter_All","TSU NU Counter Hit Rate_\"\"_none;Counter number;Hit rate (Hz)",6,1,7);
   hPTBTSUCounterHitRateNU->GetXaxis()->SetNdivisions(6);
   hPTBTSUCounterHitRateNU->GetXaxis()->CenterLabels();
-  hPTBTSUCounterActivationTimeNU = new TProfile("PTB_TSUNU_ActivationTime_Mean_Counter_All","PTB counter average activation time (North Up)_\"\"_none;Counter number; Time",6,1,7);
+  fFigureCaptions["PTB_TSUNU_Hits_Mean_Counter_All"] = "Average hit rate in a millislice for the TSU North Up counters";
+  hPTBTSUCounterActivationTimeNU = new TProfile("PTB_TSUNU_ActivationTime_Mean_Counter_All","TSU NU Average Activation Time_\"\"_none;Counter number;Time",6,1,7);
   hPTBTSUCounterActivationTimeNU->GetXaxis()->SetNdivisions(6);
   hPTBTSUCounterActivationTimeNU->GetXaxis()->CenterLabels();
+  fFigureCaptions["PTB_TSUNU_ActivationTime_Mean_Counter_All"] = "Average activation time for the TSU North Up counters";
 
-  hPTBTSUCounterHitRateSL = new TProfile("PTB_TSUSL_Hits_Mean_Counter_All","PTB TSU counter hit rate (Hz) (South Low)_\"\"_none;Counter number; Hit rate (Hz)",6,1,7);
+  hPTBTSUCounterHitRateSL = new TProfile("PTB_TSUSL_Hits_Mean_Counter_All","TSU SL Counter Hit Rate_\"\"_none;Counter number;Hit rate (Hz)",6,1,7);
   hPTBTSUCounterHitRateSL->GetXaxis()->SetNdivisions(6);
   hPTBTSUCounterHitRateSL->GetXaxis()->CenterLabels();
-  hPTBTSUCounterActivationTimeSL = new TProfile("PTB_TSUSL_ActivationTime_Mean_Counter_All","PTB counter average activation time (South Low)_\"\"_none;Counter number; Time",6,1,7);
+  fFigureCaptions["PTB_TSUSL_Hits_Mean_Counter_All"] = "Average hit rate in a millislice for the TSU South Low counters";
+  hPTBTSUCounterActivationTimeSL = new TProfile("PTB_TSUSL_ActivationTime_Mean_Counter_All","TSU SL Average Activation Time_\"\"_none;Counter number;Time",6,1,7);
   hPTBTSUCounterActivationTimeSL->GetXaxis()->SetNdivisions(6);
   hPTBTSUCounterActivationTimeSL->GetXaxis()->CenterLabels();
+  fFigureCaptions["PTB_TSUSL_ActivationTime_Mean_Counter_All"] = "Average activation time for the TSU South Low counters";
 
-  hPTBTSUCounterHitRateNL = new TProfile("PTB_TSUNL_Hits_Mean_Counter_All","PTB TSU counter hit rate (Hz) (North Low)_\"\"_none;Counter number; Hit rate (Hz)",6,1,7);
+  hPTBTSUCounterHitRateNL = new TProfile("PTB_TSUNL_Hits_Mean_Counter_All","TSU NL Counter Hit Rate_\"\"_none;Counter number;Hit rate (Hz)",6,1,7);
   hPTBTSUCounterHitRateNL->GetXaxis()->SetNdivisions(6);
   hPTBTSUCounterHitRateNL->GetXaxis()->CenterLabels();
-  hPTBTSUCounterActivationTimeNL = new TProfile("PTB_TSUNL_ActivationTime_Mean_Counter_All","PTB counter average activation time (North Low)_\"\"_none;Counter number; Time",6,1,7);
+  fFigureCaptions["PTB_TSUNL_Hits_Mean_Counter_All"] = "Average hit rate in a millislice for the TSU North Low counters";
+  hPTBTSUCounterActivationTimeNL = new TProfile("PTB_TSUNL_ActivationTime_Mean_Counter_All","TSU NL Average Activation Time_\"\"_none;Counter number;Time",6,1,7);
   hPTBTSUCounterActivationTimeNL->GetXaxis()->SetNdivisions(6);
   hPTBTSUCounterActivationTimeNL->GetXaxis()->CenterLabels();
+  fFigureCaptions["PTB_TSUNL_ActivationTime_Mean_Counter_All"] = "Average activation time for the TSU North Low counters";
 
-  hPTBTSUCounterHitRateSU = new TProfile("PTB_TSUSU_Hits_Mean_Counter_All","PTB TSU counter hit rate (Hz) (South Up)_\"\"_none;Counter number; Hit rate (Hz)",6,1,7);
+  hPTBTSUCounterHitRateSU = new TProfile("PTB_TSUSU_Hits_Mean_Counter_All","TSU SU Counter Hit Rate_\"\"_none;Counter number;Hit rate (Hz)",6,1,7);
   hPTBTSUCounterHitRateSU->GetXaxis()->SetNdivisions(6);
   hPTBTSUCounterHitRateSU->GetXaxis()->CenterLabels();
-  hPTBTSUCounterActivationTimeSU = new TProfile("PTB_TSUSU_ActivationTime_Mean_Counter_All","PTB counter average activation time (South Up)_\"\"_none;Counter number; Time",6,1,7);
+  fFigureCaptions["PTB_TSUSU_Hits_Mean_Counter_All"] = "Average hit rate in a millislice for the TSU North Low counters";
+  hPTBTSUCounterActivationTimeSU = new TProfile("PTB_TSUSU_ActivationTime_Mean_Counter_All","TSU SU Average Activation Time_\"\"_none;Counter number;Time",6,1,7);
   hPTBTSUCounterActivationTimeSU->GetXaxis()->SetNdivisions(6);
   hPTBTSUCounterActivationTimeSU->GetXaxis()->CenterLabels();
+  fFigureCaptions["PTB_TSUSU_ActivationTime_Mean_Counter_All"] = "Average activation time for the TSU North Low counters";
 
-  hPTBBSUCounterHitRateRM = new TProfile("PTB_BSURM_Hits_Mean_Counter_All","PTB BSU counter hit rate (Hz) (RM)_\"\"_none;Counter number; Hit rate (Hz)",16,1,17);
+  hPTBBSUCounterHitRateRM = new TProfile("PTB_BSURM_Hits_Mean_Counter_All","BSU RM Counter Hit Rate_\"\"_none;Counter number;Hit rate (Hz)",16,1,17);
   hPTBBSUCounterHitRateRM->GetXaxis()->SetNdivisions(16);
   hPTBBSUCounterHitRateRM->GetXaxis()->CenterLabels();
-  hPTBBSUCounterActivationTimeRM = new TProfile("PTB_BSURM_ActivationTime_Mean_Counter_All","PTB counter average activation time (RM)_\"\"_none;Counter number; Time",16,1,17);
+  fFigureCaptions["PTB_BSURM_Hits_Mean_Counter_All"] = "Average hit rate in a millislice for the BSU RM counters";
+  hPTBBSUCounterActivationTimeRM = new TProfile("PTB_BSURM_ActivationTime_Mean_Counter_All","BSU RM Average Activation Time_\"\"_none;Counter number;Time",16,1,17);
   hPTBBSUCounterActivationTimeRM->GetXaxis()->SetNdivisions(16);
   hPTBBSUCounterActivationTimeRM->GetXaxis()->CenterLabels();
+  fFigureCaptions["PTB_BSURM_ActivationTime_Mean_Counter_All"] = "Average activation time for the BSU RM counters";
 
-  hPTBBSUCounterHitRateCU = new TProfile("PTB_BSUCU_Hits_Mean_Counter_All","PTB BSU counter hit rate (Hz) (CU)_\"\"_none;Counter number; Hit rate (Hz)",10,1,11);
+  hPTBBSUCounterHitRateCU = new TProfile("PTB_BSUCU_Hits_Mean_Counter_All","BSU CU Counter Hit Rate_\"\"_none;Counter number;Hit rate (Hz)",10,1,11);
   hPTBBSUCounterHitRateCU->GetXaxis()->SetNdivisions(10);
   hPTBBSUCounterHitRateCU->GetXaxis()->CenterLabels();
-  hPTBBSUCounterActivationTimeCU = new TProfile("PTB_BSU_ActivationTime_Mean_Counter_All","PTB counter average activation time (CU)_\"\"_none;Counter number; Time",10,1,11);
+  fFigureCaptions["PTB_BSUCU_Hits_Mean_Counter_All"] = "Average hit rate in a millislice for the BSU CU counters";
+  hPTBBSUCounterActivationTimeCU = new TProfile("PTB_BSUCU_ActivationTime_Mean_Counter_All","BSU CU Average Activation Time_\"\"_none;Counter number;Time",10,1,11);
   hPTBBSUCounterActivationTimeCU->GetXaxis()->SetNdivisions(10);
   hPTBBSUCounterActivationTimeCU->GetXaxis()->CenterLabels();
+  fFigureCaptions["PTB_BSUCU_ActivationTime_Mean_Counter_All"] = "Average activation time for the BSU CU counters";
 
-  hPTBBSUCounterHitRateCL = new TProfile("PTB_BSUCL_Hits_Mean_Counter_All","PTB BSU counter hit rate (Hz) (CL)_\"\"_none;Counter number; Hit rate (Hz)",13,1,14);
+  hPTBBSUCounterHitRateCL = new TProfile("PTB_BSUCL_Hits_Mean_Counter_All","BSU CL Counter Hit Rate_\"\"_none;Counter number;Hit rate (Hz)",13,1,14);
   hPTBBSUCounterHitRateCL->GetXaxis()->SetNdivisions(13);
   hPTBBSUCounterHitRateCL->GetXaxis()->CenterLabels();
-  hPTBBSUCounterActivationTimeCL = new TProfile("PTB_BSUCL_ActivationTime_Mean_Counter_All","PTB counter average activation time (CL)_\"\"_none;Counter number; Time",13,1,14);
+  fFigureCaptions["PTB_BSUCL_Hits_Mean_Counter_All"] = "Average hit rate in a millislice for the BSU CL counters";
+  hPTBBSUCounterActivationTimeCL = new TProfile("PTB_BSUCL_ActivationTime_Mean_Counter_All","BSU CL Average Activation Time_\"\"_none;Counter number;Time",13,1,14);
   hPTBBSUCounterActivationTimeCL->GetXaxis()->SetNdivisions(13);
   hPTBBSUCounterActivationTimeCL->GetXaxis()->CenterLabels();
+  fFigureCaptions["PTB_BSUCL_ActivationTime_Mean_Counter_All"] = "Average activation time for the BSU CL counters";
 
-  hPTBBSUCounterHitRateRL = new TProfile("PTB_BSURL_Hits_Mean_Counter_All","PTB BSU counter hit rate (Hz) (RL)_\"\"_none;Counter number; Hit rate (Hz)",10,1,11);
+  hPTBBSUCounterHitRateRL = new TProfile("PTB_BSURL_Hits_Mean_Counter_All","BSU RL Counter Hit Rate_\"\"_none;Counter number;Hit rate (Hz)",10,1,11);
   hPTBBSUCounterHitRateRL->GetXaxis()->SetNdivisions(10);
   hPTBBSUCounterHitRateRL->GetXaxis()->CenterLabels();
-  hPTBBSUCounterActivationTimeRL = new TProfile("PTB_BSURL_ActivationTime_Mean_Counter_All","PTB counter average activation time (RL)_\"\"_none;Counter number; Time",10,1,11);
+  fFigureCaptions["PTB_BSURL_Hits_Mean_Counter_All"] = "Average hit rate in a millislice for the BSU RL counters";
+  hPTBBSUCounterActivationTimeRL = new TProfile("PTB_BSURL_ActivationTime_Mean_Counter_All","BSU RL Average Activation Time_\"\"_none;Counter number;Time",10,1,11);
   hPTBBSUCounterActivationTimeRL->GetXaxis()->SetNdivisions(10);
   hPTBBSUCounterActivationTimeRL->GetXaxis()->CenterLabels();
+  fFigureCaptions["PTB_BSURL_ActivationTime_Mean_Counter_All"] = "Average activation time for the BSU RL counters";
 
-  hPTBTriggerRates = new TProfile("PTB__Hits_Mean_MuonTrigger_All","Muon trigger rates_\"\"_none;Muon trigger name; Hit rate (Hz)",4,1,5);
-
+  hPTBTriggerRates = new TProfile("PTB__MuonTrigger_HitRate_TriggerType_All","Muon Trigger Rates_\"\"_none;Muon Trigger;Hit rate (Hz)",4,1,5);
   hPTBTriggerRates->GetXaxis()->SetBinLabel(1,"TSU EL-WU");
   hPTBTriggerRates->GetXaxis()->SetBinLabel(2,"TSU SU-NL");
   hPTBTriggerRates->GetXaxis()->SetBinLabel(3,"TSU SL-NU");
   hPTBTriggerRates->GetXaxis()->SetBinLabel(4,"BSU RM-CM");
+  fFigureCaptions["PTB__MuonTrigger_HitRate_TriggerType_All"] = "Average hit rates per millislice of the muon trigger system";
 
   // The order the histograms are added will be the order they're displayed on the web!
   fHistArray.Add(hNumSubDetectorsPresent); 
@@ -878,31 +903,6 @@ void OnlineMonitoring::MonitoringData::MakeHistograms() {
   fFigureCaptions["RCE__ADCLast6Bits_Off_Channel_All"] = "Fraction of all RCE ADC values with the last six bits stuck off (profiled; one entry per ADC)";
   fFigureCaptions["RCE__Microslices_Total_Millislice_All"] = "Number of microslices in a millislice in this run";
 
-  // PTB captions
-  fFigureCaptions["PTB_TSUWU_Hits_Mean_Counter_All"] = "Average hit rate in a millislice for the TSU West Up counters";
-  fFigureCaptions["PTB_TSUWU_ActivationTime_Mean_Counter_All"] = "Average activation time for the TSU West Up counters";
-  fFigureCaptions["PTB_TSUEL_Hits_Mean_Counter_All"] = "Average hit rate in a millislice for the TSU East Low counters";
-  fFigureCaptions["PTB_TSUEL_ActivationTime_Mean_Counter_All"] = "Average activation time for the TSU East Low counters";
-  fFigureCaptions["PTB_TSUExtra_Hits_Mean_Counter_All"] = "Average hit rate in a millislice for the TSU extra counter bits (SHOULD BE EMPTY)";
-  fFigureCaptions["PTB_TSUExtra_ActivationTime_Mean_Counter_All"] = "Average activation time for the TSU extra counter bits (SHOULD BE EMPTY)";
-  fFigureCaptions["PTB_TSUNU_Hits_Mean_Counter_All"] = "Average hit rate in a millislice for the TSU North Up counters";
-  fFigureCaptions["PTB_TSUNU_ActivationTime_Mean_Counter_All"] = "Average activation time for the TSU North Up counters";
-  fFigureCaptions["PTB_TSUSL_Hits_Mean_Counter_All"] = "Average hit rate in a millislice for the TSU South Low counters";
-  fFigureCaptions["PTB_TSUSL_ActivationTime_Mean_Counter_All"] = "Average activation time for the TSU South Low counters";
-  fFigureCaptions["PTB_TSUNL_Hits_Mean_Counter_All"] = "Average hit rate in a millislice for the TSU North Low counters";
-  fFigureCaptions["PTB_TSUNL_ActivationTime_Mean_Counter_All"] = "Average activation time for the TSU North Low counters";
-  fFigureCaptions["PTB_TSUSU_Hits_Mean_Counter_All"] = "Average hit rate in a millislice for the TSU North Low counters";
-  fFigureCaptions["PTB_TSUSU_ActivationTime_Mean_Counter_All"] = "Average activation time for the TSU North Low counters";
-  fFigureCaptions["PTB_BSURM_Hits_Mean_Counter_All"] = "Average hit rate in a millislice for the BSU RM counters";
-  fFigureCaptions["PTB_BSURM_ActivationTime_Mean_Counter_All"] = "Average activation time for the BSU RM counters";
-  fFigureCaptions["PTB_BSUCU_Hits_Mean_Counter_All"] = "Average hit rate in a millislice for the BSU CU counters";
-  fFigureCaptions["PTB_BSU_ActivationTime_Mean_Counter_All"] = "Average activation time for the BSU CU counters";
-  fFigureCaptions["PTB_BSUCL_Hits_Mean_Counter_All"] = "Average hit rate in a millislice for the BSU CL counters";
-  fFigureCaptions["PTB_BSUCL_ActivationTime_Mean_Counter_All"] = "Average activation time for the BSU CL counters";
-  fFigureCaptions["PTB_BSURL_Hits_Mean_Counter_All"] = "Average hit rate in a millislice for the BSU RL counters";
-  fFigureCaptions["PTB_BSURL_ActivationTime_Mean_Counter_All"] = "Average activation time for the BSU RL counters";
-  fFigureCaptions["PTB__Hits_Mean_MuonTrigger_All"] = "Average hit rates per millislice of the muon trigger system";
-
 }
 
 void OnlineMonitoring::MonitoringData::ConstructTimingSyncGraphs() {
@@ -943,161 +943,3 @@ void OnlineMonitoring::MonitoringData::ConstructTimingSyncGraphs() {
     fHistArray.Add(sspTimeSyncAverageArray);
   }
 }
-
-
-
-
-
-  // for (unsigned int ssp = 0; ssp < NSSPs; ++ssp){
-  //   hTimeSyncsSSPs[ssp] = new TGraph();
-  //   std::string hTimeSyncsSSPsTitle = Form("Max-min average trigger times for SSP %i_\"AL*\"_none;Min average channel time;(Max-min) channel time",i);
-  //   //std::string hTimeSyncsSSPsTitle = "Max-min average trigger times for all SSPs_\"AL*\"_none;Min average channel time;(Max-min) channel time";
-  //   std::string hTimeSyncsSSPsName = Form("General__Time_Sync_SSP_%i",i);
-  //   hTimeSyncsSSPs[i]->SetName("General_SSP+"+ssp+"_TimeSync_Difference_MinChannelTime_All");
-  //   hTimeSyncsSSPs[i]->SetTitle("Max -- Min Average Trigger Times for SSP "+ssp);
-  //   hTimeSyncsSSPs[i]->SetLineColor(i+1);
-  //   hTimeSyncsSSPs[i]->SetMarkerColor(i+1);
-  //   hTimeSyncsSSPs[i]->SetLineStyle(i+2);
-  //   hTimeSyncsSSPs[i]->SetLineWidth(2);
-  //   //sspTimeSyncsArray->Add(hTimeSyncsSSPs[i]);
-  //   //TString ssp_legend_label = Form("SSP %i",i+1);
-  //   //sspTimeSyncsArrayLegend->AddEntry(hTimeSyncsSSPs[i], ssp_legend_label, "l");
-
-  // }
-  // //fFigureLegends[sspTimeSyncsArray->GetName()] = sspTimeSyncsArrayLegend;
-  // //fFigureCaptions[sspTimeSyncsArray->GetName()] = "Max-min average trigger times for all SSPs";
-  // //fHistArray.Add(sspTimeSyncsArray);
-
-  // //TMultiGraph *sspTimeSyncsAverageArray = new TMultiGraph();
-  // //sspTimeSyncsAverageArray->SetName("General__Time_Sync_SSP_Average");
-  // //sspTimeSyncsAverageArray->SetTitle("Average SSP trigger time - average channel trigger time_\"AL\"_none;Average channel trigger time;SSP average trigger time - average channel trigger time");
-  // //TLegend *sspTimeSyncsAverageArrayLegend = new TLegend(0.8,0.5,0.9,0.9);
-  // for (unsigned int i = 0; i < NSSPs; ++i){
-  //   hTimeSyncsAverageSSPs[i] = new TGraph();
-  //   std::string hTimeSyncsAverageSSPsTitle = Form("Average SSP trigger time - average channel trigger time for SSP %i_\"AL\"_none;Average channel trigger time;SSP average trigger time - average channel trigger time",i);
-  //   //std::string hTimeSyncsAverageSSPsTitle = "Max-min average trigger times for all SSPs_\"AL*\"_none;Min average channel time;(Max-min) channel time";
-  //   std::string hTimeSyncsAverageSSPsName = Form("General__Time_Sync_SSP_%i_Average",i);
-  //   hTimeSyncsAverageSSPs[i]->SetName(hTimeSyncsAverageSSPsName.c_str());
-  //   hTimeSyncsAverageSSPs[i]->SetTitle(hTimeSyncsAverageSSPsTitle.c_str());
-  //   hTimeSyncsAverageSSPs[i]->SetLineColor(i+1);
-  //   hTimeSyncsAverageSSPs[i]->SetMarkerColor(i+1);
-  //   hTimeSyncsAverageSSPs[i]->SetLineStyle(i+2);
-  //   hTimeSyncsAverageSSPs[i]->SetLineWidth(2);
-  //   //TString ssp_legend_label = Form("SSP %i",i+1);
-  //   //sspTimeSyncsAverageArray->Add(hTimeSyncsAverageSSPs[i]);
-  //   //sspTimeSyncsAverageArrayLegend->AddEntry(hTimeSyncsAverageSSPs[i], ssp_legend_label, "l");
-  // }
-  // //fFigureLegends[sspTimeSyncsAverageArray->GetName()] = sspTimeSyncsAverageArrayLegend;
-  // //fFigureCaptions[sspTimeSyncsAverageArray->GetName()] = "Average SSP trigger time - average channel trigger time for all SSPs";
-  // //fHistArray.Add(sspTimeSyncsAverageArray);
-
-
-//   //Timing sync plots
-//   //Do SSPs alone first
-//   //Check the inter sync of a single SSP
-//   //Right now the plots will show the difference in the max and min average channel times as a function of the min average channel time
-// //  unsigned long min_average_time, max_average_time;
-//   //Iterate through the channel map
-//   const std::map<int,std::vector<Trigger> > channelTriggers = sspformatter.ChannelTriggers();
-
-//   long double min_average_time = 0; //Needed to check sync on a single ssp
-//   long double max_average_time = 0; //Needed to check sync on a single ssp
-//   int NChannelsWithTrigger = 0;
-
-//   std::map<int,long double> average_ssp_times; //ssp number to average ssp trigger time map
-
-//   // Loop over channels
-//   for (unsigned int i = 0; i < NSSPs; ++i)
-//     average_ssp_times[i] = 0.;
-//   long double average_ssp_trigger_time = 0.; //The average of ALL triggers (on all channels for a single ssp)
-//   unsigned int NSSPTriggers = 0; //Number of triggers on an ssp
-
-//   //Needed to know when looking at a new SSP
-//   int NSSPChannelsPerSSP = NSSPChannels/NSSPs;
-
-
-//   for (std::map<int,std::vector<Trigger> >::const_iterator channelIt = channelTriggers.begin(); channelIt != channelTriggers.end(); ++channelIt) {
-
-//     //const int channel = channelIt->first;
-//     const std::vector<Trigger> triggers = channelIt->second;
-
-//     //Don't do arithmetic when there is no arithmetic to do
-//     if (triggers.size() == 0) continue;
-//     else ++NChannelsWithTrigger;
-
-//     long double average_channel_time = 0;
-//     // Loop over triggers
-//     for (std::vector<Trigger>::const_iterator triggerIt = triggers.begin(); triggerIt != triggers.end(); ++triggerIt) {
-//       unsigned long time = triggerIt->Timestamp;
-//       average_channel_time = average_channel_time + time;
-//       //std::cout<<"NTrig: " << triggers.size() << " time: " << triggerIt->Timestamp << std::endl;
-
-//     }
-//     //Add on the summed time to average_ssp_trigger_time
-//     average_ssp_trigger_time += average_channel_time;
-//     NSSPTriggers += triggers.size();
-//     average_channel_time /= triggers.size();
-//     //std::cout<<"NTring: " << triggers.size() <<  " Average timestamp: " << average_channel_time << std::endl;
-
-//     //We need to know if we are looking at the first channel of an SSP
-//     //If we are, store the average_channel_time as both the min and max 
-//     if (std::distance(channelTriggers.begin(),channelIt) % NSSPChannelsPerSSP == 0){
-//       min_average_time = average_channel_time;
-//       max_average_time = average_channel_time;
-//     }
-//     //Otherwise compare the min and max with what was stored
-//     else {
-//       min_average_time = std::min(min_average_time,average_channel_time);
-//       max_average_time = std::max(max_average_time,average_channel_time);
-//     }
-
-//     //printf("Channel: %i  average time: %Lf \n",channelIt->first,average_channel_time);
-//     //std::cout<<"Channel no: " << std::distance(channelTriggers.begin(),channelIt) << "  SSPNo: " << std::distance(channelTriggers.begin(),channelIt) / (NSSPChannels/NSSPs) << std::endl;
-
-//     if (std::distance(channelTriggers.begin(),channelIt) % NSSPChannelsPerSSP == NSSPChannelsPerSSP-1){
-//       if (NChannelsWithTrigger <= 1){
-//         NChannelsWithTrigger=0;
-//         std::cout<<"Found SSP with only 1 trigger: continue"<<std::endl;
-//         continue;
-//       }
-//       NChannelsWithTrigger=0;
-//       //int NSSPChannelsPerSSP = NSSPChannels/NSSPs;
-//       int plot_index = std::distance(channelTriggers.begin(),channelIt) / NSSPChannelsPerSSP;
-//       //std::cout<<"SSP: " << plot_index+1 << std::endl;
-//       //std::cout<<"---NTr: " << NSSPTriggers << std::endl;
-//       //std::cout<<"---min: " << min_average_time << std::endl;
-//       //std::cout<<"---max: " << max_average_time << std::endl;
-//       //std::cout<<"---dif: " << max_average_time - min_average_time << std::endl;
-
-//       hTimeSyncsSSPs[plot_index]->SetPoint(hTimeSyncsSSPs[plot_index]->GetN(),min_average_time, max_average_time-min_average_time);
-
-//       //Store the average SSP time in the map
-//       average_ssp_trigger_time /= NSSPTriggers;
-//       average_ssp_times[plot_index] = average_ssp_trigger_time;
-//       //printf("---ave: %Lf \n",average_ssp_times[plot_index]);
-//       //std::cout<<"---ave: " << average_ssp_times[plot_index] << std::endl;
-//       //std::cout<<"---min-av: " << min_average_time - average_ssp_times[plot_index] << std::endl;
-//       //std::cout<<"---max-av: " << max_average_time - average_ssp_times[plot_index] << std::endl;
-
-//       //Now reset them
-//       NSSPTriggers = 0;
-//       average_ssp_trigger_time = 0;
-//     }
-//   }
-
-//   //Calculate the average of all ssp times
-//   long double average_of_average_ssps_times = 0;
-//   unsigned int NSSPsWithTriggers = 0;
-//   for (std::map<int,long double>::iterator mapIt = average_ssp_times.begin(); mapIt != average_ssp_times.end(); ++mapIt){
-//     if ((*mapIt).second > 0){
-//       average_of_average_ssps_times += (*mapIt).second;
-//       NSSPsWithTriggers++;
-//     }
-//   }
-//   if (NSSPsWithTriggers) average_of_average_ssps_times /= NSSPsWithTriggers;
-//   for (std::map<int,long double>::iterator mapIt = average_ssp_times.begin(); mapIt != average_ssp_times.end(); ++mapIt){
-//     if ((*mapIt).second > 0){
-//       int plot_index = std::distance(average_ssp_times.begin(), mapIt);
-//       hTimeSyncsAverageSSPs[plot_index]->SetPoint(hTimeSyncsAverageSSPs[plot_index]->GetN(), average_of_average_ssps_times,(*mapIt).second-average_of_average_ssps_times);
-//     }
-//   }
