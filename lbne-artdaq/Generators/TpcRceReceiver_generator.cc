@@ -38,7 +38,12 @@ lbne::TpcRceReceiver::TpcRceReceiver(fhicl::ParameterSet const & ps)
   instance_name_ss << instance_name_ << board_id;
   instance_name_ = instance_name_ss.str();
 
-  instance_name_for_metrics_ = instance_name_;
+  instance_name_for_metrics_ = "RCE " + boost::lexical_cast<std::string>(board_id);
+
+  empty_buffer_low_water_metric_name_ = instance_name_for_metrics_ + " Empty Buffer Low Water Mark";
+  empty_buffer_available_metric_name_ = instance_name_for_metrics_ + " Empty Buffers Available";
+  filled_buffer_high_water_metric_name_ = instance_name_for_metrics_ + " Filled Buffer High Water Mark";
+  filled_buffer_available_metric_name_ = instance_name_for_metrics_ + " Filled Buffers Available";
 
   DAQLogger::LogInfo(instance_name_) << "Starting up";
 
@@ -436,10 +441,10 @@ bool lbne::TpcRceReceiver::getNext_(artdaq::FragmentPtrs & frags) {
   {
 	  filled_buffer_high_mark_ = filled_buffers_available;
   }
-  metricMan_->sendMetric("EmptyBufferLowWaterMark", empty_buffer_low_mark_, "buffers", 1, true, true);
-  metricMan_->sendMetric("FilledBufferHighWaterMark", filled_buffer_high_mark_, "buffers", 1, true, true);
-  metricMan_->sendMetric("EmptyBuffersAvailable", empty_buffers_available, "buffers", 1, true, true);
-  metricMan_->sendMetric("FilledBuffersAvailable", filled_buffers_available, "buffers", 1, true, true);
+  metricMan_->sendMetric(empty_buffer_low_water_metric_name_, empty_buffer_low_mark_, "buffers", 1, false, true);
+  metricMan_->sendMetric(empty_buffer_available_metric_name_, empty_buffers_available, "buffers", 1, false, true);
+  metricMan_->sendMetric(filled_buffer_high_water_metric_name_, filled_buffer_high_mark_, "buffers", 1, false, true);
+  metricMan_->sendMetric(filled_buffer_available_metric_name_, filled_buffers_available, "buffers", 1, false, true);
 
   // Recycle the raw buffer onto the commit queue for re-use by the receiver.
   data_receiver_->commit_empty_buffer(recvd_buffer);

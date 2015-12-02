@@ -131,6 +131,11 @@ namespace lbne {
     uint32_t validate_millislice_from_fragment_buffer(uint8_t* data_addr, size_t data_size, uint32_t count);
 
     std::string instance_name_for_metrics_;
+    std::string empty_buffer_low_water_metric_name_;
+    std::string empty_buffer_available_metric_name_;
+    std::string filled_buffer_high_water_metric_name_;
+    std::string filled_buffer_available_metric_name_;
+
   };
 }
 
