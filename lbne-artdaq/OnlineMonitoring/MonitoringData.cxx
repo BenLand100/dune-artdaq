@@ -584,6 +584,8 @@ void OnlineMonitoring::MonitoringData::WriteMonitoringData(int run, int subrun, 
       }
     if (strstr(histTitle->At(2)->GetName(),"logy")) fCanvas->SetLogy(1);
     else fCanvas->SetLogy(0);
+    if (strstr(histTitle->At(2)->GetName(),"logz")) fCanvas->SetLogz(1);
+    else fCanvas->SetLogz(0);
     fCanvas->Modified();
     fCanvas->Update();
     fCanvas->SaveAs(HistSaveDirectory+TString(histName->At(0)->GetName())+TString("/")+TString(_h->GetName())+ImageType);
@@ -682,10 +684,10 @@ void OnlineMonitoring::MonitoringData::MakeHistograms() {
   hADCRMSChannelAPA2                    = new TProfile("RCE_APA1_ADC_RMS_Channel_All","RCE ADC RMS APA1_\"histl\"_none;Channel;RCE ADC RMS",512,512,1023);
   hADCRMSChannelAPA3                    = new TProfile("RCE_APA2_ADC_RMS_Channel_All","RCE ADC RMS APA2_\"histl\"_none;Channel;RCE ADC RMS",512,1024,1535);
   hADCRMSChannelAPA4                    = new TProfile("RCE_APA3_ADC_RMS_Channel_All","RCE ADC RMS APA3_\"histl\"_none;Channel;RCE ADC RMS",512,1536,2047);
-  hFFTChannelRCE00                      = new TProfile2D("RCE_RCE00_ADC_FFT_Channel_FirstEvent","ADC FFT for RCE00_\"colz\"_none;Channel;FFT (MHz)",128,0,128,100,0,1);
+  hFFTChannelRCE00                      = new TProfile2D("RCE_RCE00_ADC_FFT_Channel_FirstEvent","ADC FFT for RCE00_\"colz\"_logz;Channel;FFT (MHz)",128,0,128,100,0,1);
   hFFTChannelRCE00->GetZaxis()->SetRangeUser(0,5000);
-  hADCChannel                           = new TH2D("RCE__ADC_Value_Channel_All","ADC vs Channel_\"colz\"_none;Channel;ADC Value",NRCEChannels,0,NRCEChannels,2000,0,2000);
-  hTickRatioChannel                     = new TH2D("RCE__NumberOfTicks_Ratio_Channel_All","Ratio of Number of Tick to Max In Event_\"hist\"_none;Channel;Number of Ticks/Max Number of Ticks in Event",NRCEChannels,0,NRCEChannels,101,0,1.01);
+  hADCChannel                           = new TH2D("RCE__ADC_Value_Channel_All","ADC vs Channel_\"colz\"_logz;Channel;ADC Value",NRCEChannels,0,NRCEChannels,2000,0,2000);
+  hTickRatioChannel                     = new TH2D("RCE__NumberOfTicks_Ratio_Channel_All","Ratio of Number of Tick to Max In Event_\"colz\"_none;Channel;Number of Ticks/Max Number of Ticks in Event",NRCEChannels,0,NRCEChannels,101,0,1.01);
   hTickTotalChannel                     = new TH2D("RCE__NumberOfTicks_Total_Channel_All","Total Ticks in Channel_\"hist\"_none;Channel;Total ticks in event",NRCEChannels,0,NRCEChannels,10001,0,10001);
   hAvADCChannelEvent                    = new TH2D("RCE__ADC_Mean_Event_First100","Average RCE ADC Value_\"colz\"_none;Event;Channel",100,0,100,NRCEChannels,0,NRCEChannels);
   hRCEDNoiseChannel                     = new TProfile("RCE__ADC_DNoise_Channel_All","RCE DNoise_\"colz\"_none;Channel;DNoise",NRCEChannels,0,NRCEChannels);
