@@ -22,6 +22,7 @@
 #include "fhiclcpp/fwd.h"
 #include "artdaq-core/Data/Fragments.hh" 
 #include "artdaq/Application/CommandableFragmentGenerator.hh"
+
 #include "lbne-raw-data/Overlays/MilliSliceFragment.hh"
 #include "lbne-raw-data/Overlays/FragmentType.hh"
 #include "lbne-artdaq/Generators/RceSupportLib/RceClient.hh"
@@ -100,6 +101,7 @@ namespace lbne {
     size_t raw_buffer_size_;
     uint32_t raw_buffer_precommit_;
     size_t empty_buffer_low_mark_;
+    size_t filled_buffer_high_mark_;
     bool   use_fragments_as_raw_buffer_;
 
     uint32_t receiver_tick_period_usecs_;

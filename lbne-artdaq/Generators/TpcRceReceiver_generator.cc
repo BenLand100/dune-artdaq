@@ -213,6 +213,7 @@ void lbne::TpcRceReceiver::start(void)
 		data_receiver_->commit_empty_buffer(raw_buffer);
 		empty_buffer_low_mark_++;
 	}
+	filled_buffer_high_mark_ = 0;
 
 	// Initialise data statistics
 	millislices_received_ = 0;
@@ -273,6 +274,7 @@ void lbne::TpcRceReceiver::stop(void)
 	data_receiver_->stop();
 
 	DAQLogger::LogInfo(instance_name_) << "Low water mark on empty buffer queue is " << empty_buffer_low_mark_;
+	DAQLogger::LogInfo(instance_name_) << "High water mark on filled buffer queue is " << filled_buffer_high_mark_;
 
 	auto elapsed_msecs = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - start_time_).count();
 	double elapsed_secs = ((double)elapsed_msecs) / 1000;
@@ -423,15 +425,19 @@ bool lbne::TpcRceReceiver::getNext_(artdaq::FragmentPtrs & frags) {
 			  << float(total_bytes_received_)/(1024*1024) << " MB in " << elapsed_secs << " seconds";
   }
 
-  // Recycle the raw buffer onto the commit queue for re-use by the receiver.
-  // TODO at this point we could test the number of unused buffers on the commit queue
-  // against a low water mark and create/inject ones to keep the receiver running if necessary
+  // Update buffer high and low water marks
   size_t empty_buffers_available = data_receiver_->empty_buffers_available();
   if (empty_buffers_available < empty_buffer_low_mark_)
   {
 	  empty_buffer_low_mark_ = empty_buffers_available;
   }
+  size_t filled_buffers_available = data_receiver_->filled_buffers_available();
+  if (filled_buffers_available > filled_buffer_high_mark_)
+  {
+	  filled_buffer_high_mark_ = filled_buffers_available;
+  }
 
+  // Recycle the raw buffer onto the commit queue for re-use by the receiver.
   data_receiver_->commit_empty_buffer(recvd_buffer);
 
   // Set fragment fields appropriately
