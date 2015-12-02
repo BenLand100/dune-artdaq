@@ -34,7 +34,7 @@
 #include <sys/stat.h>
 #include <typeinfo>
 
-#include "OnlineMonitoringBase.cxx"
+#include "OnlineMonitoringBase.hxx"
 #include "DataReformatter.hxx"
 #include "MonitoringData.hxx"
 #include "EventDisplay.hxx"
@@ -59,7 +59,11 @@ private:
   EventDisplay fEventDisplay;
   ChannelMap fChannelMap;
 
-  bool fDetailedMonitoring;
+  // Data save info
+  TString fDataDirPath;
+  TString fMonitorSavePath;
+  TString fEVDSavePath;
+  TString fImageType;
 
   // Refresh rates
   int fMonitoringRefreshRate;
@@ -67,6 +71,8 @@ private:
   int fEventDisplayRefreshRate;
   int fLastSaveTime;
   bool fSavedFirstMonitoring;
+
+  bool fDetailedMonitoring;
 
   PTBTrigger fLastPTBTrigger;
 
@@ -80,10 +86,14 @@ OnlineMonitoring::OnlineMonitoring::OnlineMonitoring(fhicl::ParameterSet const& 
 }
 
 void OnlineMonitoring::OnlineMonitoring::reconfigure(fhicl::ParameterSet const& p) {
-  fMonitoringRefreshRate = p.get<int>("MonitoringRefreshRate");
-  fInitialMonitoringUpdate = p.get<int>("InitialMonitoringUpdate");
-  fEventDisplayRefreshRate = p.get<int>("EventDisplayRefreshRate");
-  fDetailedMonitoring = p.get<bool>("MakeTree");
+  fDataDirPath     = TString(p.get<std::string>("DataDirPath"));
+  fMonitorSavePath = TString(p.get<std::string>("MonitorSavePath"));
+  fEVDSavePath     = TString(p.get<std::string>("EVDSavePath"));
+  fImageType       = TString(p.get<std::string>("ImageType"));
+  fMonitoringRefreshRate   = p.get<int> ("MonitoringRefreshRate");
+  fInitialMonitoringUpdate = p.get<int> ("InitialMonitoringUpdate");
+  fEventDisplayRefreshRate = p.get<int> ("EventDisplayRefreshRate");
+  fDetailedMonitoring      = p.get<bool>("DetailedMonitoring");
 }
 
 void OnlineMonitoring::OnlineMonitoring::beginSubRun(art::SubRun const& sr) {
@@ -91,7 +101,7 @@ void OnlineMonitoring::OnlineMonitoring::beginSubRun(art::SubRun const& sr) {
   mf::LogInfo("Monitoring") << "Starting monitoring for run " << sr.run() << ", subRun " << sr.subRun();
 
   // Start a new monitoring run
-  fMonitoringData.BeginMonitoring(sr.run(), sr.subRun());
+  fMonitoringData.BeginMonitoring(sr.run(), sr.subRun(), fMonitorSavePath);
 
   // Make the channel map for this subrun
   fChannelMap.MakeChannelMap();
@@ -130,13 +140,13 @@ void OnlineMonitoring::OnlineMonitoring::analyze(art::Event const& evt) {
   if (rawRCE.isValid()) fMonitoringData.RCEMonitoring(rceformatter, std::time(0)-fLastSaveTime);
   if (rawSSP.isValid()) fMonitoringData.SSPMonitoring(sspformatter);
   if (rawPTB.isValid()) fMonitoringData.PTBMonitoring(ptbformatter);
-  fMonitoringData.GeneralMonitoring(rceformatter, sspformatter, ptbformatter);
+  fMonitoringData.GeneralMonitoring(rceformatter, sspformatter, ptbformatter, fDataDirPath);
   if (fDetailedMonitoring) fMonitoringData.FillTree(rceformatter, sspformatter);
 
   // Write the data out every-so-often
   if ( (!fSavedFirstMonitoring and ((std::time(0) - fLastSaveTime) > fInitialMonitoringUpdate)) or ((std::time(0) - fLastSaveTime) > fMonitoringRefreshRate) ) {
     if (!fSavedFirstMonitoring) fSavedFirstMonitoring = true;
-    fMonitoringData.WriteMonitoringData(evt.run(), evt.subRun(), fEventNumber);
+    fMonitoringData.WriteMonitoringData(evt.run(), evt.subRun(), fEventNumber, fImageType);
     fLastSaveTime = std::time(0);
   }
 
@@ -146,7 +156,7 @@ void OnlineMonitoring::OnlineMonitoring::analyze(art::Event const& evt) {
   // if (ptbformatter.MakeEventDisplay())
   int evdRefreshInterval = std::round((double)fEventDisplayRefreshRate / 1.6e-3);
   if (fEventNumber % evdRefreshInterval == 0)
-    fEventDisplay.MakeEventDisplay(rceformatter, fChannelMap, fEventNumber);
+    fEventDisplay.MakeEventDisplay(rceformatter, fChannelMap, fEventNumber, fEVDSavePath);
 
   // Consider detaching!
   // // Event display -- every 500 events (8 s)
@@ -162,7 +172,7 @@ void OnlineMonitoring::OnlineMonitoring::analyze(art::Event const& evt) {
 void OnlineMonitoring::OnlineMonitoring::endSubRun(art::SubRun const& sr) {
 
   // Save the data at the end of the subrun
-  fMonitoringData.WriteMonitoringData(sr.run(), sr.subRun(), fEventNumber);
+  fMonitoringData.WriteMonitoringData(sr.run(), sr.subRun(), fEventNumber, fImageType);
 
   // Clear up
   fMonitoringData.EndMonitoring();

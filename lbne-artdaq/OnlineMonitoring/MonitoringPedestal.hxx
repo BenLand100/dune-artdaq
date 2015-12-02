@@ -39,7 +39,7 @@
 #include <sstream>
 #include <fstream>
 
-#include "OnlineMonitoringBase.cxx"
+#include "OnlineMonitoringBase.hxx"
 #include "DataReformatter.hxx"
 
 class OnlineMonitoring::MonitoringPedestal {
@@ -114,6 +114,10 @@ private:
   bool fIsInduction = true;
 
   TString HistSaveDirectory;
+  TString MonitorSavePath;
+  TString EVDSavePath;
+  TString DataDirName;
+  TString ImageType;
 
   // Run options
   bool _interestingchannelsfilled = false;

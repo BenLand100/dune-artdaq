@@ -45,23 +45,22 @@
 #include <ctime>
 #include <time.h>
 
-#include "OnlineMonitoringBase.cxx"
+#include "OnlineMonitoringBase.hxx"
 #include "DataReformatter.hxx"
 
 class OnlineMonitoring::MonitoringData {
 public:
 
-  void BeginMonitoring(int run, int subrun);
+  void BeginMonitoring(int run, int subrun, TString const& monitorSavePath);
   void EndMonitoring();
   void FillTree(RCEFormatter const& rce_formatter, SSPFormatter const& ssp_formatter);
-  void GeneralMonitoring(RCEFormatter const& rceformatter, SSPFormatter const& sspformatter, PTBFormatter const& ptbformatter);
-  void GeneralMonitoring();
+  void GeneralMonitoring(RCEFormatter const& rceformatter, SSPFormatter const& sspformatter, PTBFormatter const& ptbformatter, TString const& dataDirPath);
   void RCEMonitoring(RCEFormatter const& rce_formatter, int timeIntoRun);
   void SSPMonitoring(SSPFormatter const& ssp_formatter);
   void PTBMonitoring(PTBFormatter const& ptb_formatter);
   void MakeHistograms();
   void StartEvent(int eventNumber, bool maketree);
-  void WriteMonitoringData(int run, int subrun, int eventsProcessed);
+  void WriteMonitoringData(int run, int subrun, int eventsProcessed, TString const& imageType);
 
 private:
 
@@ -94,6 +93,7 @@ private:
   TH1I *hNumSubDetectorsPresent, *hSizeOfFiles, *hSubDetectorsWithData, *hSubDetectorsPresent;
   TH1D *hSizeOfFilesPerEvent;
   TGraph *hTimeSyncSSPs[NSSPs], *hTimeSyncAverageSSPs[NSSPs];
+  TMultiGraph *hSSPTimeSync, *hSSPTimeSyncAverage;
 
   // RCE
   TH1I *hTotalADCEvent, *hTotalRCEHitsEvent, *hTotalRCEHitsChannel, *hTimesADCGoesOverThreshold,  *hNumMicroslicesInMillislice, *hNumNanoslicesInMicroslice, *hNumNanoslicesInMillislice;

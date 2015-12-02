@@ -24,7 +24,7 @@ void OnlineMonitoring::MonitoringPedestal::BeginMonitoring(int run, int subrun) 
 
   // Get directory for this run
   std::ostringstream directory;
-  directory << HistSavePath << "Run" << run << "Subrun" << subrun << "/";
+  directory << MonitorSavePath << "Run" << run << "Subrun" << subrun << "/";
   HistSaveDirectory = directory.str();
 
   // Make the directory to save the files

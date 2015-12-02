@@ -8,7 +8,7 @@
 
 #include "EventDisplay.hxx"
 
-void OnlineMonitoring::EventDisplay::MakeEventDisplay(RCEFormatter const& rceformatter, ChannelMap const& channelMap, int event) {
+void OnlineMonitoring::EventDisplay::MakeEventDisplay(RCEFormatter const& rceformatter, ChannelMap const& channelMap, int event, TString const& evdSavePath) {
 
   /// Makes crude online event display and saves it as an image to be displayed on the web
 
@@ -41,10 +41,10 @@ void OnlineMonitoring::EventDisplay::MakeEventDisplay(RCEFormatter const& rcefor
   line.SetLineStyle(2);
   line.SetLineWidth(4);
   line.DrawLine(0,0,336,0);
-  evdCanvas->SaveAs(EVDSavePath+TString("evd.png"));//+ImageType);
+  evdCanvas->SaveAs(evdSavePath+TString("evd.png"));//+ImageType);
 
   // Add event file
-  ofstream tmp((EVDSavePath+TString("event")).Data());
+  ofstream tmp((evdSavePath+TString("event")).Data());
   tmp << event;
   tmp.flush();
   tmp.close();
