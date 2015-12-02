@@ -436,6 +436,10 @@ bool lbne::TpcRceReceiver::getNext_(artdaq::FragmentPtrs & frags) {
   {
 	  filled_buffer_high_mark_ = filled_buffers_available;
   }
+  metricMan_->sendMetric("EmptyBufferLowWaterMark", empty_buffer_low_mark_, "buffers", 1, true, true);
+  metricMan_->sendMetric("FilledBufferHighWaterMark", filled_buffer_high_mark_, "buffers", 1, true, true);
+  metricMan_->sendMetric("EmptyBuffersAvailable", empty_buffers_available, "buffers", 1, true, true);
+  metricMan_->sendMetric("FilledBuffersAvailable", filled_buffers_available, "buffers", 1, true, true);
 
   // Recycle the raw buffer onto the commit queue for re-use by the receiver.
   data_receiver_->commit_empty_buffer(recvd_buffer);
