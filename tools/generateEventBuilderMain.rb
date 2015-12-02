@@ -36,8 +36,8 @@ services: {
 %{event_builder_code}
 
 outputs: {
-  %{netmon_output}netMonOutput: {
-  %{netmon_output}  module_type: NetMonOutput
+  %{netmon_output}rootMPIOutput: {
+  %{netmon_output}  module_type: RootMPIOutput
   %{netmon_output}%{trigger_output}
   %{netmon_output}}
   %{root_output}normalOutput: {
@@ -57,7 +57,7 @@ physics: {
   
   %{enable_onmon}a1: [ app, wf ]
 
-  %{netmon_output}my_output_modules: [ netMonOutput ]
+  %{netmon_output}my_output_modules: [ rootMPIOutput ]
   %{root_output}my_output_modules: [ normalOutput ]
   %{trigger_path}
 }
