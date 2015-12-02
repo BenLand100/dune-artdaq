@@ -246,20 +246,21 @@ OnlineMonitoring::SSPFormatter::SSPFormatter(art::Handle<artdaq::Fragments> cons
 
 
 // PTB ----------------------------------------------------------------------------------------------------------------------------------------------------
-OnlineMonitoring::PTBFormatter::PTBFormatter(art::Handle<artdaq::Fragments> const& rawPTB) {
+OnlineMonitoring::PTBFormatter::PTBFormatter(art::Handle<artdaq::Fragments> const& rawPTB, PTBTrigger const& previousTrigger) {
 
   if (!rawPTB.isValid()) {
-      PTBData = false;
-      return;
+    PTBData = false;
+    return;
   }
   PTBData = true;
+
+  fPreviousTrigger = previousTrigger;
 
   //Initialise the trigger rates
   fMuonTriggerRates[1] = 0;
   fMuonTriggerRates[2] = 0;
   fMuonTriggerRates[4] = 0;
   fMuonTriggerRates[8] = 0;
-
 
   unsigned long NTotalTicks = 0;
 
@@ -300,7 +301,7 @@ OnlineMonitoring::PTBFormatter::PTBFormatter(art::Handle<artdaq::Fragments> cons
           break;
         case 2:
           //Dealing with trigger word
-          CollectMuonTrigger(payload_data, payload_size);
+          CollectMuonTrigger(payload_data, payload_size, timestamp);
           fMuonTriggerTimes.push_back(timestamp);
         default:
           break;
@@ -338,7 +339,6 @@ void OnlineMonitoring::PTBFormatter::AnalyzeCounter(int counter_index, unsigned 
       last_counter_time = fCounterTimes[std::distance(fCounterBits.begin(),countIt)];
       continue;
     }
-    //std::cout<<counter_currently_on<<" "<<fCounterTimes[std::distance(countIt,fCounterBits.end())]<<std::endl;
     if (counter_previously_on && counter_currently_on){
       //If the counter was previously on and it is still on, just continue
       continue;
@@ -361,6 +361,7 @@ void OnlineMonitoring::PTBFormatter::AnalyzeCounter(int counter_index, unsigned 
       unsigned long current_counter_time = fCounterTimes.at(index);
       if (current_counter_time-last_counter_time > PTBHitIgnoreTime){
         hit_rate++;
+	last_counter_time = current_counter_time;
         //Also record the activation time if it is the first time the counter has been hit
         if (hit_rate==1){
           //We need the array index to fetch the timestamp of the payload
@@ -379,96 +380,83 @@ void OnlineMonitoring::PTBFormatter::AnalyzeCounter(int counter_index, unsigned 
 }
 
 void OnlineMonitoring::PTBFormatter::AnalyzeMuonTrigger(int trigger_number, double& trigger_rate) const {
-  //OLD CODE WITHOUT IGNORE BIT CHECKING
-  //trigger_rate = fMuonTriggerRates.at(trigger_number);
-  //trigger_rate /= fTimeSliceSize;
-  //
-  //NEW CODE WITH IGNORE BIT CHECKING
-  //We need to loop through the requested trigger to check
-  //  A) when it switched back on
-  //  B) How many times it switched on
-  //For now, we are going to ingore the trigger if it begins the millislice activated UNTIL it switches off
-  //
-  //New addition: ignore whatever a trigger does until a specifc time has passed (defined to be 400 ns) nominally
-
-  //Initialise the values to be returned
-  //activation_time = 0.;
-  trigger_rate = 0;
-  //Assume that the trigger was on in the previous millislice (this shouldn't be detrimental to the logic)
-  bool trigger_previously_on = true;
-
-  //The time that the trigger switched on.  Used for checking the ignore time
-  unsigned long last_trigger_time = 0;
-
-  for (std::vector<std::bitset<TypeSizes::TriggerWordSize> >::const_iterator triggerIt = fMuonTriggerBits.begin(); triggerIt != fMuonTriggerBits.end(); triggerIt++){
-
-    //Get the trigger status
-    bool trigger_currently_on = (*triggerIt)[trigger_number];
-
-    if (std::distance(fMuonTriggerBits.begin(),triggerIt) == 0 && trigger_currently_on){
-      last_trigger_time = fMuonTriggerTimes[std::distance(fMuonTriggerBits.begin(),triggerIt)];
-      continue;
-    }
-    //std::cout<<trigger_currently_on<<" "<<fMuonTriggerTimes[std::distance(triggerIt,fMuonTriggerBits.end())]<<std::endl;
-    if (trigger_previously_on && trigger_currently_on){
-      //If the trigger was previously on and it is still on, just continue
-      continue;
-    }
-    else if (trigger_previously_on && !trigger_currently_on){
-      //The trigger WAS on but it is now off so record the trigger as switching off and move on
-      trigger_previously_on = false;
-      continue;
-    }
-    else if (!trigger_previously_on && !trigger_currently_on){
-      //The trigger was off and it is still off so very little to do here.  Continue!
-      continue;
-    }
-    else if (!trigger_previously_on && trigger_currently_on){
-      //The trigger has switched on!!!!!
-      //Record that it is now on and record some numbers
-      trigger_previously_on = true;
-      //Get the time that the trigger switched on.
-      int index = std::distance(fMuonTriggerBits.begin(), triggerIt);
-      unsigned long current_trigger_time = fMuonTriggerTimes.at(index);
-      if (current_trigger_time-last_trigger_time > PTBHitIgnoreTime){
-        trigger_rate++;
-        //Also record the activation time if it is the first time the trigger has been hit
-        //if (trigger_rate==1){
-          //We need the array index to fetch the timestamp of the payload
-          //activation_time = current_trigger_time;
-        //}
-      }
-    }
-    else{
-      //We should never get here
-      std::cout<<"ERROR IN PTBFORMATTER'S LOGIC IN COUNTER ANALYSIS"<<std::endl;
-    }
-  }
-
+  trigger_rate = fMuonTriggerRates.at(trigger_number);
   trigger_rate /= fTimeSliceSize;
-
-  return;
 }
+//   //
+//   //NEW CODE WITH IGNORE BIT CHECKING
+//   //We need to loop through the requested trigger to check
+//   //  A) when it switched back on
+//   //  B) How many times it switched on
+//   //For now, we are going to ingore the trigger if it begins the millislice activated UNTIL it switches off
+//   //
+//   //New addition: ignore whatever a trigger does until a specifc time has passed (defined to be 400 ns) nominally
+
+//   //Initialise the values to be returned
+//   //activation_time = 0.;
+//   trigger_rate = 0;
+//   //Assume that the trigger was on in the previous millislice (this shouldn't be detrimental to the logic)
+//   bool trigger_previously_on = true;
+
+//   for (std::vector<std::bitset<TypeSizes::TriggerWordSize> >::const_iterator triggerIt = fMuonTriggerBits.begin(); triggerIt != fMuonTriggerBits.end(); triggerIt++){
+
+//     //Get the trigger status
+//     bool trigger_currently_on = (*triggerIt)[trigger_number];
+
+//     if (trigger_previously_on && trigger_currently_on){
+//       //If the trigger was previously on and it is still on, just continue
+//       continue;
+//     }
+//     else if (trigger_previously_on && !trigger_currently_on){
+//       //The trigger WAS on but it is now off so record the trigger as switching off and move on
+//       trigger_previously_on = false;
+//       continue;
+//     }
+//     else if (!trigger_previously_on && !trigger_currently_on){
+//       //The trigger was off and it is still off so very little to do here.  Continue!
+//       continue;
+//     }
+//     else if (!trigger_previously_on && trigger_currently_on){
+//       //The trigger has switched on!!!!!
+//       //Record that it is now on and record some numbers
+//       trigger_previously_on = true;
+//       ++trigger_rate;
+//     }
+//     else{
+//       //We should never get here
+//       std::cout<<"ERROR IN PTBFORMATTER'S LOGIC IN COUNTER ANALYSIS"<<std::endl;
+//     }
+//   }
+
+//   trigger_rate /= fTimeSliceSize;
+
+//   return;
+// }
 
 void OnlineMonitoring::PTBFormatter::CollectCounterBits(uint8_t* payload, size_t payload_size) {
   std::bitset<TypeSizes::CounterWordSize> bits;
-  for (size_t ib = 0; ib < payload_size; ib++){
+  for (size_t ib = 0; ib < payload_size; ++ib){
     std::bitset<TypeSizes::CounterWordSize> byte = payload[ib];
-    //bits ^= (byte << 8*(payload_size-(ib+1)));
-    bits ^= (byte << 8*ib);
+    bits ^= (byte << 8*(payload_size-(ib+1)));
   }
 
   fCounterBits.push_back(bits);
   return;
 }
 
-void OnlineMonitoring::PTBFormatter::CollectMuonTrigger(uint8_t* payload, size_t payload_size) {
+void OnlineMonitoring::PTBFormatter::CollectMuonTrigger(uint8_t* payload, size_t payload_size, lbne::PennMicroSlice::Payload_Header::short_nova_timestamp_t timestamp) {
   std::bitset<TypeSizes::TriggerWordSize> bits;
   for (size_t ib = 0; ib < payload_size; ib++){
     std::bitset<TypeSizes::TriggerWordSize> byte = payload[ib];
-    bits ^= (byte << 8*ib);
-    //bits ^= (byte << 8*(payload_size-(ib)));
+    // bits ^= (byte << 8*ib);
+    bits ^= (byte << 8*(payload_size-(ib+1)));
   }
+
+  // Find out if this trigger is the same as the previous trigger
+  if (timestamp - fPreviousTrigger.first < 25 and
+      bits == fPreviousTrigger.second)
+    return;
+
   //Bits collected, now get the trigger type
   std::bitset<TypeSizes::TriggerWordSize> trigger_type_bits; 
   trigger_type_bits ^= (bits >> (TypeSizes::TriggerWordSize - 5));
@@ -485,5 +473,9 @@ void OnlineMonitoring::PTBFormatter::CollectMuonTrigger(uint8_t* payload, size_t
     fMuonTriggerRates[muon_trigger]++;
     fMuonTriggerBits.push_back(muon_trigger_bits);
   }
+
+  fPreviousTrigger = std::make_pair(timestamp, bits);
+
   return;
+
 }

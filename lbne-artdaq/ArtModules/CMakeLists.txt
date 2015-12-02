@@ -12,6 +12,13 @@ simple_plugin(TpcMilliSliceDump "module" lbne-raw-data_Overlays
   ${ART_FRAMEWORK_SERVICES_OPTIONAL_TFILESERVICE_SERVICE}
 )
 
+simple_plugin(RCEDiagnostic "module" lbne-raw-data_Overlays 
+  ${ROOT_HIST}
+  ${ART_FRAMEWORK_SERVICES_REGISTRY}
+  ${ART_FRAMEWORK_SERVICES_OPTIONAL}
+  ${ART_FRAMEWORK_SERVICES_OPTIONAL_TFILESERVICE_SERVICE}
+)
+
 simple_plugin(PennMilliSliceDump "module" lbne-raw-data_Overlays 
   ${ROOT_HIST}
   ${ART_FRAMEWORK_SERVICES_REGISTRY}

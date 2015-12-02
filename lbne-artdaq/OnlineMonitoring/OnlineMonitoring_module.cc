@@ -68,6 +68,8 @@ private:
   int fLastSaveTime;
   bool fSavedFirstMonitoring;
 
+  PTBTrigger fLastPTBTrigger;
+
 };
 
 OnlineMonitoring::OnlineMonitoring::OnlineMonitoring(fhicl::ParameterSet const& pset) : EDAnalyzer(pset) {
@@ -121,7 +123,8 @@ void OnlineMonitoring::OnlineMonitoring::analyze(art::Event const& evt) {
   // Create data formatter objects and fill monitoring data products
   RCEFormatter rceformatter(rawRCE);
   SSPFormatter sspformatter(rawSSP);
-  PTBFormatter ptbformatter(rawPTB);
+  PTBFormatter ptbformatter(rawPTB, fLastPTBTrigger);
+  fLastPTBTrigger = ptbformatter.GetLastTrigger();
 
   // Fill the data products in the monitoring data
   if (rawRCE.isValid()) fMonitoringData.RCEMonitoring(rceformatter, std::time(0)-fLastSaveTime);

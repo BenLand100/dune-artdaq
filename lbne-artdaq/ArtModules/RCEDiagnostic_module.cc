@@ -54,14 +54,18 @@ private:
   TGraph *gError28[nRCE];
   TGraph *gError31[nRCE];
   TGraph *gErrorEvent;
-  TGraph *gTimeEvent[nRCE];
-
   TGraph *gFWTimeStampError[nRCE];
   TGraph *gFWFirstTimeStampError[nRCE];
   TGraph *gFWMisAlign[nRCE][4];
   TGraph *gFWNOvAError[nRCE][4];
   TGraph *gFWTagIDError[nRCE][4];
   TGraph *gFWLaneOutOfSync[nRCE][4];
+  TGraph *gTriggerTime[nRCE];
+  TGraph *gNanoTime[nRCE];
+  TGraph *gNanoTimeRelToTrig[nRCE];
+  TGraph *gTriggerTimeRelToRCE0[nRCE];
+  TGraph *gNanoTimeRelToRCE0[nRCE];
+
   //counters...
   int error27[nRCE];
   int error28[nRCE];
@@ -75,6 +79,17 @@ private:
   int n_millislices_to_chunk=10;
   int n_millislices[nRCE];  
   int n_chunks[nRCE];
+
+  uint trigTime[nRCE];
+  uint nanoTime[nRCE];
+
+  int n_triggers;
+  int n_micro_with_trigger[nRCE];
+  int nPtsPerRCE[nRCE];
+  int nPtsPerDiff[nRCE];
+  bool event_has_trigger;
+
+
 };
 
 lbne::RCEDiagnostic::RCEDiagnostic(fhicl::ParameterSet const & pset)
@@ -82,14 +97,22 @@ lbne::RCEDiagnostic::RCEDiagnostic(fhicl::ParameterSet const & pset)
   raw_data_label_(pset.get<std::string>("raw_data_label")),
   frag_type_(pset.get<std::string>("frag_type"))
 {
-    gErrorEvent=nullptr;
+ 
+  n_triggers=0;
+ gErrorEvent=nullptr;
   for(int j=0;j<nRCE;j++){
     gError27[j]=nullptr;
     gError28[j]=nullptr;
     gError31[j]=nullptr;
-    gTimeEvent[j]=nullptr;
     gFWTimeStampError[j]=nullptr;
     gFWFirstTimeStampError[j]=nullptr;    
+    gTriggerTime[j]=nullptr;
+    gNanoTime[j]=nullptr;
+    gTriggerTimeRelToRCE0[j]=nullptr;
+    gNanoTimeRelToRCE0[j]=nullptr;
+    gNanoTimeRelToTrig[j]=nullptr;
+    nPtsPerRCE[j]=0;
+    nPtsPerDiff[j]=0;
    for(int i = 0 ;i<4;i++){
       gFWMisAlign[j][i]=nullptr;
       gFWNOvAError[j][i]=nullptr;
@@ -121,14 +144,31 @@ void lbne::RCEDiagnostic::beginJob(){
     gError31[j]->SetName(dir+"Error31PerBoard");
     gError31[j]->SetTitle("Number of Errors 31(Soft./Firmware Error) per 128-channel Block");
     
-    gTimeEvent[j] = tfs->make<TGraph>();
-    gTimeEvent[j]->SetName(dir+"TimeEvent");
-    gTimeEvent[j]->SetTitle("Trigger Times x Event Number per 128-Channel Block");
-    
     gFWTimeStampError[j]= tfs->make<TGraph>();
     gFWTimeStampError[j]->SetName(dir+"TimeStampErrorPerBoard");
     gFWFirstTimeStampError[j]= tfs->make<TGraph>();
     gFWFirstTimeStampError[j]->SetName(dir+"FirstTimeStampErrorPerBoard");
+
+    gTriggerTime[j] = tfs->make<TGraph>();
+    gTriggerTime[j]->SetName(dir+"TriggerTime");
+    gTriggerTime[j]->SetTitle("Trigger Time vs Trigger number for rce"+TString(j));
+
+    gNanoTime[j] = tfs->make<TGraph>();
+    gNanoTime[j]->SetName(dir+"NanoTime");
+    gNanoTime[j]->SetTitle("First Nanoslice Time vs Trigger number for rce"+TString(j));
+
+    gTriggerTimeRelToRCE0[j] = tfs->make<TGraph>();
+    gTriggerTimeRelToRCE0[j]->SetName(dir+"TriggerTimeRelToRCE0");
+    gTriggerTimeRelToRCE0[j]->SetTitle("Trigger Time Relative to RCE0 vs Trigger number for rce"+TString(j));
+
+    gNanoTimeRelToRCE0[j] = tfs->make<TGraph>();
+    gNanoTimeRelToRCE0[j]->SetName(dir+"NanoTimeRelToRCE0");
+    gNanoTimeRelToRCE0[j]->SetTitle("Nano Time Relative to RCE0 vs Trigger number for rce"+TString(j));
+
+    gNanoTimeRelToTrig[j] = tfs->make<TGraph>();
+    gNanoTimeRelToTrig[j]->SetName(dir+"NanoTimeRelToTrig");
+    gNanoTimeRelToTrig[j]->SetTitle("Nano Time Relative to Trigger vs Trigger number for rce"+TString(j));
+
     for(int i = 0 ;i<4;i++){
       TString lane="Lane";
       lane+=i;
@@ -140,7 +180,7 @@ void lbne::RCEDiagnostic::beginJob(){
       gFWTagIDError[j][i]->SetName(dir+"TagIdErrorsPerBoard"+lane);
       gFWLaneOutOfSync[j][i]=tfs->make<TGraph>();
       gFWLaneOutOfSync[j][i]->SetName(dir+"LaneOutOfSyncErrorsPerBoard"+lane);
-    }
+    } 
   }
 }
 
@@ -148,12 +188,16 @@ void lbne::RCEDiagnostic::endJob(){
   gErrorEvent->Write();
   for(int j=0;j<nRCE;j++){
     if(gError31[j]->GetN()>0){
-      gTimeEvent[j]->Write();
       gError27[j]->Write();
       gError28[j]->Write();
       gError31[j]->Write();
       gFWTimeStampError[j]->Write();
       gFWFirstTimeStampError[j]->Write(); 
+      gTriggerTime[j]->Write();
+      gNanoTime[j]->Write();
+      gTriggerTimeRelToRCE0[j]->Write();
+      gNanoTimeRelToRCE0[j]->Write();
+      gNanoTimeRelToTrig[j]->Write();
       for(int i = 0 ;i<4;i++){
 	gFWMisAlign[j][i]->Write();
 	gFWNOvAError[j][i]->Write();
@@ -185,7 +229,13 @@ void lbne::RCEDiagnostic::analyze(art::Event const & evt){
     std::cout << "Run " << evt.run() << ", subrun " << evt.subRun()
 	      << ", event " << eventNumber << " has " << raw->size()
 	      << " fragment(s) of type " << frag_type_ << std::endl;
-    
+    // reset some variables
+    for(int n=0;n<nRCE;n++){
+      trigTime[n]=0;
+      nanoTime[n]=0;
+      n_micro_with_trigger[n]=0;
+    }
+    event_has_trigger=false;
     for (size_t idx = 0; idx < raw->size(); ++idx){
       const auto& frag((*raw)[idx]);
     
@@ -256,15 +306,34 @@ void lbne::RCEDiagnostic::analyze(art::Event const & evt){
 	  error31[rceID]++;
 	}
 	
+	//uint has_trig = uint( ((us_type_id >> 29) & 0x1));  //this _should_ be the external trigger bit, but for some reason looks like it's not set correctly anymore...use the microslice size instead
+	//	std::cout<<"Trigger? "<<has_trig<<"   "<<us_type_id<<"   "<<(us_type_id>>29)<<std::endl;
 	
+	uint has_trig=0;
+	if (microslice->size()>28){ 
+	  has_trig=1;
+	  //	  std::cout<<"Trigger? "<<has_trig<<"   "<<microslice->size()<<"   "<<(us_type_id>>29)<<std::endl;
+	}
 	///> get the software message
-	//lbne::TpcMicroSlice::Header::softmsg_t us_software_message = microslice->software_message();
+	lbne::TpcMicroSlice::Header::softmsg_t us_software_message = microslice->software_message();
 	//gTimeEvent->SetPoint(channelblock, channelblock, int( ((us_software_message >> 56) & 0xFF) ));
-	
+	if(has_trig){
+	  event_has_trigger=true;
+	  if(n_micro_with_trigger[rceID]==0){
+	    trigTime[rceID]=uint( (us_software_message)& 0xFFFFFFFF );//take first 32-bits
+	    nanoTime[rceID]=uint( (microslice->nanosliceNova_timestamp(0)) & 0xFFFFFFFF);
+	  }
+	  n_micro_with_trigger[rceID]++;
+	  //	  std::cout<<"Trigger time = "<<trigTime[rceID]<<std::endl;
+	} else {
+	  uint non_trig_time=uint( (us_software_message)& 0xFFFFFFFF );//take first 32-bits
+	  std::cout<<"RCE"<<rceID<<"  Non-triggered time = "<<non_trig_time<<std::endl;
+	}
+		
 	///> get the firmware message 
 	lbne::TpcMicroSlice::Header::firmmsg_t us_firmware_message = microslice->firmware_message();
 	
-	std::cout<<" firmware message = "<<us_firmware_message<<std::endl;
+	//	std::cout<<" firmware message = "<<us_firmware_message<<std::endl;
 	  
 	if(((us_firmware_message>> 62) & 0x1)==1)
 	  errorts[rceID]++;
@@ -286,6 +355,28 @@ void lbne::RCEDiagnostic::analyze(art::Event const & evt){
     } //idx
     std::cout<<"Errors in the event "<<errorevent<<std::endl;     
     gErrorEvent->SetPoint(eventNumber, eventNumber, errorevent);
+
+    if(event_has_trigger){
+      for(int n=0;n<nRCE;n++){
+	if(n_micro_with_trigger[n]>0){//make sure we some microslices with ADCs in this RCE
+	  gTriggerTime[n]->SetPoint(nPtsPerRCE[n],n_triggers,trigTime[n]);
+	  gNanoTime[n]->SetPoint(nPtsPerRCE[n],n_triggers,nanoTime[n]);
+	  gNanoTimeRelToTrig[n]->SetPoint(nPtsPerRCE[n],n_triggers,int(nanoTime[n]-trigTime[n]));
+	  nPtsPerRCE[n]++;
+	  std::cout<<"RCE = "<<n<<"::trigger time = "<<trigTime[n]
+		   <<"; nanoTime = "<<nanoTime[n]<<std::endl;
+	  if(n_micro_with_trigger[0]==n_micro_with_trigger[n]){//make sure we're looking at the same microslice
+	    int trig_diff=trigTime[n]-trigTime[0];
+	    int nano_diff=nanoTime[n]-nanoTime[0];
+	    gTriggerTimeRelToRCE0[n]->SetPoint(nPtsPerDiff[n],n_triggers,trig_diff);
+	    gNanoTimeRelToRCE0[n]->SetPoint(nPtsPerDiff[n],n_triggers,nano_diff);	    
+	    nPtsPerDiff[n]++;
+	  }
+	}
+      }
+      n_triggers++;
+    }
+
   }//raw.IsValid()?
   else{
     std::cout << "Run " << evt.run() << ", subrun " << evt.subRun()

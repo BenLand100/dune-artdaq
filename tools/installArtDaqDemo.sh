@@ -98,7 +98,7 @@ function install_package {
 . $products_dir/setup
 
 install_package artdaq-core v1_04_23 e7 s15
-install_package lbne-raw-data c6c8ee3f317286b23fc097075df145d6b564c9fe e7 s15
+install_package lbne-raw-data v1_03_14 e7 s15
 
 install_package artdaq v1_12_14 e7 s15 eth
 

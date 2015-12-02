@@ -111,18 +111,20 @@ public:
   // Defualt constructor (may come in handy!)
   PTBFormatter() :
     fNTotalTicks(0) {}
-  PTBFormatter(art::Handle<artdaq::Fragments> const& rawPTB);
+  PTBFormatter(art::Handle<artdaq::Fragments> const& rawPTB, PTBTrigger const& previousTrigger);
   void AnalyzeCounter(int counter_index, unsigned long &activation_time, double &hit_rate) const;
   void AnalyzeMuonTrigger(int trigger_number, double &trigger_rate) const;
   int NumTriggers() const { return fMuonTriggerRates.size(); }
   long double GetTotalSeconds() { return fNTotalTicks * NNanoSecondsPerNovaTick/(1000*1000*1000); };
+  PTBTrigger GetLastTrigger() const { return fPreviousTrigger; }
 
   bool PTBData;
 
 private:
 
   void CollectCounterBits(uint8_t* payload, size_t payload_size);
-  void CollectMuonTrigger(uint8_t* payload, size_t payload_size);
+  void CollectMuonTrigger(uint8_t* payload, size_t payload_size, lbne::PennMicroSlice::Payload_Header::short_nova_timestamp_t timestamp);
+  
   std::vector<std::bitset<TypeSizes::CounterWordSize> > fCounterBits;
   std::vector<unsigned long> fCounterTimes;
   std::vector<std::bitset<TypeSizes::TriggerWordSize> > fMuonTriggerBits;
@@ -130,6 +132,8 @@ private:
   std::vector<unsigned long> fMuonTriggerTimes;
   long double fTimeSliceSize;
   unsigned long fNTotalTicks;
+
+  PTBTrigger fPreviousTrigger;
 
 };
 
