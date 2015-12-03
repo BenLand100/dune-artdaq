@@ -63,6 +63,7 @@ private:
 
 	int debug_level_;
 
+	/// -- Ethernet connection management variables
 	boost::asio::io_service io_service_;
 	tcp::acceptor           acceptor_;
 	tcp::socket	        accept_socket_;
@@ -72,7 +73,9 @@ private:
 	DeadlineIoObject deadline_io_object_;
 	uint32_t tick_period_usecs_;
 
+	// Port that should be listened for connection from the PTB (conf param)
 	uint16_t receive_port_;
+	// Size of the millislice (units?)
   uint32_t millislice_size_;
 
 	std::atomic<bool> run_receiver_;
@@ -105,18 +108,19 @@ private:
   { "MillisliceEmpty", "MillisliceIncomplete", "MicrosliceIncomplete", "MillisliceComplete" };
   MillisliceState  millislice_state_;
   size_t           millislice_size_recvd_;
-  uint16_t         microslices_recvd_;
-  uint16_t         payloads_recvd_;
-  uint16_t         payloads_recvd_counter_;
-  uint16_t         payloads_recvd_trigger_;
-  uint16_t         payloads_recvd_timestamp_;
-  uint16_t         payloads_recvd_selftest_;
-  uint16_t         payloads_recvd_checksum_;
+  uint32_t         microslices_recvd_;
+  uint32_t         payloads_recvd_;
+  uint32_t         payloads_recvd_counter_;
+  uint32_t         payloads_recvd_trigger_;
+  uint32_t         payloads_recvd_timestamp_;
+  uint32_t         payloads_recvd_selftest_;
+  uint32_t         payloads_recvd_checksum_;
   lbne::PennMicroSlice::Header::block_size_t microslice_size_;
   size_t           microslice_size_recvd_;
   uint32_t         millislices_recvd_;
   
-  uint16_t microslices_recvd_timestamp_; //counts the number of microslices received that contain a timestamp word
+  // FIXME: NFB - This might not be needed
+  uint32_t microslices_recvd_timestamp_; //counts the number of microslices received that contain a timestamp word
   bool microslice_seen_timestamp_word_;
   bool last_microslice_was_fragment_;
 

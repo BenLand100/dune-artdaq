@@ -116,19 +116,32 @@ lbne::PennClient::~PennClient()
 	}
 }
 
-void lbne::PennClient::send_command(std::string const & command, std::string const & param)
+void lbne::PennClient::send_command(std::string const & command, std::map<std::string,std::string> & answer)
 {
 
-	DAQLogger::LogInfo("PennClient") << "Sending command: " << command << " with param: " << param;
+  DAQLogger::LogInfo("PennClient") << "Sending command: " << command << " expecting an answer.";
+
+  // Build XML fragment containing command enclosing the parameter
+  std::ostringstream xml_frag;
+  xml_frag << "<command>" << command;
+  xml_frag << "</command>";
+
+  // Send it
+  this->send_xml(xml_frag.str(), answer);
+}
+
+void lbne::PennClient::send_command(std::string const & command, std::string & answer)
+{
+
+	DAQLogger::LogInfo("PennClient") << "Sending command: " << command << " expecting an answer.";
 	
 	// Build XML fragment containing command enclosing the parameter
 	std::ostringstream xml_frag;
-	xml_frag << "<command><" << command << ">";
-	xml_frag << param;
-	xml_frag << "</" << command << "></command>";
+	xml_frag << "<command>" << command;
+	xml_frag << "</command>";
 
 	// Send it
-	this->send_xml(xml_frag.str());
+	this->send_xml(xml_frag.str(), answer);
 }
 
 void lbne::PennClient::send_command(std::string const & command)
@@ -149,20 +162,37 @@ void lbne::PennClient::send_config(std::string const & config)
 	DAQLogger::LogDebug("PennClient") << "Sending config: " << config;
 #endif
 
-	std::ostringstream config_frag;
-	config_frag << "<config>" << config << "</config>";
+	std::string ptb_answer;
+	this->send_xml(config,ptb_answer);
 
-	this->send_xml(config_frag.str());
+	// If anything else than the status is expected, it is returned by ptb_answer
+
+//	std::ostringstream config_frag;
+//	config_frag << "<config>" << config << "</config>";
+//
+//	this->send_xml(config_frag.str());
 }
 
-void lbne::PennClient::send_xml(std::string const & xml_frag)
+void lbne::PennClient::send_xml(std::string const & xml_frag) {
+  std::map<std::string,std::string> dummy_answer;
+  send_xml(xml_frag,dummy_answer);
+}
+
+void lbne::PennClient::send_xml(std::string const & xml_frag,std::string &xml_answer) {
+  std::map<std::string,std::string> dummy_answer;
+  send_xml(xml_frag,dummy_answer);
+  // The answer is the second element of the top pair of the map
+  xml_answer = dummy_answer.begin()->second;
+}
+
+void lbne::PennClient::send_xml(std::string const & xml_frag,std::map<std::string,std::string> & xml_answers)
 {
 
 	// Wrap the XML fragment for this request in the root system tags
 	std::ostringstream xml_cmd;
 	xml_cmd << xml_frag ;
 
-	// Send the XML request to the PENNcomman
+	// Send the XML request to the PTB
 	this->send(xml_cmd.str());
 
 	// Get the response
@@ -200,18 +230,63 @@ void lbne::PennClient::send_xml(std::string const & xml_frag)
 	  xmlNode *cur_node = NULL;
 	  for (cur_node = root_element->children; cur_node; cur_node = cur_node->next) {
 	    if (cur_node->type == XML_ELEMENT_NODE) {
+        if (std::string((const char*)(cur_node->name)) == "success")
+        {
+          xmlChar* msgContent = xmlNodeGetContent(cur_node);
+          if (std::string((const char*)(msgContent)) == "true") {
+            DAQLogger::LogInfo("PennClient") << "Command executed successfully on the PTB";
+          } else {
+            try{
+            DAQLogger::LogError("PennClient") << "Command failed execution on the PTB";
+            } catch (...) {} // Swallow
+          }
+          xmlFree(msgContent);
+        }
 	      if (std::string((const char*)(cur_node->name)) == "error") 
 	      {
-		//xmlNode* error_node = cur_node->children;
-		xmlChar* errorContent = xmlNodeGetContent(cur_node);
-		if (errorContent) {
-		  DAQLogger::LogError("PennClient") << "Got error response from PENN: " << errorContent;
-		} else {
-		  DAQLogger::LogError("PennClient") << "Got error response from PENN but cannot parse content";
-		}
-		xmlFree(errorContent);
+	        //xmlNode* error_node = cur_node->children;
+	        xmlChar* errorContent = xmlNodeGetContent(cur_node);
+	        if (errorContent) {
+	          DAQLogger::LogError("PennClient") << "Got error response from PTB: " << errorContent;
+	        } else {
+	          DAQLogger::LogError("PennClient") << "Got error response from PTB but cannot parse content";
+	        }
+	        xmlFree(errorContent);
 	      }
-	    }
+	      else if (std::string((const char*)(cur_node->name)) == "answer") {
+          xmlChar* answerContent = xmlNodeGetContent(cur_node);
+          if (answerContent) {
+            xml_answers[std::string((const char*)(cur_node->name))] = std::string((const char*)answerContent);
+            DAQLogger::LogInfo("PennClient") << "Got answer from the PTB : " << answerContent;
+          } else {
+            DAQLogger::LogError("PennClient") << "Got an answer from PTB but cannot parse content";
+          }
+          xmlFree(answerContent);
+	      }
+	    } else if (cur_node->type == XML_ATTRIBUTE_NODE) {
+	      if (std::string((const char*)(cur_node->name)) == "run_statistics") {
+	        std::vector<std::string> attributes;
+	        attributes.push_back(std::string("num_microslices"));
+	        attributes.push_back(std::string("num_word_counter"));
+          attributes.push_back(std::string("num_word_trigger"));
+          attributes.push_back(std::string("num_word_tstamp"));
+          attributes.push_back(std::string("bytes_sent"));
+          attributes.push_back(std::string("time_run_board"));
+
+	        // -- Statistics node usually sent at the end of the run
+	        // -- Grab the different attributes
+          xmlChar *prop_val = NULL;
+          for (std::vector<std::string>::iterator it = attributes.begin(); it != attributes.end(); ++it) {
+            prop_val = xmlGetProp(cur_node,(const xmlChar*)it->c_str());
+            xml_answers[*it] = std::string((const char*)prop_val);
+            xmlFree(prop_val);
+          }
+	      } else {
+	        DAQLogger::LogWarning("PennClient") << "Received unrecognized attribute type answer from PTB : [" << cur_node->name << "]";
+	      }
+	    } else {
+        DAQLogger::LogWarning("PennClient") << "Received unrecognized XML element type from PTB : [" << cur_node->type << "]";
+      }
 	  }
 	  xmlFreeDoc(doc);
 	}//doc != NULL
