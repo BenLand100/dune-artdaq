@@ -16,7 +16,7 @@
 #include <memory>
 #include <sstream>
 
-#include "OnlineMonitoringBase.cxx"
+#include "OnlineMonitoringBase.hxx"
 
 struct OnlineMonitoring::Channel {
   Channel(int onlineChannel, int offlineChannel, int plane, int apa, int drift) {

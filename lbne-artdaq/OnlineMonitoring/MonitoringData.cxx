@@ -10,7 +10,7 @@
 
 #include "MonitoringData.hxx"
 
-void OnlineMonitoring::MonitoringData::BeginMonitoring(int run, int subrun) {
+void OnlineMonitoring::MonitoringData::BeginMonitoring(int run, int subrun, TString const& monitorSavePath) {
 
   /// Sets up monitoring for new subrun
 
@@ -31,7 +31,7 @@ void OnlineMonitoring::MonitoringData::BeginMonitoring(int run, int subrun) {
 
   // Get directory for this run
   std::ostringstream directory;
-  directory << HistSavePath << "Run" << run << "Subrun" << subrun << "/";
+  directory << monitorSavePath << "Run" << run << "Subrun" << subrun << "/";
   HistSaveDirectory = directory.str();
 
   // Make the directories to save the files
@@ -90,7 +90,10 @@ void OnlineMonitoring::MonitoringData::FillTree(RCEFormatter const& rceformatter
   fDataTree->Fill();
 }
 
-void OnlineMonitoring::MonitoringData::GeneralMonitoring(RCEFormatter const& rceformatter, SSPFormatter const& sspformatter, PTBFormatter const& ptbformatter) {
+void OnlineMonitoring::MonitoringData::GeneralMonitoring(RCEFormatter const& rceformatter,
+							 SSPFormatter const& sspformatter,
+							 PTBFormatter const& ptbformatter,
+							 TString const& dataDirPath) {
 
   /// Fills the general monitoring histograms (i.e. monitoring not specific to a particular hardware component)
 
@@ -110,7 +113,7 @@ void OnlineMonitoring::MonitoringData::GeneralMonitoring(RCEFormatter const& rce
 
     // Size of files
     std::multimap<Long_t,std::pair<std::vector<TString>,Long_t>,std::greater<Long_t> > fileMap;
-    TSystemDirectory dataDir("dataDir",DataDirName);
+    TSystemDirectory dataDir("dataDir",dataDirPath);
     const TList *files = dataDir.GetListOfFiles();
     if (files) {
       TSystemFile *file;
@@ -120,7 +123,7 @@ void OnlineMonitoring::MonitoringData::GeneralMonitoring(RCEFormatter const& rce
       while ( (file = (TSystemFile*)next()) ) {
 	fileName = file->GetName();
     	if ( !file->IsDirectory() && fileName.EndsWith(".root") && !fileName.BeginsWith("lbne_r-") ) {
-	  const TString path = DataDirName+TString(file->GetName());
+	  const TString path = dataDirPath+TString(file->GetName());
     	  gSystem->GetPathInfo(path.Data(),&id,&size,&flags,&modified);
 	  size /= 1e6;
 	  TObjArray *splitName = path.Tokenize(PathDelimiter);
@@ -243,6 +246,7 @@ void OnlineMonitoring::MonitoringData::RCEMonitoring(RCEFormatter const& rceform
   const std::vector<std::vector<unsigned long> > timestamps = rceformatter.TimestampVector();
   int totalADC = 0, totalRCEHitsEvent = 0, timesADCGoesOverThreshold = 0;
 
+  // Fill some big hists only every 30s
   if (timeIntoRun % 30 == 0) {
 
     // FFT
@@ -515,7 +519,7 @@ void OnlineMonitoring::MonitoringData::PTBMonitoring(PTBFormatter const& ptb_for
 
 }
 
-void OnlineMonitoring::MonitoringData::WriteMonitoringData(int run, int subrun, int eventsProcessed) {
+void OnlineMonitoring::MonitoringData::WriteMonitoringData(int run, int subrun, int eventsProcessed, TString const& imageType) {
 
   /// Writes all the monitoring data currently saved in the data objects
 
@@ -565,6 +569,7 @@ void OnlineMonitoring::MonitoringData::WriteMonitoringData(int run, int subrun, 
       fCanvas->SetRightMargin(0.2);
       fFigureLegends[_h->GetName()]->Draw();
     }
+    else fCanvas->SetRightMargin(0.1);
     fCanvas->Update();
     TLine line = TLine();
     line.SetLineColor(2);
@@ -584,13 +589,15 @@ void OnlineMonitoring::MonitoringData::WriteMonitoringData(int run, int subrun, 
       }
     if (strstr(histTitle->At(2)->GetName(),"logy")) fCanvas->SetLogy(1);
     else fCanvas->SetLogy(0);
+    if (strstr(histTitle->At(2)->GetName(),"logz")) fCanvas->SetLogz(1);
+    else fCanvas->SetLogz(0);
     fCanvas->Modified();
     fCanvas->Update();
-    fCanvas->SaveAs(HistSaveDirectory+TString(histName->At(0)->GetName())+TString("/")+TString(_h->GetName())+ImageType);
+    fCanvas->SaveAs(HistSaveDirectory+TString(histName->At(0)->GetName())+TString("/")+TString(_h->GetName())+imageType);
     fDataFile->cd();
     fDataFile->cd(histName->At(0)->GetName());
     _h->Write();
-    *componentHTML[histName->At(0)->GetName()] << "<figure><a href=\"" << (TString(_h->GetName())+ImageType).Data() << "\"><img src=\"" << (TString(_h->GetName())+ImageType).Data() << "\" width=\"650\"></a><figcaption>" << fFigureCaptions.at(_h->GetName()) << "</figcaption></figure>" << std::endl;
+    *componentHTML[histName->At(0)->GetName()] << "<figure><a href=\"" << (TString(_h->GetName())+imageType).Data() << "\"><img src=\"" << (TString(_h->GetName())+imageType).Data() << "\" width=\"650\"></a><figcaption>" << fFigureCaptions.at(_h->GetName()) << "</figcaption></figure>" << std::endl;
   }
 
   mainHTML << "<div class=\"bannerbottom\"></div></body>" << std::endl;
@@ -656,6 +663,12 @@ void OnlineMonitoring::MonitoringData::MakeHistograms() {
   hSizeOfFilesPerEvent = new TH1D("General__Last20Files_SizePerEvent_RunSubrun_All","Size of Event in Data Files_\"colz\"_none;Run&Subrun;Size (MB/event);",20,0,20);
   fFigureCaptions["General__Last20Files_SizePerEvent_RunSubrun_All"] = "Size of event in each of the last 20 data files made by the DAQ (size of file / number of events in file)";
   // SSP time sync
+  hSSPTimeSync = new TMultiGraph("General_SSP_TimeSync_Difference_MinChannelTime_All",
+				 "Max -- Min Average Trigger Times (All SSPs)_\"AL\"_none;Min average channel time;(Max-min) channel time");
+  fFigureCaptions[hSSPTimeSync->GetName()] = "Max-min average trigger times for all SSPs";
+  hSSPTimeSyncAverage = new TMultiGraph("General_SSP_TimeSync_Average_AverageChannelTime_All",
+					"Average SSP Trigger Time -- Average Channel Trigger Time_\"AL\"_none;Average channel trigger time;SSP average trigger time - average channel trigger time");
+  fFigureCaptions[hSSPTimeSyncAverage->GetName()] = "Average SSP trigger time - average channel trigger time for all SSPs";
   for (unsigned int ssp = 0; ssp < NSSPs; ++ssp) {
     hTimeSyncSSPs[ssp] = new TGraph();
     hTimeSyncSSPs[ssp]->SetName(("General_SSP"+std::to_string(ssp)+"_TimeSync_Difference_MinChannelTime_All").c_str());
@@ -682,10 +695,10 @@ void OnlineMonitoring::MonitoringData::MakeHistograms() {
   hADCRMSChannelAPA2                    = new TProfile("RCE_APA1_ADC_RMS_Channel_All","RCE ADC RMS APA1_\"histl\"_none;Channel;RCE ADC RMS",512,512,1023);
   hADCRMSChannelAPA3                    = new TProfile("RCE_APA2_ADC_RMS_Channel_All","RCE ADC RMS APA2_\"histl\"_none;Channel;RCE ADC RMS",512,1024,1535);
   hADCRMSChannelAPA4                    = new TProfile("RCE_APA3_ADC_RMS_Channel_All","RCE ADC RMS APA3_\"histl\"_none;Channel;RCE ADC RMS",512,1536,2047);
-  hFFTChannelRCE00                      = new TProfile2D("RCE_RCE00_ADC_FFT_Channel_FirstEvent","ADC FFT for RCE00_\"colz\"_none;Channel;FFT (MHz)",128,0,128,100,0,1);
+  hFFTChannelRCE00                      = new TProfile2D("RCE_RCE00_ADC_FFT_Channel_FirstEvent","ADC FFT for RCE00_\"colz\"_logz;Channel;FFT (MHz)",128,0,128,100,0,1);
   hFFTChannelRCE00->GetZaxis()->SetRangeUser(0,5000);
-  hADCChannel                           = new TH2D("RCE__ADC_Value_Channel_All","ADC vs Channel_\"colz\"_none;Channel;ADC Value",NRCEChannels,0,NRCEChannels,2000,0,2000);
-  hTickRatioChannel                     = new TH2D("RCE__NumberOfTicks_Ratio_Channel_All","Ratio of Number of Tick to Max In Event_\"hist\"_none;Channel;Number of Ticks/Max Number of Ticks in Event",NRCEChannels,0,NRCEChannels,101,0,1.01);
+  hADCChannel                           = new TH2D("RCE__ADC_Value_Channel_All","ADC vs Channel_\"colz\"_logz;Channel;ADC Value",NRCEChannels,0,NRCEChannels,2000,0,2000);
+  hTickRatioChannel                     = new TH2D("RCE__NumberOfTicks_Ratio_Channel_All","Ratio of Number of Tick to Max In Event_\"colz\"_none;Channel;Number of Ticks/Max Number of Ticks in Event",NRCEChannels,0,NRCEChannels,101,0,1.01);
   hTickTotalChannel                     = new TH2D("RCE__NumberOfTicks_Total_Channel_All","Total Ticks in Channel_\"hist\"_none;Channel;Total ticks in event",NRCEChannels,0,NRCEChannels,10001,0,10001);
   hAvADCChannelEvent                    = new TH2D("RCE__ADC_Mean_Event_First100","Average RCE ADC Value_\"colz\"_none;Event;Channel",100,0,100,NRCEChannels,0,NRCEChannels);
   hRCEDNoiseChannel                     = new TProfile("RCE__ADC_DNoise_Channel_All","RCE DNoise_\"colz\"_none;Channel;DNoise",NRCEChannels,0,NRCEChannels);
@@ -844,6 +857,8 @@ void OnlineMonitoring::MonitoringData::MakeHistograms() {
   fHistArray.Add(hSubDetectorsPresent); fHistArray.Add(hSubDetectorsWithData);
   fHistArray.Add(hSizeOfFiles); fHistArray.Add(hSizeOfFilesPerEvent);
 
+  fHistArray.Add(hSSPTimeSync); fHistArray.Add(hSSPTimeSyncAverage);
+
   fHistArray.Add(hADCMeanChannelAPA1); fHistArray.Add(hADCMeanChannelAPA2);
   fHistArray.Add(hADCMeanChannelAPA3); fHistArray.Add(hADCMeanChannelAPA4);
   fHistArray.Add(hADCRMSChannelAPA1); fHistArray.Add(hADCRMSChannelAPA2);
@@ -907,39 +922,30 @@ void OnlineMonitoring::MonitoringData::MakeHistograms() {
 
 void OnlineMonitoring::MonitoringData::ConstructTimingSyncGraphs() {
 
-  TMultiGraph* sspTimeSyncArray = new TMultiGraph("General_SSP_TimeSync_Difference_MinChannelTime_All",
-						  "Max -- Min Average Trigger Times (All SSPs)_\"AL\"_none;Min average channel time;(Max-min) channel time");
-  TLegend* sspTimeSyncArrayLegend = new TLegend(0.8,0.5,0.9,0.9);
+  TLegend* sspTimeSyncLegend = new TLegend(0.8,0.5,0.9,0.9);
 
   bool should_draw = false;
   for (unsigned int ssp = 0; ssp < NSSPs; ++ssp) {
     if (hTimeSyncSSPs[ssp]->GetN() > 0) {
       should_draw = true;
-      sspTimeSyncArray->Add(hTimeSyncSSPs[ssp]);
-      sspTimeSyncArrayLegend->AddEntry(hTimeSyncSSPs[ssp],("SSP "+std::to_string(ssp+1)).c_str(),"l");
+      hSSPTimeSync->Add(hTimeSyncSSPs[ssp]);
+      sspTimeSyncLegend->AddEntry(hTimeSyncSSPs[ssp],("SSP "+std::to_string(ssp+1)).c_str(),"l");
     }
   }
-  if (should_draw) {
-    fFigureLegends[sspTimeSyncArray->GetName()] = sspTimeSyncArrayLegend;
-    fFigureCaptions[sspTimeSyncArray->GetName()] = "Max-min average trigger times for all SSPs";
-    fHistArray.Add(sspTimeSyncArray);
-  }
+  if (should_draw)
+    fFigureLegends[hSSPTimeSync->GetName()] = sspTimeSyncLegend;
 
-  TMultiGraph *sspTimeSyncAverageArray = new TMultiGraph("General_SSP_TimeSync_Average_AverageChannelTime_All",
-							 "Average SSP Trigger Time -- Average Channel Trigger Time_\"AL\"_none;Average channel trigger time;SSP average trigger time - average channel trigger time");
-  TLegend *sspTimeSyncAverageArrayLegend = new TLegend(0.8,0.5,0.9,0.9);
+  TLegend* sspTimeSyncAverageLegend = new TLegend(0.8,0.5,0.9,0.9);
 
   should_draw = false;
   for (unsigned int ssp = 0; ssp < NSSPs; ++ssp) {
     if (hTimeSyncAverageSSPs[ssp]->GetN() > 0) {
       should_draw = true;
-      sspTimeSyncAverageArray->Add(hTimeSyncAverageSSPs[ssp]);
-      sspTimeSyncAverageArrayLegend->AddEntry(hTimeSyncAverageSSPs[ssp],("SSP "+std::to_string(ssp+1)).c_str(),"l");
+      hSSPTimeSyncAverage->Add(hTimeSyncAverageSSPs[ssp]);
+      sspTimeSyncAverageLegend->AddEntry(hTimeSyncAverageSSPs[ssp],("SSP "+std::to_string(ssp+1)).c_str(),"l");
     }
   }
-  if (should_draw) {
-    fFigureLegends[sspTimeSyncAverageArray->GetName()] = sspTimeSyncAverageArrayLegend;
-    fFigureCaptions[sspTimeSyncAverageArray->GetName()] = "Average SSP trigger time - average channel trigger time for all SSPs";
-    fHistArray.Add(sspTimeSyncAverageArray);
-  }
+  if (should_draw)
+    fFigureLegends[hSSPTimeSyncAverage->GetName()] = sspTimeSyncAverageLegend;
+
 }

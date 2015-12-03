@@ -19,7 +19,11 @@ physics:
     monitoring:
     {
       module_type:                "OnlineMonitoring"
-      MakeTree:                   "false"
+      DetailedMonitoring:         "false"
+      DataDirPath:                "/data/lbnedaq/data/transferred_files/"
+      MonitorSavePath:            "/home/lbnedaq/wallbank/monitoring/"
+      EVDSavePath:                "/home/lbnedaq/wallbank/monitoring/"
+      ImageType:                  ".png"
       MonitoringRefreshRate:      500
       InitialMonitoringUpdate:    30
       EventDisplayRefreshRate:    100000 #8

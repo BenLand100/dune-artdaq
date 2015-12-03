@@ -23,7 +23,7 @@
 #include <utility>
 #include "TMath.h"
 
-#include "OnlineMonitoringBase.cxx"
+#include "OnlineMonitoringBase.hxx"
 
 class OnlineMonitoring::RCEFormatter {
 public:

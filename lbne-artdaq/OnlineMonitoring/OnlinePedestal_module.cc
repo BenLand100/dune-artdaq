@@ -34,7 +34,7 @@
 #include <sys/stat.h>
 #include <typeinfo>
 
-#include "OnlineMonitoringBase.cxx"
+#include "OnlineMonitoringBase.hxx"
 #include "DataReformatter.hxx"
 #include "MonitoringPedestal.hxx"
 #include "EventDisplay.hxx"
@@ -64,6 +64,11 @@ private:
   // Refresh rates
   int fMonitoringRefreshRate;
   int fEventDisplayRefreshRate;
+
+  // MW: stuff I need to put here to make it compile!  It won't do anything... Needs looking at if we're using this module
+  TString fMonitorSavePath;
+  TString fEVDSavePath;
+  TString fImageType;
 
 };
 
@@ -107,7 +112,7 @@ void OnlineMonitoring::OnlinePedestal::analyze(art::Event const& evt) {
 
   // Fill the data products in the monitoring data
   if (rawRCE.isValid()) fMonitoringPedestal.RCEMonitoring(rceformatter);
-  fMonitoringPedestal.GeneralMonitoring();
+  //fMonitoringPedestal.GeneralMonitoring();
   if (fMakeTree) fMonitoringPedestal.FillTree(rceformatter);
 
   // Write the data out every-so-often
@@ -118,7 +123,7 @@ void OnlineMonitoring::OnlinePedestal::analyze(art::Event const& evt) {
   // Make event display every-so-often
   int evdRefreshInterval = std::round((double)fEventDisplayRefreshRate / 1.6e-3);
   if (fEventNumber % evdRefreshInterval == 0)
-    fEventDisplay.MakeEventDisplay(rceformatter, fChannelMap, fEventNumber);
+    fEventDisplay.MakeEventDisplay(rceformatter, fChannelMap, fEventNumber, fEVDSavePath);
 
   // Consider detaching!
   // // Event display -- every 500 events (8 s)
