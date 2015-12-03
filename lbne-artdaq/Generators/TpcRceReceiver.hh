@@ -59,6 +59,7 @@ namespace lbne {
     // State transition methods, for future use, if/when needed
     void start() override; // {}
     void stop() override; // {}
+    void stopNoMutex() override;
     void pause() override {}
     void resume() override {}
 

@@ -262,15 +262,16 @@ void lbne::TpcRceReceiver::stop(void)
 
 #ifndef NO_RCE_CLIENT
 
-	// Instruct the DPM to stope
-	dpm_client_->send_command("SetRunState", "Stopped");
+	// Instruct the DPM to stop
+	// Do this step in stopNoMutex now
+	//dpm_client_->send_command("SetRunState", "Stopped");
 	
-	if (dtm_client_enable_)
-	{
+	//if (dtm_client_enable_)
+	//{
 	  //dtm_client_->send_command("SetRunState", "Stopped");
 	  //dtm_client_->send_command("Stop");
 
-	}
+	//}
 	
 	//dpm_client_->send_command("STOP");
 #endif
@@ -292,6 +293,14 @@ void lbne::TpcRceReceiver::stop(void)
 
 }
 
+void lbne::TpcRceReceiver::stopNoMutex(void)
+{
+
+	DAQLogger::LogInfo(instance_name_) << "In stopNoMutex - instructing DPM to stop";
+
+	// Instruct the DPM to stop
+	dpm_client_->send_command("SetRunState", "Stopped");
+}
 
 bool lbne::TpcRceReceiver::getNext_(artdaq::FragmentPtrs & frags) {
 
