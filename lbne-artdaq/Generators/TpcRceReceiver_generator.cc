@@ -173,12 +173,6 @@ lbne::TpcRceReceiver::TpcRceReceiver(fhicl::ParameterSet const & ps)
   config_frag << "<DataDpm><DataBuffer><RunMode>" << rce_daq_mode_ << "</RunMode></DataBuffer></DataDpm>";
   dpm_client_->send_config(config_frag.str());
 
-  if(rce_daq_mode_=="Trigger"){
-    config_frag<< "<DataDpm><DataBuffer><RunMode>" << rce_daq_mode_ << "</RunMode></DataBuffer></DataDpm>";
-    dpm_client_->send_config(config_frag.str());    
-  }
-    
-
 #endif
 
   // Create a RceDataReceiver instance
