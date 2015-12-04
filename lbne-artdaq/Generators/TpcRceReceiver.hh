@@ -101,6 +101,7 @@ namespace lbne {
     uint16_t receive_port_;
     size_t raw_buffer_size_;
     uint32_t raw_buffer_precommit_;
+    uint32_t filled_buffer_release_max_;
     size_t empty_buffer_low_mark_;
     size_t filled_buffer_high_mark_;
     bool   use_fragments_as_raw_buffer_;
