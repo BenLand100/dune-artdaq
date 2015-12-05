@@ -310,6 +310,7 @@ void lbne::RceDataReceiver::do_read(void)
 
 		// Attempt to obtain a raw buffer to receive data into
 		unsigned int buffer_retries = 0;
+		const unsigned int max_retries = 100;
 		const unsigned int buffer_retry_report_interval = 10;
 		bool buffer_available;
 
@@ -323,6 +324,21 @@ void lbne::RceDataReceiver::do_read(void)
 							<< buffer_retries << " attempts so far)";
 				}
 				buffer_retries++;
+
+				if (buffer_retries > max_retries)
+				{
+					if (!suspend_readout_.load())
+					{
+						if (!exception_.load() )
+						{
+							try {
+								DAQLogger::LogError(instance_name_) << "lbne::RceDataReceiver::receiverLoop: too many buffer retries, signalling an exception";
+							} catch (...) {
+								set_exception(true);
+							}
+						}
+					}
+				}
 			} else {
 				if (buffer_retries > buffer_retry_report_interval) {
 					RECV_DEBUG(1) << "lbne::RceDataReceiver::receiverLoop: obtained new buffer after " << buffer_retries << " retries";
