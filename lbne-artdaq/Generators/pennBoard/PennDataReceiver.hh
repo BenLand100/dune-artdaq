@@ -80,6 +80,9 @@ private:
 
 	enum DeadlineIoObject { None, Acceptor, DataSocket };
 
+	void validate_microslice_header(void);
+	void validate_microslice_payload(void);
+
 	void run_service(void);
 	void do_accept(void);
 	void do_read(void);
@@ -118,8 +121,9 @@ private:
 	SafeQueue<lbne::PennRawBufferPtr> filled_buffer_queue_;
 	PennRawBufferPtr current_raw_buffer_;
 	void*            current_write_ptr_;
+  void*            tmp_write_ptr_;
 
-  void*            state_start_ptr_;
+  void*            receiver_state_start_ptr_;
   std::size_t      state_nbytes_recvd_;
 
   enum NextReceiveState { ReceiveMicrosliceHeader, ReceiveMicroslicePayload, ReceiveMicroslicePayloadHeader, ReceiveMicroslicePayloadCounter, ReceiveMicroslicePayloadTrigger, ReceiveMicroslicePayloadTimestamp };
@@ -153,7 +157,7 @@ private:
   bool last_microslice_was_fragment_;
 
   bool                                           microslice_version_initialised_;
-  lbne::PennMicroSlice::Header::format_version_t last_microslice_version_;
+  lbne::PennMicroSlice::Header::format_version_t microslice_version_;
   bool                                           sequence_id_initialised_;
   lbne::PennMicroSlice::Header::sequence_id_t    last_sequence_id_;
 
@@ -175,7 +179,7 @@ private:
 
   size_t           current_microslice_;
   static const int current_microslice_buffer_size_ = 65536;
-  uint8_t          current_microslice_ptr_[lbne::PennDataReceiver::current_microslice_buffer_size_];
+//  uint8_t          current_microslice_ptr_[lbne::PennDataReceiver::current_microslice_buffer_size_];
 
   size_t           remaining_size_;
   static const int remaining_buffer_size = 65536;

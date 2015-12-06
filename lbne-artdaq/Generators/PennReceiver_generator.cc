@@ -87,7 +87,7 @@ run_receiver_(false)
   // NFB -- This means that artDAQ fragments are used instead of PennRawBuffers
   // Not really sure what is effectively the difference between one and the other here
   use_fragments_as_raw_buffer_ =
-      ps.get<bo ol>("use_fragments_as_raw_buffer", true);
+      ps.get<bool>("use_fragments_as_raw_buffer", true);
 #ifdef REBLOCK_PENN_USLICE
   if(use_fragments_as_raw_buffer_ == false) {
     DAQLogger::LogError("PennReceiver") << "use_fragments_as_raw_buffer == false has not been implemented";
@@ -288,6 +288,8 @@ void lbne::PennReceiver::start(void)
     // Use artDAQ fragments to build the raw buffer
     if (use_fragments_as_raw_buffer_)
     {
+      DAQLogger::LogWarning("PennReceiver") << "getNext_ : Using fragments as raw buffers. This does not remove warning words from the Millislices.";
+
       raw_buffer = this->create_new_buffer_from_fragment();
     }
     else
@@ -424,6 +426,8 @@ bool lbne::PennReceiver::getNext_(artdaq::FragmentPtrs & frags) {
 
   if (use_fragments_as_raw_buffer_)
   {
+    DAQLogger::LogWarning("PennReceiver") << "getNext_ : Using fragments as raw buffers. This does not remove warning words from the Millislices.";
+
     // Map back onto the fragment from the raw buffer data pointer we have just received
     if (raw_to_frag_map_.count(data_ptr))
     {

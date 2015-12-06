@@ -572,7 +572,7 @@ void trig::PennBoardTrigger::printPayloadInfo(art::Handle<artdaq::Fragments> con
         std::cerr << "payload_type: Timestamp " << std::endl;
         std::cerr << "payload_size: " << payload_size << std::endl;
         break;
-      case lbne::PennMicroSlice::DataTypeSelftest:
+      case lbne::PennMicroSlice::DataTypeWarning:
         std::cerr << "payload_type: Selftest  "  << std::endl;
         std::cerr << "payload_size: " << payload_size << std::endl;
         break;
