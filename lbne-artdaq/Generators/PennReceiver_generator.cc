@@ -20,7 +20,6 @@
 #include <thread>
 #include <unistd.h>
 
-//#define __PTB_BOARD_READER_DEVEL_MODE__
 
 lbne::PennReceiver::PennReceiver(fhicl::ParameterSet const & ps)
 :
@@ -237,14 +236,24 @@ run_receiver_(false)
 
   // Create a PennDataReceiver instance
   // This should be where the PTB connects. 
+#ifdef __PTB_BOARD_READER_DEVEL_MODE__
+  DAQLogger::LogDebug("PennReceiver") << "Creating data receiver with parameters :receiver_tick_period_usecs_ ["
+        << receiver_tick_period_usecs_
+        << "] millislice_size_ : [" << millislice_size_
+        << "] millislice_overlap_size_ : [" << millislice_overlap_size_;
+#endif
+
   data_receiver_ =
-      std::unique_ptr<lbne::PennDataReceiver>(new lbne::PennDataReceiver(receiver_debug_level, receiver_tick_period_usecs_, penn_data_dest_port_,
-          millislice_size_, millislice_overlap_size_, rate_test));
+      std::unique_ptr<lbne::PennDataReceiver>(new lbne::PennDataReceiver(receiver_debug_level,
+                                                                         receiver_tick_period_usecs_,
+                                                                         penn_data_dest_port_,
+                                                                         millislice_size_,
+                                                                         millislice_overlap_size_,
+                                                                         rate_test));
 
 
   // Sleep for a short while to give time for the DataReceiver to be ready to 
   // receive connections
-  // Half a second?
   usleep(500000);
 
   DAQLogger::LogDebug("PennReceiver") << "Sending the configuration to the PTB";
@@ -304,8 +313,18 @@ void lbne::PennReceiver::start(void)
   // The soft-reset kills the connection.
   // TODO: This should now work fine, but uncomment only when the rest is working
   //penn_client_->send_command("SoftReset");
-  penn_client_->send_command("StartRun");
+  std::string xml_answer;
+  penn_client_->send_command("StartRun",xml_answer);
 
+  if (xml_answer.size() == 0) {
+    DAQLogger::LogWarning("PennReceiver") << "PTB didn't send a start of sun timestamp. Will estimate from data flow.";
+  } else {
+    std::stringstream tmpVal;
+    tmpVal << xml_answer;
+    uint64_t start_time;
+    tmpVal >> start_time;
+    data_receiver_->set_run_start_time(start_time);
+  }
 }
 
 void lbne::PennReceiver::stop(void)
@@ -421,6 +440,7 @@ bool lbne::PennReceiver::getNext_(artdaq::FragmentPtrs & frags) {
           recvd_buffer->countPayloadTrigger(), recvd_buffer->countPayloadTimestamp(),
           recvd_buffer->endTimestamp(), recvd_buffer->widthTicks(), recvd_buffer->overlapTicks());
 
+
       // Clean up entry in map to remove raw fragment buffer
       raw_to_frag_map_.erase(data_ptr);
 
@@ -499,6 +519,10 @@ lbne::PennRawBufferPtr lbne::PennReceiver::create_new_buffer_from_fragment(void)
 {
   PennRawBufferPtr raw_buffer;
 
+#ifdef __PTB_BOARD_READER_DEVEL_MODE__
+  DAQLogger::LogDebug("PennReceiver") << "Producing a artdaq fragment with size: "
+      << raw_buffer_size_ + sizeof(PennMilliSlice::Header);
+#endif
   std::unique_ptr<artdaq::Fragment> frag = artdaq::Fragment::FragmentBytes(raw_buffer_size_ + sizeof(PennMilliSlice::Header));
   uint8_t* data_ptr = frag->dataBeginBytes() + sizeof(PennMilliSlice::Header);
   raw_buffer = lbne::PennRawBufferPtr(new PennRawBuffer(data_ptr, raw_buffer_size_));

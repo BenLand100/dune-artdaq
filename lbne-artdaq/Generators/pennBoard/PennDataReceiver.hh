@@ -35,6 +35,32 @@ namespace lbne {
 class PennDataReceiver {
 
 public:
+
+
+    struct Word_warning {
+      typedef uint32_t data_t;
+      typedef uint16_t data_size_t;
+
+      typedef uint8_t  warning_type_t;
+      typedef uint8_t  data_packet_type_t;
+      typedef uint32_t short_nova_timestamp_t;
+
+      // The order of the data packet type and the timestamp have been
+      // swapped to reflect that it's the MOST significant three bits in
+      // the payload header which contain the type. I've also added a
+      // 1-bit pad to reflect that the least significant bit is unused.
+
+      uint32_t padding : 24;
+      warning_type_t warning_type : 5;
+      data_packet_type_t     data_packet_type     : 3;
+
+      static size_t const size_words = sizeof(data_t);
+      static data_size_t const num_bits_padding     = 24;
+      static data_size_t const num_bits_warning  = 5;
+      static data_size_t const num_bits_packet_type = 3;
+    };
+
+
   PennDataReceiver(int debug_level, uint32_t tick_period_usecs, uint16_t udp_receive_port, uint32_t millislice_size, uint16_t millislice_overlap_size, bool rate_test);
 	virtual ~PennDataReceiver();
 
@@ -48,6 +74,8 @@ public:
 	void release_empty_buffers(void);
 	void release_filled_buffers(void);
 
+	void set_run_start_time(uint64_t value);
+	uint64_t get_run_start_time() const {return run_start_time_;};
 private:
 
 	enum DeadlineIoObject { None, Acceptor, DataSocket };

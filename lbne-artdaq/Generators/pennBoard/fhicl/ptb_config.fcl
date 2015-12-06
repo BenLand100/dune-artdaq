@@ -1,39 +1,59 @@
  # No idea of the whole block below means
  daq: {
-  max_fragment_size_words: 1048576
+  # I think these parameters are not being used
+  # The SSPs have 262144. Not sure if it is relevant
+  # The RCEs have 1048576. Not sure if it is relevant
+  max_fragment_size_words: 1048576 
+  
   fragment_receiver: {
     mpi_buffer_count: 16
-    first_event_builder_rank: 1
-    event_builder_count: 2
-
+    mpi_sync_interval: 100
+    
+    # These two variables will be calculated by DAQInterface...
+    first_event_builder_rank: -1
+    event_builder_count: -1
+    
     generator: PennReceiver
-    fragment_type: PENN
+    fragment_type: PTB
     fragment_id: 0
     board_id: 0
-    sleep_on_stop_us: 500000
-        
-          # The real configuration options for the PTB
-        penn_client_host_addr     : '192.168.1.2' # the IP of the PTB
-        penn_client_host_port     : 8991                # client port
-        penn_client_timeout_usecs : 5E5                 # connection timeout. THis is a board_reader option
-                
-        #
-        # Board reader options. No idea of what they mean
-        #
-        
-        # No idea of what these mean
-        receiver_tick_period_usecs    : 1E4
-        millislice_size               : 10
-        millislice_overlap_size       : 5
-        receiver_debug_level          : 0   # higher number = print more info (6 is current highest level)
-        reporting_interval_fragments  : 10
-        reporting_interval_time       : 0
-        
-        raw_buffer_size		      : 4000000
-        raw_buffer_precommit          : 50
-        use_fragments_as_raw_buffer   : true     # false not currently implemented
-        
-        
+    
+    #sleep_on_stop_us: 500000
+    sleep_on_stop_us: 0
+    
+    # The real configuration options for the PTB
+    penn_client_host_addr     : '192.168.100.205' # the IP of the PTB
+    penn_client_host_port     : 8991                # client port
+    penn_client_timeout_usecs : 5E5                 # connection timeout. This is a board_reader option
+            
+#####################################################################
+#
+# Other board reader options. No idea of what they mean
+#
+#####################################################################    
+
+      #**Important note**                                                                           
+      #NOvA clock is multiplied up so that the internal logic runs faster at 64 MHz 
+      # but NOvA ticks used for timestamp generation 
+      # (and thus affecting physical millislice length) are at 64 MHz.                      
+
+    receiver_tick_period_usecs    : 1E4       # board reader waiting timeout 
+    millislice_size               : 320000    # The size of the millislice in **NOvA register** units (64MHz)
+                                              # Default : 320000 (5ms)
+                                              # IMPORTANT: This value has to be kept in sync with the other board readers
+                                              # or the DAq will refuse to init
+    millislice_overlap_size       : 0         # Millislice overlap. Not sure what is a reasonable value here
+                                              # A good value would probably be 10%
+                                              # 32000 == 5 microsecs 
+    receiver_debug_level          : 0   # higher number = print more info (6 is current highest level)
+
+    reporting_interval_fragments  : 10  # Interval between fragments that a report is printed
+    reporting_interval_time       : 0   # Time interval between reports (in seconds)
+    
+    raw_buffer_size               : 4000000   # Using the same value as the RCEs. Not totally sure of the meanining
+    raw_buffer_precommit          : 100       # Number of precommitted buffers
+    use_fragments_as_raw_buffer   : true      # false not currently implemented
+
 ####################################################################
 #
 # PTB configuration options. These are then translated into a 
@@ -41,7 +61,7 @@
 #
 #
 # NOTES: 
-#     - Logic. All logic follows the rule: (0: AND, 1: OR, 2: XOR, 3: UNIQUE) 
+#     - Logic. All logic follows the rule: (00: AND, 01: OR, 2: XOR, 3: UNIQUE) 
 #
 #
 ####################################################################
@@ -50,43 +70,46 @@
       daq_host            : "192.168.1.1"
       daq_port            : 8992
       daq_rollover        : 80           # Number of packets before the slice
-                                         #  is considered ready. Probably not needed.
-      daq_microslice_size : 128          # This is the time based rollover. 
-                                         # Can be any value that fits a 28 bit word.
-                                         # Used to be a (2**x)-1 value. 
-                                         # Now an absolute number is used
+                                         #  is considered ready. Currently unused.
+      daq_microslice_size : 3200         # This is the time based rollover. 
+                                         # Can be any value that fits a 27 bit word.
+                                         # MUST BE SMALLER THAN MILLISLICE SIZE
     }
   
     channel_mask : {
-      BSU : 0x1FFFFFFFFFFFF   # All 49 channels are ON
+      BSU : 0x3FFFFFFFFFFFF   # All 50 channels are ON
       TSU : 0xFFFFFFFFFFFF    # All 48 channels are ON 
     }
   
    hardware : {
      pulse_width : 2     # Width of all output pulses in counts of NOvA clock
+                         # Range 1-63 (32.250-2031.75) ns
    }
    
     muon_triggers : {
       trig_window : 3     # Number of clock ticks that the input signal
                           #  is stretched to account for time offsets between panels
+                          # Range: [0-15] --> (0 - 483.75) ns
       trig_lockdown : 11  # Number of clock ticks that the input signal is
                           #  locked low after being high. Accounts for reflections.
+                          # Range: [0-63] --> (0 -  2031.75) ns
       num_triggers : 4    # Number of different trigger masks
   
       trigger_0 : {
         id      : "A"      # Just something for debugging purposes
         id_mask : "1000"   # Not used at the moment. Same ID as the IP in the PL
-        logic   : 0        # Logic to be applied between groups 
-        prescale: 0        # Number of ignored triggers a successful trigger
+        logic   : 0        # Logic to be applied between groups (0: AND) 
+        prescale: 0        # Number of ignored triggers after a successful trigger
+                           # Range [0-255] 
         group1 : {         
-          logic : 3                       # UNIQUE
-          BSU           : 0xFFFF          # BSU mask (RM 1-16)
-          TSU           : 0x0             # TSU mask
+          logic : 3        # UNIQUE
+          BSU   : 0xFFFF   # BSU mask (RM 1-16)
+          TSU   : 0x0      # TSU mask
         }
         group2 : {
-          logic : 3                       # UNIQUE
-          BSU           : 0x7F7E000000    # BSU mask (CL 1-13)
-          TSU           : 0x0             # TSU mask
+          logic : 3               # UNIQUE
+          BSU   : 0x7F7E000000    # BSU mask (CL 1-13)
+          TSU   : 0x0             # TSU mask
         }                           
       }
   
@@ -104,7 +127,7 @@
           logic : 1
           BSU   : 0x0 
           TSU   : 0xFC0000000 
-        }                           
+        }
       }
   
       trigger_2 : {
@@ -146,14 +169,16 @@
       mask          : 0x1F      # Mask the external triggers (receiving). 
                                 # There are 4 independent + 8 ored (total of 5 bits) 
       echo_triggers : false     # Should a trigger be sent back to the other systems?
+                                # "true" not implemented yet
     }   
   
     calibrations : {
         C1 : {
            id           : "C1"   # Just an ID to keep in mind
            id_mask      : "1000" # The ID that is effectively going into the PL
-           enabled      : true   # enable/disable
+           enabled      : false  # enable/disable
            period       : 10     # Number of clock ticks between calibration pulses
+                                 # Range : [0-2147483647] --> (0 - ~1 min)
         }
         C2 : {
            id           : "C2"   
@@ -162,7 +187,7 @@
            period       : 10     
         }
         C3 : {
-           id           : "C3"   # Just an ID to keep in mind
+           id           : "C3"    # Just an ID to keep in mind
            id_mask      : "0010"
            enabled      : false
            period       : 10     
