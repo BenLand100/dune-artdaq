@@ -251,7 +251,7 @@ void lbne::TpcMilliSliceDump::analyze(art::Event const & evt)
 							  << std::endl;
 
 						///> get the number of channels contained in the nanoslice
-						const int ns_nchan = lbne::TpcNanoSlice::num_channels;
+						uint32_t ns_nchan = nanoslice->getNChannels();
 						///> an alternative way to get the number of samples in the nanoslice
 						//lbne::TpcNanoSlice::sample_count_t ns_chan_again = nanoslice->sampleCount();
 
