@@ -160,7 +160,7 @@ void lbne::PennClient::send_config(std::string const & config)
 }
 
 void lbne::PennClient::send_xml(std::string const & xml_frag) {
-  std::map<std::string,std::string> dummy_answer;
+  std::string dummy_answer;
   send_xml(xml_frag,dummy_answer);
 }
 

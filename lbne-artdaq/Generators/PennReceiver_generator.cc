@@ -315,18 +315,18 @@ void lbne::PennReceiver::start(void)
   // The soft-reset kills the connection.
   // TODO: This should now work fine, but uncomment only when the rest is working
   //penn_client_->send_command("SoftReset");
-  std::string xml_answer;
-  penn_client_->send_command("StartRun",xml_answer);
-
-  if (xml_answer.size() == 0) {
-    DAQLogger::LogWarning("PennReceiver") << "PTB didn't send a start of sun timestamp. Will estimate from data flow.";
-  } else {
-    std::stringstream tmpVal;
-    tmpVal << xml_answer;
-    uint64_t start_time;
-    tmpVal >> start_time;
-    data_receiver_->set_run_start_time(start_time);
-  }
+  penn_client_->send_command("StartRun");
+  
+  
+  // if (xml_answer.size() == 0) {
+  //   DAQLogger::LogWarning("PennReceiver") << "PTB didn't send a start of sun timestamp. Will estimate from data flow.";
+  // } else {
+  //   std::stringstream tmpVal;
+  //   tmpVal << xml_answer;
+  //   uint64_t start_time;
+  //   tmpVal >> start_time;
+  //   data_receiver_->set_run_start_time(start_time);
+  // }
 }
 
 void lbne::PennReceiver::stop(void)
@@ -339,8 +339,8 @@ void lbne::PennReceiver::stop(void)
   // Introduced a answer mode to the PTB which sends run statistics at the end of the
   // run.
   // Collect them here and compare to the statistics accumulated in the board reader
-  std::map<std::string,std::string> statistics;
-  penn_client_->send_command("StopRun",statistics);
+  //std::string statistics;
+  penn_client_->send_command("StopRun");
 
   // Stop the data receiver.
   data_receiver_->stop();
@@ -358,16 +358,16 @@ void lbne::PennReceiver::stop(void)
       << elapsed_secs << " seconds, rate "
       << rate << " Hz, total data " << total_bytes_received_ << " bytes, rate " << data_rate_mbs << " MB/s";
 
-  std::ostringstream msg;
-  msg << "PTB data collection statistics : \n";
-  for (std::map<std::string,std::string>::iterator it = statistics.begin(); it != statistics.end(); ++it) {
-    msg.width(20);
-    msg << it->first;
-    msg << " : ";
-    msg << it->second;
-  }
+  // std::ostringstream msg;
+  // msg << "PTB data collection statistics : \n";
+  // for (std::map<std::string,std::string>::iterator it = statistics.begin(); it != statistics.end(); ++it) {
+  //   msg.width(20);
+  //   msg << it->first;
+  //   msg << " : ";
+  //   msg << it->second;
+  // }
 
-  DAQLogger::LogInfo("PennReceiver") << msg;
+  // DAQLogger::LogInfo("PennReceiver") << msg;
 
 }
 
@@ -461,7 +461,7 @@ bool lbne::PennReceiver::getNext_(artdaq::FragmentPtrs & frags) {
   }
   else
   {
-    DAQLogger::LogWarning("PennReciver") << "Raw buffer mode has not been tested."
+    DAQLogger::LogWarning("PennReciver") << "Raw buffer mode has not been tested.";
     // Create an artdaq::Fragment to format the raw data into. As a crude heuristic,
     // reserve 10 times the raw data space in the fragment for formatting overhead.
     // TODO This needs to be done more intelligently!
@@ -486,8 +486,8 @@ bool lbne::PennReceiver::getNext_(artdaq::FragmentPtrs & frags) {
     auto elapsed_msecs = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - start_time_).count();
     double elapsed_secs = ((double)elapsed_msecs)/1000;
 
-    //	  DAQLogger::LogInfo("PennReceiver") << "Received " << millislices_received_ << " millislices, "
-    //			  << float(total_bytes_received_)/(1024*1024) << " MB in " << elapsed_secs << " seconds";
+    DAQLogger::LogDebug("PennReceiver") << "Received " << millislices_received_ << " millislices, "
+				       << float(total_bytes_received_)/(1024*1024) << " MB in " << elapsed_secs << " seconds";
   }
 
   // Recycle the raw buffer onto the commit queue for re-use by the receiver.
