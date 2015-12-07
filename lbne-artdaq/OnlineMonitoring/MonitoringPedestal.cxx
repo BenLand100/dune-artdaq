@@ -19,7 +19,6 @@ void OnlineMonitoring::MonitoringPedestal::BeginMonitoring(int run, int subrun) 
   // Set up new subrun
   fHistArray.Clear();
   fCanvas = new TCanvas("canv","",800,600);
-  //receivedData = false; checkedFileSizes = false; _interestingchannelsfilled = false;
   checkedFileSizes = false;
 
   // Get directory for this run
@@ -93,8 +92,6 @@ void OnlineMonitoring::MonitoringPedestal::MakeHistograms() {
     hAvADCMillislice[millislice]        = new TH1D("AvADCMillislice"+TString(std::to_string(millislice)),"Av ADC for Millislice "+TString(std::to_string(millislice))+";Event;Av ADC;",10000,0,10000);
     hAvADCMillisliceChannel[millislice] = new TH1D("AvADCMillisliceChannel"+TString(std::to_string(millislice)),"Av ADC v Channel for Millislice "+TString(std::to_string(millislice))+";Channel;Av ADC;",128,0,128);
   }
-  for (std::vector<int>::const_iterator debugchannel = DebugChannels.begin(); debugchannel != DebugChannels.end(); ++debugchannel)
-    hDebugChannelHists[(*debugchannel)] = new TH1D("Channel"+TString(std::to_string(*debugchannel))+"SingleEvent","Channel "+TString(std::to_string(*debugchannel))+" for Single Event",5000,0,5000);
 
   // General
   hNumSubDetectorsPresent = new TH1I("NumSubDetectorsPresent","Number of Subdetectors_\"colz\"_logy;Number of Subdetectors;",25,0,25);
@@ -166,8 +163,6 @@ void OnlineMonitoring::MonitoringPedestal::EndMonitoring() {
   fHistArray.Delete();
 
   // Free up all used memory                                                                    
-  // for (unsigned int interestingchannel = 0; interestingchannel < DebugChannels.size(); ++interestingchannel)
-  //   hDebugChannelHists.at(DebugChannels.at(interestingchannel))->Delete();
   for (unsigned int millislice = 0; millislice < NRCEMillislices; ++millislice)
     hAvADCMillislice.at(millislice)->Delete();
   for (unsigned int channel = 0; channel < NRCEChannels; ++channel){
@@ -321,10 +316,6 @@ void OnlineMonitoring::MonitoringPedestal::RCEMonitoring(RCEFormatter const& rce
       if (channel && !ADCs.at(channel-1).empty() && tick < ADCs.at(channel-1).size())
         hRCEDNoiseChannel->Fill(channel,ADC-ADCs.at(channel-1).at(tick));
 
-      // Debug                                                                                                                 
-      if (!_interestingchannelsfilled && std::find(DebugChannels.begin(), DebugChannels.end(), channel) != DebugChannels.end())
-        hDebugChannelHists.at(channel)->Fill(tick,ADC);
-                                                  
       // Increase variables
       fTotalADC += ADC;
       if (ADC > fThreshold) {
@@ -403,7 +394,6 @@ void OnlineMonitoring::MonitoringPedestal::RCEMonitoring(RCEFormatter const& rce
     hAvADCMillislice.at(millislice)->Fill(fEventNumber, mean);
     hAvADCAllMillislice            ->Fill(fEventNumber, mean);
 
-    _interestingchannelsfilled = true;
   }
 
 }
@@ -447,8 +437,6 @@ void OnlineMonitoring::MonitoringPedestal::WriteMonitoringPedestal(int run, int 
 
   // Write other histograms
   fDataFile->cd();
-  for (unsigned int interestingchannel = 0; interestingchannel < DebugChannels.size(); ++interestingchannel)
-    hDebugChannelHists.at(DebugChannels.at(interestingchannel))->Write();
   for (unsigned int millislice = 0; millislice < NRCEMillislices; ++millislice)
     hAvADCMillislice.at(millislice)->Write();
   for (unsigned int channel = 0; channel < NRCEChannels; ++channel){

@@ -59,6 +59,10 @@ private:
   EventDisplay fEventDisplay;
   ChannelMap fChannelMap;
 
+  // Monitoring options
+  bool fDetailedMonitoring;
+  bool fScopeMonitoring;
+
   // Data save info
   TString fDataDirPath;
   TString fMonitorSavePath;
@@ -72,8 +76,6 @@ private:
   int fLastSaveTime;
   bool fSavedFirstMonitoring;
 
-  bool fDetailedMonitoring;
-
   PTBTrigger fLastPTBTrigger;
 
 };
@@ -86,6 +88,8 @@ OnlineMonitoring::OnlineMonitoring::OnlineMonitoring(fhicl::ParameterSet const& 
 }
 
 void OnlineMonitoring::OnlineMonitoring::reconfigure(fhicl::ParameterSet const& p) {
+  fDetailedMonitoring      = p.get<bool>("DetailedMonitoring");
+  fScopeMonitoring         = p.get<bool>("ScopeMonitoring");
   fDataDirPath     = TString(p.get<std::string>("DataDirPath"));
   fMonitorSavePath = TString(p.get<std::string>("MonitorSavePath"));
   fEVDSavePath     = TString(p.get<std::string>("EVDSavePath"));
@@ -93,7 +97,6 @@ void OnlineMonitoring::OnlineMonitoring::reconfigure(fhicl::ParameterSet const& 
   fMonitoringRefreshRate   = p.get<int> ("MonitoringRefreshRate");
   fInitialMonitoringUpdate = p.get<int> ("InitialMonitoringUpdate");
   fEventDisplayRefreshRate = p.get<int> ("EventDisplayRefreshRate");
-  fDetailedMonitoring      = p.get<bool>("DetailedMonitoring");
 }
 
 void OnlineMonitoring::OnlineMonitoring::beginSubRun(art::SubRun const& sr) {
@@ -101,7 +104,7 @@ void OnlineMonitoring::OnlineMonitoring::beginSubRun(art::SubRun const& sr) {
   mf::LogInfo("Monitoring") << "Starting monitoring for run " << sr.run() << ", subRun " << sr.subRun();
 
   // Start a new monitoring run
-  fMonitoringData.BeginMonitoring(sr.run(), sr.subRun(), fMonitorSavePath);
+  fMonitoringData.BeginMonitoring(sr.run(), sr.subRun(), fMonitorSavePath, fDetailedMonitoring, fScopeMonitoring);
 
   // Make the channel map for this subrun
   fChannelMap.MakeChannelMap();
@@ -128,8 +131,6 @@ void OnlineMonitoring::OnlineMonitoring::analyze(art::Event const& evt) {
   art::Handle<artdaq::Fragments> rawPTB;
   evt.getByLabel("daq","TRIGGER",rawPTB);
 
-  fMonitoringData.StartEvent(fEventNumber, fDetailedMonitoring);
-
   // Create data formatter objects and fill monitoring data products
   RCEFormatter rceformatter(rawRCE);
   SSPFormatter sspformatter(rawSSP);
@@ -137,7 +138,13 @@ void OnlineMonitoring::OnlineMonitoring::analyze(art::Event const& evt) {
   fLastPTBTrigger = ptbformatter.GetLastTrigger();
 
   // Fill the data products in the monitoring data
-  if (rawRCE.isValid()) fMonitoringData.RCEMonitoring(rceformatter, std::time(0)-fLastSaveTime);
+  if (rawRCE.isValid()) {
+    if (fScopeMonitoring) fMonitoringData.RCEScopeMonitoring(rceformatter, fEventNumber);
+    else {
+      fMonitoringData.RCEMonitoring(rceformatter, fEventNumber);
+      if (std::time(0) - fLastSaveTime % 30 == 0) fMonitoringData.RCELessFrequentMonitoring(rceformatter);
+    }
+  }
   if (rawSSP.isValid()) fMonitoringData.SSPMonitoring(sspformatter);
   if (rawPTB.isValid()) fMonitoringData.PTBMonitoring(ptbformatter);
   fMonitoringData.GeneralMonitoring(rceformatter, sspformatter, ptbformatter, fDataDirPath);
