@@ -436,7 +436,6 @@ void OnlineMonitoring::MonitoringData::RCEScopeMonitoring(RCEFormatter const& rc
     for (unsigned int tick = 0; tick < ADCs.at(channel).size(); ++tick) {
       tickTime = time + (tick / EventRate);
       hScopeTrace1s->Fill(tickTime,ADCs.at(channel).at(tick));
-      //std::cout << "Filled hist with time " << tickTime << " and ADC " << ADCs.at(channel).at(tick) << std::endl;
     }
   }
 
@@ -965,9 +964,9 @@ void OnlineMonitoring::MonitoringData::MakeScopeHistograms() {
 
   /// Constructs histograms and other data objects used when running the DAQ in scope mode
 
-  hScopeTrace1s = new TH1F("RCE__ScopeTrace__Time_All","RCE Scope Trace_\"hist\"_none;Time (s);ADC",10000,0,1);
+  hScopeTrace1s = new TProfile("RCE__ScopeTrace__Time_All","RCE Scope Trace_\"hist\"_none;Time (s);ADC",100,0,1);
   fFigureCaptions[hScopeTrace1s->GetName()] = "Scope mode: trace over 1s of running";
-  hScopeTraceFFT1s = new TH1F("RCE__ScopeTrace_FFT_Frequency_All","RCE FFT Scope Trace_\"hist\"_none;Freq (Hz);",10000,0,1);
+  hScopeTraceFFT1s = new TH1F("RCE__ScopeTrace_FFT_Frequency_All","RCE FFT Scope Trace_\"hist\"_none;Freq (Hz);",100,0,1);
   fFigureCaptions[hScopeTraceFFT1s->GetName()] = "Scope mode: FFT of trace over 1s of running";
 
   fHistArray.Add(hScopeTrace1s); fHistArray.Add(hScopeTraceFFT1s);
