@@ -105,6 +105,7 @@ void OnlineMonitoring::MonitoringData::GeneralMonitoring(RCEFormatter const& rce
   /// Fills the general monitoring histograms (i.e. monitoring not specific to a particular hardware component)
 
   // Subdetectors with data
+  hNumSubDetectorsPresent->Fill(1);
   hNumSubDetectorsPresent->Fill(rceformatter.NumRCEs + sspformatter.NumSSPs + ptbformatter.PTBData);
   for (std::vector<std::string>::const_iterator compIt = DAQComponents.begin(); compIt != DAQComponents.end(); ++compIt)
     if ( (std::find(rceformatter.RCEsWithData.begin(), rceformatter.RCEsWithData.end(), *compIt) != rceformatter.RCEsWithData.end()) or
@@ -411,8 +412,8 @@ void OnlineMonitoring::MonitoringData::RCEScopeMonitoring(RCEFormatter const& rc
   int upperTime = 1;
 
   // Find the time since the start of the run
-  double time = event * SamplingPeriod * 1e-6;
-  double tickTime = time;;
+  double time = event / (double)EventRate;
+  double tickTime = time;
 
   if (time > upperTime)
     return;
@@ -426,15 +427,16 @@ void OnlineMonitoring::MonitoringData::RCEScopeMonitoring(RCEFormatter const& rc
 
   // Sanity check -- shouldn't be more than one channel!
   if (ADCs.size() > 1) {
-    mf::LogError("Monitoring") << "Running monitoring in scope mode -- more than two channels are present!";
+    mf::LogError("Monitoring") << "Running monitoring in scope mode -- more than one channel present!";
     return;
   }
 
   // Fill the trace histogram
   for (unsigned int channel = 0; channel < ADCs.size(); ++channel) {
     for (unsigned int tick = 0; tick < ADCs.at(channel).size(); ++tick) {
-      tickTime = time + (tick * SamplingPeriod * 1e-6);
+      tickTime = time + (tick / EventRate);
       hScopeTrace1s->Fill(tickTime,ADCs.at(channel).at(tick));
+      //std::cout << "Filled hist with time " << tickTime << " and ADC " << ADCs.at(channel).at(tick) << std::endl;
     }
   }
 
@@ -978,6 +980,7 @@ void OnlineMonitoring::MonitoringData::ConstructTimingSyncGraphs() {
 
   bool should_draw = false;
   for (unsigned int ssp = 0; ssp < NSSPs; ++ssp) {
+    if (!hTimeSyncSSPs[ssp]) continue;
     if (hTimeSyncSSPs[ssp]->GetN() > 0) {
       should_draw = true;
       hSSPTimeSync->Add(hTimeSyncSSPs[ssp]);
@@ -991,6 +994,7 @@ void OnlineMonitoring::MonitoringData::ConstructTimingSyncGraphs() {
 
   should_draw = false;
   for (unsigned int ssp = 0; ssp < NSSPs; ++ssp) {
+    if (!hTimeSyncAverageSSPs[ssp]) continue;
     if (hTimeSyncAverageSSPs[ssp]->GetN() > 0) {
       should_draw = true;
       hSSPTimeSyncAverage->Add(hTimeSyncAverageSSPs[ssp]);

@@ -108,7 +108,7 @@ void OnlineMonitoring::OnlinePedestal::analyze(art::Event const& evt) {
   fMonitoringPedestal.StartEvent(fEventNumber, fMakeTree);
 
   // Create data formatter objects and fill monitoring data products
-  RCEFormatter rceformatter(rawRCE);
+  RCEFormatter rceformatter(rawRCE, false);
 
   // Fill the data products in the monitoring data
   if (rawRCE.isValid()) fMonitoringPedestal.RCEMonitoring(rceformatter);

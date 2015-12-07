@@ -20,7 +20,7 @@ physics:
     {
       module_type:                "OnlineMonitoring"
       DetailedMonitoring:         false
-      ScopeMonitoring:            false
+      ScopeMonitoring:            true
       DataDirPath:                "/data/lbnedaq/data/transferred_files/"
       MonitorSavePath:            "/home/lbnedaq/wallbank/monitoring/"
       EVDSavePath:                "/home/lbnedaq/wallbank/monitoring/"

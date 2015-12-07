@@ -132,7 +132,7 @@ void OnlineMonitoring::OnlineMonitoring::analyze(art::Event const& evt) {
   evt.getByLabel("daq","TRIGGER",rawPTB);
 
   // Create data formatter objects and fill monitoring data products
-  RCEFormatter rceformatter(rawRCE);
+  RCEFormatter rceformatter(rawRCE, fScopeMonitoring);
   SSPFormatter sspformatter(rawSSP);
   PTBFormatter ptbformatter(rawPTB, fLastPTBTrigger);
   fLastPTBTrigger = ptbformatter.GetLastTrigger();
@@ -145,10 +145,12 @@ void OnlineMonitoring::OnlineMonitoring::analyze(art::Event const& evt) {
       if (std::time(0) - fLastSaveTime % 30 == 0) fMonitoringData.RCELessFrequentMonitoring(rceformatter);
     }
   }
-  if (rawSSP.isValid()) fMonitoringData.SSPMonitoring(sspformatter);
-  if (rawPTB.isValid()) fMonitoringData.PTBMonitoring(ptbformatter);
-  fMonitoringData.GeneralMonitoring(rceformatter, sspformatter, ptbformatter, fDataDirPath);
-  if (fDetailedMonitoring) fMonitoringData.FillTree(rceformatter, sspformatter);
+  if (!fScopeMonitoring) {
+    if (rawSSP.isValid()) fMonitoringData.SSPMonitoring(sspformatter);
+    if (rawPTB.isValid()) fMonitoringData.PTBMonitoring(ptbformatter);
+    fMonitoringData.GeneralMonitoring(rceformatter, sspformatter, ptbformatter, fDataDirPath);
+    if (fDetailedMonitoring) fMonitoringData.FillTree(rceformatter, sspformatter);
+  }
 
   // Write the data out every-so-often
   if ( (!fSavedFirstMonitoring and ((std::time(0) - fLastSaveTime) > fInitialMonitoringUpdate)) or ((std::time(0) - fLastSaveTime) > fMonitoringRefreshRate) ) {

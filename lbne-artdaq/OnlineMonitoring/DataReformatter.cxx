@@ -9,19 +9,21 @@
 #include "DataReformatter.hxx"
 
 // RCE ----------------------------------------------------------------------------------------------------------------------------------------------------
-OnlineMonitoring::RCEFormatter::RCEFormatter(art::Handle<artdaq::Fragments> const& rawRCE) {
+OnlineMonitoring::RCEFormatter::RCEFormatter(art::Handle<artdaq::Fragments> const& rawRCE, bool scopeMode) {
 
   if (!rawRCE.isValid()) {
     NumRCEs = 0;
     return;
   }
 
-  this->AnalyseADCs(rawRCE);
+  this->AnalyseADCs(rawRCE, scopeMode);
   this->Windowing();
+
+  return;
 
 }
 
-void OnlineMonitoring::RCEFormatter::AnalyseADCs(art::Handle<artdaq::Fragments> const& rawRCE) {
+void OnlineMonitoring::RCEFormatter::AnalyseADCs(art::Handle<artdaq::Fragments> const& rawRCE, bool scopeMode) {
 
   NumRCEs = rawRCE->size();
 
@@ -37,6 +39,9 @@ void OnlineMonitoring::RCEFormatter::AnalyseADCs(art::Handle<artdaq::Fragments> 
 
   // Loop over channels
   for (unsigned int chanIt = 0; chanIt < NRCEChannels; ++chanIt) {
+
+    if (scopeMode and chanIt > 0)
+      break;
 
     // Vector of ADC values for this channel
     std::vector<int> adcVector;
@@ -66,17 +71,17 @@ void OnlineMonitoring::RCEFormatter::AnalyseADCs(art::Handle<artdaq::Fragments> 
 	std::unique_ptr <const lbne::TpcMicroSlice> microslice = millisliceFragment.microSlice(microIt);
 	auto nNanoSlices = microslice->nanoSliceCount();
 
-	// Get the scope channel (if running in scope mode)
+	// Get the channel for scope mode
 	lbne::TpcMicroSlice::Header::softmsg_t us_software_message = microslice->software_message();
 	fScopeChannel = uint32_t((us_software_message)& 0xFFFFFFFF);
 
 	for (unsigned int nanoIt = 0; nanoIt < nNanoSlices; ++nanoIt) {
-
+	
 	  // Get the ADC value
 	  uint16_t adc = std::numeric_limits<uint16_t>::max();
 	  bool success = microslice->nanosliceSampleValue(nanoIt, sample, adc);
 
-	  if (success){
+	  if (success) {
 	    adcVector.push_back((int)adc);
 	    //unsigned long timestamp = microslice->nanosliceNova_timestamp(nanoIt);
 	    unsigned long timestamp = 1000;
@@ -93,6 +98,8 @@ void OnlineMonitoring::RCEFormatter::AnalyseADCs(art::Handle<artdaq::Fragments> 
     fTimestamps.push_back(timestampVector);
 
   } // channel loop
+
+  return;
 
 }
 
@@ -160,6 +167,8 @@ void OnlineMonitoring::RCEFormatter::Windowing() {
     fWindowingNumBlocks.push_back(tmpNumBlocks);
 
   } // channel
+
+  return;
 
 }
 
@@ -244,6 +253,8 @@ OnlineMonitoring::SSPFormatter::SSPFormatter(art::Handle<artdaq::Fragments> cons
 
   } // millislices
 
+  return;
+
 }
 
 
@@ -312,6 +323,8 @@ OnlineMonitoring::PTBFormatter::PTBFormatter(art::Handle<artdaq::Fragments> cons
   }
   //Now calculate what the total time of the event is in seconds
   fTimeSliceSize = NNanoSecondsPerNovaTick * NTotalTicks / (1000*1000*1000);
+
+  return;
 }
 
 void OnlineMonitoring::PTBFormatter::AnalyzeCounter(int counter_index, unsigned long& activation_time, double& hit_rate) const {
@@ -384,6 +397,7 @@ void OnlineMonitoring::PTBFormatter::AnalyzeCounter(int counter_index, unsigned 
 void OnlineMonitoring::PTBFormatter::AnalyzeMuonTrigger(int trigger_number, double& trigger_rate) const {
   trigger_rate = fMuonTriggerRates.at(trigger_number);
   trigger_rate /= fTimeSliceSize;
+  return;
 }
 //   //
 //   //NEW CODE WITH IGNORE BIT CHECKING

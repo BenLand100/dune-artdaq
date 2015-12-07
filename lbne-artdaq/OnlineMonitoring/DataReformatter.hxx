@@ -30,7 +30,7 @@ public:
 
   // Defualt constructor (may come in handy!)
   RCEFormatter() {}
-  RCEFormatter(art::Handle<artdaq::Fragments> const& rawRCE);
+  RCEFormatter(art::Handle<artdaq::Fragments> const& rawRCE, bool scopeMode);
   std::vector<std::vector<int> > const& ADCVector() const { return fADCs; }
   std::vector<std::vector<unsigned long> > const& TimestampVector() const { return fTimestamps; }
   uint32_t const& ScopeChannel() const { return fScopeChannel; }
@@ -43,7 +43,7 @@ public:
 
 private:
 
-  void AnalyseADCs(art::Handle<artdaq::Fragments> const& rawRCE);
+  void AnalyseADCs(art::Handle<artdaq::Fragments> const& rawRCE, bool scopeMode);
   void Windowing();
 
   std::vector<std::vector<int> > fADCs;
