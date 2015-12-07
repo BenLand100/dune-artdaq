@@ -33,6 +33,7 @@ public:
   RCEFormatter(art::Handle<artdaq::Fragments> const& rawRCE);
   std::vector<std::vector<int> > const& ADCVector() const { return fADCs; }
   std::vector<std::vector<unsigned long> > const& TimestampVector() const { return fTimestamps; }
+  uint32_t const& ScopeChannel() const { return fScopeChannel; }
   std::vector<int> const& NumBlocks() const { return fWindowingNumBlocks; }
   std::vector<std::vector<short> > const& BlockBegin() const { return fWindowingBlockBegin; }
   std::vector<std::vector<short> > const& BlockSize() const { return fWindowingBlockSize; }
@@ -47,6 +48,7 @@ private:
 
   std::vector<std::vector<int> > fADCs;
   std::vector<std::vector<unsigned long> > fTimestamps;
+  uint32_t fScopeChannel;
 
   // Windowing
   std::vector<int> fWindowingNumBlocks;

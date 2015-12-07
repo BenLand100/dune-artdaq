@@ -31,8 +31,7 @@ namespace OnlineMonitoring {
   const unsigned int NRCEs           = 16;
   const unsigned int NSSPChannels    = 84;
   const unsigned int NSSPs           = 7;
-  const std::vector<int> DebugChannels = {260, 278, 289, 290};
-
+  const double       SamplingPeriod   = 0.5; //us
   const TString PathDelimiter = "_";
 
   namespace TypeSizes {

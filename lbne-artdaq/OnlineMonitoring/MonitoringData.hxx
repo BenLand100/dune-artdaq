@@ -11,6 +11,7 @@
 #ifndef MonitoringData_hxx
 #define MonitoringData_hxx
 
+// ROOT
 #include <TH1.h>
 #include <TH2.h>
 #include <TProfile2D.h>
@@ -33,10 +34,8 @@
 #include <TFrame.h>
 #include <TGraph.h>
 #include <TMultiGraph.h>
-#include <TLegend.h>
 
-#include "messagefacility/MessageLogger/MessageLogger.h"
-
+// C++
 #include <iostream>
 #include <sstream>
 #include <fstream>
@@ -45,50 +44,52 @@
 #include <ctime>
 #include <time.h>
 
+// framework
+#include "messagefacility/MessageLogger/MessageLogger.h"
+
+// monitoring
 #include "OnlineMonitoringBase.hxx"
 #include "DataReformatter.hxx"
 
 class OnlineMonitoring::MonitoringData {
 public:
 
-  void BeginMonitoring(int run, int subrun, TString const& monitorSavePath);
+  void BeginMonitoring(int run, int subrun, TString const& monitorSavePath, bool detailedMonitoring, bool scopeMonitoring);
   void EndMonitoring();
   void FillTree(RCEFormatter const& rce_formatter, SSPFormatter const& ssp_formatter);
   void GeneralMonitoring(RCEFormatter const& rceformatter, SSPFormatter const& sspformatter, PTBFormatter const& ptbformatter, TString const& dataDirPath);
-  void RCEMonitoring(RCEFormatter const& rce_formatter, int timeIntoRun);
+  void RCEMonitoring(RCEFormatter const& rce_formatter, int event);
+  void RCEDetailedMonitoring(RCEFormatter const& rce_formatter);
+  void RCEScopeMonitoring(RCEFormatter const& rce_formatter, int event);
+  void RCELessFrequentMonitoring(RCEFormatter const& rce_formatter);
   void SSPMonitoring(SSPFormatter const& ssp_formatter);
   void PTBMonitoring(PTBFormatter const& ptb_formatter);
-  void MakeHistograms();
-  void StartEvent(int eventNumber, bool maketree);
   void WriteMonitoringData(int run, int subrun, int eventsProcessed, TString const& imageType);
 
 private:
 
   void ConstructTimingSyncGraphs();
-
-  int fEventNumber;
-  std::string fRunStartTime;
+  void MakeHistograms();
+  void MakeDetailedHistograms();
+  void MakeScopeHistograms();
 
   // Data handling
-  TFile* fDataFile;
-  bool fDetailedMonitoring;
-  TTree* fDataTree;
-  TString HistSaveDirectory;
+  TFile*    fDataFile;
+  TTree*    fDataTree;
+  TCanvas*  fCanvas;
+  TString   fHistSaveDirectory;
   TObjArray fHistArray;
-  TCanvas* fCanvas;
+
+  bool fDetailedMonitoring;
+  bool fFilledRunData;
+  std::string fRunStartTime;
+
   std::map<std::string,std::string> fFigureCaptions;
   std::map<std::string,TLegend*> fFigureLegends;
 
   std::vector<std::vector<int> > fRCEADC, fSSPADC;
 
-  bool filledRunData;
-
-  // crap to sort out
-  int fThreshold = 10;
-  bool fIsInduction = true;
-  bool _interestingchannelsfilled = false;
-
-  // Monitoring Data ------------------------------------------------------------------------------------------------------------------------------------------------------------
+  // Monitoring Data ---------------------------------------------------------------------------------------------------------------------------------------------------------
   // General
   TH1I *hNumSubDetectorsPresent, *hSizeOfFiles, *hSubDetectorsWithData, *hSubDetectorsPresent;
   TH1D *hSizeOfFilesPerEvent;
@@ -106,6 +107,8 @@ private:
   std::map<int,TH1D*> hAvADCMillislice;
   std::map<int,TH1D*> hAvADCMillisliceChannel;
   std::map<int,TH1D*> hDebugChannelHists;
+  // Scope
+  TH1F *hScopeTrace1s, *hScopeTraceFFT1s;
 
   // SSP
   TProfile *hWaveformMean, *hWaveformRMS, *hWaveformPeakHeight, *hWaveformIntegral, *hWaveformIntegralNorm, *hWaveformPedestal, *hWaveformNumTicks, *hTriggerFraction;

@@ -78,10 +78,47 @@ void lbne::RceDataReceiver::start(void)
 
 	start_time_ = std::chrono::high_resolution_clock::now();
 
+	// If the data receive socket is open, flush any stale data off it
+	if (deadline_io_object_ == DataSocket)
+	{
+
+		std::size_t flush_length = 0;
+
+		while (data_socket_.available() > 0)
+		{
+			boost::array<char, 65536> buf;
+			boost::system::error_code ec;
+
+			size_t len = data_socket_.read_some(boost::asio::buffer(buf), ec);
+			flush_length += len;
+			RECV_DEBUG(3) << "Flushed: " << len << " total: " << flush_length
+					<< " available: " << data_socket_.available();
+
+			if (ec == boost::asio::error::eof)
+			{
+				DAQLogger::LogInfo(instance_name_) << "lbne::RceDataReceiver:start: client closed data socket connection during flush operation";
+				break;
+			}
+			else if (ec)
+			{
+				DAQLogger::LogWarning(instance_name_) << "lbne::RceDataReceiver::start: got unexpected socket error flushing data socket: " << ec;
+				break;
+			}
+		}
+		if (flush_length > 0)
+		{
+			DAQLogger::LogInfo(instance_name_) << "lbne::RceDataReceiver::start: flushed " << flush_length << " bytes stale data off open socket";
+		}
+		else
+		{
+			DAQLogger::LogDebug(instance_name_) << "lbne::RceDataReceiver::start: no stale data to flush off socket";
+		}
+	}
+
 	// Clean up current buffer state of any partially-completed readouts in previous runs
 	if (current_raw_buffer_ != nullptr)
 	{
-		RECV_DEBUG(2) << "TpcRceReceiver::start: dropping unused or partially filled buffer containing "
+		RECV_DEBUG(0) << "lbne::RceDataReceiver::start: dropping unused or partially filled buffer containing "
 				      << microslices_recvd_ << " microslices";
 		current_raw_buffer_.reset();
 		millislice_state_ = MillisliceEmpty;
@@ -208,7 +245,7 @@ void lbne::RceDataReceiver::run_service(void)
 
 void lbne::RceDataReceiver::do_accept(void)
 {
-	// Suspend readout and cleanup any incomplete millislices if stop has been called
+	// Suspend readout if stop has been called
 	if (suspend_readout_.load())
 	{
 		RECV_DEBUG(3) << "Suspending readout at do_accept entry";
@@ -251,7 +288,7 @@ void lbne::RceDataReceiver::do_accept(void)
 void lbne::RceDataReceiver::do_read(void)
 {
 
-	// Suspend readout and cleanup any incomplete millislices if stop has been called
+	// Suspend readout if stop has been called
 	if (suspend_readout_.load())
 	{
 		RECV_DEBUG(3) << "Suspending readout at do_read entry";
@@ -273,18 +310,60 @@ void lbne::RceDataReceiver::do_read(void)
 
 		// Attempt to obtain a raw buffer to receive data into
 		unsigned int buffer_retries = 0;
-		const unsigned int max_buffer_retries = 10;
+		const unsigned int max_retries = 100;
+		const unsigned int buffer_retry_report_interval = 10;
 		bool buffer_available;
 
 		do
 		{
-			buffer_available = empty_buffer_queue_.try_pop(current_raw_buffer_, std::chrono::milliseconds(1000));
+			buffer_available = empty_buffer_queue_.try_pop(current_raw_buffer_, std::chrono::milliseconds(100));
 			if (!buffer_available)
 			{
+				if ((buffer_retries > 0) && ((buffer_retries % buffer_retry_report_interval) == 0)) {
+					DAQLogger::LogWarning(instance_name_) << "lbne::RceDataReceiver::receiverLoop: no buffers available on commit queue, retrying ("
+							<< buffer_retries << " attempts so far)";
+				}
 				buffer_retries++;
-				DAQLogger::LogWarning(instance_name_) << "lbne::RceDataReceiver::receiverLoop no buffers available on commit queue";
+
+				if (buffer_retries > max_retries)
+				{
+					if (!suspend_readout_.load())
+					{
+						if (!exception_.load() )
+						{
+							try {
+								DAQLogger::LogError(instance_name_) << "lbne::RceDataReceiver::receiverLoop: too many buffer retries, signalling an exception";
+							} catch (...) {
+								set_exception(true);
+							}
+						}
+					}
+				}
+			} else {
+				if (buffer_retries > buffer_retry_report_interval) {
+					RECV_DEBUG(1) << "lbne::RceDataReceiver::receiverLoop: obtained new buffer after " << buffer_retries << " retries";
+				}
 			}
-		} while (!buffer_available && (buffer_retries < max_buffer_retries));
+
+			// Check if readout is being suspended/terminated and handle accordingly
+			if (suspend_readout_.load())
+			{
+				DAQLogger::LogInfo(instance_name_) << "Suspending readout during buffer retry loop";
+				this->suspend_readout(true);
+
+				// When we come out of suspended at this point, the main thread will have invalidated the current buffer, so set
+				// buffer_available to false so that we get a fresh one for the next read
+				buffer_available = false;
+			}
+
+			// Terminate receiver read loop if required
+			if (!run_receiver_.load())
+			{
+				RECV_DEBUG(1) << "Terminating receiver thread in buffer retry loop";
+				return;
+			}
+
+		} while (!buffer_available);
 
 		if (buffer_available)
 		{
@@ -299,19 +378,26 @@ void lbne::RceDataReceiver::do_read(void)
 		else
 		{
 
+			// TCN, Dec-04-15
+
+			// Note this else clause is now technically redundant as the buffer retry loop will only exit either
+			// with a valid buffer or because the receiver is being shut down. I have left the code in for now
+			// since it demonstrates how to swallow the exception and signal at run end, which may become
+			// necessary again
+
 		  try {
 		    DAQLogger::LogError(instance_name_) << "Failed to obtain new raw buffer for millislice, terminating receiver loop";
 		  } catch (...) {
 
 		    // JCF, Oct-24-15
-		 
+
 		    // Swallow the exception... don't want to bring
 		    // down the DAQ if the above error message throws
 		    // an exception during the stop transition, as
 		    // this means the output *.root file is in danger
 		    // of not properly being closed
-   
-		    // JCF, Nov-3-2015: 
+
+		    // JCF, Nov-3-2015:
 
 		    // However: since we can't obtain a new raw buffer
 		    // for the millislice at this point, then if we're
@@ -364,7 +450,7 @@ void lbne::RceDataReceiver::do_read(void)
 				}
 				else
 				{
-				  DAQLogger::LogError(instance_name_) << "Got error on aysnchronous read: " << ec << "\n" 
+				  DAQLogger::LogError(instance_name_) << "Got error on aysnchronous read: " << ec << "\n"
 								      << "RECV: state " << (unsigned int)next_receive_state_
 								      << " mslice state " << (unsigned int)millislice_state_
 								      << " uslice " << microslices_recvd_
@@ -396,12 +482,12 @@ void lbne::RceDataReceiver::handle_received_data(std::size_t length)
 	  {
 	    // Capture the microslice length and sequence ID from the header
 	    header = reinterpret_cast<RceMicrosliceHeader*>(current_header_ptr_);
-	    
+
 	    microslice_size_ = header->microslice_size;
 	    sequence_id = header->sequence_id;
-	    
+
 	    RECV_DEBUG(2) << "Got header for microslice with size " << microslice_size_ << " sequence ID " << sequence_id;
-	    
+
 	    // Validate the sequence ID - should be incrementing monotonically
 	    if (sequence_id_initialised_ && (sequence_id != last_sequence_id_+1))
 	    {
@@ -411,9 +497,9 @@ void lbne::RceDataReceiver::handle_received_data(std::size_t length)
 					     << " size : 0x"         << std::hex << header->microslice_size << std::dec
 					     << " sequence ID : 0x " << std::hex << header->sequence_id     << std::dec
 					     << " type ID : 0x"      << std::hex << header->type_id         << std::dec
-					     << " sw status: 0x"     << std::hex  
+					     << " sw status: 0x"     << std::hex
 					     << ((uint64_t)(header->sw_frame_status[0]) << 32 | (header->sw_frame_status[1])) << std::dec
-					     << " fw status: 0x"     << std::hex 
+					     << " fw status: 0x"     << std::hex
 					     << ((uint64_t)(header->fw_frame_status[0]) << 32 | (header->fw_frame_status[1])) << std::dec;
 
 		//TODO handle error cleanly here

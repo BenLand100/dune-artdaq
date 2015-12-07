@@ -60,13 +60,15 @@ void OnlineMonitoring::RCEFormatter::AnalyseADCs(art::Handle<artdaq::Fragments> 
       // Number of microslices in millislice fragments
       auto nMicroSlices = millisliceFragment.microSliceCount();
 
-      // hNumMicroslicesInMillislice->SetBinContent(fragmentID,nMicroSlices);
-
       for (unsigned int microIt = 0; microIt < nMicroSlices; ++microIt) {
 
 	// Get the microslice
 	std::unique_ptr <const lbne::TpcMicroSlice> microslice = millisliceFragment.microSlice(microIt);
 	auto nNanoSlices = microslice->nanoSliceCount();
+
+	// Get the scope channel (if running in scope mode)
+	lbne::TpcMicroSlice::Header::softmsg_t us_software_message = microslice->software_message();
+	fScopeChannel = uint32_t((us_software_message)& 0xFFFFFFFF);
 
 	for (unsigned int nanoIt = 0; nanoIt < nNanoSlices; ++nanoIt) {
 
