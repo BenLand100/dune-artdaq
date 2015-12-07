@@ -240,6 +240,11 @@ void SSPDAQ::DeviceInterface::ReadEvents(unsigned long runStartTime){
       }
       continue;
     }
+
+    if(haveWarnedNoEvents){
+      lbne::DAQLogger::LogWarning("SSP_DeviceInterface")<<this->GetIdentifier()<<"Event flow from hardware resumed; stopped writing empty slices."<<std::endl;
+    }
+
     sleepTime=0;
     haveWarnedNoEvents=false;
 
@@ -278,7 +283,7 @@ void SSPDAQ::DeviceInterface::ReadEvents(unsigned long runStartTime){
       }
     }
 
-    lbne::DAQLogger::LogDebug("SSP_DeviceInterface")<<this->GetIdentifier()<<"Interface got event with timestamp "<<eventTime<<"("<<(eventTime-runStartTime)/150E6<<"s from run start)"<<std::endl;
+    //lbne::DAQLogger::LogDebug("SSP_DeviceInterface")<<this->GetIdentifier()<<"Interface got event with timestamp "<<eventTime<<"("<<(eventTime-runStartTime)/150E6<<"s from run start)"<<std::endl;
 
     bool haveWrittenEvent=false;
 
@@ -327,7 +332,9 @@ void SSPDAQ::DeviceInterface::ReadEvents(unsigned long runStartTime){
       //The while loop will keep getting to this condition
       //until the slice containing the event is found.
       else{
-	lbne::DAQLogger::LogDebug("SSP_DeviceInterface")<<this->GetIdentifier()<<"Device interface building millislice with "<<events_prevSlice.size()<<" events"<<std::endl;
+	//Remove this log output since it floods the logs...
+	//lbne::DAQLogger::LogDebug("SSP_DeviceInterface")<<this->GetIdentifier()<<"Device interface building millislice with "<<events_prevSlice.size()<<" events"<<std::endl;
+
 	//Write prevSlice and swap slices back through containers
 	if(hasFinishedFirstSlice){
 	  this->BuildMillislice(events_prevSlice,millisliceStartTime-millisliceLengthInTicks,millisliceStartTime+millisliceOverlapInTicks);
@@ -401,7 +408,8 @@ void SSPDAQ::DeviceInterface::BuildMillislice(const std::vector<EventPacket>& ev
   //Add millislice to queue//
   //=======================//
 
-  lbne::DAQLogger::LogDebug("SSP_DeviceInterface")<<this->GetIdentifier()<<"Pushing slice with "<<events.size()<<" triggers, starting at "<<startTime<<" onto queue!"<<std::endl;
+  //This log message is too verbose...
+  //lbne::DAQLogger::LogDebug("SSP_DeviceInterface")<<this->GetIdentifier()<<"Pushing slice with "<<events.size()<<" triggers, starting at "<<startTime<<" onto queue!"<<std::endl;
   fQueue.push(std::move(sliceData));
 
   ++fMillislicesBuilt;
@@ -417,7 +425,7 @@ void SSPDAQ::DeviceInterface::GetMillislice(std::vector<unsigned int>& sliceData
   if(fQueue.try_pop(sliceData,std::chrono::microseconds(100000))){
     ++fMillislicesSent;//Try to pop from queue for 100ms
     if(!(fMillislicesSent%1000)){
-    lbne::DAQLogger::LogInfo("SSP_DeviceInterface")<<this->GetIdentifier()
+    lbne::DAQLogger::LogDebug("SSP_DeviceInterface")<<this->GetIdentifier()
 		       <<"Interface sending slice "<<fMillislicesSent
 		       <<", total built slices "<<fMillislicesBuilt
 		       <<", current queue length "<<fQueue.size()<<std::endl;
