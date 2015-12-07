@@ -106,6 +106,8 @@ lbne::TpcRceReceiver::TpcRceReceiver(fhicl::ParameterSet const & ps)
 	ps.get<size_t>("raw_buffer_size", 10000);
   raw_buffer_precommit_ =
 	ps.get<uint32_t>("raw_buffer_precommit", 10);
+  filled_buffer_release_max_ =
+	ps.get<uint32_t>("filled_buffer_release_max", 10);
 
   use_fragments_as_raw_buffer_ =
 	ps.get<bool>("use_fragments_as_raw_buffer", false);
@@ -172,12 +174,6 @@ lbne::TpcRceReceiver::TpcRceReceiver(fhicl::ParameterSet const & ps)
   std::ostringstream config_frag;
   config_frag << "<DataDpm><DataBuffer><RunMode>" << rce_daq_mode_ << "</RunMode></DataBuffer></DataDpm>";
   dpm_client_->send_config(config_frag.str());
-
-  if(rce_daq_mode_=="Trigger"){
-    config_frag<< "<DataDpm><DataBuffer><RunMode>" << rce_daq_mode_ << "</RunMode></DataBuffer></DataDpm>";
-    dpm_client_->send_config(config_frag.str());    
-  }
-    
 
 #endif
 
@@ -262,15 +258,16 @@ void lbne::TpcRceReceiver::stop(void)
 
 #ifndef NO_RCE_CLIENT
 
-	// Instruct the DPM to stope
-	dpm_client_->send_command("SetRunState", "Stopped");
+	// Instruct the DPM to stop
+	// Do this step in stopNoMutex now
+	//dpm_client_->send_command("SetRunState", "Stopped");
 	
-	if (dtm_client_enable_)
-	{
+	//if (dtm_client_enable_)
+	//{
 	  //dtm_client_->send_command("SetRunState", "Stopped");
 	  //dtm_client_->send_command("Stop");
 
-	}
+	//}
 	
 	//dpm_client_->send_command("STOP");
 #endif
@@ -292,7 +289,178 @@ void lbne::TpcRceReceiver::stop(void)
 
 }
 
+void lbne::TpcRceReceiver::stopNoMutex(void)
+{
 
+	DAQLogger::LogInfo(instance_name_) << "In stopNoMutex - instructing DPM to stop";
+
+	// Instruct the DPM to stop
+	dpm_client_->send_command("SetRunState", "Stopped");
+}
+
+#ifndef OLD_GETNEXT
+bool lbne::TpcRceReceiver::getNext_(artdaq::FragmentPtrs & frags) {
+
+	uint32_t buffers_released = 0;
+	RceRawBufferPtr recvd_buffer;
+	const unsigned int buffer_recv_timeout_us = 500000;
+
+	// Before releasing any fragments, capture buffer state metrics
+	size_t empty_buffers_available = data_receiver_->empty_buffers_available();
+	if (empty_buffers_available < empty_buffer_low_mark_)
+	{
+	  empty_buffer_low_mark_ = empty_buffers_available;
+	}
+	size_t filled_buffers_available = data_receiver_->filled_buffers_available();
+	if (filled_buffers_available > filled_buffer_high_mark_)
+	{
+	  filled_buffer_high_mark_ = filled_buffers_available;
+	}
+
+	// Loop to release fragments if filled buffers available, up to the maximum allowed
+	while ((data_receiver_->filled_buffers_available() > 0) && (buffers_released <= filled_buffer_release_max_))
+	{
+		bool buffer_available = data_receiver_->retrieve_filled_buffer(recvd_buffer, buffer_recv_timeout_us);
+
+		if (!buffer_available)
+		{
+			DAQLogger::LogWarning(instance_name_) << "lbne::TpcRceReceiver::getNext_ : "
+					<< "receiver indicated buffers available but unable to retrieve one within timeout";
+			continue;
+		}
+
+		if (recvd_buffer->size() == 0)
+		{
+			DAQLogger::LogWarning(instance_name_) << "lbne::TpcRceReceiver::getNext_ : no data received in raw buffer";
+			continue;
+		}
+
+		// Get a pointer to the data in the current buffer and create a new fragment pointer
+		uint8_t* data_ptr = recvd_buffer->dataPtr();
+		std::unique_ptr<artdaq::Fragment> frag;
+		uint32_t millislice_size = 0;
+
+		// If using fragments as raw buffers, process accordingly
+		if (use_fragments_as_raw_buffer_)
+		{
+			// Map back onto the fragment from the raw buffer data pointer we have just received
+			if (raw_to_frag_map_.count(data_ptr))
+			{
+				// Extract the fragment from the map
+				frag = std::move(raw_to_frag_map_[data_ptr]);
+
+				// Validate and finalize the fragment received
+				millislice_size = validate_millislice_from_fragment_buffer(frag->dataBeginBytes(), recvd_buffer->size(), recvd_buffer->count());
+
+				// Clean up entry in map to remove raw fragment buffer
+				raw_to_frag_map_.erase(data_ptr);
+
+				// Create a new raw buffer pointing at a new fragment and replace the received buffer
+				// pointer with it - this will be recycled onto the empty queue later
+				recvd_buffer =create_new_buffer_from_fragment();
+
+			}
+			else
+			{
+				DAQLogger::LogError(instance_name_) << "lbne::TpcRceReceiver::getNext_ : cannot map raw buffer with data address"
+						<< (void*)recvd_buffer->dataPtr() << " back onto fragment";
+				continue;
+			}
+		}
+		// Otherwise format the raw buffer into a new fragment
+		else
+		{
+			// Create an artdaq::Fragment to format the raw data into. As a crude heuristic,
+			// reserve 10 times the raw data space in the fragment for formatting overhead.
+			// This needs to be done more intelligently!
+			size_t fragDataSize = recvd_buffer->size() * 10;
+			frag = artdaq::Fragment::FragmentBytes(fragDataSize);
+
+			// Format the raw digitisations (nanoslices) in the received buffer into a millislice
+			// within the data payload of the fragment
+			millislice_size = format_millislice_from_raw_buffer((uint16_t*)data_ptr, recvd_buffer->size(),
+					(uint8_t*)(frag->dataBeginBytes()), fragDataSize);
+
+		}
+
+		// Recycle the raw buffer onto the commit queue for re-use by the receiver.
+		data_receiver_->commit_empty_buffer(recvd_buffer);
+
+		// Set fragment fields appropriately
+		frag->setSequenceID(ev_counter());
+		frag->setFragmentID(fragmentIDs()[0]);
+		frag->setUserType(lbne::detail::TPC);
+
+		// Resize fragment to final millislice size
+		frag->resizeBytes(millislice_size);
+
+		// Add the fragment to the list
+		frags.emplace_back(std::move (frag));
+
+		// Increment the event counter
+		ev_counter_inc();
+
+		// Update counters
+		millislices_received_++;
+		total_bytes_received_ += millislice_size;
+		buffers_released++;
+
+	} // End of loop over available buffers
+
+	// Report on data received so far
+	if (reporting_interval_time_ != 0)
+	{
+		std::chrono::high_resolution_clock::time_point now = std::chrono::high_resolution_clock::now();
+
+		if (std::chrono::duration_cast<std::chrono::milliseconds>(now - report_time_).count() >
+			(reporting_interval_time_ * 1000))
+		{
+			auto elapsed_msecs = std::chrono::duration_cast<std::chrono::milliseconds>(now - start_time_).count();
+			double elapsed_secs = ((double)elapsed_msecs)/1000;
+
+			DAQLogger::LogInfo(instance_name_) << "lbne::TpcRceReceiver::getNext_ : received " << millislices_received_ << " millislices, "
+					<< float(total_bytes_received_)/(1024*1024) << " MB in " << elapsed_secs << " seconds";
+
+			report_time_ = std::chrono::high_resolution_clock::now();
+		}
+	}
+
+	// Send buffer metrics based on values captured at entry into this function
+
+	metricMan_->sendMetric(empty_buffer_low_water_metric_name_, empty_buffer_low_mark_, "buffers", 1, false, true);
+	metricMan_->sendMetric(empty_buffer_available_metric_name_, empty_buffers_available, "buffers", 1, false, true);
+	metricMan_->sendMetric(filled_buffer_high_water_metric_name_, filled_buffer_high_mark_, "buffers", 1, false, true);
+	metricMan_->sendMetric(filled_buffer_available_metric_name_, filled_buffers_available, "buffers", 1, false, true);
+
+	// Determine return value, depending on whether run is stopping, if there are any filled buffers available
+	// and if the receiver thread generated an exception
+
+	bool is_active = true;
+	if (should_stop())
+	{
+		if (data_receiver_->filled_buffers_available() > 0)
+		{
+			// Don't signal board reader can stop if there are still buffers available to release as fragments
+			DAQLogger::LogDebug(instance_name_)
+				<< "lbne::TpcRceReceiver::getNext_ : should_stop() is true but buffers available";
+		}
+		else
+		{
+			// If all buffers released, set is_active false to signal board reader can stop
+			DAQLogger::LogInfo(instance_name_)
+				<< "lbne::TpcRceReceiver::getNext_ : no unprocessed filled buffers available at end of run";
+			is_active = false;
+		}
+	}
+	if (data_receiver_->exception())
+	{
+		set_exception(true);
+		DAQLogger::LogError(instance_name_) << "lbne::TpcRceReceiver::getNext_ : found receiver thread in exception state";
+	}
+
+	return is_active;
+}
+#else
 bool lbne::TpcRceReceiver::getNext_(artdaq::FragmentPtrs & frags) {
 
   RceRawBufferPtr recvd_buffer;
@@ -465,7 +633,7 @@ bool lbne::TpcRceReceiver::getNext_(artdaq::FragmentPtrs & frags) {
 
   return true;
 }
-
+#endif
 
 lbne::RceRawBufferPtr lbne::TpcRceReceiver::create_new_buffer_from_fragment(void)
 {

@@ -13,6 +13,7 @@
 
 #include "art/Utilities/Exception.h"
 #include "lbne-raw-data/Overlays/TpcMilliSliceFragment.hh"
+#include "lbne-raw-data/Overlays/TpcMicroSlice.hh"
 #include "artdaq-core/Data/Fragments.hh"
 
 #include "TH1.h"
@@ -27,6 +28,8 @@
 #include <vector>
 #include <iostream>
 #include <limits>
+
+using namespace std;
 
 namespace lbne {
 class RCEDiagnostic;
@@ -65,6 +68,7 @@ private:
   TGraph *gNanoTimeRelToTrig[nRCE];
   TGraph *gTriggerTimeRelToRCE0[nRCE];
   TGraph *gNanoTimeRelToRCE0[nRCE];
+  TGraph *gADCVsTimeCh0[nRCE];
 
   //counters...
   int error27[nRCE];
@@ -82,7 +86,7 @@ private:
 
   uint trigTime[nRCE];
   uint nanoTime[nRCE];
-
+  uint16_t adc0[nRCE];
   int n_triggers;
   int n_micro_with_trigger[nRCE];
   int nPtsPerRCE[nRCE];
@@ -111,8 +115,11 @@ lbne::RCEDiagnostic::RCEDiagnostic(fhicl::ParameterSet const & pset)
     gTriggerTimeRelToRCE0[j]=nullptr;
     gNanoTimeRelToRCE0[j]=nullptr;
     gNanoTimeRelToTrig[j]=nullptr;
+    gADCVsTimeCh0[j]=nullptr;
     nPtsPerRCE[j]=0;
     nPtsPerDiff[j]=0;
+    n_millislices[j]=0;
+    n_chunks[j]=0;
    for(int i = 0 ;i<4;i++){
       gFWMisAlign[j][i]=nullptr;
       gFWNOvAError[j][i]=nullptr;
@@ -127,6 +134,7 @@ lbne::RCEDiagnostic::RCEDiagnostic(fhicl::ParameterSet const & pset)
 }
 
 void lbne::RCEDiagnostic::beginJob(){
+  cout<<"beginJob::setting up histograms"<<endl;
   art::ServiceHandle<art::TFileService> tfs;
     gErrorEvent = tfs->make<TGraph>();
     gErrorEvent->SetName("ErrorPerEvent");
@@ -169,6 +177,10 @@ void lbne::RCEDiagnostic::beginJob(){
     gNanoTimeRelToTrig[j]->SetName(dir+"NanoTimeRelToTrig");
     gNanoTimeRelToTrig[j]->SetTitle("Nano Time Relative to Trigger vs Trigger number for rce"+TString(j));
 
+    gADCVsTimeCh0[j]= tfs->make<TGraph>();
+    gADCVsTimeCh0[j]->SetName(dir+"AdcVsTimeCh0");
+    gADCVsTimeCh0[j]->SetTitle("Adc Value vs Time for Channel 0"+TString(j));
+
     for(int i = 0 ;i<4;i++){
       TString lane="Lane";
       lane+=i;
@@ -182,6 +194,8 @@ void lbne::RCEDiagnostic::beginJob(){
       gFWLaneOutOfSync[j][i]->SetName(dir+"LaneOutOfSyncErrorsPerBoard"+lane);
     } 
   }
+  cout<<"beginJob::done"<<endl;
+
 }
 
 void lbne::RCEDiagnostic::endJob(){
@@ -198,6 +212,7 @@ void lbne::RCEDiagnostic::endJob(){
       gTriggerTimeRelToRCE0[j]->Write();
       gNanoTimeRelToRCE0[j]->Write();
       gNanoTimeRelToTrig[j]->Write();
+      gADCVsTimeCh0[j]->Write();
       for(int i = 0 ;i<4;i++){
 	gFWMisAlign[j][i]->Write();
 	gFWNOvAError[j][i]->Write();
@@ -214,6 +229,7 @@ lbne::RCEDiagnostic::~RCEDiagnostic(){
 void lbne::RCEDiagnostic::analyze(art::Event const & evt){
  
   art::EventNumber_t eventNumber = evt.event();
+  cout<<"analyze::event number "<<eventNumber<<endl;
 
   int errorevent = 0;
   // ***********************
@@ -222,6 +238,7 @@ void lbne::RCEDiagnostic::analyze(art::Event const & evt){
   ///> look for raw TpcMilliSlice data
   art::Handle<artdaq::Fragments> raw;
   evt.getByLabel(raw_data_label_, frag_type_, raw);
+  cout<<"analyze::got event"<<endl;
   
   if (raw.isValid()) {
     std::cout << "######################################################################" << std::endl;
@@ -233,6 +250,7 @@ void lbne::RCEDiagnostic::analyze(art::Event const & evt){
     for(int n=0;n<nRCE;n++){
       trigTime[n]=0;
       nanoTime[n]=0;
+      adc0[n]=0;
       n_micro_with_trigger[n]=0;
     }
     event_has_trigger=false;
@@ -246,11 +264,11 @@ void lbne::RCEDiagnostic::analyze(art::Event const & evt){
       //lbne::TpcMilliSlice::Header::millislice_size_t msf_size = msf.size();
       ///> get the number of MicroSlices in the MilliSlice
       lbne::TpcMilliSlice::Header::microslice_count_t msf_us_count = msf.microSliceCount();     
-      
+      //      cout<<"Microslice count "<<msf_us_count<<endl;
       if(n_millislices[rceID]>n_millislices_to_chunk){
-	//	    std::cout<<"Filling histograms with errors : "
-	//		     <<error27<<"  "<<error28<<"  "<<error31
-	//		     <<"  "<<errorts<<"   "<<errorfts<<std::endl;
+	std::cout<<"Filling histograms with errors : "
+		 <<error27<<"  "<<error28<<"  "<<error31
+		 <<"  "<<errorts<<"   "<<errorfts<<std::endl;
 	gError27[rceID]->SetPoint(n_chunks[rceID], n_chunks[rceID], error27[rceID]);
 	gError28[rceID]->SetPoint(n_chunks[rceID], n_chunks[rceID], error28[rceID]);
 	gError31[rceID]->SetPoint(n_chunks[rceID], n_chunks[rceID], error31[rceID]);
@@ -280,6 +298,7 @@ void lbne::RCEDiagnostic::analyze(art::Event const & evt){
 	  errorLaneSync[rceID][i]=0;
 	}
 	n_chunks[rceID]++;
+	cout<<"done filling"<<endl;
       }
       
       
@@ -292,16 +311,19 @@ void lbne::RCEDiagnostic::analyze(art::Event const & evt){
 	  throw cet::exception("Error in RCEDiagnostic module: unable to find requested microslice");
 	
 	///> get the microslice type ID
-	lbne::TpcMicroSlice::Header::type_id_t us_type_id = microslice->type_id();
-	
-	if ( std::bitset<4>((us_type_id >> 27 ) & 0xF) == 1){
+	//lbne::TpcMicroSlice::Header::type_id_t us_type_id = microslice->type_id();
+	//	
+	//	if ( std::bitset<4>((us_type_id >> 27 ) & 0xF) == 1){
+	if (microslice->timeGap()){
 	  errorevent++;
 	  error27[rceID]++;
 	}
-	//if ( std::bitset<4>((us_type_id >> 28 ) & 0xF) == 1)
-	//  error28++;
-	if ( std::bitset<4>((us_type_id >> 31 ) & 0xF) == 1){
-	  std::cout<<" software/firmware error = "<<(us_type_id>>31)<<std::endl;
+	//	if ( std::bitset<4>((us_type_id >> 28 ) & 0xF) == 1)
+	if ( microslice->droppedFrame())
+	  error28[rceID]++;
+	//	if ( std::bitset<4>((us_type_id >> 31 ) & 0xF) == 1){
+	if( microslice->errorFlag()){
+	  //	  std::cout<<" software/firmware error "<<std::endl;
 	  errorevent++;
 	  error31[rceID]++;
 	}
@@ -312,7 +334,7 @@ void lbne::RCEDiagnostic::analyze(art::Event const & evt){
 	uint has_trig=0;
 	if (microslice->size()>28){ 
 	  has_trig=1;
-	  //	  std::cout<<"Trigger? "<<has_trig<<"   "<<microslice->size()<<"   "<<(us_type_id>>29)<<std::endl;
+	  //	  std::cout<<"Trigger? "<<has_trig<<"   "<<microslice->size()<<endl;
 	}
 	///> get the software message
 	lbne::TpcMicroSlice::Header::softmsg_t us_software_message = microslice->software_message();
@@ -322,6 +344,8 @@ void lbne::RCEDiagnostic::analyze(art::Event const & evt){
 	  if(n_micro_with_trigger[rceID]==0){
 	    trigTime[rceID]=uint( (us_software_message)& 0xFFFFFFFF );//take first 32-bits
 	    nanoTime[rceID]=uint( (microslice->nanosliceNova_timestamp(0)) & 0xFFFFFFFF);
+	    if(!microslice->nanosliceSampleValue(0,0,adc0[rceID]) )
+	      std::cout<<"can't get adc value for this nanoslice!"<<std::endl;
 	  }
 	  n_micro_with_trigger[rceID]++;
 	  //	  std::cout<<"Trigger time = "<<trigTime[rceID]<<std::endl;
@@ -353,7 +377,7 @@ void lbne::RCEDiagnostic::analyze(art::Event const & evt){
       }// i_us                                                                                 
       n_millislices[rceID]++;    
     } //idx
-    std::cout<<"Errors in the event "<<errorevent<<std::endl;     
+    //    std::cout<<"Errors in the event "<<errorevent<<std::endl;     
     gErrorEvent->SetPoint(eventNumber, eventNumber, errorevent);
 
     if(event_has_trigger){
@@ -362,6 +386,8 @@ void lbne::RCEDiagnostic::analyze(art::Event const & evt){
 	  gTriggerTime[n]->SetPoint(nPtsPerRCE[n],n_triggers,trigTime[n]);
 	  gNanoTime[n]->SetPoint(nPtsPerRCE[n],n_triggers,nanoTime[n]);
 	  gNanoTimeRelToTrig[n]->SetPoint(nPtsPerRCE[n],n_triggers,int(nanoTime[n]-trigTime[n]));
+	  gADCVsTimeCh0[n]->SetPoint(nPtsPerRCE[n],n_triggers,adc0[n]);	    
+	  cout<<"ADC0 Value = "<<adc0[n]<<endl;
 	  nPtsPerRCE[n]++;
 	  std::cout<<"RCE = "<<n<<"::trigger time = "<<trigTime[n]
 		   <<"; nanoTime = "<<nanoTime[n]<<std::endl;
@@ -371,6 +397,17 @@ void lbne::RCEDiagnostic::analyze(art::Event const & evt){
 	    gTriggerTimeRelToRCE0[n]->SetPoint(nPtsPerDiff[n],n_triggers,trig_diff);
 	    gNanoTimeRelToRCE0[n]->SetPoint(nPtsPerDiff[n],n_triggers,nano_diff);	    
 	    nPtsPerDiff[n]++;
+	  }
+	  for (int m=n+1;m<nRCE;m++){
+	    if(n_micro_with_trigger[n]!=n_micro_with_trigger[m]&&n_micro_with_trigger[m]>0 && n_micro_with_trigger[n]>0){
+	      cout<<"number of microslices with payload in RCEs "<<n<<" and "<<m<<" don't match"<<endl;
+	      cout<<"/t/t trigger times: RCE"<<n<<"="<<trigTime[n]
+		  <<"; RCE"<<m<<"="<<trigTime[m]<<endl;
+	      
+	      cout<<"/t/t nanoslice times: RCE"<<n<<"="<<nanoTime[n]
+		  <<"; RCE"<<m<<"="<<nanoTime[m]<<endl;
+	      
+	    }
 	  }
 	}
       }

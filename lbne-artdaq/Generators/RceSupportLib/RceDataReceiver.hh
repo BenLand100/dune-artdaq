@@ -59,7 +59,7 @@ private:
 
 	void set_deadline(DeadlineIoObject io_object, unsigned int timeout_us);
 	void check_deadline(void);
-        void set_exception( bool exception ) { exception_.store( exception ); }
+    void set_exception( bool exception ) { exception_.store( exception ); }
 
 	std::string instance_name_;
 	int debug_level_;
