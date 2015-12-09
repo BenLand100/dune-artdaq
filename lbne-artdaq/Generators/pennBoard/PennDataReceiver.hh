@@ -160,9 +160,9 @@ private:
   lbne::PennMicroSlice::Header::format_version_t microslice_version_;
   bool                                           sequence_id_initialised_;
   lbne::PennMicroSlice::Header::sequence_id_t    last_sequence_id_;
-
-	std::chrono::high_resolution_clock::time_point start_time_;
-
+  
+  std::chrono::high_resolution_clock::time_point start_time_;
+  
   bool rate_test_;
 
   size_t           overlap_size_;

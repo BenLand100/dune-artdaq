@@ -288,7 +288,7 @@ void lbne::PennReceiver::start(void)
     // Use artDAQ fragments to build the raw buffer
     if (use_fragments_as_raw_buffer_)
     {
-      DAQLogger::LogWarning("PennReceiver") << "getNext_ : Using fragments as raw buffers. This does not remove warning words from the Millislices.";
+      //DAQLogger::LogWarning("PennReceiver") << "getNext_ : Using fragments as raw buffers. This does not remove warning words from the Millislices.";
 
       raw_buffer = this->create_new_buffer_from_fragment();
     }

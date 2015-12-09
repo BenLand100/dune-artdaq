@@ -290,9 +290,14 @@ void lbne::PennClient::send_xml(std::string const & xml_frag, std::string &xml_a
 	      } else {
 	        DAQLogger::LogWarning("PennClient") << "Received unrecognized attribute type answer from PTB : [" << cur_node->name << "]";
 	      }
-	    } else {
-        DAQLogger::LogWarning("PennClient") << "Received unrecognized XML element type from PTB : [" << cur_node->type << "]";
-      }
+	    } else if (cur_node->type == XML_TEXT_NODE) {
+		xmlChar *val = xmlNodeGetContent(cur_node);
+		DAQLogger::LogWarning("PennClient") << "Received unrecognized response : " << val;
+		xmlFree(val);
+
+	      } else {
+	      DAQLogger::LogWarning("PennClient") << "Received unrecognized XML element type from PTB : [" << cur_node->type << "]";
+	    }
 	  }
 	  xmlFreeDoc(doc);
 	}//doc != NULL
