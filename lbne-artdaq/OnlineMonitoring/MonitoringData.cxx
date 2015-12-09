@@ -105,7 +105,6 @@ void OnlineMonitoring::MonitoringData::GeneralMonitoring(RCEFormatter const& rce
   /// Fills the general monitoring histograms (i.e. monitoring not specific to a particular hardware component)
 
   // Subdetectors with data
-  hNumSubDetectorsPresent->Fill(1);
   hNumSubDetectorsPresent->Fill(rceformatter.NumRCEs + sspformatter.NumSSPs + ptbformatter.PTBData);
   for (std::vector<std::string>::const_iterator compIt = DAQComponents.begin(); compIt != DAQComponents.end(); ++compIt)
     if ( (std::find(rceformatter.RCEsWithData.begin(), rceformatter.RCEsWithData.end(), *compIt) != rceformatter.RCEsWithData.end()) or
