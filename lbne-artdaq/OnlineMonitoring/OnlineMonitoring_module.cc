@@ -142,7 +142,7 @@ void OnlineMonitoring::OnlineMonitoring::analyze(art::Event const& evt) {
     if (fScopeMonitoring) fMonitoringData.RCEScopeMonitoring(rceformatter, fEventNumber);
     else {
       fMonitoringData.RCEMonitoring(rceformatter, fEventNumber);
-      if (std::time(0) - fLastSaveTime % 30 == 0) fMonitoringData.RCELessFrequentMonitoring(rceformatter);
+      if ((std::time(0) - fLastSaveTime) % 30 == 0) fMonitoringData.RCELessFrequentMonitoring(rceformatter);
     }
   }
   if (!fScopeMonitoring) {
