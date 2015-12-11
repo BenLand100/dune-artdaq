@@ -270,10 +270,11 @@ OnlineMonitoring::PTBFormatter::PTBFormatter(art::Handle<artdaq::Fragments> cons
   fPreviousTrigger = previousTrigger;
 
   //Initialise the trigger rates
-  fMuonTriggerRates[1] = 0;
-  fMuonTriggerRates[2] = 0;
-  fMuonTriggerRates[4] = 0;
-  fMuonTriggerRates[8] = 0;
+  std::vector<unsigned int> trigger_types = {1,2,4,8};
+  for (std::vector<unsigned int>::iterator triggerType = trigger_types.begin(); triggerType != trigger_types.end(); ++triggerType) {
+    fMuonTriggerRates[*triggerType] = 0;
+    fCalibrationTriggerRates[*triggerType] = 0;
+  }
 
   unsigned long NTotalTicks = 0;
 
@@ -400,6 +401,18 @@ void OnlineMonitoring::PTBFormatter::AnalyzeMuonTrigger(int trigger_number, doub
   trigger_rate /= fTimeSliceSize;
   return;
 }
+
+void OnlineMonitoring::PTBFormatter::AnalyzeCalibrationTrigger(int trigger_number, double& trigger_rate) const {
+  trigger_rate = fMuonTriggerRates.at(trigger_number);
+  trigger_rate /= fTimeSliceSize;
+  return;
+}
+
+void OnlineMonitoring::PTBFormatter::AnalyzeSSPTrigger(double& trigger_rate) const {
+  trigger_rate = fSSPTriggerRates / (double)fTimeSliceSize;
+  return;
+}
+
 //   //
 //   //NEW CODE WITH IGNORE BIT CHECKING
 //   //We need to loop through the requested trigger to check
@@ -478,8 +491,11 @@ void OnlineMonitoring::PTBFormatter::CollectMuonTrigger(uint8_t* payload, size_t
   std::bitset<TypeSizes::TriggerWordSize> trigger_type_bits; 
   trigger_type_bits ^= (bits >> (TypeSizes::TriggerWordSize - 5));
   int trigger_type = static_cast<int>(trigger_type_bits.to_ulong());
-  //If we have a muon trigger, get which trigger it was and increase the hit rate
+
+  // Get the triggers and collect the bits
+
   if (trigger_type == 16) {
+    // Muon trigger
     std::bitset<TypeSizes::TriggerWordSize> muon_trigger_bits;
     //Shift the bits left by 5 first to remove the trigger type bits
     muon_trigger_bits ^= (bits << 5);
@@ -491,6 +507,20 @@ void OnlineMonitoring::PTBFormatter::CollectMuonTrigger(uint8_t* payload, size_t
     fMuonTriggerBits.push_back(muon_trigger_bits);
   }
   else if (trigger_type == 0) {
+    // Calibration trigger
+    std::bitset<TypeSizes::TriggerWordSize> calibration_trigger_bits;
+    //Shift the bits left by 5 first to remove the trigger type bits
+    calibration_trigger_bits ^= (bits << 5);
+    //Now we need to shift the entire thing set to the LSB so we can record the number
+    //The calibration trigger pattern words are 4 bits
+    calibration_trigger_bits >>= (TypeSizes::TriggerWordSize-4);
+    int calibration_trigger = static_cast<int>(calibration_trigger_bits.to_ulong());
+    fCalibrationTriggerRates[calibration_trigger]++;
+    fCalibrationTriggerBits.push_back(calibration_trigger_bits);    
+  }
+  else if (trigger_type == 8) {
+    // SSP trigger
+    ++fSSPTriggerRates;
   }
 
   fPreviousTrigger = std::make_pair(timestamp, bits);

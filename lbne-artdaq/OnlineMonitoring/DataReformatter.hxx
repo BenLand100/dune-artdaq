@@ -116,6 +116,8 @@ public:
   PTBFormatter(art::Handle<artdaq::Fragments> const& rawPTB, PTBTrigger const& previousTrigger);
   void AnalyzeCounter(int counter_index, unsigned long &activation_time, double &hit_rate) const;
   void AnalyzeMuonTrigger(int trigger_number, double &trigger_rate) const;
+  void AnalyzeCalibrationTrigger(int trigger_number, double& trigger_rate) const;
+  void AnalyzeSSPTrigger(double& trigger_rate) const;
   int NumPayloads() const { return fPayloadTypes.size(); }
   std::vector<unsigned int> Payloads() const { return fPayloadTypes; }
   long double GetTotalSeconds() { return fNTotalTicks * NNanoSecondsPerNovaTick/(1000*1000*1000); };
@@ -127,12 +129,20 @@ private:
 
   void CollectCounterBits(uint8_t* payload, size_t payload_size);
   void CollectMuonTrigger(uint8_t* payload, size_t payload_size, lbne::PennMicroSlice::Payload_Header::short_nova_timestamp_t timestamp);
-  
+
+  // Counters
   std::vector<std::bitset<TypeSizes::CounterWordSize> > fCounterBits;
   std::vector<unsigned long> fCounterTimes;
+
+  // Triggers
+  std::vector<unsigned long> fMuonTriggerTimes;
   std::vector<std::bitset<TypeSizes::TriggerWordSize> > fMuonTriggerBits;
   std::map<int,int> fMuonTriggerRates;
-  std::vector<unsigned long> fMuonTriggerTimes;
+  std::vector<std::bitset<TypeSizes::TriggerWordSize> > fCalibrationTriggerBits;
+  std::map<int,int> fCalibrationTriggerRates;
+  int fSSPTriggerRates;
+
+  // Payloads
   std::vector<unsigned int> fPayloadTypes;
   long double fTimeSliceSize;
   unsigned long fNTotalTicks;
