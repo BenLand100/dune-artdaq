@@ -484,9 +484,22 @@ void OnlineMonitoring::MonitoringData::PTBMonitoring(PTBFormatter const& ptb_for
 
   /// Produces PTB monitoring histograms
 
-  if (ptb_formatter.NumTriggers() == 0)
+  if (ptb_formatter.Payloads().size() == 0)
     return;
 
+  // Fill the payload hists
+  const std::vector<unsigned int> payloads = ptb_formatter.Payloads();
+  hPTBBlockLength->Fill(payloads.size());
+  for (std::vector<unsigned int>::const_iterator payloadIt = payloads.begin(); payloadIt != payloads.end(); ++payloadIt) {
+    if (*payloadIt == 1)      hPTBPayloadType->Fill("Counter",1);
+    else if (*payloadIt == 2) hPTBPayloadType->Fill("Trigger",1);
+    else if (*payloadIt == 4) hPTBPayloadType->Fill("Checksum",1);
+    else if (*payloadIt == 7) hPTBPayloadType->Fill("Timestamp",1);
+    else if (*payloadIt == 0) hPTBPayloadType->Fill("Self-test",1);
+    else mf::LogWarning("Monitoring") << "Warning: payload type not recognised";
+  }
+
+  // Fill the counter hists
   unsigned long activation_time = 0;
   double hit_rate = 0;
   int counterNumber = 0;
@@ -555,9 +568,9 @@ void OnlineMonitoring::MonitoringData::PTBMonitoring(PTBFormatter const& ptb_for
       hPTBBSUCounterActivationTimeRL->Fill(counterNumber,activation_time);
     }
 
-    // Triggers
+    // Fill the trigger hists
     double trigger_rate = 0;
-    for (int trigger_index= 1; trigger_index <= 4; trigger_index++){
+    for (int trigger_index = 1; trigger_index <= 4; ++trigger_index){
       ptb_formatter.AnalyzeMuonTrigger(TMath::Power(2,trigger_index-1),trigger_rate);
       hPTBTriggerRates->Fill(trigger_index,trigger_rate);
     }
@@ -798,6 +811,29 @@ void OnlineMonitoring::MonitoringData::MakeHistograms() {
   fFigureCaptions["SSP__Triggers_Fraction_Channel_All"] = "Fraction of events with a trigger for each channel";
 
   // PTB hists
+  hPTBTriggerRates = new TProfile("PTB__Trigger_HitRate_TriggerType_All","Trigger Rates_\"\"_none;Trigger;Hit rate (Hz)",9,1,10);
+  hPTBTriggerRates->GetXaxis()->SetBinLabel(1,"Muon TSU EL-WU");
+  hPTBTriggerRates->GetXaxis()->SetBinLabel(2,"Muon TSU SU-NL");
+  hPTBTriggerRates->GetXaxis()->SetBinLabel(3,"Muon TSU SL-NU");
+  hPTBTriggerRates->GetXaxis()->SetBinLabel(4,"Muon BSU RM-CM");
+  hPTBTriggerRates->GetXaxis()->SetBinLabel(5,"SSP");
+  hPTBTriggerRates->GetXaxis()->SetBinLabel(6,"Calibration C1");
+  hPTBTriggerRates->GetXaxis()->SetBinLabel(7,"Calibration C2");
+  hPTBTriggerRates->GetXaxis()->SetBinLabel(8,"Calibration C3");
+  hPTBTriggerRates->GetXaxis()->SetBinLabel(9,"Calibration C4");
+  fFigureCaptions[hPTBTriggerRates->GetName()] = "Average hit rates per millislice of the muon trigger system";
+
+  hPTBBlockLength = new TH1I("PTB__Payloads_Total_NumberPayloads_All","Total Number of Payloads_\"hist\"_none;Number of Payloads",100,0,100);
+  fFigureCaptions[hPTBBlockLength->GetName()] = "Number of payloads in each event (filled once per event)";
+
+  hPTBPayloadType = new TH1I("PTB__Payloads_Type_PayloadType_All","Payload Type_\"hist\"_logy;Payload Type",5,1,6);
+  hPTBPayloadType->GetXaxis()->SetBinLabel(1,"Counter");
+  hPTBPayloadType->GetXaxis()->SetBinLabel(2,"Trigger");
+  hPTBPayloadType->GetXaxis()->SetBinLabel(3,"Checksum");
+  hPTBPayloadType->GetXaxis()->SetBinLabel(4,"Timestamp");
+  hPTBPayloadType->GetXaxis()->SetBinLabel(5,"Self-test");
+  fFigureCaptions[hPTBPayloadType->GetName()] = "Payload type (filled once per payload)";
+
   hPTBTSUCounterHitRateWU = new TProfile("PTB_TSUWU_Hits_Mean_Counter_All","TSU WU Counter Hit Rate_\"\"_none;Counter number;Hit Rate (Hz)",10,1,11);
   hPTBTSUCounterHitRateWU->GetXaxis()->SetNdivisions(10);
   hPTBTSUCounterHitRateWU->GetXaxis()->CenterLabels();
@@ -897,13 +933,6 @@ void OnlineMonitoring::MonitoringData::MakeHistograms() {
   hPTBBSUCounterActivationTimeRL->GetXaxis()->CenterLabels();
   fFigureCaptions["PTB_BSURL_ActivationTime_Mean_Counter_All"] = "Average activation time for the BSU RL counters";
 
-  hPTBTriggerRates = new TProfile("PTB__MuonTrigger_HitRate_TriggerType_All","Muon Trigger Rates_\"\"_none;Muon Trigger;Hit rate (Hz)",4,1,5);
-  hPTBTriggerRates->GetXaxis()->SetBinLabel(1,"TSU EL-WU");
-  hPTBTriggerRates->GetXaxis()->SetBinLabel(2,"TSU SU-NL");
-  hPTBTriggerRates->GetXaxis()->SetBinLabel(3,"TSU SL-NU");
-  hPTBTriggerRates->GetXaxis()->SetBinLabel(4,"BSU RM-CM");
-  fFigureCaptions["PTB__MuonTrigger_HitRate_TriggerType_All"] = "Average hit rates per millislice of the muon trigger system";
-
   // The order the histograms are added will be the order they're displayed on the web!
   fHistArray.Add(hNumSubDetectorsPresent); 
   fHistArray.Add(hSubDetectorsPresent); fHistArray.Add(hSubDetectorsWithData);
@@ -932,6 +961,7 @@ void OnlineMonitoring::MonitoringData::MakeHistograms() {
   fHistArray.Add(hWaveformNumTicks);
 
   fHistArray.Add(hPTBTriggerRates);
+  fHistArray.Add(hPTBBlockLength); fHistArray.Add(hPTBPayloadType);
   fHistArray.Add(hPTBTSUCounterActivationTimeWU); fHistArray.Add(hPTBTSUCounterHitRateWU);
   fHistArray.Add(hPTBTSUCounterActivationTimeEL); fHistArray.Add(hPTBTSUCounterHitRateEL);
   fHistArray.Add(hPTBTSUCounterActivationTimeExtra); fHistArray.Add(hPTBTSUCounterHitRateExtra);

@@ -117,6 +117,7 @@ private:
 
   // PTB
   TProfile *hPTBTriggerRates;
+  TH1I *hPTBBlockLength, *hPTBPayloadType;
   TProfile *hPTBTSUCounterHitRateWU,    *hPTBTSUCounterActivationTimeWU;
   TProfile *hPTBTSUCounterHitRateEL,    *hPTBTSUCounterActivationTimeEL;
   TProfile *hPTBTSUCounterHitRateExtra, *hPTBTSUCounterActivationTimeExtra;

@@ -116,7 +116,8 @@ public:
   PTBFormatter(art::Handle<artdaq::Fragments> const& rawPTB, PTBTrigger const& previousTrigger);
   void AnalyzeCounter(int counter_index, unsigned long &activation_time, double &hit_rate) const;
   void AnalyzeMuonTrigger(int trigger_number, double &trigger_rate) const;
-  int NumTriggers() const { return fMuonTriggerRates.size(); }
+  int NumPayloads() const { return fPayloadTypes.size(); }
+  std::vector<unsigned int> Payloads() const { return fPayloadTypes; }
   long double GetTotalSeconds() { return fNTotalTicks * NNanoSecondsPerNovaTick/(1000*1000*1000); };
   PTBTrigger GetLastTrigger() const { return fPreviousTrigger; }
 
@@ -132,6 +133,7 @@ private:
   std::vector<std::bitset<TypeSizes::TriggerWordSize> > fMuonTriggerBits;
   std::map<int,int> fMuonTriggerRates;
   std::vector<unsigned long> fMuonTriggerTimes;
+  std::vector<unsigned int> fPayloadTypes;
   long double fTimeSliceSize;
   unsigned long fNTotalTicks;
 

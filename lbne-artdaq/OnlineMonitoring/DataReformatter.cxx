@@ -304,6 +304,7 @@ OnlineMonitoring::PTBFormatter::PTBFormatter(art::Handle<artdaq::Fragments> cons
       payload_data = msf.payload(ip, type, timestamp, payload_size);
 
       unsigned int payload_type = (unsigned int) type;
+      fPayloadTypes.push_back(payload_type);
       //Loop over the words in the payload
       if (!((payload_data != nullptr) && payload_size)) continue;
       switch (payload_type){
@@ -473,12 +474,12 @@ void OnlineMonitoring::PTBFormatter::CollectMuonTrigger(uint8_t* payload, size_t
       bits == fPreviousTrigger.second)
     return;
 
-  //Bits collected, now get the trigger type
+  // Bits collected, now get the trigger type
   std::bitset<TypeSizes::TriggerWordSize> trigger_type_bits; 
   trigger_type_bits ^= (bits >> (TypeSizes::TriggerWordSize - 5));
   int trigger_type = static_cast<int>(trigger_type_bits.to_ulong());
   //If we have a muon trigger, get which trigger it was and increase the hit rate
-  if (trigger_type == 16){
+  if (trigger_type == 16) {
     std::bitset<TypeSizes::TriggerWordSize> muon_trigger_bits;
     //Shift the bits left by 5 first to remove the trigger type bits
     muon_trigger_bits ^= (bits << 5);
@@ -488,6 +489,8 @@ void OnlineMonitoring::PTBFormatter::CollectMuonTrigger(uint8_t* payload, size_t
     int muon_trigger = static_cast<int>(muon_trigger_bits.to_ulong());
     fMuonTriggerRates[muon_trigger]++;
     fMuonTriggerBits.push_back(muon_trigger_bits);
+  }
+  else if (trigger_type == 0) {
   }
 
   fPreviousTrigger = std::make_pair(timestamp, bits);
