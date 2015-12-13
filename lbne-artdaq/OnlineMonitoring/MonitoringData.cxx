@@ -572,8 +572,12 @@ void OnlineMonitoring::MonitoringData::PTBMonitoring(PTBFormatter const& ptb_for
     double trigger_rate = 0;
     for (int trigger_index = 1; trigger_index <= 4; ++trigger_index){
       ptb_formatter.AnalyzeMuonTrigger(TMath::Power(2,trigger_index-1),trigger_rate);
+      ptb_formatter.AnalyzeCalibrationTrigger(TMath::Power(2,trigger_index-1),trigger_rate);
       hPTBTriggerRates->Fill(trigger_index,trigger_rate);
+      hPTBTriggerRates->Fill(9-(trigger_index-1),trigger_rate);
     }
+    ptb_formatter.AnalyzeSSPTrigger(trigger_rate);
+    hPTBTriggerRates->Fill("SSP",trigger_rate);
 
   }
 
