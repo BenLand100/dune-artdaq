@@ -245,7 +245,8 @@ void lbne::TpcRceReceiver::start(void)
 	  //dtm_client_->send_command("SetRunState", "Enable");
 	  //dtm_client_->send_command("Start");
 	}
-
+	//send a soft reset, just in case we went from stop->start instead of init->start
+	dpm_client_->send_command("SoftReset");
 	// Set the run state to enabled
 	dpm_client_->send_command("SetRunState", "Enable");
 
