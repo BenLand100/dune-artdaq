@@ -245,8 +245,26 @@ void lbne::TpcRceReceiver::start(void)
 	  //dtm_client_->send_command("SetRunState", "Enable");
 	  //dtm_client_->send_command("Start");
 	}
-	//send a soft reset, just in case we went from stop->start instead of init->start
+
+	//
+	//do the same things at start as we do for init
+	//because we need to reset the RCEs and FEBs in order 
+	//to start everything syncronously. 
+	//
+	// Send a HardReset command to the DPM                                                                               
+	dpm_client_->send_command("HardReset");
+
+	// Tell the DPM to read its configuration file                                                                        
+	dpm_client_->send_command("ReadXmlFile", rce_xml_config_file_);
 	dpm_client_->send_command("SoftReset");
+
+	dpm_client_->send_command("ConfigFebAsic");
+
+	// Set the DPM run mode as specified                                                                                  
+	std::ostringstream config_frag;
+	config_frag << "<DataDpm><DataBuffer><RunMode>" << rce_daq_mode_ << "</RunMode></DataBuffer></DataDpm>";
+	dpm_client_->send_config(config_frag.str());
+
 	// Set the run state to enabled
 	dpm_client_->send_command("SetRunState", "Enable");
 
