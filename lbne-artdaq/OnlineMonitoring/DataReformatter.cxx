@@ -269,7 +269,7 @@ OnlineMonitoring::PTBFormatter::PTBFormatter(art::Handle<artdaq::Fragments> cons
 
   fPreviousTrigger = previousTrigger;
 
-  //Initialise the trigger rates
+  // Initialise the trigger rates (both muon and calibration triggers have the same types)
   std::vector<unsigned int> trigger_types = {1,2,4,8};
   for (std::vector<unsigned int>::iterator triggerType = trigger_types.begin(); triggerType != trigger_types.end(); ++triggerType) {
     fMuonTriggerRates[*triggerType] = 0;
