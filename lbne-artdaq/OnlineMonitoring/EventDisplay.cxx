@@ -53,6 +53,8 @@ void OnlineMonitoring::EventDisplay::MakeEventDisplay(RCEFormatter const& rcefor
 
   delete evdCanvas; delete EVD;
 
+  mf::LogInfo("Monitoring") << "New event display for event " << event << " is viewable at http://lbne-dqm.fnal.gov/EventDisplay.";
+
 }
 
 int OnlineMonitoring::EventDisplay::GetCollectionChannel(int offlineCollectionChannel, int apa, int drift) {

@@ -688,7 +688,7 @@ void OnlineMonitoring::MonitoringData::WriteMonitoringData(int run, int subrun, 
   tmp.flush();
   tmp.close();
 
-  mf::LogInfo("Monitoring") << "Monitoring for run " << run << ", subRun " << subrun << " is viewable at http://lbne-dqm.fnal.gov/OnlineMonitoring/Run" << run << "Subrun" << subrun;
+  mf::LogInfo("Monitoring") << "Monitoring for run " << run << ", subRun " << subrun << " has been updated and is viewable at http://lbne-dqm.fnal.gov/OnlineMonitoring/Run" << run << "Subrun" << subrun;
 
 }
 
