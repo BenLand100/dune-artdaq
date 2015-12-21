@@ -39,6 +39,7 @@ public:
   std::vector<std::vector<short> > const& BlockSize() const { return fWindowingBlockSize; }
 
   int NumRCEs;
+  bool HasData;
   std::vector<std::string> RCEsWithData;
 
 private:

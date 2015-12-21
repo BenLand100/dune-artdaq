@@ -9,11 +9,11 @@
 
 #include "ChannelMap.hxx"
 
-void OnlineMonitoring::ChannelMap::MakeChannelMap() {
+void OnlineMonitoring::ChannelMap::MakeChannelMap(TString const& channelMapFile) {
 
   /// Read in channel map from a text file and make maps
 
-  std::ifstream inFile("/data/lbnedaq/scratch/wallbank/lbne-artdaq-base/lbne-artdaq/lbne-artdaq/OnlineMonitoring/detailedMap.txt", std::ios::in);
+  std::ifstream inFile(channelMapFile.Data(), std::ios::in);
   std::string line;
 
   while (std::getline(inFile,line)) {

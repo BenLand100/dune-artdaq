@@ -68,6 +68,7 @@ private:
   TString fMonitorSavePath;
   TString fEVDSavePath;
   TString fImageType;
+  TString fChannelMapFile;
 
   // Refresh rates
   int fMonitoringRefreshRate;
@@ -75,6 +76,7 @@ private:
   int fEventDisplayRefreshRate;
   int fLastSaveTime;
   bool fSavedFirstMonitoring;
+  bool fMadeFirstEVD;
 
   PTBTrigger fLastPTBTrigger;
 
@@ -94,6 +96,7 @@ void OnlineMonitoring::OnlineMonitoring::reconfigure(fhicl::ParameterSet const& 
   fMonitorSavePath = TString(p.get<std::string>("MonitorSavePath"));
   fEVDSavePath     = TString(p.get<std::string>("EVDSavePath"));
   fImageType       = TString(p.get<std::string>("ImageType"));
+  fChannelMapFile  = TString(p.get<std::string>("ChannelMapFile"));
   fMonitoringRefreshRate   = p.get<int> ("MonitoringRefreshRate");
   fInitialMonitoringUpdate = p.get<int> ("InitialMonitoringUpdate");
   fEventDisplayRefreshRate = p.get<int> ("EventDisplayRefreshRate");
@@ -107,11 +110,12 @@ void OnlineMonitoring::OnlineMonitoring::beginSubRun(art::SubRun const& sr) {
   fMonitoringData.BeginMonitoring(sr.run(), sr.subRun(), fMonitorSavePath, fDetailedMonitoring, fScopeMonitoring);
 
   // Make the channel map for this subrun
-  fChannelMap.MakeChannelMap();
+  fChannelMap.MakeChannelMap(fChannelMapFile);
 
   // Monitoring data write out
   fLastSaveTime = std::time(0);
   fSavedFirstMonitoring = false;
+  fMadeFirstEVD = false;
 
 }
 
@@ -163,9 +167,12 @@ void OnlineMonitoring::OnlineMonitoring::analyze(art::Event const& evt) {
   // Eventually will check for flag in the PTB monitoring which suggests the event
   // is interesting enough to make an event display for!
   // if (ptbformatter.MakeEventDisplay())
-  int evdRefreshInterval = std::round((double)fEventDisplayRefreshRate / 1.6e-3);
-  if (fEventNumber % evdRefreshInterval == 0)
+  // int evdRefreshInterval = std::round((double)fEventDisplayRefreshRate / 1.6e-3);
+  // if (fEventNumber % evdRefreshInterval == 0)
+  if (!fMadeFirstEVD and rceformatter.HasData) {
+    fMadeFirstEVD = true;
     fEventDisplay.MakeEventDisplay(rceformatter, fChannelMap, fEventNumber, fEVDSavePath);
+  }
 
   // Consider detaching!
   // // Event display -- every 500 events (8 s)

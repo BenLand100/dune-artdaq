@@ -69,6 +69,7 @@ private:
   TString fMonitorSavePath;
   TString fEVDSavePath;
   TString fImageType;
+  TString fChannelMapFile;
 
 };
 
@@ -93,7 +94,7 @@ void OnlineMonitoring::OnlinePedestal::beginSubRun(art::SubRun const& sr) {
   fMonitoringPedestal.BeginMonitoring(sr.run(), sr.subRun());
 
   // Make the channel map for this subrun
-  fChannelMap.MakeChannelMap();
+  fChannelMap.MakeChannelMap(fChannelMapFile);
 
 }
 

@@ -26,6 +26,7 @@ OnlineMonitoring::RCEFormatter::RCEFormatter(art::Handle<artdaq::Fragments> cons
 void OnlineMonitoring::RCEFormatter::AnalyseADCs(art::Handle<artdaq::Fragments> const& rawRCE, bool scopeMode) {
 
   NumRCEs = rawRCE->size();
+  HasData = false;
 
   // Loop over fragments to make a map to save the order the frags are saved in
   std::map<unsigned int, unsigned int> tpcFragmentMap;
@@ -82,6 +83,7 @@ void OnlineMonitoring::RCEFormatter::AnalyseADCs(art::Handle<artdaq::Fragments> 
 	  bool success = microslice->nanosliceSampleValue(nanoIt, sample, adc);
 
 	  if (success) {
+	    if ((int)adc > 10) HasData = true;
 	    adcVector.push_back((int)adc);
 	    //unsigned long timestamp = microslice->nanosliceNova_timestamp(nanoIt);
 	    unsigned long timestamp = 1000;
