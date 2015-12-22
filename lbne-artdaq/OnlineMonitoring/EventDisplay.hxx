@@ -18,6 +18,9 @@
 #include "ChannelMap.hxx"
 #include "DataReformatter.hxx"
 
+// framework
+#include "messagefacility/MessageLogger/MessageLogger.h"
+
 class OnlineMonitoring::EventDisplay {
 public:
 

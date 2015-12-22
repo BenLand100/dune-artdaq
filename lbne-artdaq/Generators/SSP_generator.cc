@@ -216,7 +216,7 @@ bool lbne::SSP::getNext_(artdaq::FragmentPtrs & frags) {
     ++fNFragmentsSent;
 
     if(!(fNFragmentsSent%1000)){
-      DAQLogger::LogInfo("SSP_SSP_generator")<<device_interface_->GetIdentifier()
+      DAQLogger::LogDebug("SSP_SSP_generator")<<device_interface_->GetIdentifier()
 			 <<"Generator sending fragment "<<fNFragmentsSent
 			 <<", calls to GetNext "<<fNGetNextCalls
 			 <<", of which returned null "<<fNNoFragments<<std::endl;
@@ -244,7 +244,8 @@ bool lbne::SSP::getNext_(artdaq::FragmentPtrs & frags) {
   // artdaq::Fragment constructor itself was not altered so as to
   // maintain backward compatibility.
 
-    DAQLogger::LogDebug("SSP_SSP_generator")<<"SSP generator appending event to fragment holder"<<std::endl;
+    //Too verbose; get rid of this.
+    //DAQLogger::LogDebug("SSP_SSP_generator")<<"SSP generator appending event to fragment holder"<<std::endl;
     
     std::size_t dataLength = millislice.size()-SSPDAQ::MillisliceHeader::sizeInUInts;
     

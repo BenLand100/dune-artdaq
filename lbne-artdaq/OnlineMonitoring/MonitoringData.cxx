@@ -411,8 +411,8 @@ void OnlineMonitoring::MonitoringData::RCEScopeMonitoring(RCEFormatter const& rc
   int upperTime = 1;
 
   // Find the time since the start of the run
-  double time = event * SamplingPeriod * 1e-6;
-  double tickTime = time;;
+  double time = event / (double)EventRate;
+  double tickTime = time;
 
   if (time > upperTime)
     return;
@@ -426,14 +426,14 @@ void OnlineMonitoring::MonitoringData::RCEScopeMonitoring(RCEFormatter const& rc
 
   // Sanity check -- shouldn't be more than one channel!
   if (ADCs.size() > 1) {
-    mf::LogError("Monitoring") << "Running monitoring in scope mode -- more than two channels are present!";
+    mf::LogError("Monitoring") << "Running monitoring in scope mode -- more than one channel present!";
     return;
   }
 
   // Fill the trace histogram
   for (unsigned int channel = 0; channel < ADCs.size(); ++channel) {
     for (unsigned int tick = 0; tick < ADCs.at(channel).size(); ++tick) {
-      tickTime = time + (tick * SamplingPeriod * 1e-6);
+      tickTime = time + (tick / EventRate);
       hScopeTrace1s->Fill(tickTime,ADCs.at(channel).at(tick));
     }
   }
@@ -484,9 +484,22 @@ void OnlineMonitoring::MonitoringData::PTBMonitoring(PTBFormatter const& ptb_for
 
   /// Produces PTB monitoring histograms
 
-  if (ptb_formatter.NumTriggers() == 0)
+  if (ptb_formatter.Payloads().size() == 0)
     return;
 
+  // Fill the payload hists
+  const std::vector<unsigned int> payloads = ptb_formatter.Payloads();
+  hPTBBlockLength->Fill(payloads.size());
+  for (std::vector<unsigned int>::const_iterator payloadIt = payloads.begin(); payloadIt != payloads.end(); ++payloadIt) {
+    if (*payloadIt == 1)      hPTBPayloadType->Fill("Counter",1);
+    else if (*payloadIt == 2) hPTBPayloadType->Fill("Trigger",1);
+    else if (*payloadIt == 4) hPTBPayloadType->Fill("Checksum",1);
+    else if (*payloadIt == 7) hPTBPayloadType->Fill("Timestamp",1);
+    else if (*payloadIt == 0) hPTBPayloadType->Fill("Self-test",1);
+    else mf::LogWarning("Monitoring") << "Warning: payload type not recognised";
+  }
+
+  // Fill the counter hists
   unsigned long activation_time = 0;
   double hit_rate = 0;
   int counterNumber = 0;
@@ -555,12 +568,16 @@ void OnlineMonitoring::MonitoringData::PTBMonitoring(PTBFormatter const& ptb_for
       hPTBBSUCounterActivationTimeRL->Fill(counterNumber,activation_time);
     }
 
-    // Triggers
+    // Fill the trigger hists
     double trigger_rate = 0;
-    for (int trigger_index= 1; trigger_index <= 4; trigger_index++){
+    for (int trigger_index = 1; trigger_index <= 4; ++trigger_index){
       ptb_formatter.AnalyzeMuonTrigger(TMath::Power(2,trigger_index-1),trigger_rate);
+      ptb_formatter.AnalyzeCalibrationTrigger(TMath::Power(2,trigger_index-1),trigger_rate);
       hPTBTriggerRates->Fill(trigger_index,trigger_rate);
+      hPTBTriggerRates->Fill(9-(trigger_index-1),trigger_rate);
     }
+    ptb_formatter.AnalyzeSSPTrigger(trigger_rate);
+    hPTBTriggerRates->Fill("SSP",trigger_rate);
 
   }
 
@@ -671,7 +688,7 @@ void OnlineMonitoring::MonitoringData::WriteMonitoringData(int run, int subrun, 
   tmp.flush();
   tmp.close();
 
-  mf::LogInfo("Monitoring") << "Monitoring for run " << run << ", subRun " << subrun << " is viewable at http://lbne-dqm.fnal.gov/OnlineMonitoring/Run" << run << "Subrun" << subrun;
+  mf::LogInfo("Monitoring") << "Monitoring for run " << run << ", subRun " << subrun << " has been updated and is viewable at http://lbne-dqm.fnal.gov/OnlineMonitoring/Run" << run << "Subrun" << subrun;
 
 }
 
@@ -734,13 +751,13 @@ void OnlineMonitoring::MonitoringData::MakeHistograms() {
   fFigureCaptions["RCE_APA2_ADC_Mean_Channel_All"] = "Mean ADC values for each channel read out by the RCEs (profiled over all events read)";
   hADCMeanChannelAPA4 = new TProfile("RCE_APA3_ADC_Mean_Channel_All","RCE ADC Mean APA3_\"histl\"_none;Channel;RCE ADC Mean",512,1536,2047);
   fFigureCaptions["RCE_APA3_ADC_Mean_Channel_All"] = "Mean ADC values for each channel read out by the RCEs (profiled over all events read)";
-  hADCRMSChannelAPA1 = new TProfile("RCE_APA0_ADC_RMS_Channel_All","RCE ADC RMS APA0_\"histl\"_none;Channel;RCE ADC RMS",512,0,511);
+  hADCRMSChannelAPA1 = new TProfile("RCE_APA0_ADC_RMS_Channel_All","RCE ADC RMS APA0_\"histl\"_logy;Channel;RCE ADC RMS",512,0,511);
   fFigureCaptions["RCE_APA0_ADC_RMS_Channel_All"] = "RMS of the ADC values for each channel read out by the RCEs (profiled over all events read)";
-  hADCRMSChannelAPA2 = new TProfile("RCE_APA1_ADC_RMS_Channel_All","RCE ADC RMS APA1_\"histl\"_none;Channel;RCE ADC RMS",512,512,1023);
+  hADCRMSChannelAPA2 = new TProfile("RCE_APA1_ADC_RMS_Channel_All","RCE ADC RMS APA1_\"histl\"_logy;Channel;RCE ADC RMS",512,512,1023);
   fFigureCaptions["RCE_APA1_ADC_RMS_Channel_All"] = "RMS of the ADC values for each channel read out by the RCEs (profiled over all events read)";
-  hADCRMSChannelAPA3 = new TProfile("RCE_APA2_ADC_RMS_Channel_All","RCE ADC RMS APA2_\"histl\"_none;Channel;RCE ADC RMS",512,1024,1535);
+  hADCRMSChannelAPA3 = new TProfile("RCE_APA2_ADC_RMS_Channel_All","RCE ADC RMS APA2_\"histl\"_logy;Channel;RCE ADC RMS",512,1024,1535);
   fFigureCaptions["RCE_APA2_ADC_RMS_Channel_All"] = "RMS of the ADC values for each channel read out by the RCEs (profiled over all events read)";
-  hADCRMSChannelAPA4 = new TProfile("RCE_APA3_ADC_RMS_Channel_All","RCE ADC RMS APA3_\"histl\"_none;Channel;RCE ADC RMS",512,1536,2047);
+  hADCRMSChannelAPA4 = new TProfile("RCE_APA3_ADC_RMS_Channel_All","RCE ADC RMS APA3_\"histl\"_logy;Channel;RCE ADC RMS",512,1536,2047);
   fFigureCaptions["RCE_APA3_ADC_RMS_Channel_All"] = "RMS of the ADC values for each channel read out by the RCEs (profiled over all events read)";
   hFFTChannelRCE00 = new TProfile2D("RCE_RCE00_ADC_FFT_Channel_FirstEvent","ADC FFT for RCE00_\"colz\"_logz;Channel;FFT (MHz)",128,0,128,100,0,1);
   fFigureCaptions["RCE_RCE00_ADC_FFT_Channel_FirstEvent"] = "FFT of ADC values in RCE00";
@@ -798,6 +815,29 @@ void OnlineMonitoring::MonitoringData::MakeHistograms() {
   fFigureCaptions["SSP__Triggers_Fraction_Channel_All"] = "Fraction of events with a trigger for each channel";
 
   // PTB hists
+  hPTBTriggerRates = new TProfile("PTB__Trigger_HitRate_TriggerType_All","Trigger Rates_\"\"_none;Trigger;Hit rate (Hz)",9,1,10);
+  hPTBTriggerRates->GetXaxis()->SetBinLabel(1,"Muon TSU EL-WU");
+  hPTBTriggerRates->GetXaxis()->SetBinLabel(2,"Muon TSU SU-NL");
+  hPTBTriggerRates->GetXaxis()->SetBinLabel(3,"Muon TSU SL-NU");
+  hPTBTriggerRates->GetXaxis()->SetBinLabel(4,"Muon BSU RM-CM");
+  hPTBTriggerRates->GetXaxis()->SetBinLabel(5,"SSP");
+  hPTBTriggerRates->GetXaxis()->SetBinLabel(6,"Calibration C1");
+  hPTBTriggerRates->GetXaxis()->SetBinLabel(7,"Calibration C2");
+  hPTBTriggerRates->GetXaxis()->SetBinLabel(8,"Calibration C3");
+  hPTBTriggerRates->GetXaxis()->SetBinLabel(9,"Calibration C4");
+  fFigureCaptions[hPTBTriggerRates->GetName()] = "Average hit rates per millislice of the muon trigger system";
+
+  hPTBBlockLength = new TH1I("PTB__Payloads_Total_NumberPayloads_All","Total Number of Payloads_\"hist\"_none;Number of Payloads",100,0,100);
+  fFigureCaptions[hPTBBlockLength->GetName()] = "Number of payloads in each event (filled once per event)";
+
+  hPTBPayloadType = new TH1I("PTB__Payloads_Type_PayloadType_All","Payload Type_\"hist\"_logy;Payload Type",5,1,6);
+  hPTBPayloadType->GetXaxis()->SetBinLabel(1,"Counter");
+  hPTBPayloadType->GetXaxis()->SetBinLabel(2,"Trigger");
+  hPTBPayloadType->GetXaxis()->SetBinLabel(3,"Checksum");
+  hPTBPayloadType->GetXaxis()->SetBinLabel(4,"Timestamp");
+  hPTBPayloadType->GetXaxis()->SetBinLabel(5,"Self-test");
+  fFigureCaptions[hPTBPayloadType->GetName()] = "Payload type (filled once per payload)";
+
   hPTBTSUCounterHitRateWU = new TProfile("PTB_TSUWU_Hits_Mean_Counter_All","TSU WU Counter Hit Rate_\"\"_none;Counter number;Hit Rate (Hz)",10,1,11);
   hPTBTSUCounterHitRateWU->GetXaxis()->SetNdivisions(10);
   hPTBTSUCounterHitRateWU->GetXaxis()->CenterLabels();
@@ -897,13 +937,6 @@ void OnlineMonitoring::MonitoringData::MakeHistograms() {
   hPTBBSUCounterActivationTimeRL->GetXaxis()->CenterLabels();
   fFigureCaptions["PTB_BSURL_ActivationTime_Mean_Counter_All"] = "Average activation time for the BSU RL counters";
 
-  hPTBTriggerRates = new TProfile("PTB__MuonTrigger_HitRate_TriggerType_All","Muon Trigger Rates_\"\"_none;Muon Trigger;Hit rate (Hz)",4,1,5);
-  hPTBTriggerRates->GetXaxis()->SetBinLabel(1,"TSU EL-WU");
-  hPTBTriggerRates->GetXaxis()->SetBinLabel(2,"TSU SU-NL");
-  hPTBTriggerRates->GetXaxis()->SetBinLabel(3,"TSU SL-NU");
-  hPTBTriggerRates->GetXaxis()->SetBinLabel(4,"BSU RM-CM");
-  fFigureCaptions["PTB__MuonTrigger_HitRate_TriggerType_All"] = "Average hit rates per millislice of the muon trigger system";
-
   // The order the histograms are added will be the order they're displayed on the web!
   fHistArray.Add(hNumSubDetectorsPresent); 
   fHistArray.Add(hSubDetectorsPresent); fHistArray.Add(hSubDetectorsWithData);
@@ -932,6 +965,7 @@ void OnlineMonitoring::MonitoringData::MakeHistograms() {
   fHistArray.Add(hWaveformNumTicks);
 
   fHistArray.Add(hPTBTriggerRates);
+  fHistArray.Add(hPTBBlockLength); fHistArray.Add(hPTBPayloadType);
   fHistArray.Add(hPTBTSUCounterActivationTimeWU); fHistArray.Add(hPTBTSUCounterHitRateWU);
   fHistArray.Add(hPTBTSUCounterActivationTimeEL); fHistArray.Add(hPTBTSUCounterHitRateEL);
   fHistArray.Add(hPTBTSUCounterActivationTimeExtra); fHistArray.Add(hPTBTSUCounterHitRateExtra);
@@ -963,9 +997,9 @@ void OnlineMonitoring::MonitoringData::MakeScopeHistograms() {
 
   /// Constructs histograms and other data objects used when running the DAQ in scope mode
 
-  hScopeTrace1s = new TH1F("RCE__ScopeTrace__Time_All","RCE Scope Trace_\"hist\"_none;Time (s);ADC",10000,0,1);
+  hScopeTrace1s = new TProfile("RCE__ScopeTrace__Time_All","RCE Scope Trace_\"hist\"_none;Time (s);ADC",100,0,1);
   fFigureCaptions[hScopeTrace1s->GetName()] = "Scope mode: trace over 1s of running";
-  hScopeTraceFFT1s = new TH1F("RCE__ScopeTrace_FFT_Frequency_All","RCE FFT Scope Trace_\"hist\"_none;Freq (Hz);",10000,0,1);
+  hScopeTraceFFT1s = new TH1F("RCE__ScopeTrace_FFT_Frequency_All","RCE FFT Scope Trace_\"hist\"_none;Freq (Hz);",100,0,1);
   fFigureCaptions[hScopeTraceFFT1s->GetName()] = "Scope mode: FFT of trace over 1s of running";
 
   fHistArray.Add(hScopeTrace1s); fHistArray.Add(hScopeTraceFFT1s);
@@ -978,6 +1012,7 @@ void OnlineMonitoring::MonitoringData::ConstructTimingSyncGraphs() {
 
   bool should_draw = false;
   for (unsigned int ssp = 0; ssp < NSSPs; ++ssp) {
+    if (!hTimeSyncSSPs[ssp]) continue;
     if (hTimeSyncSSPs[ssp]->GetN() > 0) {
       should_draw = true;
       hSSPTimeSync->Add(hTimeSyncSSPs[ssp]);
@@ -991,6 +1026,7 @@ void OnlineMonitoring::MonitoringData::ConstructTimingSyncGraphs() {
 
   should_draw = false;
   for (unsigned int ssp = 0; ssp < NSSPs; ++ssp) {
+    if (!hTimeSyncAverageSSPs[ssp]) continue;
     if (hTimeSyncAverageSSPs[ssp]->GetN() > 0) {
       should_draw = true;
       hSSPTimeSyncAverage->Add(hTimeSyncAverageSSPs[ssp]);

@@ -30,7 +30,7 @@ public:
 
   // Defualt constructor (may come in handy!)
   RCEFormatter() {}
-  RCEFormatter(art::Handle<artdaq::Fragments> const& rawRCE);
+  RCEFormatter(art::Handle<artdaq::Fragments> const& rawRCE, bool scopeMode);
   std::vector<std::vector<int> > const& ADCVector() const { return fADCs; }
   std::vector<std::vector<unsigned long> > const& TimestampVector() const { return fTimestamps; }
   uint32_t const& ScopeChannel() const { return fScopeChannel; }
@@ -39,11 +39,12 @@ public:
   std::vector<std::vector<short> > const& BlockSize() const { return fWindowingBlockSize; }
 
   int NumRCEs;
+  bool HasData;
   std::vector<std::string> RCEsWithData;
 
 private:
 
-  void AnalyseADCs(art::Handle<artdaq::Fragments> const& rawRCE);
+  void AnalyseADCs(art::Handle<artdaq::Fragments> const& rawRCE, bool scopeMode);
   void Windowing();
 
   std::vector<std::vector<int> > fADCs;
@@ -116,7 +117,10 @@ public:
   PTBFormatter(art::Handle<artdaq::Fragments> const& rawPTB, PTBTrigger const& previousTrigger);
   void AnalyzeCounter(int counter_index, unsigned long &activation_time, double &hit_rate) const;
   void AnalyzeMuonTrigger(int trigger_number, double &trigger_rate) const;
-  int NumTriggers() const { return fMuonTriggerRates.size(); }
+  void AnalyzeCalibrationTrigger(int trigger_number, double& trigger_rate) const;
+  void AnalyzeSSPTrigger(double& trigger_rate) const;
+  int NumPayloads() const { return fPayloadTypes.size(); }
+  std::vector<unsigned int> Payloads() const { return fPayloadTypes; }
   long double GetTotalSeconds() { return fNTotalTicks * NNanoSecondsPerNovaTick/(1000*1000*1000); };
   PTBTrigger GetLastTrigger() const { return fPreviousTrigger; }
 
@@ -126,12 +130,21 @@ private:
 
   void CollectCounterBits(uint8_t* payload, size_t payload_size);
   void CollectMuonTrigger(uint8_t* payload, size_t payload_size, lbne::PennMicroSlice::Payload_Header::short_nova_timestamp_t timestamp);
-  
+
+  // Counters
   std::vector<std::bitset<TypeSizes::CounterWordSize> > fCounterBits;
   std::vector<unsigned long> fCounterTimes;
+
+  // Triggers
+  std::vector<unsigned long> fMuonTriggerTimes;
   std::vector<std::bitset<TypeSizes::TriggerWordSize> > fMuonTriggerBits;
   std::map<int,int> fMuonTriggerRates;
-  std::vector<unsigned long> fMuonTriggerTimes;
+  std::vector<std::bitset<TypeSizes::TriggerWordSize> > fCalibrationTriggerBits;
+  std::map<int,int> fCalibrationTriggerRates;
+  int fSSPTriggerRates;
+
+  // Payloads
+  std::vector<unsigned int> fPayloadTypes;
   long double fTimeSliceSize;
   unsigned long fNTotalTicks;
 
