@@ -152,6 +152,8 @@ namespace lbne {
     std::chrono::high_resolution_clock::time_point last_buffer_received_time_;
     uint32_t data_timeout_usecs_;
 
+    std::size_t max_rce_events_;
+
   };
 }
 

@@ -31,7 +31,8 @@ lbne::TpcRceReceiver::TpcRceReceiver(fhicl::ParameterSet const & ps)
   CommandableFragmentGenerator(ps),
   instance_name_("TpcRceReceiver"),
   run_receiver_(false),
-  data_timeout_usecs_(ps.get<uint32_t>("data_timeout_usecs", 60000000))
+  data_timeout_usecs_(ps.get<uint32_t>("data_timeout_usecs", 60000000)),
+  max_rce_events_(ps.get<std::size_t>("max_rce_events", 0))
 {
 
   int board_id = ps.get<int>("board_id", 0);
@@ -437,8 +438,22 @@ bool lbne::TpcRceReceiver::getNext_(artdaq::FragmentPtrs & frags) {
 		frag->setFragmentID(fragmentIDs()[0]);
 		frag->setUserType(lbne::detail::TPC);
 
-		// Resize fragment to final millislice size
-		frag->resizeBytes(millislice_size);
+		// JCF, Dec-22-2015
+
+		// At Brian Kirby's request, implement the capability
+		// to stop sending data downstream after
+		// max_rce_events_ events (where he has
+		// max_rce_events_ == 1 in mind)
+
+		if (max_rce_events_ == 0 || ev_counter() <= max_rce_events_) {
+
+		  // Resize fragment to final millislice size
+		  frag->resizeBytes(millislice_size);
+		} else {
+
+		  // We've already got as much data as we want downstream, so just send a header
+		  frag->resizeBytes(0);
+		}
 
 		// Add the fragment to the list
 		frags.emplace_back(std::move (frag));
