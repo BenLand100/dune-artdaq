@@ -29,7 +29,8 @@
 //  1) the 4 bytes header
 //  2) the rest of the uslice in one go
 // Developer mode...with extra verbosity
-#define __PTB_BOARD_READER_DEVEL_MODE__
+//#define __PTB_BOARD_READER_DEVEL_MODE__
+//#define __PTB_DEBUG__  
 
 
 #endif //PENNCOMPILEOPTIONS_HH_

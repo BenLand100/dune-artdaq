@@ -20,7 +20,6 @@
 #include <thread>
 #include <unistd.h>
 
-
 lbne::PennReceiver::PennReceiver(fhicl::ParameterSet const & ps)
 :
 CommandableFragmentGenerator(ps),
@@ -70,8 +69,9 @@ run_receiver_(false)
 
   int receiver_debug_level =
       ps.get<int>("receiver_debug_level", 0);
-  DAQLogger::LogInfo("PennReceiver") << "Debug level set to " << receiver_debug_level;
-
+#ifdef __PTB_DEBUG__  
+ DAQLogger::LogInfo("PennReceiver") << "Debug level set to " << receiver_debug_level;
+#endif
   reporting_interval_fragments_ =
       ps.get<uint32_t>("reporting_interval_fragments", 100);
   reporting_interval_time_ = 
@@ -256,10 +256,12 @@ run_receiver_(false)
   // receive connections
   usleep(500000);
 
+#ifdef __PTB_DEBUG__
   DAQLogger::LogDebug("PennReceiver") << "Sending the configuration to the PTB";
+#endif
   // Can I send the coonfiguration after creating the receiver?
   penn_client_->send_config(config_frag.str());
-#ifdef __PTB_BOARD_READER_DEVEL_MODE__
+#ifdef __PTB_DEBUG__
   DAQLogger::LogDebug("PennReceiver") << "Configuration sent to the PTB";
 #endif
 
@@ -267,8 +269,9 @@ run_receiver_(false)
 
 void lbne::PennReceiver::start(void)
 {
+#ifdef __PTB_DEBUG__
   DAQLogger::LogDebug("PennReceiver") << "start() called";
-
+#endif
   // Tell the data receiver to drain any unused buffers from the empty queue
   data_receiver_->release_empty_buffers();
 
@@ -280,7 +283,9 @@ void lbne::PennReceiver::start(void)
 
   // Pre-commit buffers to the data receiver object - creating either fragments or raw buffers depending on raw buffer mode
   // What is effectively the difference between the modes?
+#ifdef __PTB_DEBUG__
   DAQLogger::LogDebug("PennReceiver") << "Pre-committing " << raw_buffer_precommit_ << " buffers of size " << raw_buffer_size_ << " to receiver";
+#endif
   empty_buffer_low_mark_ = 0;
   for (unsigned int i = 0; i < raw_buffer_precommit_; i++)
   {
@@ -297,7 +302,9 @@ void lbne::PennReceiver::start(void)
       // Is this mode really needed?
       raw_buffer = lbne::PennRawBufferPtr(new PennRawBuffer(raw_buffer_size_));
     }
+#ifdef __PTB_DEBUG__
     DAQLogger::LogDebug("PennReceiver") << "Pre-commiting raw buffer " << i << " at address " << (void*)(raw_buffer->dataPtr());
+#endif
     data_receiver_->commit_empty_buffer(raw_buffer);
     empty_buffer_low_mark_++;
   }
@@ -319,7 +326,7 @@ void lbne::PennReceiver::start(void)
   
   
   // if (xml_answer.size() == 0) {
-  //   DAQLogger::LogWarning("PennReceiver") << "PTB didn't send a start of sun timestamp. Will estimate from data flow.";
+  //   DAQLogger::LogWarning("PennReceiver") << "PTB didn't send a start of run timestamp. Will estimate from data flow.";
   // } else {
   //   std::stringstream tmpVal;
   //   tmpVal << xml_answer;
@@ -342,11 +349,7 @@ void lbne::PennReceiver::stop(void)
   //std::string statistics;
   penn_client_->send_command("StopRun");
 
-  // Stop the data receiver.
-  data_receiver_->stop();
 
-  // NFB: The low water mark inicates if a run has had too few millislices being collected
-  // For all purposes it seems that this value could take any form.
   DAQLogger::LogInfo("PennReceiver") << "Low water mark on empty buffer queue is " << empty_buffer_low_mark_;
 
   auto elapsed_msecs = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - start_time_).count();
@@ -358,6 +361,23 @@ void lbne::PennReceiver::stop(void)
       << elapsed_secs << " seconds, rate "
       << rate << " Hz, total data " << total_bytes_received_ << " bytes, rate " << data_rate_mbs << " MB/s";
 
+  // Stop the data receiver.
+  data_receiver_->stop();
+
+  // NFB: The low water mark inicates if a run has had too few millislices being collected
+  // For all purposes it seems that this value could take any form.
+  DAQLogger::LogInfo("PennReceiver") << "Low water mark on empty buffer queue is " << empty_buffer_low_mark_;
+
+  /*
+  auto elapsed_msecs = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - start_time_).count();
+  double elapsed_secs = ((double)elapsed_msecs) / 1000;
+  double rate = ((double)millislices_received_) / elapsed_secs;
+  double data_rate_mbs = ((double)total_bytes_received_) / ((1024*1024) * elapsed_secs);
+
+  DAQLogger::LogInfo("PennReceiver") << "Received " << millislices_received_ << " millislices in "
+      << elapsed_secs << " seconds, rate "
+      << rate << " Hz, total data " << total_bytes_received_ << " bytes, rate " << data_rate_mbs << " MB/s";
+  */
   // std::ostringstream msg;
   // msg << "PTB data collection statistics : \n";
   // for (std::map<std::string,std::string>::iterator it = statistics.begin(); it != statistics.end(); ++it) {
@@ -389,6 +409,7 @@ bool lbne::PennReceiver::getNext_(artdaq::FragmentPtrs & frags) {
       {
         report_time_ = std::chrono::high_resolution_clock::now();
         DAQLogger::LogDebug("PennReceiver") << "Received " << millislices_received_ << " millislices so far";
+
       }
     }
   }
@@ -426,7 +447,7 @@ bool lbne::PennReceiver::getNext_(artdaq::FragmentPtrs & frags) {
 
   if (use_fragments_as_raw_buffer_)
   {
-    DAQLogger::LogWarning("PennReceiver") << "getNext_ : Using fragments as raw buffers. This does not remove warning words from the Millislices.";
+    //DAQLogger::LogWarning("PennReceiver") << "getNext_ : Using fragments as raw buffers. This does not remove warning words from the Millislices.";
 
     // Map back onto the fragment from the raw buffer data pointer we have just received
     if (raw_to_frag_map_.count(data_ptr))
@@ -629,13 +650,13 @@ void lbne::PennReceiver::generate_config_frag(std::ostringstream& config_frag) {
 
 
   config_frag << "<MuonTriggers num_triggers=\"" << penn_muon_num_triggers_ << "\">"
-      << "<TriggerWindow>0x" << std::hex << penn_trig_in_window_  << std::dec << "</TriggerWindow>"
-      << "<LockdownWindow>0x" << std::hex << penn_trig_lockdown_window_  << std::dec << "</LockdownWindow>";
+      << "<TriggerWindow>" << std::dec << penn_trig_in_window_  << std::dec << "</TriggerWindow>"
+      << "<LockdownWindow>" << std::dec << penn_trig_lockdown_window_  << std::dec << "</LockdownWindow>";
   for (size_t i = 0; i < penn_muon_num_triggers_; ++i) {
     // I would rather put masks as hex strings to be easier to understand
     config_frag << "<TriggerMask id=\"" << muon_triggers_.at(i).id << "\" mask=\"" << muon_triggers_.at(i).id_mask <<  "\">"
         << "<ExtLogic>0x" << std::hex << static_cast<int>(muon_triggers_.at(i).logic) << std::dec << "</ExtLogic>"
-        << "<Prescale>0x" << std::hex << static_cast<uint32_t>(muon_triggers_.at(i).prescale) << std::dec << "</Prescale>"
+        << "<Prescale>" << std::dec << static_cast<uint32_t>(muon_triggers_.at(i).prescale) << std::dec << "</Prescale>"
         << "<group1><Logic>0x" << std::hex << static_cast<int>(muon_triggers_.at(i).g1_logic) << std::dec << "</Logic>"
         << "<BSU>0x" << std::hex << static_cast<uint64_t>(muon_triggers_.at(i).g1_mask_bsu) << std::dec << "</BSU>"
         << "<TSU>0x" << std::hex << static_cast<uint64_t>(muon_triggers_.at(i).g1_mask_tsu) << std::dec << "</TSU></group1>"
@@ -661,7 +682,7 @@ void lbne::PennReceiver::generate_config_frag(std::ostringstream& config_frag) {
     config_frag << "<CalibrationMask id=\"" << calib_channels_.at(i).id << "\""
         << " mask=\"" << calib_channels_.at(i).id_mask << "\">"
         << "<enabled>" << status_bool << "</enabled>"
-        << "<period>0x" << std::hex << calib_channels_.at(i).period << std::dec << "</period>"
+        << "<period>" << std::dec << calib_channels_.at(i).period << std::dec << "</period>"
         << "</CalibrationMask>";
   } 
   config_frag << "</Calibrations>";
