@@ -30,7 +30,9 @@ lbne::TpcRceReceiver::TpcRceReceiver(fhicl::ParameterSet const & ps)
   :
   CommandableFragmentGenerator(ps),
   instance_name_("TpcRceReceiver"),
-  run_receiver_(false)
+  run_receiver_(false),
+  data_timeout_usecs_(ps.get<uint32_t>("data_timeout_usecs", 60000000)),
+  max_rce_events_(ps.get<std::size_t>("max_rce_events", 0))
 {
 
   int board_id = ps.get<int>("board_id", 0);
@@ -245,6 +247,25 @@ void lbne::TpcRceReceiver::start(void)
 	  //dtm_client_->send_command("Start");
 	}
 
+	//
+	//do the same things at start as we do for init
+	//because we need to reset the RCEs and FEBs in order 
+	//to start everything syncronously. 
+	//
+	// Send a HardReset command to the DPM                                                                               
+	dpm_client_->send_command("HardReset");
+
+	// Tell the DPM to read its configuration file                                                                        
+	dpm_client_->send_command("ReadXmlFile", rce_xml_config_file_);
+	dpm_client_->send_command("SoftReset");
+
+	dpm_client_->send_command("ConfigFebAsic");
+
+	// Set the DPM run mode as specified                                                                                  
+	std::ostringstream config_frag;
+	config_frag << "<DataDpm><DataBuffer><RunMode>" << rce_daq_mode_ << "</RunMode></DataBuffer></DataDpm>";
+	dpm_client_->send_config(config_frag.str());
+
 	// Set the run state to enabled
 	dpm_client_->send_command("SetRunState", "Enable");
 
@@ -317,6 +338,24 @@ bool lbne::TpcRceReceiver::getNext_(artdaq::FragmentPtrs & frags) {
 	  filled_buffer_high_mark_ = filled_buffers_available;
 	}
 
+	// JCF, Dec-11_2015
+
+	// If it's the start of data taking, we pretend we received a
+	// buffer at the start time in order to begin the clock used
+	// to determine later whether or not we're timed out (this
+	// code is required if no buffers ever arrive and we can't
+	// therefore literally say that a buffer was received at some
+	// point in time)
+
+	if ( startOfDatataking() ) {
+	  DAQLogger::LogInfo(instance_name_) << board_id() << ": start of datataking";
+	  last_buffer_received_time_ = std::chrono::high_resolution_clock::now();
+	}
+
+	// If we find buffers in the while loop, then at the bottom of
+	// this function we'll skip the timeout check...
+	bool buffers_found_in_while_loop = false;  
+
 	// Loop to release fragments if filled buffers available, up to the maximum allowed
 	while ((data_receiver_->filled_buffers_available() > 0) && (buffers_released <= filled_buffer_release_max_))
 	{
@@ -334,6 +373,14 @@ bool lbne::TpcRceReceiver::getNext_(artdaq::FragmentPtrs & frags) {
 			DAQLogger::LogWarning(instance_name_) << "lbne::TpcRceReceiver::getNext_ : no data received in raw buffer";
 			continue;
 		}
+
+		// We now know we have a legitimate buffer which we
+		// can save in an artdaq::Fragment, so record the time
+		// it occurred as a point of reference to later
+		// determine if there's been a data timeout
+
+		buffers_found_in_while_loop = true;
+		last_buffer_received_time_ = std::chrono::high_resolution_clock::now();
 
 		// Get a pointer to the data in the current buffer and create a new fragment pointer
 		uint8_t* data_ptr = recvd_buffer->dataPtr();
@@ -391,8 +438,22 @@ bool lbne::TpcRceReceiver::getNext_(artdaq::FragmentPtrs & frags) {
 		frag->setFragmentID(fragmentIDs()[0]);
 		frag->setUserType(lbne::detail::TPC);
 
-		// Resize fragment to final millislice size
-		frag->resizeBytes(millislice_size);
+		// JCF, Dec-22-2015
+
+		// At Brian Kirby's request, implement the capability
+		// to stop sending data downstream after
+		// max_rce_events_ events (where he has
+		// max_rce_events_ == 1 in mind)
+
+		if (max_rce_events_ == 0 || ev_counter() <= max_rce_events_) {
+
+		  // Resize fragment to final millislice size
+		  frag->resizeBytes(millislice_size);
+		} else {
+
+		  // We've already got as much data as we want downstream, so just send a header
+		  frag->resizeBytes(0);
+		}
 
 		// Add the fragment to the list
 		frags.emplace_back(std::move (frag));
@@ -454,8 +515,22 @@ bool lbne::TpcRceReceiver::getNext_(artdaq::FragmentPtrs & frags) {
 	}
 	if (data_receiver_->exception())
 	{
-		set_exception(true);
-		DAQLogger::LogError(instance_name_) << "lbne::TpcRceReceiver::getNext_ : found receiver thread in exception state";
+	  set_exception(true);
+	  DAQLogger::LogError(instance_name_) << "lbne::TpcRceReceiver::getNext_ : found receiver thread in exception state";
+	}
+
+	// JCF, Dec-11-2015
+
+	// Finally, if we haven't received a buffer after a set amount
+	// of time, give up (i.e., throw an exception)
+
+	if ( ! buffers_found_in_while_loop ) {
+
+	  auto time_since_last_buffer = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now() - last_buffer_received_time_).count();
+
+	  if (time_since_last_buffer > data_timeout_usecs_) {
+	    DAQLogger::LogError(instance_name_) << "lbne::TpcRceReceiver::getNext_ : timeout due to no data appearing after " << time_since_last_buffer / 1000000.0 << " seconds";
+	  }
 	}
 
 	return is_active;
@@ -707,6 +782,36 @@ uint32_t lbne::TpcRceReceiver::validate_millislice_from_fragment_buffer(uint8_t*
 	millislice_writer.finalize(data_size, count);
 	return millislice_writer.size();
 }
+
+
+// JCF, Dec-12-2015
+
+// startOfDatataking() will figure out whether we've started taking
+// data either by seeing that the run number's incremented since the
+// last time it was called (implying the start transition's occurred)
+// or the subrun number's incremented (implying the resume
+// transition's occurred). On the first call to the function, the
+// "last checked" values of run and subrun are set to 0, guaranteeing
+// that the first call will return true
+
+bool lbne::TpcRceReceiver::startOfDatataking() {
+
+  static int subrun_at_last_check = 0;
+  static int run_at_last_check = 0;
+
+  bool is_start = false;
+
+  if ( (run_number() > run_at_last_check) ||
+       (subrun_number() > subrun_at_last_check) ) {
+    is_start = true;
+  }
+
+  subrun_at_last_check=subrun_number();
+  run_at_last_check=run_number();
+
+  return is_start;
+}
+
 
 // The following macro is defined in artdaq's GeneratorMacros.hh header
 DEFINE_ARTDAQ_COMMANDABLE_GENERATOR(lbne::TpcRceReceiver) 

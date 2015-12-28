@@ -9,21 +9,24 @@
 #include "DataReformatter.hxx"
 
 // RCE ----------------------------------------------------------------------------------------------------------------------------------------------------
-OnlineMonitoring::RCEFormatter::RCEFormatter(art::Handle<artdaq::Fragments> const& rawRCE) {
+OnlineMonitoring::RCEFormatter::RCEFormatter(art::Handle<artdaq::Fragments> const& rawRCE, bool scopeMode) {
 
   if (!rawRCE.isValid()) {
     NumRCEs = 0;
     return;
   }
 
-  this->AnalyseADCs(rawRCE);
+  this->AnalyseADCs(rawRCE, scopeMode);
   this->Windowing();
+
+  return;
 
 }
 
-void OnlineMonitoring::RCEFormatter::AnalyseADCs(art::Handle<artdaq::Fragments> const& rawRCE) {
+void OnlineMonitoring::RCEFormatter::AnalyseADCs(art::Handle<artdaq::Fragments> const& rawRCE, bool scopeMode) {
 
   NumRCEs = rawRCE->size();
+  HasData = false;
 
   // Loop over fragments to make a map to save the order the frags are saved in
   std::map<unsigned int, unsigned int> tpcFragmentMap;
@@ -37,6 +40,9 @@ void OnlineMonitoring::RCEFormatter::AnalyseADCs(art::Handle<artdaq::Fragments> 
 
   // Loop over channels
   for (unsigned int chanIt = 0; chanIt < NRCEChannels; ++chanIt) {
+
+    if (scopeMode and chanIt > 0)
+      break;
 
     // Vector of ADC values for this channel
     std::vector<int> adcVector;
@@ -66,17 +72,18 @@ void OnlineMonitoring::RCEFormatter::AnalyseADCs(art::Handle<artdaq::Fragments> 
 	std::unique_ptr <const lbne::TpcMicroSlice> microslice = millisliceFragment.microSlice(microIt);
 	auto nNanoSlices = microslice->nanoSliceCount();
 
-	// Get the scope channel (if running in scope mode)
+	// Get the channel for scope mode
 	lbne::TpcMicroSlice::Header::softmsg_t us_software_message = microslice->software_message();
 	fScopeChannel = uint32_t((us_software_message)& 0xFFFFFFFF);
 
 	for (unsigned int nanoIt = 0; nanoIt < nNanoSlices; ++nanoIt) {
-
+	
 	  // Get the ADC value
 	  uint16_t adc = std::numeric_limits<uint16_t>::max();
 	  bool success = microslice->nanosliceSampleValue(nanoIt, sample, adc);
 
-	  if (success){
+	  if (success) {
+	    if ((int)adc > 10) HasData = true;
 	    adcVector.push_back((int)adc);
 	    //unsigned long timestamp = microslice->nanosliceNova_timestamp(nanoIt);
 	    unsigned long timestamp = 1000;
@@ -93,6 +100,8 @@ void OnlineMonitoring::RCEFormatter::AnalyseADCs(art::Handle<artdaq::Fragments> 
     fTimestamps.push_back(timestampVector);
 
   } // channel loop
+
+  return;
 
 }
 
@@ -160,6 +169,8 @@ void OnlineMonitoring::RCEFormatter::Windowing() {
     fWindowingNumBlocks.push_back(tmpNumBlocks);
 
   } // channel
+
+  return;
 
 }
 
@@ -244,6 +255,8 @@ OnlineMonitoring::SSPFormatter::SSPFormatter(art::Handle<artdaq::Fragments> cons
 
   } // millislices
 
+  return;
+
 }
 
 
@@ -258,11 +271,12 @@ OnlineMonitoring::PTBFormatter::PTBFormatter(art::Handle<artdaq::Fragments> cons
 
   fPreviousTrigger = previousTrigger;
 
-  //Initialise the trigger rates
-  fMuonTriggerRates[1] = 0;
-  fMuonTriggerRates[2] = 0;
-  fMuonTriggerRates[4] = 0;
-  fMuonTriggerRates[8] = 0;
+  // Initialise the trigger rates (both muon and calibration triggers have the same types)
+  std::vector<unsigned int> trigger_types = {1,2,4,8};
+  for (std::vector<unsigned int>::iterator triggerType = trigger_types.begin(); triggerType != trigger_types.end(); ++triggerType) {
+    fMuonTriggerRates[*triggerType] = 0;
+    fCalibrationTriggerRates[*triggerType] = 0;
+  }
 
   unsigned long NTotalTicks = 0;
 
@@ -293,6 +307,7 @@ OnlineMonitoring::PTBFormatter::PTBFormatter(art::Handle<artdaq::Fragments> cons
       payload_data = msf.payload(ip, type, timestamp, payload_size);
 
       unsigned int payload_type = (unsigned int) type;
+      fPayloadTypes.push_back(payload_type);
       //Loop over the words in the payload
       if (!((payload_data != nullptr) && payload_size)) continue;
       switch (payload_type){
@@ -312,6 +327,8 @@ OnlineMonitoring::PTBFormatter::PTBFormatter(art::Handle<artdaq::Fragments> cons
   }
   //Now calculate what the total time of the event is in seconds
   fTimeSliceSize = NNanoSecondsPerNovaTick * NTotalTicks / (1000*1000*1000);
+
+  return;
 }
 
 void OnlineMonitoring::PTBFormatter::AnalyzeCounter(int counter_index, unsigned long& activation_time, double& hit_rate) const {
@@ -384,7 +401,20 @@ void OnlineMonitoring::PTBFormatter::AnalyzeCounter(int counter_index, unsigned 
 void OnlineMonitoring::PTBFormatter::AnalyzeMuonTrigger(int trigger_number, double& trigger_rate) const {
   trigger_rate = fMuonTriggerRates.at(trigger_number);
   trigger_rate /= fTimeSliceSize;
+  return;
 }
+
+void OnlineMonitoring::PTBFormatter::AnalyzeCalibrationTrigger(int trigger_number, double& trigger_rate) const {
+  trigger_rate = fMuonTriggerRates.at(trigger_number);
+  trigger_rate /= fTimeSliceSize;
+  return;
+}
+
+void OnlineMonitoring::PTBFormatter::AnalyzeSSPTrigger(double& trigger_rate) const {
+  trigger_rate = fSSPTriggerRates / (double)fTimeSliceSize;
+  return;
+}
+
 //   //
 //   //NEW CODE WITH IGNORE BIT CHECKING
 //   //We need to loop through the requested trigger to check
@@ -459,12 +489,15 @@ void OnlineMonitoring::PTBFormatter::CollectMuonTrigger(uint8_t* payload, size_t
       bits == fPreviousTrigger.second)
     return;
 
-  //Bits collected, now get the trigger type
+  // Bits collected, now get the trigger type
   std::bitset<TypeSizes::TriggerWordSize> trigger_type_bits; 
   trigger_type_bits ^= (bits >> (TypeSizes::TriggerWordSize - 5));
   int trigger_type = static_cast<int>(trigger_type_bits.to_ulong());
-  //If we have a muon trigger, get which trigger it was and increase the hit rate
-  if (trigger_type == 16){
+
+  // Get the triggers and collect the bits
+
+  if (trigger_type == 16) {
+    // Muon trigger
     std::bitset<TypeSizes::TriggerWordSize> muon_trigger_bits;
     //Shift the bits left by 5 first to remove the trigger type bits
     muon_trigger_bits ^= (bits << 5);
@@ -474,6 +507,22 @@ void OnlineMonitoring::PTBFormatter::CollectMuonTrigger(uint8_t* payload, size_t
     int muon_trigger = static_cast<int>(muon_trigger_bits.to_ulong());
     fMuonTriggerRates[muon_trigger]++;
     fMuonTriggerBits.push_back(muon_trigger_bits);
+  }
+  else if (trigger_type == 0) {
+    // Calibration trigger
+    std::bitset<TypeSizes::TriggerWordSize> calibration_trigger_bits;
+    //Shift the bits left by 5 first to remove the trigger type bits
+    calibration_trigger_bits ^= (bits << 5);
+    //Now we need to shift the entire thing set to the LSB so we can record the number
+    //The calibration trigger pattern words are 4 bits
+    calibration_trigger_bits >>= (TypeSizes::TriggerWordSize-4);
+    int calibration_trigger = static_cast<int>(calibration_trigger_bits.to_ulong());
+    fCalibrationTriggerRates[calibration_trigger]++;
+    fCalibrationTriggerBits.push_back(calibration_trigger_bits);    
+  }
+  else if (trigger_type == 8) {
+    // SSP trigger
+    ++fSSPTriggerRates;
   }
 
   fPreviousTrigger = std::make_pair(timestamp, bits);

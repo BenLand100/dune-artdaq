@@ -108,7 +108,8 @@ private:
   std::map<int,TH1D*> hAvADCMillisliceChannel;
   std::map<int,TH1D*> hDebugChannelHists;
   // Scope
-  TH1F *hScopeTrace1s, *hScopeTraceFFT1s;
+  TH1F *hScopeTraceFFT1s;
+  TProfile *hScopeTrace1s;
 
   // SSP
   TProfile *hWaveformMean, *hWaveformRMS, *hWaveformPeakHeight, *hWaveformIntegral, *hWaveformIntegralNorm, *hWaveformPedestal, *hWaveformNumTicks, *hTriggerFraction;
@@ -116,6 +117,7 @@ private:
 
   // PTB
   TProfile *hPTBTriggerRates;
+  TH1I *hPTBBlockLength, *hPTBPayloadType;
   TProfile *hPTBTSUCounterHitRateWU,    *hPTBTSUCounterActivationTimeWU;
   TProfile *hPTBTSUCounterHitRateEL,    *hPTBTSUCounterActivationTimeEL;
   TProfile *hPTBTSUCounterHitRateExtra, *hPTBTSUCounterActivationTimeExtra;

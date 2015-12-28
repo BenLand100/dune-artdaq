@@ -41,7 +41,7 @@ public:
   std::map<int,std::unique_ptr<Channel> > const& GetChannelMap() const { return fChannelMap; }
   int GetOfflineChannel(int onlineChannel) const { return fChannelMap.at(onlineChannel)->OfflineChannel; }
   int GetPlane(int onlineChannel) const { return fChannelMap.at(onlineChannel)->Plane; }
-  void MakeChannelMap();
+  void MakeChannelMap(TString const& channelMapFile);
 
 private:
 

@@ -55,6 +55,17 @@ namespace lbne {
 
     bool getNext_(artdaq::FragmentPtrs & output) override;
 
+    // JCF, Dec-11-2015
+
+    // startOfDatataking will determine whether or not we've begun
+    // taking data, either because of a new run (from the start
+    // transition) or a new subrun (from the resume transition). It's
+    // designed to be used to determine whether no fragments are
+    // getting sent downstream (likely because of upstream hardware
+    // issues)
+
+    bool startOfDatataking();
+
 
     // State transition methods, for future use, if/when needed
     void start() override; // {}
@@ -137,6 +148,11 @@ namespace lbne {
     std::string empty_buffer_available_metric_name_;
     std::string filled_buffer_high_water_metric_name_;
     std::string filled_buffer_available_metric_name_;
+
+    std::chrono::high_resolution_clock::time_point last_buffer_received_time_;
+    uint32_t data_timeout_usecs_;
+
+    std::size_t max_rce_events_;
 
   };
 }

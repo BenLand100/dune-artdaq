@@ -18,6 +18,8 @@ void OnlineMonitoring::EventDisplay::MakeEventDisplay(RCEFormatter const& rcefor
   const std::vector<std::vector<int> > ADCs = rceformatter.ADCVector();
 
   for (unsigned int channel = 0; channel < ADCs.size(); ++channel) {
+    if (!ADCs.at(channel).size())
+      continue;
     // Only consider collection plane
     if (channelMap.GetPlane(channel) != 2) continue;
     int drift = channelMap.GetDriftVolume(channel);
@@ -50,6 +52,8 @@ void OnlineMonitoring::EventDisplay::MakeEventDisplay(RCEFormatter const& rcefor
   tmp.close();
 
   delete evdCanvas; delete EVD;
+
+  mf::LogInfo("Monitoring") << "New event display for event " << event << " is viewable at http://lbne-dqm.fnal.gov/EventDisplay.";
 
 }
 

@@ -69,6 +69,7 @@ private:
   TString fMonitorSavePath;
   TString fEVDSavePath;
   TString fImageType;
+  TString fChannelMapFile;
 
 };
 
@@ -93,7 +94,7 @@ void OnlineMonitoring::OnlinePedestal::beginSubRun(art::SubRun const& sr) {
   fMonitoringPedestal.BeginMonitoring(sr.run(), sr.subRun());
 
   // Make the channel map for this subrun
-  fChannelMap.MakeChannelMap();
+  fChannelMap.MakeChannelMap(fChannelMapFile);
 
 }
 
@@ -108,7 +109,7 @@ void OnlineMonitoring::OnlinePedestal::analyze(art::Event const& evt) {
   fMonitoringPedestal.StartEvent(fEventNumber, fMakeTree);
 
   // Create data formatter objects and fill monitoring data products
-  RCEFormatter rceformatter(rawRCE);
+  RCEFormatter rceformatter(rawRCE, false);
 
   // Fill the data products in the monitoring data
   if (rawRCE.isValid()) fMonitoringPedestal.RCEMonitoring(rceformatter);
