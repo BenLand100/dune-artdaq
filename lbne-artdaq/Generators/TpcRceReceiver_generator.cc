@@ -177,6 +177,11 @@ lbne::TpcRceReceiver::TpcRceReceiver(fhicl::ParameterSet const & ps)
   config_frag << "<DataDpm><DataBuffer><RunMode>" << rce_daq_mode_ << "</RunMode></DataBuffer></DataDpm>";
   dpm_client_->send_config(config_frag.str());
 
+  //Set the number of microslices_per_trigger
+  std::ostringstream config_frag;
+  config_frag << "<DataDpm><DataBuffer><TriggerSize>" << number_of_microslices_per_trigger_ << "</TriggerSize></DataBuffer></DataDpm>";
+  dpm_client_->send_config(config_frag.str());
+
 #endif
 
   // Create a RceDataReceiver instance
