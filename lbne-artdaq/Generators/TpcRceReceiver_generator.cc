@@ -178,9 +178,9 @@ lbne::TpcRceReceiver::TpcRceReceiver(fhicl::ParameterSet const & ps)
   dpm_client_->send_config(config_frag.str());
 
   //Set the number of microslices_per_trigger
-  std::ostringstream config_frag;
-  config_frag << "<DataDpm><DataBuffer><TriggerSize>" << number_of_microslices_per_trigger_ << "</TriggerSize></DataBuffer></DataDpm>";
-  dpm_client_->send_config(config_frag.str());
+  std::ostringstream trigsize_frag;
+  trigsize_frag << "<DataDpm><DataBuffer><TriggerSize>" << number_of_microslices_per_trigger_ << "</TriggerSize></DataBuffer></DataDpm>";
+  dpm_client_->send_config(trigsize_frag.str());
 
 #endif
 
