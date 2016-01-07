@@ -13,6 +13,7 @@ OnlineMonitoring::RCEFormatter::RCEFormatter(art::Handle<artdaq::Fragments> cons
 
   if (!rawRCE.isValid()) {
     NumRCEs = 0;
+    HasData = false;
     return;
   }
 
@@ -24,6 +25,8 @@ OnlineMonitoring::RCEFormatter::RCEFormatter(art::Handle<artdaq::Fragments> cons
 }
 
 void OnlineMonitoring::RCEFormatter::AnalyseADCs(art::Handle<artdaq::Fragments> const& rawRCE, bool scopeMode) {
+
+  /// Analyses the data within the artdaq::Fragment and puts it in a form which is easier to use
 
   NumRCEs = rawRCE->size();
   HasData = false;
@@ -65,12 +68,18 @@ void OnlineMonitoring::RCEFormatter::AnalyseADCs(art::Handle<artdaq::Fragments> 
 
       // Number of microslices in millislice fragments
       auto nMicroSlices = millisliceFragment.microSliceCount();
+      int nLastNanoSlices = 0;
 
       for (unsigned int microIt = 0; microIt < nMicroSlices; ++microIt) {
 
 	// Get the microslice
-	std::unique_ptr <const lbne::TpcMicroSlice> microslice = millisliceFragment.microSlice(microIt);
+	std::unique_ptr<const lbne::TpcMicroSlice> microslice = millisliceFragment.microSlice(microIt);
 	auto nNanoSlices = microslice->nanoSliceCount();
+
+	// See if this is the first microslice with a payload
+	if (nNanoSlices > 0 and nLastNanoSlices == 0)
+	  FirstMicroslice = microIt;
+	nLastNanoSlices = nNanoSlices;
 
 	// Get the channel for scope mode
 	lbne::TpcMicroSlice::Header::softmsg_t us_software_message = microslice->software_message();
@@ -102,6 +111,73 @@ void OnlineMonitoring::RCEFormatter::AnalyseADCs(art::Handle<artdaq::Fragments> 
   } // channel loop
 
   return;
+
+}
+
+void OnlineMonitoring::RCEFormatter::AnalyseADCs(art::Handle<artdaq::Fragments> const& rawRCE, int firstMicroslice, int lastMicroslice) {
+
+  /// Analyses only specific microslices within each millislice for use in the online event display
+
+  // Loop over fragments to make a map to save the order the frags are saved in
+  std::map<unsigned int, unsigned int> tpcFragmentMap;
+  for (unsigned int fragIt = 0; fragIt < rawRCE->size(); ++fragIt) {
+    const artdaq::Fragment &fragment = ((*rawRCE)[fragIt]);
+    unsigned int fragmentID = fragment.fragmentID();
+    tpcFragmentMap.insert(std::pair<unsigned int, unsigned int>(fragmentID,fragIt));
+  }
+
+  // Loop over channels
+  for (unsigned int chanIt = 0; chanIt < NRCEChannels; ++chanIt) {
+
+    // Vector of ADC values for this channel
+    std::vector<int> adcVector;
+
+    // Find the fragment ID and the sample for this channel
+    unsigned int fragmentID = (unsigned int)((chanIt/128)+100);
+    unsigned int sample = (unsigned int)(chanIt%128);
+
+    // Analyse this fragment if it exists
+    if (tpcFragmentMap.find(fragmentID) != tpcFragmentMap.end() ) {
+
+      // Find the millislice fragment this channel lives in
+      unsigned int fragIndex = tpcFragmentMap.at(fragmentID);
+
+      // Get the millislice fragment
+      const artdaq::Fragment &frag = ((*rawRCE)[fragIndex]);
+      lbne::TpcMilliSliceFragment millisliceFragment(frag);
+
+      // Number of microslices in millislice fragments
+      auto nMicroSlices = millisliceFragment.microSliceCount();
+
+      for (unsigned int microIt = 0; microIt < nMicroSlices; ++microIt) {
+
+	if ( ! ((int)microIt >= firstMicroslice and (int)microIt <= lastMicroslice) )
+	  continue;
+
+	// Get the microslice
+	std::unique_ptr<const lbne::TpcMicroSlice> microslice = millisliceFragment.microSlice(microIt);
+	auto nNanoSlices = microslice->nanoSliceCount();
+
+	for (unsigned int nanoIt = 0; nanoIt < nNanoSlices; ++nanoIt) {
+	
+	  // Get the ADC value
+	  uint16_t adc = std::numeric_limits<uint16_t>::max();
+	  bool success = microslice->nanosliceSampleValue(nanoIt, sample, adc);
+
+	  if (success)
+	    adcVector.push_back((int)adc);
+
+	} // nanoslice loop
+
+      } // microslice loop
+
+    } // analyse fragment loop
+
+    fEVDADCs.push_back(adcVector);
+
+  } // channel loop
+
+  return;  
 
 }
 

@@ -56,6 +56,11 @@ namespace OnlineMonitoring {
     const std::vector<int> BSURL    = {94,95,96,97,98,99,100,101,102,103};
   }
 
+  namespace EVD {
+    const int LowerZ = 0, UpperZ = 174;
+    const int LowerX = -50, UpperX = 500;
+  }
+
   const long PTBHitIgnoreTime = 7; //In nova timestamp units.
   //The coversion between nova and normal time is 1 timestamp:(16.625) ns.  The ignore time needs to be 400ns so its calculated in nova units as (400)/57.1 = 7 ticks
 

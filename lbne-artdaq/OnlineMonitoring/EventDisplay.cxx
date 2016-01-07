@@ -8,14 +8,18 @@
 
 #include "EventDisplay.hxx"
 
-void OnlineMonitoring::EventDisplay::MakeEventDisplay(RCEFormatter const& rceformatter, ChannelMap const& channelMap, int event, TString const& evdSavePath) {
+void OnlineMonitoring::EventDisplay::MakeEventDisplay(RCEFormatter const& rceformatter,
+						      ChannelMap const& channelMap,
+						      double driftVelocity,
+						      int event,
+						      TString const& evdSavePath) {
 
   /// Makes crude online event display and saves it as an image to be displayed on the web
 
-  //TH2D* EVD = new TH2D("EVD","",336,0,336,35000,-30000,5000);
-  TH2D* EVD = new TH2D("EVD","",336,0,336,3500,-3000,500);
+  TH2D* EVD = new TH2D("EVD",";z (cm);x (cm)",EVD::UpperZ-EVD::LowerZ,EVD::LowerZ,EVD::UpperZ,EVD::UpperX-EVD::LowerX,EVD::LowerX,EVD::UpperX);
 
-  const std::vector<std::vector<int> > ADCs = rceformatter.ADCVector();
+  const std::vector<std::vector<int> > ADCs = rceformatter.EVDADCVector();
+  double x,z;
 
   for (unsigned int channel = 0; channel < ADCs.size(); ++channel) {
     if (!ADCs.at(channel).size())
@@ -24,10 +28,13 @@ void OnlineMonitoring::EventDisplay::MakeEventDisplay(RCEFormatter const& rcefor
     if (channelMap.GetPlane(channel) != 2) continue;
     int drift = channelMap.GetDriftVolume(channel);
     int collectionChannel = GetCollectionChannel(channelMap.GetOfflineChannel(channel), channelMap.GetAPA(channel), drift);
+    z = GetZ(collectionChannel);
     for (unsigned int tick = 0; tick < ADCs.at(channel).size(); ++tick) {
       int ADC = ADCs.at(channel).at(tick);
-      if (drift == 0) EVD->Fill(collectionChannel,tick,ADC);
-      if (drift == 1) EVD->Fill(collectionChannel,(int)-tick,ADC);
+      x = tick * driftVelocity / 2;
+      x /= 10;
+      if (drift == 0) EVD->Fill(z,(int)-x,ADC);
+      if (drift == 1) EVD->Fill(z,x,ADC);
     }
   }
 
@@ -42,7 +49,7 @@ void OnlineMonitoring::EventDisplay::MakeEventDisplay(RCEFormatter const& rcefor
   TLine line;
   line.SetLineStyle(2);
   line.SetLineWidth(4);
-  line.DrawLine(0,0,336,0);
+  line.DrawLine(EVD::LowerZ,0,EVD::UpperZ,0);
   evdCanvas->SaveAs(evdSavePath+TString("evd.png"));//+ImageType);
 
   // Add event file
@@ -91,5 +98,22 @@ int OnlineMonitoring::EventDisplay::GetCollectionChannel(int offlineCollectionCh
   }
 
   return collectionChannel;
+
+}
+
+double OnlineMonitoring::EventDisplay::GetZ(int collectionChannel) {
+
+  /// Finds the z coordinate of a global collection channel
+
+  // The specific numbers will have to be hard-coded but they will not change for the 35t
+  // The spacing between collection plane wires is 4.5mm and the gaps between the APAs is 113.142mm
+  // There are 112 collection wires on each side of an APA
+
+  double z = (collectionChannel * 4.5) + (113.142 * (int)(collectionChannel/(double)112));
+
+  // Convert to cm
+  z /= 10;
+
+  return z;
 
 }
