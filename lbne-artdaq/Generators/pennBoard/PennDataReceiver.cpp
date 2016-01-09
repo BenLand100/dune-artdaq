@@ -15,11 +15,12 @@
 #include <boost/crc.hpp>
 
 #include "lbne-raw-data/Overlays/PennMicroSlice.hh"
+#include "lbne-raw-data/Overlays/PennMilliSlice.hh"
+
 #include "lbne-raw-data/Overlays/Utilities.hh"
 
-// JCF, Jul-14-2015: I promoted mf::LogDebug up to mf::LogInfo here
+//#define __PTB_BOARD_READER_DEVEL_MODE__
 
-// ...and later swapped out mf::LogInfo for DAQLogger::LogInfo
 
 // Lower level means more verbosity
 #define RECV_DEBUG(level) if (level <= debug_level_) DAQLogger::LogInfo("PennDataReceiver")
@@ -42,8 +43,11 @@ lbne::PennDataReceiver::PennDataReceiver(int debug_level, uint32_t tick_period_u
     readout_suspended_(false),
     recv_socket_(0),
     rate_test_(rate_test),
-    millislice_overlap_size_(millislice_overlap_size)
+    millislice_overlap_size_(millislice_overlap_size),
+    run_start_time_(0)
 {
+  
+
   RECV_DEBUG(1) << "lbne::PennDataReceiver constructor";
 
   //in this instance millislice_size_ is the number of bits that need to rollover to start a new microslice
@@ -56,21 +60,22 @@ lbne::PennDataReceiver::PennDataReceiver(int debug_level, uint32_t tick_period_u
   // intended, for now the "pow()" expression below is commented
   // out
 
-  //	if((pow(millislice_size_, 2) - 1) > lbne::PennMicroSlice::ROLLOVER_LOW_VALUE) {
-  if (millislice_size_ > lbne::PennMicroSlice::ROLLOVER_LOW_VALUE) {
-
-    // JCF, Jul-30-2015
-
-    // I've upgraded this from a warning to an error
-
-    DAQLogger::LogError("PennDataReceiver") << "lbne::PennDataReceiver ERROR millislice_size_ " << millislice_size_
-        << " is greater than lbne::PennMicroSlice::ROLLOVER_LOW_VALUE " << (uint32_t)lbne::PennMicroSlice::ROLLOVER_LOW_VALUE
-        << " 28-bit timestamp rollover will not be handled correctly";
-    //TODO handle error cleanly
-  }
+//  //	if((pow(millislice_size_, 2) - 1) > lbne::PennMicroSlice::ROLLOVER_LOW_VALUE) {
+//  if (millislice_size_ > lbne::PennMicroSlice::ROLLOVER_LOW_VALUE) {
+//
+//    // JCF, Jul-30-2015
+//
+//    // I've upgraded this from a warning to an error
+//
+//    DAQLogger::LogError("PennDataReceiver") << "lbne::PennDataReceiver ERROR millislice_size_ " << millislice_size_
+//        << " is greater than lbne::PennMicroSlice::ROLLOVER_LOW_VALUE " << (uint32_t)lbne::PennMicroSlice::ROLLOVER_LOW_VALUE
+//        << " 28-bit timestamp rollover will not be handled correctly";
+//    //TODO handle error cleanly
+//  }
 
   // Initialise and start the persistent deadline actor that handles socket operation
   // timeouts. Timeout is set to zero (no timeout) to start
+
   this->set_deadline(None, 0);
   this->check_deadline();
 
@@ -94,7 +99,7 @@ lbne::PennDataReceiver::~PennDataReceiver()
   // Wait for thread running receiver IO service to terminate
   receiver_thread_->join();
 
-  RECV_DEBUG(1) << "lbne::PennDataReceiver destructor: receiver thread joined OK";
+  RECV_DEBUG(3) << "lbne::PennDataReceiver destructor: receiver thread joined OK";
 
 }
 
@@ -104,10 +109,47 @@ void lbne::PennDataReceiver::start(void)
 
   start_time_ = std::chrono::high_resolution_clock::now();
 
+	// If the data receive socket is open, flush any stale data off it
+	if (deadline_io_object_ == DataSocket)
+	{
+
+		std::size_t flush_length = 0;
+
+		while (data_socket_.available() > 0)
+		{
+			boost::array<char, 65536> buf;
+			boost::system::error_code ec;
+
+			size_t len = data_socket_.read_some(boost::asio::buffer(buf), ec);
+			flush_length += len;
+			RECV_DEBUG(3) << "Flushed: " << len << " total: " << flush_length
+					<< " available: " << data_socket_.available();
+
+			if (ec == boost::asio::error::eof)
+			{
+				DAQLogger::LogInfo("PennDataReceiver") << "lbne::PennDataReceiver:start: client closed data socket connection during flush operation";
+				break;
+			}
+			else if (ec)
+			{
+				DAQLogger::LogWarning("PennDataReceiver") << "lbne::PennDataReceiver::start: got unexpected socket error flushing data socket: " << ec;
+				break;
+			}
+		}
+		if (flush_length > 0)
+		{
+			DAQLogger::LogInfo("PennDataReceiver") << "lbne::PennDataReceiver::start: flushed " << flush_length << " bytes stale data off open socket";
+		}
+		else
+		{
+			DAQLogger::LogDebug("PennDataReceiver") << "lbne::PennDataReceiver::start: no stale data to flush off socket";
+		}
+	}
+
   // Clean up current buffer state of any partially-completed readouts in previous runs
   if (current_raw_buffer_ != nullptr)
   {
-    RECV_DEBUG(2) << "TpcPennReceiver::start: dropping unused or partially filled buffer containing "
+    DAQLogger::LogInfo("PennDataReceiver") << "::start: dropping unused or partially filled buffer containing "
         << microslices_recvd_ << " microslices";
     current_raw_buffer_.reset();
     millislice_state_ = MillisliceEmpty;
@@ -123,13 +165,14 @@ void lbne::PennDataReceiver::start(void)
 
   // Initialise microslice version latch
   microslice_version_initialised_ = false;
-  last_microslice_version_ = 0;
+  microslice_version_ = 0;
+  microslice_size_recvd_ = 0;
 
   // Initialise receive state to read a microslice header first
   next_receive_state_ = ReceiveMicrosliceHeader;
   next_receive_size_  = sizeof(lbne::PennMicroSlice::Header);
 
-  RECV_DEBUG(1) << "lbne::PennDataReceiver::start: Next receive state : " << nextReceiveStateToString(ReceiveMicrosliceHeader);
+  RECV_DEBUG(2) << "::start: Next receive state : " << nextReceiveStateToString(ReceiveMicrosliceHeader);
 
   // Initialise this to make sure we can count number of 'full' microslices
   microslice_seen_timestamp_word_ = false;
@@ -138,7 +181,7 @@ void lbne::PennDataReceiver::start(void)
 
   // Initalise to make sure we wait for the full Header
   state_nbytes_recvd_ = 0;
-  state_start_ptr_ = 0;
+  receiver_state_start_ptr_ = 0;
 
   // Clear the times used for calculating millislice boundaries
   run_start_time_ = 0;
@@ -194,8 +237,9 @@ void lbne::PennDataReceiver::stop(void)
   double elapsed_secs = ((double)elapsed_msecs) / 1000;
   double rate = ((double)millislices_recvd_) / elapsed_secs;
 
-  RECV_DEBUG(0) << "lbne::PennDataRecevier::stop : last sequence id was " << (unsigned int)last_sequence_id_;
-  RECV_DEBUG(0) << "lbne::PennDataReceiver::stop : received " << millislices_recvd_ << " millislices in "
+  RECV_DEBUG(1) << "lbne::PennDataRecevier::stop : last sequence id was " << (unsigned int)last_sequence_id_;
+
+  DAQLogger::LogInfo("PennDataReceiver")  << "lbne::PennDataReceiver::stop : received " << millislices_recvd_ << " millislices in "
       << elapsed_secs << " seconds, rate "
       << rate << " Hz";
 
@@ -245,6 +289,10 @@ void lbne::PennDataReceiver::release_empty_buffers(void)
 
 void lbne::PennDataReceiver::release_filled_buffers(void)
 {
+
+  if (filled_buffer_queue_.size() > 0) {
+    DAQLogger::LogWarning("PennDataReceiver") << "Releasing " << filled_buffer_queue_.size() << " filled buffers";
+  }
   while (filled_buffer_queue_.size() > 0)
   {
     filled_buffer_queue_.pop();
@@ -260,9 +308,13 @@ void lbne::PennDataReceiver::run_service(void)
   RECV_DEBUG(1) << "lbne::PennDataReceiver::run_service stopping";
 }
 
+// NFB Dec-02-2015
+//
+//do_accept simply keeps track of accepting the ethernet connection from the PTB
+// Then redirects the handling of the received data to do_read
 void lbne::PennDataReceiver::do_accept(void)
 {
-  RECV_DEBUG(1) << "lbne::PennDataReceiver::do_accept starting";
+  RECV_DEBUG(5) << "lbne::PennDataReceiver::do_accept starting";
 
   // JCF, Jul-29-2015
 
@@ -276,13 +328,13 @@ void lbne::PennDataReceiver::do_accept(void)
   // Suspend readout and cleanup any incomplete millislices if stop has been called
   if (suspend_readout_.load())
   {
-    RECV_DEBUG(3) << "Suspending readout at do_accept entry";
+    RECV_DEBUG(4) << "Suspending readout at do_accept entry";
     this->suspend_readout(false);
   }
 
   // Exit if shutting receiver down
   if (!run_receiver_.load()) {
-    RECV_DEBUG(1) << "Stopping do_accept() at entry";
+    RECV_DEBUG(4) << "Stopping do_accept() at entry";
     return;
   }
 
@@ -302,7 +354,7 @@ void lbne::PennDataReceiver::do_accept(void)
       if (ec == boost::asio::error::operation_aborted)
       {
         if (nth_timeout % print_nth_timeout == 0) {
-          RECV_DEBUG(3) << "Timeout on async_accept";
+          RECV_DEBUG(4) << "Timeout on async_accept";
         }
 
         nth_timeout++;
@@ -317,6 +369,11 @@ void lbne::PennDataReceiver::do_accept(void)
   );
 }
 
+// NFB Dec-02-2015
+
+// do_read handles the data received from the PTB, casts them into RawBuffer,
+// converts them into MicroSlices and
+// and pushes them into millislices
 void lbne::PennDataReceiver::do_read(void)
 {
 
@@ -345,18 +402,34 @@ void lbne::PennDataReceiver::do_read(void)
     const unsigned int max_buffer_retries = 10;
     bool buffer_available;
 
+    // NFB Dec-2-2015
+    //
+    // The code below is ambiguous when it fails. It is impossible to know whether
+    // it failed because there are no empty buffers available
+    // or whether a lock on the queue has not been released.
+    // Changed the code to discern the different problems
+
     do
     {
+      // Try to grab an empty buffer to work on with 1s timeout
       buffer_available = empty_buffer_queue_.try_pop(current_raw_buffer_, std::chrono::milliseconds(1000));
       if (!buffer_available)
       {
         buffer_retries++;
-        DAQLogger::LogError("PennDataReceiver") << "lbne::PennDataReceiver::receiverLoop no buffers available on commit queue";
+        try {
+          DAQLogger::LogError("PennDataReceiver") << "lbne::PennDataReceiver::receiverLoop no buffers available on commit queue (buffers available : " << empty_buffers_available() << ")";
+        } catch(DAQLogger::LogError::ExceptClass &e) {
+          // do nothing. Just don't let LogError stop the retries
+          continue;
+        }
       }
     } while (!buffer_available && (buffer_retries < max_buffer_retries));
 
+    // There is a buffer available. Therefore, regardless of its contents
+    // we now have a Millislice. Probably incomplete, but a Millislice nonetheless
     if (buffer_available)
     {
+      //RECV_DEBUG(4) << "::do_read::Received raw buffer at " << (void*)current_raw_buffer_;
       millislice_state_ = MillisliceIncomplete;
       millislice_size_recvd_ = 0;
       microslices_recvd_ = 0;
@@ -367,14 +440,26 @@ void lbne::PennDataReceiver::do_read(void)
       payloads_recvd_timestamp_ = 0;
       payloads_recvd_selftest_  = 0;
       payloads_recvd_checksum_  = 0;
+
+      // Set the write pointer to the body of the raw buffer.
+      // This is the location where data is being written.
       current_write_ptr_ = (void*)(current_raw_buffer_->dataPtr());
       RECV_DEBUG(2) << "Receiving new millislice into raw buffer at address " << current_write_ptr_;
 
-      //add the overlap period with the previous millislice to the start of this millislice
+      //add the overlap period with the previous millislice
+      // to the start of this millislice
       if(overlap_size_) {
+        // TODO: Make sure that these are already stripped of the frames
+        // that are not suposed to go into the millislice
+        // header,checksum,warnings
         //move the overlap period to the start of the new millislice
         memmove(current_write_ptr_, overlap_ptr_, overlap_size_);
-        current_write_ptr_ = (void*)((char*)current_write_ptr_ + overlap_size_);
+        current_write_ptr_ = (void*)((uint8_t*)current_write_ptr_ + overlap_size_);
+        // NFB : Dec-02-2015
+        // I would have thought that the checksum was not passed into the microslice
+        // The checksum received from the PTB should be discarded when the buffer is converted into
+        // a PennRawBuffer
+        // The same would happen for selftests, which should be handled directly at the board
         RECV_DEBUG(2) << "Overlap period of " << overlap_size_ << " bytes added to this millislice. "
             << "Payload contains "  << overlap_payloads_recvd_
             << " total words ("     << overlap_payloads_recvd_counter_
@@ -383,12 +468,16 @@ void lbne::PennDataReceiver::do_read(void)
             << " timestamp + "      << overlap_payloads_recvd_selftest_
             << " selftest + "       << overlap_payloads_recvd_checksum_
             << "checksum)";
+
         //increment size & payload counters
         millislice_size_recvd_    += overlap_size_;
         payloads_recvd_           += overlap_payloads_recvd_;
         payloads_recvd_counter_   += overlap_payloads_recvd_counter_;
         payloads_recvd_trigger_   += overlap_payloads_recvd_trigger_;
         payloads_recvd_timestamp_ += overlap_payloads_recvd_timestamp_;
+        // These should never be incremented!!
+        // the selftests are now caught at the board level and the checksums
+        // are supposed to be filtered out when collected
         payloads_recvd_selftest_  += overlap_payloads_recvd_selftest_;
         payloads_recvd_checksum_  += overlap_payloads_recvd_checksum_;
         //reset 'overlap' counters
@@ -401,11 +490,13 @@ void lbne::PennDataReceiver::do_read(void)
         overlap_payloads_recvd_checksum_  = 0;
       }
 
-      //add any remains of the previous microslice (due to millislice boundary occurring within it) to the start of this millislice
+      //add any remains of the previous microslice (due to millislice boundary
+      // occurring within it) to the start of this millislice
       if(remaining_size_) {
-        //TODO if the microslice time is wider than the millislice time, need to split the remains up, finalise a millislice, and call do_read() again (UNLIKELY)
+        //TODO: Strip the remaining_ptr from the frames that are not supposed to go into the millislice
+        // header, checksum and warnings
         memmove(current_write_ptr_, remaining_ptr_, remaining_size_);
-        current_write_ptr_ = (void*)((char*)current_write_ptr_ + remaining_size_);
+        current_write_ptr_ = (void*)((uint8_t*)current_write_ptr_ + remaining_size_);
         RECV_DEBUG(2) << "Added the last "   << remaining_size_ << " bytes of previous microslice to this millislice. "
             << "Payload contains " << remaining_payloads_recvd_
             << " total words ("    << remaining_payloads_recvd_counter_
@@ -420,6 +511,7 @@ void lbne::PennDataReceiver::do_read(void)
         payloads_recvd_counter_   += remaining_payloads_recvd_counter_;
         payloads_recvd_trigger_   += remaining_payloads_recvd_trigger_;
         payloads_recvd_timestamp_ += remaining_payloads_recvd_timestamp_;
+        // This should not go into the millislice
         payloads_recvd_selftest_  += remaining_payloads_recvd_selftest_;
         payloads_recvd_checksum_  += remaining_payloads_recvd_checksum_;
         //reset 'remaining' counters
@@ -432,31 +524,43 @@ void lbne::PennDataReceiver::do_read(void)
         remaining_payloads_recvd_checksum_  = 0;
       }
     }
-    else
+    else // if buffer_available
     {
+      // There is no clean way to handle unavailable memory
       DAQLogger::LogError("PennDataReceiver") << "Failed to obtain new raw buffer for millislice, terminating receiver loop";
       // TODO handle error cleanly here
+
       return;
     }
 
-  }
+  } // millislice_state_ == MillisliceEmpty
+  /// Overlaps and remainings are now dealt with.
+  /// -- Process the new data
 
-  RECV_DEBUG(3) << "\nreceive state "     << (unsigned int)next_receive_state_ << " " << nextReceiveStateToString(next_receive_state_)
-		          << "\nmslice state "   << (unsigned int)millislice_state_   << " " << millisliceStateToString(millislice_state_)
-		          << "\nuslices received "         << microslices_recvd_
-		          << "\nuslice size received "    << microslice_size_recvd_
-		          << "\nmslice size received "    << millislice_size_recvd_
-		          << "\ncurrent write ptr "           << current_write_ptr_
-		          << "\nnext recv size " << next_receive_size_;
+  // NFB Dec-06-2015
+  // There are only two types of data loaded from the socket: headers and payloads
+  RECV_DEBUG(5) << "\nreceive state "     << (unsigned int)next_receive_state_
+                << " " << nextReceiveStateToString(next_receive_state_)
+                << "\nmslice state "   << (unsigned int)millislice_state_
+                << " " << millisliceStateToString(millislice_state_)
+                << "\nuslices received "         << microslices_recvd_
+                << "\nuslice size received "    << microslice_size_recvd_
+                << "\nmslice size received "    << millislice_size_recvd_
+                << "\ncurrent write ptr "           << current_write_ptr_
+                << "\nnext recv size " << next_receive_size_;
 
-  // Start the asynchronous receive operation into the current raw buffer.
+  // The data should not go
+  // Start the asynchronous receive operation into the (existing) current raw buffer.
   data_socket_.async_receive(
       boost::asio::buffer(current_write_ptr_, next_receive_size_),
       [this](boost::system::error_code ec, std::size_t length)
       {
     if (!ec)
     {
-      RECV_DEBUG(2) << "Received " << length << " bytes on socket";
+      RECV_DEBUG(4) << "Received " << length << " bytes on socket";
+      // -- Received something from the PTB. Time to ask it for the StartRunTime?
+      // -- Don't have access to the control thread from here.
+      // -- Need to do it from the generator
 
       this->handle_received_data(length);
 
@@ -466,17 +570,18 @@ void lbne::PennDataReceiver::do_read(void)
     {
       if (ec == boost::asio::error::eof)
       {
-        RECV_DEBUG(1) << "Client socket closed the connection";
+        DAQLogger::LogWarning("PennDataReceiver") << "Client socket closed the connection";
         this->do_accept();
       }
       else if (ec == boost::asio::error::operation_aborted)
       {
-        RECV_DEBUG(3) << "Timeout on read from data socket";
+        // NFB : Shoudln't this be a warning?
+        RECV_DEBUG(5) << "Timeout on read from data socket";
         this->do_read();
       }
       else
       {
-        DAQLogger::LogError("PennDataReceiver") << "Got error on aysnchronous read: " << ec << " " << ec.message();
+        DAQLogger::LogError("PennDataReceiver") << "Got error on aysnchronous read from the socket: " << ec << " " << ec.message();
       }
 
     }
@@ -488,23 +593,32 @@ void lbne::PennDataReceiver::handle_received_data(std::size_t length)
 {
 
   RECV_DEBUG(2) << "lbne::PennDataReceiver::handle_received_data: Handling "
-      << " data with size " << (unsigned int)length;
+		<< " data with size " << (unsigned int)length << " at status " << nextReceiveStateToString(next_receive_state_);
+
+#ifdef __PTB_BOARD_READER_DEVEL_MODE__
+  display_bits(current_write_ptr_, length, "PennDataReceiver");
+#endif
+
+  // The way this is working is by stitching a microslice and then roll back the
+  // pointers to subtract stuff that should not be going there.
+  // The problem with this approach is that it might fail if
+  // there are packets that should not be sent inside the microslice.
+
 
   //update size of uslice component, uslice & mslice
   state_nbytes_recvd_    += length;
   // We should handle this in a way a bit more special
-  // For instance it is probably best to "insert" a new byte in the counter words
-  // to handle the BSU counter
   microslice_size_recvd_ += length;
   millislice_size_recvd_ += length;
 
-  display_bits(current_write_ptr_, length, "PennDataReceiver");
+
 
   //make pointer to the start of the current object (Header, Payload_Header, Payload*)
-  if(!state_start_ptr_)
-    state_start_ptr_ = current_write_ptr_;
+  if(!receiver_state_start_ptr_)
+    receiver_state_start_ptr_ = current_write_ptr_;
 
   //now we can update the current_write_ptr_
+  // Set it to the end of the received data
   current_write_ptr_ = static_cast<void*>(reinterpret_cast_checked<uint8_t*>(current_write_ptr_) + length );
 
   //check to see if we have all the bytes for the current object
@@ -516,7 +630,8 @@ void lbne::PennDataReceiver::handle_received_data(std::size_t length)
 
     // JCF, Jul-30-2015
 
-    // I upgraded this circumstance to an error
+    // I upgraded this circumstance to an error. Microslices should never be incomplete.
+    // The TCP stack takes care of it.
 
     DAQLogger::LogError("PennDataReceiver") << "Incomplete " << nextReceiveStateToString(next_receive_state_)
 						      << " received for microslice " << microslices_recvd_
@@ -537,7 +652,9 @@ void lbne::PennDataReceiver::handle_received_data(std::size_t length)
   // states being "ReceiveMicrosliceHeader" and
   // "ReceiveMicroslicePayload"
 
+#ifdef DO_CHECKSUM
   static uint16_t software_checksum = 0; // "static" means this
+#endif /*DO_CHECKSUM*/
   // is the same variable
   // across calls to this
   // function
@@ -548,94 +665,114 @@ void lbne::PennDataReceiver::handle_received_data(std::size_t length)
   // microslice, and if we're looking at the microslice payload,
   // don't factor the contents of the checksum word into the
   // checksum itself
-
-
   if (next_receive_state_ == ReceiveMicrosliceHeader) {
+#ifdef DO_CHECKSUM
     software_checksum = 0;
+#endif /*DO_CHECKSUM*/
     bytes_to_check = length;
   } else {
-    // If the text state is the payload we want to discount the header from the size to be checked
-    bytes_to_check = length - sizeof(uint32_t);
+    // If the next state is the payload we want to discount the header from the size to be checked
+    bytes_to_check = length - sizeof(lbne::PennMicroSlice::Header);
   }
 
   RECV_DEBUG(2) << "Calculating checksum with status " << nextReceiveStateToString(next_receive_state_)
 					      << " on length  " << length
 					      << " bytes_to_check " << bytes_to_check;
 
-  uint8_t* byte_ptr = reinterpret_cast_checked<uint8_t*>(state_start_ptr_);
 
+#ifdef DO_CHECKSUM
+  uint8_t* byte_ptr = reinterpret_cast_checked<uint8_t*>(receiver_state_start_ptr_);
   //	RECV_DEBUG(4) << "JCF: current value of checksum is " << software_checksum <<
   //	  ", will look at " << bytes_to_check << " bytes starting at " <<
   //	  static_cast<void*>(byte_ptr) << " in the checksum calculation";
-
   for (size_t i_byte = 0; i_byte < bytes_to_check; ++i_byte) {
     software_checksum = (software_checksum >> 1) + ((software_checksum & 0x1) << 15) ;
     software_checksum += *(byte_ptr + i_byte);
     software_checksum &= 0xFFFF;
   }
-
+#endif /*DO_CHECKSUM*/
+  // -- Finished checking checksum
+  
   switch (next_receive_state_)
   {
-    case ReceiveMicrosliceHeader:
+  case ReceiveMicrosliceHeader:
     {
+      // Just testing that it does not go belly up
+      // validate_microslice_header();
 
-      // Capture the microslice version, length and sequence ID from the header
-      lbne::PennMicroSlice::Header* header = reinterpret_cast_checked<lbne::PennMicroSlice::Header*>( state_start_ptr_ );
-
-      lbne::PennMicroSlice::Header::format_version_t microslice_version;
-      lbne::PennMicroSlice::Header::sequence_id_t    sequence_id;
-      microslice_version = header->format_version;
-      sequence_id        = header->sequence_id;
-      microslice_size_   = header->block_size;
-
-      RECV_DEBUG(2) << "Got header for microslice version 0x" << std::hex << (unsigned int)microslice_version << std::dec
-          << " with size " << (unsigned int)microslice_size_
-          << " sequence ID " << (unsigned int)sequence_id;
-
-      // Validate the version - it shouldn't change!
-      if(microslice_version_initialised_ && (microslice_version != last_microslice_version_)) {
-        DAQLogger::LogError("PennDataReceiver") << "ERROR: Latest microslice version 0x" << std::hex << (unsigned int)microslice_version
-            << " is different to previous microslice version 0x" << (unsigned int)last_microslice_version_ << std::dec;
-        //TODO handle error cleanly here
-      }
-      else{
-        microslice_version_initialised_ = true;
-      }
-      last_microslice_version_ = microslice_version;
-
-      // Validate the version - should be a 4-bit version & 4-bit version complement
-      uint8_t version            =  microslice_version & 0x0F;
-      uint8_t version_complement = (microslice_version & 0xF0) >> 4;
-      if( ! ((version ^ version_complement) << 4) ) {
-        DAQLogger::LogError("PennDataReceiver") << "ERROR: Microslice version and version complement do not agree 0x"
-            << std::hex << (unsigned int)version << ", 0x" << (unsigned int)version_complement << std::dec;
-        //TODO handle error cleanly here
-      }
+      {
+	// Capture the microslice version, length and sequence ID from the header
+	lbne::PennMicroSlice::Header* header = reinterpret_cast_checked<lbne::PennMicroSlice::Header*>( receiver_state_start_ptr_ );
+	lbne::PennMicroSlice::Header::format_version_t local_microslice_version = header->format_version;
+	lbne::PennMicroSlice::Header::sequence_id_t    sequence_id = header->sequence_id;
+	
+	microslice_size_   = header->block_size;
+	
+	RECV_DEBUG(2) << "Got header for microslice version 0x" 
+		      << std::hex << (unsigned int)local_microslice_version << std::dec
+		      << " with size " << (unsigned int)microslice_size_
+		      << " sequence ID " << (unsigned int)sequence_id
+		      << " (previous ID " << (unsigned int)last_sequence_id_ << ")";
+	// Validate the version - it shouldn't change in a run
+	// Once the version is set to anything different than zero, 
+	// then it is just a matter of making a comparison
+	if (microslice_version_) {
+	  if (microslice_version_ != local_microslice_version) {
+	    DAQLogger::LogError("PennDataReceiver") 
+	      << "ERROR: Latest microslice version 0x" 
+	      << std::hex << (unsigned int)local_microslice_version
+	      << " is different to previous microslice version 0x" 
+	      << (unsigned int)microslice_version_ << std::dec;
+	  }
+	} else {
+	  microslice_version_ = local_microslice_version;
+	}
+  
+  
+	// Validate the version in the packet
+	uint8_t version            =  local_microslice_version & 0x0F;
+	uint8_t version_complement = (local_microslice_version & 0xF0) >> 4;
+	if( ! ((version ^ version_complement) << 4) ) {
+	  DAQLogger::LogError("PennDataReceiver") 
+	    << "ERROR: Microslice version and version complement do not agree 0x"
+	    << std::hex << (unsigned int)version << ", 0x" 
+	    << (unsigned int)version_complement << std::dec;
+	  //TODO handle error cleanly here
+	}
+  
 
       // Validate the sequence ID - should be incrementing
       // monotonically (or identical to previous if it was
       // fragmented)
 
-      if (sequence_id_initialised_ && (sequence_id != uint8_t(last_sequence_id_+1))) {
-        if (last_microslice_was_fragment_ && (sequence_id == uint8_t(last_sequence_id_))) {
-          // do nothing - we're in a normal fragmented microslice
-        }
-        else if (last_microslice_was_fragment_ && (sequence_id != uint8_t(last_sequence_id_))) {
-          DAQLogger::LogError("PennDataReceiver") << "WARNING: mismatch in microslice sequence IDs! Got " << (unsigned int)sequence_id << " expected " << (unsigned int)(uint8_t(last_sequence_id_));
-          //TODO handle error cleanly here
-        }
-        else if (rate_test_ && (sequence_id == uint8_t(last_sequence_id_))) {
-          // do nothing - alll microslices in the rate test have the same sequence id
-        }
-        else {
-          DAQLogger::LogError("PennDataReceiver") << "WARNING: mismatch in microslice sequence IDs! Got " << (unsigned int)sequence_id << " expected " << (unsigned int)(uint8_t(last_sequence_id_+1));
-          //TODO handle error cleanly here
-        }
+	if (sequence_id_initialised_ && (sequence_id != uint8_t(last_sequence_id_+1))) {
+	  if (last_microslice_was_fragment_ && (sequence_id == uint8_t(last_sequence_id_))) {
+	    // do nothing - we're in a normal fragmented microslice
+	  }
+	  else if (last_microslice_was_fragment_ && (sequence_id != uint8_t(last_sequence_id_))) {
+	    DAQLogger::LogError("PennDataReceiver") << "WARNING: mismatch in microslice sequence IDs! Got " << (unsigned int)sequence_id << " expected " << (unsigned int)(uint8_t(last_sequence_id_));
+	    //TODO handle error cleanly here
+	  }
+	  else if (rate_test_ && (sequence_id == uint8_t(last_sequence_id_))) {
+	    // NFB Dec-02-2015
+	    // No idea of what this is
+	    
+	    // do nothing - all microslices in the rate test have the same sequence id
+	  }
+	  else {
+	    DAQLogger::LogError("PennDataReceiver") << "WARNING: mismatch in microslice sequence IDs! Got " << (unsigned int)sequence_id << " expected " << (unsigned int)(uint8_t(last_sequence_id_+1));
+	    //TODO handle error cleanly here
+	  }
+	}
+	else {
+	  sequence_id_initialised_ = true;
+	}
+	last_sequence_id_ = sequence_id;
+	
       }
-      else {
-        sequence_id_initialised_ = true;
-      }
-      last_sequence_id_ = sequence_id;
+
+
+
 
       //update states ready to be for next call
       millislice_state_ = MicrosliceIncomplete;
@@ -643,55 +780,137 @@ void lbne::PennDataReceiver::handle_received_data(std::size_t length)
       next_receive_state_ = ReceiveMicroslicePayload;
       next_receive_size_  = microslice_size_ - sizeof(lbne::PennMicroSlice::Header);
 
+      // NFB: Do we actually need two variables?
+      // If there is not timestamp then it is fragmented...
+
       //reset this since we're in a new uslice now
-      microslice_seen_timestamp_word_ = false;
+      //microslice_seen_timestamp_word_ = false;
       last_microslice_was_fragment_ = false;
 
-      //and roll back the current_write_ptr_, as to overwrite the Header in the next recv
+      // NFB Dec-02-2015
 
+      // The code below overwrites the microslice header since it is of no use to the Millislice
+      //and roll back the current_write_ptr_, as to overwrite the Header in the next recv
       current_write_ptr_ = static_cast<void*>(reinterpret_cast_checked<uint8_t*>(current_write_ptr_) - sizeof(lbne::PennMicroSlice::Header));
       millislice_size_recvd_ -= sizeof(lbne::PennMicroSlice::Header);
 
-      //copy the microslice header to memory, for checksum tests
-      memcpy(current_microslice_ptr_, state_start_ptr_, sizeof(lbne::PennMicroSlice::Header));
+      // NFB Dec-06-2015 : This doesn't seem to be used anywhere else
+      //copy the microslice header to some other place in memory, for checksum tests
+      //memcpy(current_microslice_ptr_, state_start_ptr_, sizeof(lbne::PennMicroSlice::Header));
 
       break;
     } //case ReceiveMicrosliceHeader
 
-    case ReceiveMicroslicePayload:
+  case ReceiveMicroslicePayload:
     {
       //got a full microslice (complete size checks already done)
-      RECV_DEBUG(1) << "Complete payload received for microslice " << microslices_recvd_ << " length " << state_nbytes_recvd_;
+      RECV_DEBUG(2) << "Complete payload received for microslice " << microslices_recvd_ << " length " << state_nbytes_recvd_;
       microslices_recvd_++;
-
+      try{
+	validate_microslice_payload();
+      }catch(...) {
+	// payload didn't validate for some reason. Send an error and print the whole thing
+	DAQLogger::LogError("PennDataReceiver") << "Error was caught validating a run. Dumping the culprit microslice";
+	display_bits(receiver_state_start_ptr_,length,"PennDataReceiver");
+	
+      }
       //TODO add a better way of getting a start time, to calculate millislice boundaries from (presumably read the Penn)
       // NFB : The very first packet from the PTB should have been a timestamp word.
       // TODO: Confirm that the above statement is true
+      // NFB Dec-02-2015
+      // The run start time should have been sent as an answer to the StartRun command
+      // If for some reason it didn't, then the run_start_time should be computed from the
+      // first short timestamp, and the first full timestamp word
+
       if(!run_start_time_) {
+        DAQLogger::LogWarning("PennDataReceiver") << "Run start time not yet set. Estimating from the time of the first payload.";
+	
+        // NFB Dec-06-2015
+        // This is tricky. The easiest way would be to drop the data until a timestamp was found.
 
-        // JCF, Jul-28-15
+        // Actually, the best way is to do a multiphase approach:
+        //1. grab the first timestamp from the first payload_header
+        //2. Walk the payloads until a full timestamp is found.
+        //3. Calculate the difference between the rollovers and subtract from the full TS
+        //4. Set the start run time to that value
+	
+	uint8_t *current_data_ptr = static_cast<uint8_t*>(receiver_state_start_ptr_);
 
-        // I had to fix the code which gets the 28-bit timestamp
-        // from the payload header; note that this is still not
-        // the optimal solution
+	// I know that the first microslice sent by the PTB 
+	// is a timestamp. Just grab it
+	
+	// 1. -- Grab the first timestamp -- confirm it is indeed a timestamp
+        lbne::PennMicroSlice::Payload_Header *payload_header = static_cast<lbne::PennMicroSlice::Payload_Header *>(receiver_state_start_ptr_);
 
-        uint32_t payload_header = *( static_cast<uint32_t*>(state_start_ptr_) );
-        run_start_time_ = (payload_header >> 1) & 0x1FFFFFFF ;
+	if (payload_header->data_packet_type != lbne::PennMicroSlice::DataTypeTimestamp) {
+	  DAQLogger::LogWarning("PennDataReceiver") << "Expected the first word to be a timestamp. ";
+	}
+	current_data_ptr+= sizeof(lbne::PennMicroSlice::Payload_Header);
+	lbne::PennMilliSlice::TimestampPayload *ts_word = reinterpret_cast_checked<lbne::PennMilliSlice::TimestampPayload*>(current_data_ptr);
+	
 
-        boundary_time_  = (run_start_time_ + millislice_size_ - 1)     & 0xFFFFFFF; //lowest 28 bits
-        overlap_time_   = (boundary_time_  - millislice_overlap_size_) & 0xFFFFFFF; //lowest 28 bits
-      }
+	/**
+        uint64_t first_payload_time = (uint64_t)payload_header->short_nova_timestamp;
+        uint64_t first_ts_word = first_payload_time;
+        bool found_timestamp = false;
+        // 2 -- Walk over the payloads until a timestamp is found.
+        do {
+          switch(payload_header->data_packet_type) {
+          case lbne::PennMicroSlice::DataTypeTimestamp:
+	    {
+	      // 3 -- Calculate the difference between rollovers
+	      current_data_ptr+= sizeof(lbne::PennMicroSlice::Payload_Header);
+	      lbne::PennMilliSlice::TimestampPayload *ts_word = reinterpret_cast_checked<lbne::PennMilliSlice::TimestampPayload*>(current_data_ptr);
 
-      //TODO: Account for the padding bit in the header and add it to the counter word
+	      first_ts_word = ts_word->nova_timestamp;
+	      found_timestamp = true;
+#ifdef __PTB_BOARD_READER_DEVEL_MODE__
+	      DAQLogger::LogInfo("PennDataReceiver") << "Collected timestamp : " << first_ts_word;
+	      display_bits(current_data_ptr,lbne::PennMicroSlice::payload_size_timestamp,"PennDataReceiver");
+#endif
+	      break;
+	    }
+          case lbne::PennMicroSlice::DataTypeChecksum:
+            current_data_ptr += sizeof(lbne::PennMicroSlice::Payload_Header)+lbne::PennMicroSlice::payload_size_checksum;
+            break;
+          case lbne::PennMicroSlice::DataTypeCounter:
+            current_data_ptr += sizeof(lbne::PennMicroSlice::Payload_Header)+lbne::PennMicroSlice::payload_size_counter;
+            break;
+          case lbne::PennMicroSlice::DataTypeTrigger:
+            current_data_ptr += sizeof(lbne::PennMicroSlice::Payload_Header)+lbne::PennMicroSlice::payload_size_trigger;
+            break;
+	  case lbne::PennMicroSlice::DataTypeWarning:
+            current_data_ptr += sizeof(lbne::PennMicroSlice::Payload_Header)+lbne::PennMicroSlice::payload_size_warning;
+            break;
+          default:
+            DAQLogger::LogError("PennDataReceiver") << "Unkown packet type " << std::bitset<3>(payload_header->data_packet_type);
+            break;
+          }
+        } while (!found_timestamp || (current_data_ptr < current_write_ptr_));
 
-      //form a microslice & check for the timestamp word to see if we're in a fragmented microslice
-      lbne::PennMicroSlice uslice(((uint8_t*)state_start_ptr_));
+        if (found_timestamp) {
+          run_start_time_ = first_ts_word - ((first_ts_word & 0x7FFFFFF) - first_payload_time);
+	*/
+	run_start_time_ = ts_word->nova_timestamp;
+	boundary_time_  = (run_start_time_ + millislice_size_ - 1);
+	overlap_time_   = (boundary_time_  - millislice_overlap_size_);
+	DAQLogger::LogWarning("PennDataReceiver") << "start run time estimated to be " << run_start_time_
+						  << " boundary_time " << boundary_time_ 
+						  << " overlap time " << overlap_time_;
+        // } else {
+        //   DAQLogger::LogError("PennDataReceiver") << "Couldn't find timestamp in present microslice.";
+        // }
+      } // if !run_start_time_
+
+      //form a microslice
+      // This microslice will only have the payload (including checksum)
+      lbne::PennMicroSlice uslice(((uint8_t*)receiver_state_start_ptr_));
 
       //count the number of different types of payload word
       lbne::PennMicroSlice::sample_count_t n_counter_words(0);
       lbne::PennMicroSlice::sample_count_t n_trigger_words(0);
       lbne::PennMicroSlice::sample_count_t n_timestamp_words(0);
-      lbne::PennMicroSlice::sample_count_t n_selftest_words(0);
+      lbne::PennMicroSlice::sample_count_t n_warning_words(0);
       lbne::PennMicroSlice::sample_count_t n_checksum_words(0);
       lbne::PennMicroSlice::sample_count_t n_words(0);
 
@@ -701,7 +920,7 @@ void lbne::PennDataReceiver::handle_received_data(std::size_t length)
       std::size_t this_overlap_size(0);
       uint8_t* this_overlap_ptr = nullptr;
 
-      RECV_DEBUG(4) << "Boundary time == " << boundary_time_ << ", overlap time == " << overlap_time_ ;
+      RECV_DEBUG(2) << "Boundary time == " << boundary_time_ << ", overlap time == " << overlap_time_ ;
 
       // JCF, Jul-19-2015
 
@@ -714,42 +933,51 @@ void lbne::PennDataReceiver::handle_received_data(std::size_t length)
       // The argument remains set to "false", although in fact
       // it turns out the bytes didn't need to be reversed
 
-      RECV_DEBUG(1) << "Processing the microslice.  " << nextReceiveStateToString(next_receive_state_)
-						      << " on length  " << length
-						      << " bytes_to_check " << bytes_to_check;
+      RECV_DEBUG(2) << "Processing the microslice.  " << nextReceiveStateToString(next_receive_state_)
+                     << " on length  " << length
+                     << " bytes_to_check " << bytes_to_check;
 
+      /// NFB -- Continue revieweing here
       uint8_t* split_ptr =
           uslice.sampleTimeSplitAndCountTwice(boundary_time_, remaining_size_,
               overlap_time_,  this_overlap_size, this_overlap_ptr,
-              n_words, n_counter_words, n_trigger_words, n_timestamp_words, n_selftest_words, n_checksum_words,
-              remaining_payloads_recvd_, remaining_payloads_recvd_counter_, remaining_payloads_recvd_trigger_,
-              remaining_payloads_recvd_timestamp_, remaining_payloads_recvd_selftest_, remaining_payloads_recvd_checksum_,
-              overlap_payloads_recvd_, overlap_payloads_recvd_counter_, overlap_payloads_recvd_trigger_,
-              overlap_payloads_recvd_timestamp_, overlap_payloads_recvd_selftest_, overlap_payloads_recvd_checksum_,
+              n_words, n_counter_words, n_trigger_words, n_timestamp_words,
+              n_warning_words, n_checksum_words,
+              remaining_payloads_recvd_, remaining_payloads_recvd_counter_,
+              remaining_payloads_recvd_trigger_, remaining_payloads_recvd_timestamp_,
+              remaining_payloads_recvd_selftest_, remaining_payloads_recvd_checksum_,
+              overlap_payloads_recvd_, overlap_payloads_recvd_counter_,
+              overlap_payloads_recvd_trigger_, overlap_payloads_recvd_timestamp_,
+              overlap_payloads_recvd_selftest_, overlap_payloads_recvd_checksum_,
               hardware_checksum,
               false, microslice_size_);
 
       // check they agree
+#ifdef DO_CHECKSUM
       if(hardware_checksum != software_checksum) {
+        // TODO: Figure out what to do. For now just crash
         DAQLogger::LogError("PennDataReceiver") << "ERROR: Microslice checksum mismatch! Hardware: " << hardware_checksum << " Software: " << software_checksum;
         //TODO add error cleanly here
       }
       else {
         RECV_DEBUG(4) << "Microslice checksums... Hardware: " << hardware_checksum << " Software: " << software_checksum;
       }
-
-      //make sure to remove the microslice checksum word from the millislice (it is useless without the header)
-      //TODO tweak this logic more - some microslice checksum words are still getting into the millislice
+#endif /*DO_CHECKSUM*/
 
       size_t sizeof_checksum_frame = sizeof(lbne::PennMicroSlice::Payload_Header) + lbne::PennMicroSlice::payload_size_checksum;
-
+      
       // NFB: Nov-18-2015
       // This should now be correct. If not then the offsets are still being calculated wrong.
       current_write_ptr_ = static_cast<void*>(reinterpret_cast_checked<uint8_t*>(current_write_ptr_) - sizeof_checksum_frame);
       millislice_size_recvd_ -= sizeof_checksum_frame;
 
-      if (split_ptr == nullptr) {
 
+      ///
+      /// Microslice is split between millislices
+      ///
+      if (split_ptr == nullptr) {
+        // The whole microslice goes into the millislice and there were no words received
+        // Not sure about this logic.
         if (n_checksum_words == 0 || n_words == 0) {
           DAQLogger::LogError("PennDataReceiver") << "Code is about to try to decrement a uint32_t variable which has a value of 0";
         }
@@ -759,13 +987,17 @@ void lbne::PennDataReceiver::handle_received_data(std::size_t length)
       } else {
 
         RECV_DEBUG(2) << "split_ptr is non-null with value " << static_cast<void*>(split_ptr);
-
+        // Wasn't this already done before?
         if(remaining_payloads_recvd_checksum_) {
           remaining_size_   -= sizeof(lbne::PennMicroSlice::Payload_Header) - lbne::PennMicroSlice::payload_size_checksum;
           remaining_payloads_recvd_ -= remaining_payloads_recvd_checksum_;
           remaining_payloads_recvd_checksum_ = 0;
         }
       }
+
+      ///
+      /// Overlap
+      ///
       if(this_overlap_ptr != nullptr) {
         RECV_DEBUG(2) << "this_overlap_ptr is non-null with value " << static_cast<void*>(this_overlap_ptr);
 
@@ -804,7 +1036,7 @@ void lbne::PennDataReceiver::handle_received_data(std::size_t length)
           << " total words ("    << n_counter_words
           << " counter + "       << n_trigger_words
           << " trigger + "       << n_timestamp_words
-          << " timestamp + "     << n_selftest_words
+          << " timestamp + "     << n_warning_words
           << " selftest + "      << n_checksum_words
           << "checksum)"
           << " before the millislice boundary";
@@ -822,7 +1054,7 @@ void lbne::PennDataReceiver::handle_received_data(std::size_t length)
       payloads_recvd_counter_   += n_counter_words;
       payloads_recvd_trigger_   += n_trigger_words;
       payloads_recvd_timestamp_ += n_timestamp_words;
-      payloads_recvd_selftest_  += n_selftest_words;
+      payloads_recvd_selftest_  += n_warning_words;
       payloads_recvd_checksum_  += n_checksum_words;
 
       // JCF, Jul-30-2015
@@ -838,7 +1070,7 @@ void lbne::PennDataReceiver::handle_received_data(std::size_t length)
 
       RECV_DEBUG(2) << "JCF: at end of \"case ReceiveMicroslicePayload\"";
       break;
-    }//case ReceiveMicroslicePayload
+  }//case ReceiveMicroslicePayload
 
     default:
     {
@@ -851,7 +1083,7 @@ void lbne::PennDataReceiver::handle_received_data(std::size_t length)
 
   //reset counters & ptrs for the next call
   state_nbytes_recvd_ = 0;
-  state_start_ptr_    = 0;
+  receiver_state_start_ptr_ = 0;
 
   // If correct number of microslices (with timestamps) have been received, flag millislice as complete
 
@@ -889,8 +1121,11 @@ void lbne::PennDataReceiver::handle_received_data(std::size_t length)
 
     //update the times
 
-    boundary_time_ = (boundary_time_ + millislice_size_)         & 0xFFFFFFF; //lowest 28 bits
-    overlap_time_  = (boundary_time_ - millislice_overlap_size_) & 0xFFFFFFF; //lowest 28 bits
+//    boundary_time_ = (boundary_time_ + millislice_size_)         & 0xFFFFFFF; //lowest 28 bits
+//    overlap_time_  = (boundary_time_ - millislice_overlap_size_) & 0xFFFFFFF; //lowest 28 bits
+//    filled_buffer_queue_.push(std::move(current_raw_buffer_));
+    boundary_time_ = boundary_time_ + millislice_size_;
+    overlap_time_ = boundary_time_ - millislice_overlap_size_;
     filled_buffer_queue_.push(std::move(current_raw_buffer_));
     millislice_state_ = MillisliceEmpty;
   }
@@ -902,12 +1137,12 @@ void lbne::PennDataReceiver::suspend_readout(bool await_restart)
 
   if (await_restart)
   {
-    RECV_DEBUG(2) << "TpcPennReceiver::suspend_readout: awaiting restart or shutdown";
+    RECV_DEBUG(2) << "::suspend_readout: awaiting restart or shutdown";
     while (suspend_readout_.load() && run_receiver_.load())
     {
       usleep(tick_period_usecs_);
     }
-    RECV_DEBUG(2) << "TpcPennReceiver::suspend_readout: restart or shutdown detected, exiting wait loop";
+    RECV_DEBUG(2) << "::suspend_readout: restart or shutdown detected, exiting wait loop";
   }
 
 }
@@ -965,7 +1200,7 @@ void lbne::PennDataReceiver::check_deadline(void)
   }
   else
   {
-    RECV_DEBUG(1) << "Deadline actor terminating";
+    DAQLogger::LogInfo("PennDataReceiver")  << "Deadline actor terminating";
   }
 }
 
@@ -1004,5 +1239,102 @@ std::size_t lbne::PennDataReceiver::nextReceiveStateToExpectedBytes(NextReceiveS
     default:
       return 0;
       break;
+  }
+}
+
+void lbne::PennDataReceiver::set_run_start_time(uint64_t value) {
+  if (run_start_time_ != 0) {
+    DAQLogger::LogWarning("PennDataReceiver") << "Run start time already set to " <<run_start_time_
+        <<". **Not** going to overwrite with received value " << value;
+  } else {
+    DAQLogger::LogInfo("PennDataReceiver") << "Setting run start time  to " << value;
+    run_start_time_ = value;
+  }
+}
+
+void lbne::PennDataReceiver::validate_microslice_header(void) {
+  // Capture the microslice version, length and sequence ID from the header
+  lbne::PennMicroSlice::Header* header = reinterpret_cast_checked<lbne::PennMicroSlice::Header*>( receiver_state_start_ptr_ );
+  lbne::PennMicroSlice::Header::format_version_t local_microslice_version = header->format_version;
+  lbne::PennMicroSlice::Header::sequence_id_t    sequence_id = header->sequence_id;
+
+  microslice_size_   = header->block_size;
+
+  RECV_DEBUG(2) << "Got header for microslice version 0x" 
+		<< std::hex << (unsigned int)local_microslice_version << std::dec
+		<< " with size " << (unsigned int)microslice_size_
+		<< " sequence ID " << (unsigned int)sequence_id
+		<< " (previous ID " << last_sequence_id_ << ")";
+  // Validate the version - it shouldn't change in a run
+  // Once the version is set to anything different than zero, 
+  // then it is just a matter of making a comparison
+  if (microslice_version_) {
+    if (microslice_version_ != local_microslice_version) {
+      DAQLogger::LogError("PennDataReceiver") 
+	<< "ERROR: Latest microslice version 0x" 
+	<< std::hex << (unsigned int)local_microslice_version
+	<< " is different to previous microslice version 0x" 
+	<< (unsigned int)microslice_version_ << std::dec;
+    }
+  } else {
+    microslice_version_ = local_microslice_version;
+  }
+  
+  
+  // Validate the version in the packet
+  uint8_t version            =  local_microslice_version & 0x0F;
+  uint8_t version_complement = (local_microslice_version & 0xF0) >> 4;
+  if( ! ((version ^ version_complement) << 4) ) {
+    DAQLogger::LogError("PennDataReceiver") 
+      << "ERROR: Microslice version and version complement do not agree 0x"
+      << std::hex << (unsigned int)version << ", 0x" 
+      << (unsigned int)version_complement << std::dec;
+    //TODO handle error cleanly here
+  }
+  
+  // Validate the sequence ID -- should always be incrementing
+  // except for fragmented blocks
+  if (sequence_id_initialised_) {
+    if (last_microslice_was_fragment_) {
+      if (sequence_id != uint8_t(last_sequence_id_)) {
+        DAQLogger::LogError("PennDataReceiver") 
+	  << "Mismatch in microslice sequence IDs! Got " 
+	  << (unsigned int)sequence_id << " expected " 
+	  << (unsigned int)(uint8_t(last_sequence_id_));
+      }
+    } else if (sequence_id != uint8_t(last_sequence_id_+1)) {
+      DAQLogger::LogError("PennDataReceiver") << "Mismatch in microslice sequence IDs! Got " << (unsigned int)sequence_id << " expected " << (unsigned int)(uint8_t(last_sequence_id_+1));
+    }
+  } else {
+    sequence_id_initialised_ = true;
+  }
+  
+  last_sequence_id_ = sequence_id;
+}
+
+void lbne::PennDataReceiver::validate_microslice_payload(void) {
+  
+  // Check that the last word is a checksum
+  //uint8_t* current_ptr = reinterpret_cast_checked<uint8_t*>(current_write_ptr_);
+  uint8_t* current_ptr = static_cast<uint8_t*>(current_write_ptr_);
+  static const size_t sizeof_checksum_frame = sizeof(lbne::PennMicroSlice::Payload_Header) + lbne::PennMicroSlice::payload_size_checksum;
+
+  current_ptr -= sizeof_checksum_frame;
+  lbne::PennMicroSlice::Payload_Header *payload_header = reinterpret_cast_checked<lbne::PennMicroSlice::Payload_Header *>(current_ptr);
+  if (payload_header->data_packet_type != lbne::PennMicroSlice::DataTypeChecksum) {
+    
+    // display_bits(current_ptr,4);
+    DAQLogger::LogError("PennDataReceiver") << "Microslice received has no checksum word. Last packet has header " << std::bitset<3>(payload_header->data_packet_type);
+  }
+  // Check that there is a timestamp word
+  static const size_t sizeof_timestamp_frame = sizeof(lbne::PennMicroSlice::Payload_Header) + lbne::PennMicroSlice::payload_size_timestamp;
+  current_ptr -= sizeof_timestamp_frame;
+  payload_header = reinterpret_cast_checked<lbne::PennMicroSlice::Payload_Header *>(current_ptr);
+  // The second to last packet should be a timestamp
+  // FIXME: Have to make this smarter. It seems that the data sometimes is mismapped
+  if (payload_header->data_packet_type != lbne::PennMicroSlice::DataTypeTimestamp) {
+    display_bits(current_ptr,4);
+    DAQLogger::LogError("PennDataReceiver") << "Microslice received as no timestamp word. Fragmented packets are no yet supported. Second to last packet has header " << std::bitset<3>(payload_header->data_packet_type);
+
   }
 }

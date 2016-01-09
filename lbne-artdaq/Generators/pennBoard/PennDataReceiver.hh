@@ -35,6 +35,32 @@ namespace lbne {
 class PennDataReceiver {
 
 public:
+
+
+    struct Word_warning {
+      typedef uint32_t data_t;
+      typedef uint16_t data_size_t;
+
+      typedef uint8_t  warning_type_t;
+      typedef uint8_t  data_packet_type_t;
+      typedef uint32_t short_nova_timestamp_t;
+
+      // The order of the data packet type and the timestamp have been
+      // swapped to reflect that it's the MOST significant three bits in
+      // the payload header which contain the type. I've also added a
+      // 1-bit pad to reflect that the least significant bit is unused.
+
+      uint32_t padding : 24;
+      warning_type_t warning_type : 5;
+      data_packet_type_t     data_packet_type     : 3;
+
+      static size_t const size_words = sizeof(data_t);
+      static data_size_t const num_bits_padding     = 24;
+      static data_size_t const num_bits_warning  = 5;
+      static data_size_t const num_bits_packet_type = 3;
+    };
+
+
   PennDataReceiver(int debug_level, uint32_t tick_period_usecs, uint16_t udp_receive_port, uint32_t millislice_size, uint16_t millislice_overlap_size, bool rate_test);
 	virtual ~PennDataReceiver();
 
@@ -48,9 +74,14 @@ public:
 	void release_empty_buffers(void);
 	void release_filled_buffers(void);
 
+	void set_run_start_time(uint64_t value);
+	uint64_t get_run_start_time() const {return run_start_time_;};
 private:
 
 	enum DeadlineIoObject { None, Acceptor, DataSocket };
+
+	void validate_microslice_header(void);
+	void validate_microslice_payload(void);
 
 	void run_service(void);
 	void do_accept(void);
@@ -63,6 +94,7 @@ private:
 
 	int debug_level_;
 
+	/// -- Ethernet connection management variables
 	boost::asio::io_service io_service_;
 	tcp::acceptor           acceptor_;
 	tcp::socket	        accept_socket_;
@@ -72,7 +104,9 @@ private:
 	DeadlineIoObject deadline_io_object_;
 	uint32_t tick_period_usecs_;
 
+	// Port that should be listened for connection from the PTB (conf param)
 	uint16_t receive_port_;
+	// Size of the millislice (units?)
   uint32_t millislice_size_;
 
 	std::atomic<bool> run_receiver_;
@@ -87,8 +121,9 @@ private:
 	SafeQueue<lbne::PennRawBufferPtr> filled_buffer_queue_;
 	PennRawBufferPtr current_raw_buffer_;
 	void*            current_write_ptr_;
+  void*            tmp_write_ptr_;
 
-  void*            state_start_ptr_;
+  void*            receiver_state_start_ptr_;
   std::size_t      state_nbytes_recvd_;
 
   enum NextReceiveState { ReceiveMicrosliceHeader, ReceiveMicroslicePayload, ReceiveMicroslicePayloadHeader, ReceiveMicroslicePayloadCounter, ReceiveMicroslicePayloadTrigger, ReceiveMicroslicePayloadTimestamp };
@@ -105,28 +140,29 @@ private:
   { "MillisliceEmpty", "MillisliceIncomplete", "MicrosliceIncomplete", "MillisliceComplete" };
   MillisliceState  millislice_state_;
   size_t           millislice_size_recvd_;
-  uint16_t         microslices_recvd_;
-  uint16_t         payloads_recvd_;
-  uint16_t         payloads_recvd_counter_;
-  uint16_t         payloads_recvd_trigger_;
-  uint16_t         payloads_recvd_timestamp_;
-  uint16_t         payloads_recvd_selftest_;
-  uint16_t         payloads_recvd_checksum_;
+  uint32_t         microslices_recvd_;
+  uint32_t         payloads_recvd_;
+  uint32_t         payloads_recvd_counter_;
+  uint32_t         payloads_recvd_trigger_;
+  uint32_t         payloads_recvd_timestamp_;
+  uint32_t         payloads_recvd_selftest_;
+  uint32_t         payloads_recvd_checksum_;
   lbne::PennMicroSlice::Header::block_size_t microslice_size_;
   size_t           microslice_size_recvd_;
   uint32_t         millislices_recvd_;
   
-  uint16_t microslices_recvd_timestamp_; //counts the number of microslices received that contain a timestamp word
+  // FIXME: NFB - This might not be needed
+  uint32_t microslices_recvd_timestamp_; //counts the number of microslices received that contain a timestamp word
   bool microslice_seen_timestamp_word_;
   bool last_microslice_was_fragment_;
 
   bool                                           microslice_version_initialised_;
-  lbne::PennMicroSlice::Header::format_version_t last_microslice_version_;
+  lbne::PennMicroSlice::Header::format_version_t microslice_version_;
   bool                                           sequence_id_initialised_;
   lbne::PennMicroSlice::Header::sequence_id_t    last_sequence_id_;
-
-	std::chrono::high_resolution_clock::time_point start_time_;
-
+  
+  std::chrono::high_resolution_clock::time_point start_time_;
+  
   bool rate_test_;
 
   size_t           overlap_size_;
@@ -143,7 +179,7 @@ private:
 
   size_t           current_microslice_;
   static const int current_microslice_buffer_size_ = 65536;
-  uint8_t          current_microslice_ptr_[lbne::PennDataReceiver::current_microslice_buffer_size_];
+//  uint8_t          current_microslice_ptr_[lbne::PennDataReceiver::current_microslice_buffer_size_];
 
   size_t           remaining_size_;
   static const int remaining_buffer_size = 65536;

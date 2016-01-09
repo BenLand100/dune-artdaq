@@ -30,10 +30,11 @@ namespace lbne {
 		PennClient(const std::string& host_name, const std::string& port_or_service, const unsigned int timeout_usecs);
 		virtual ~PennClient();
 
-		void send_command(std::string const & command, std::string const & param);
+		void send_command(std::string const & command, std::string & answer);
 		void send_command(std::string const & command);
 		void send_config(std::string const & config);
-		void send_xml(std::string const & xml_frag);
+    void send_xml(std::string const & xml_frag);
+		void send_xml(std::string const & xml_frag,std::string & xml_answer);
 		template<class T> void set_param(std::string const & name, T const & value, std::string const & );
 
 	private:
