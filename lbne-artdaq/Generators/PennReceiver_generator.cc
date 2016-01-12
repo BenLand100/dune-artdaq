@@ -23,7 +23,8 @@
 lbne::PennReceiver::PennReceiver(fhicl::ParameterSet const & ps)
 :
 CommandableFragmentGenerator(ps),
-run_receiver_(false)
+run_receiver_(false),
+data_timeout_usecs_(ps.get<uint32_t>("data_timeout_usecs", 60000000))
 {
 
   int fragment_id = ps.get<int>("fragment_id");
@@ -31,7 +32,9 @@ run_receiver_(false)
 
   instance_name_for_metrics_ = "PennReceiver";
 
-  ////////////////////////////
+  DAQLogger::LogInfo("PennReceiver") << "Starting up";  
+
+////////////////////////////
   // HARDWARE OPTIONS
 
   // config stream connection parameters
@@ -84,6 +87,8 @@ run_receiver_(false)
   // Number of raw buffers that are added to the stack
   raw_buffer_precommit_ =
       ps.get<uint32_t>("raw_buffer_precommit", 10);
+  filled_buffer_release_max_ =                                 // GBcopy
+    ps.get<uint32_t>("filled_buffer_release_max", 10);         // GBcopy
   // NFB -- This means that artDAQ fragments are used instead of PennRawBuffers
   // Not really sure what is effectively the difference between one and the other here
   use_fragments_as_raw_buffer_ =
@@ -308,6 +313,7 @@ void lbne::PennReceiver::start(void)
     data_receiver_->commit_empty_buffer(raw_buffer);
     empty_buffer_low_mark_++;
   }
+  filled_buffer_high_mark_ = 0;  //GBcopy
 
   // Initialise data statistics
   millislices_received_ = 0;
@@ -336,9 +342,19 @@ void lbne::PennReceiver::start(void)
   // }
 }
 
+// GBcopy  stopNoMutex() is called before stop() by how much?  Probably not much,
+// GBcopy  but the RCEs tell the hardware to stop sending data here, so I have moved it?
+void lbne::PennReceiver::stopNoMutex(void)
+{
+        DAQLogger::LogInfo("PennReceiver") << "In stopNoMutex - instructing PTB to stop";
+
+        // Instruct the DPM to stop
+        penn_client_->send_command("StopRun");  // GBcopy
+}
+
 void lbne::PennReceiver::stop(void)
 {
-  DAQLogger::LogInfo("PennReceiver") << "stop() called";
+  // GBcopy (done in stopNoMutex instead): DAQLogger::LogInfo("PennReceiver") << "stop() called";
 
   // Instruct the PENN to stop
   // NFB Dec-02-2015
@@ -347,10 +363,11 @@ void lbne::PennReceiver::stop(void)
   // run.
   // Collect them here and compare to the statistics accumulated in the board reader
   //std::string statistics;
-  penn_client_->send_command("StopRun");
+  // GBcopy (done in stopNoMutex instead): penn_client_->send_command("StopRun");
 
 
-  DAQLogger::LogInfo("PennReceiver") << "Low water mark on empty buffer queue is " << empty_buffer_low_mark_;
+  DAQLogger::LogInfo("PennReceiver") << "stop() called: Low water mark on empty buffer queue is " << empty_buffer_low_mark_;
+  DAQLogger::LogInfo("PennReceiver") << "stop() called: High water mark on filled buffer queue is " << filled_buffer_high_mark_;
 
   auto elapsed_msecs = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - start_time_).count();
   double elapsed_secs = ((double)elapsed_msecs) / 1000;
@@ -367,6 +384,7 @@ void lbne::PennReceiver::stop(void)
   // NFB: The low water mark inicates if a run has had too few millislices being collected
   // For all purposes it seems that this value could take any form.
   DAQLogger::LogInfo("PennReceiver") << "Low water mark on empty buffer queue is " << empty_buffer_low_mark_;
+  DAQLogger::LogInfo("PennReceiver") << "High water mark on filled buffer queue is " << filled_buffer_high_mark_;
 
   /*
   auto elapsed_msecs = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - start_time_).count();
@@ -391,7 +409,209 @@ void lbne::PennReceiver::stop(void)
 
 }
 
+// GBcopy - OLD_GETNEXT is not set, so we should be using the first one of these (the newer one), when it is tested.
+#ifndef OLD_GETNEXT
+bool lbne::PennReceiver::getNext_(artdaq::FragmentPtrs & frags) {
 
+	uint32_t buffers_released = 0;
+	PennRawBufferPtr recvd_buffer;
+	const unsigned int buffer_recv_timeout_us = 500000;
+
+	// Before releasing any fragments, capture buffer state metrics
+	size_t empty_buffers_available = data_receiver_->empty_buffers_available();
+	if (empty_buffers_available < empty_buffer_low_mark_)
+	{
+	  empty_buffer_low_mark_ = empty_buffers_available;
+	}
+	size_t filled_buffers_available = data_receiver_->filled_buffers_available();
+	if (filled_buffers_available > filled_buffer_high_mark_)
+	{
+	  filled_buffer_high_mark_ = filled_buffers_available;
+	}
+
+	// JCF, Dec-11_2015
+
+	// If it's the start of data taking, we pretend we received a
+	// buffer at the start time in order to begin the clock used
+	// to determine later whether or not we're timed out (this
+	// code is required if no buffers ever arrive and we can't
+	// therefore literally say that a buffer was received at some
+	// point in time)
+
+	if ( startOfDatataking() ) {
+	  DAQLogger::LogInfo("PennReceiver") << "Penn: start of datataking";
+	  last_buffer_received_time_ = std::chrono::high_resolution_clock::now();
+	}
+
+	// If we find buffers in the while loop, then at the bottom of
+	// this function we'll skip the timeout check...
+	bool buffers_found_in_while_loop = false;  
+
+	// Loop to release fragments if filled buffers available, up to the maximum allowed
+	while ((data_receiver_->filled_buffers_available() > 0) && (buffers_released <= filled_buffer_release_max_))
+	{
+		bool buffer_available = data_receiver_->retrieve_filled_buffer(recvd_buffer, buffer_recv_timeout_us);
+
+		if (!buffer_available)
+		{
+			DAQLogger::LogWarning("PennReceiver") << "lbne::PennReceiver::getNext_ : "
+					<< "receiver indicated buffers available but unable to retrieve one within timeout";
+			continue;
+		}
+
+		if (recvd_buffer->size() == 0)
+		{
+			DAQLogger::LogWarning("PennReceiver") << "lbne::PennReceiver::getNext_ : no data received in raw buffer";
+			continue;
+		}
+
+		// We now know we have a legitimate buffer which we
+		// can save in an artdaq::Fragment, so record the time
+		// it occurred as a point of reference to later
+		// determine if there's been a data timeout
+
+		buffers_found_in_while_loop = true;
+		last_buffer_received_time_ = std::chrono::high_resolution_clock::now();
+
+		// Get a pointer to the data in the current buffer and create a new fragment pointer
+		uint8_t* data_ptr = recvd_buffer->dataPtr();
+		std::unique_ptr<artdaq::Fragment> frag;
+		uint32_t millislice_size = 0;
+
+		// If using fragments as raw buffers, process accordingly
+		if (use_fragments_as_raw_buffer_)
+		{
+			// Map back onto the fragment from the raw buffer data pointer we have just received
+			if (raw_to_frag_map_.count(data_ptr))
+			{
+				// Extract the fragment from the map
+				frag = std::move(raw_to_frag_map_[data_ptr]);
+
+				// Validate and finalize the fragment received
+				millislice_size = validate_millislice_from_fragment_buffer(frag->dataBeginBytes(), 
+                                  recvd_buffer->size(),
+#ifndef REBLOCK_PENN_USLICE
+		                  recvd_buffer->count(),
+#endif
+			          recvd_buffer->sequenceID(),
+			          recvd_buffer->countPayload(), recvd_buffer->countPayloadCounter(),
+			          recvd_buffer->countPayloadTrigger(), recvd_buffer->countPayloadTimestamp(),
+			          recvd_buffer->endTimestamp(), recvd_buffer->widthTicks(), 
+                                  recvd_buffer->overlapTicks()  );
+
+				// Clean up entry in map to remove raw fragment buffer
+				raw_to_frag_map_.erase(data_ptr);
+
+				// Create a new raw buffer pointing at a new fragment and replace the received buffer
+				// pointer with it - this will be recycled onto the empty queue later
+				recvd_buffer =create_new_buffer_from_fragment();
+
+			}
+			else
+			{
+				DAQLogger::LogError("PennReceiver") << "lbne::PennReceiver::getNext_ : cannot map raw buffer with data address"
+						<< (void*)recvd_buffer->dataPtr() << " back onto fragment";
+				continue;
+			}
+		}
+		// Otherwise format the raw buffer into a new fragment
+		else
+		{
+		  DAQLogger::LogError("PennReceiver") << "You must use_fragments_as_raw_buffer, the other option is not implemented, change PTB configuration please";
+		}
+
+		// Recycle the raw buffer onto the commit queue for re-use by the receiver.
+		data_receiver_->commit_empty_buffer(recvd_buffer);
+
+		// Set fragment fields appropriately
+		frag->setSequenceID(ev_counter());
+		frag->setFragmentID(fragmentIDs()[0]);
+		frag->setUserType(lbne::detail::TRIGGER);
+
+		// Resize fragment to final millislice size
+	        frag->resizeBytes(millislice_size);
+
+		// Add the fragment to the list
+		frags.emplace_back(std::move (frag));
+
+		// Increment the event counter
+		ev_counter_inc();
+
+		// Update counters
+		millislices_received_++;
+		total_bytes_received_ += millislice_size;
+		buffers_released++;
+
+	} // End of loop over available buffers
+
+	// Report on data received so far
+	if (reporting_interval_time_ != 0)
+	{
+		std::chrono::high_resolution_clock::time_point now = std::chrono::high_resolution_clock::now();
+
+		if (std::chrono::duration_cast<std::chrono::milliseconds>(now - report_time_).count() >
+			(reporting_interval_time_ * 1000))
+		{
+			auto elapsed_msecs = std::chrono::duration_cast<std::chrono::milliseconds>(now - start_time_).count();
+			double elapsed_secs = ((double)elapsed_msecs)/1000;
+
+			DAQLogger::LogInfo("PennReceiver") << "lbne::PennReceiver::getNext_ : received " << millislices_received_ << " millislices, "
+					<< float(total_bytes_received_)/(1024*1024) << " MB in " << elapsed_secs << " seconds";
+
+			report_time_ = std::chrono::high_resolution_clock::now();
+		}
+	}
+
+	// Send buffer metrics based on values captured at entry into this function
+
+	metricMan_->sendMetric("PTB Empty Buffer Low Water Mark", empty_buffer_low_mark_, "buffers", 1, false, true);
+	metricMan_->sendMetric("PTB Empty Buffers Available", empty_buffers_available, "buffers", 1, false, true);
+	metricMan_->sendMetric("PTB Filled Buffer High Water Mark", filled_buffer_high_mark_, "buffers", 1, false, true);
+	metricMan_->sendMetric("PTB Filled Buffers Availiable", filled_buffers_available, "buffers", 1, false, true);
+
+	// Determine return value, depending on whether run is stopping, if there are any filled buffers available
+	// and if the receiver thread generated an exception
+
+	bool is_active = true;
+	if (should_stop())
+	{
+		if (data_receiver_->filled_buffers_available() > 0)
+		{
+			// Don't signal board reader can stop if there are still buffers available to release as fragments
+			DAQLogger::LogDebug("PennReceiver")
+				<< "lbne::PennReceiver::getNext_ : should_stop() is true but buffers available";
+		}
+		else
+		{
+			// If all buffers released, set is_active false to signal board reader can stop
+			DAQLogger::LogInfo("PennReceiver")
+				<< "lbne::PennReceiver::getNext_ : no unprocessed filled buffers available at end of run";
+			is_active = false;
+		}
+	}
+	if (data_receiver_->exception())
+	{
+	  set_exception(true);
+	  DAQLogger::LogError("PennReceiver") << "lbne::PennReceiver::getNext_ : found receiver thread in exception state";
+	}
+
+	// JCF, Dec-11-2015
+
+	// Finally, if we haven't received a buffer after a set amount
+	// of time, give up (i.e., throw an exception)
+
+	if ( ! buffers_found_in_while_loop ) {
+
+	  auto time_since_last_buffer = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now() - last_buffer_received_time_).count();
+
+	  if (time_since_last_buffer > data_timeout_usecs_) {
+	    DAQLogger::LogError("PennReceiver") << "lbne::PennReceiver::getNext_ : timeout due to no data appearing after " << time_since_last_buffer / 1000000.0 << " seconds";
+	  }
+	}
+
+	return is_active;
+}
+#else
 bool lbne::PennReceiver::getNext_(artdaq::FragmentPtrs & frags) {
 
   PennRawBufferPtr recvd_buffer;
@@ -415,10 +635,17 @@ bool lbne::PennReceiver::getNext_(artdaq::FragmentPtrs & frags) {
   }
   while (!buffer_available && !should_stop());
 
+// ***********************************************************************************************
+// ** GDB: This #else (OLD_GETNEXT) #endif is not what we are testing at the moment.  If we want to
+// ** use it, there is an update to be applied here.  (1) To the above do while() last line and (2)
+// ** in the next if () block.  To update, look in the corresponding place in TpcRceReceiver_generator.cc
+// ** and look for the calls to data_receiver_->exception() around this place and copy the code in
+// ***********************************************************************************************
+
   // If stopping, Check if there are any filled buffers available (i.e. fragments received but not processed)
   // and print a warning, then return false to indicate no more fragments to process
   if (should_stop()) {
-
+// GBcopy:  TODO We could add the [data_receiver_->exception()] here
     if( data_receiver_->filled_buffers_available() > 0)
     {
       DAQLogger::LogWarning("PennRecevier") << "getNext_ stopping while there were still filled buffers available";
@@ -476,13 +703,13 @@ bool lbne::PennReceiver::getNext_(artdaq::FragmentPtrs & frags) {
     }
     else
     {
-      DAQLogger::LogError("PennReciver") << "Cannot map raw buffer with data address" << (void*)recvd_buffer->dataPtr() << " back onto fragment";
+      DAQLogger::LogError("PennReceiver") << "Cannot map raw buffer with data address" << (void*)recvd_buffer->dataPtr() << " back onto fragment";
       return true;
     }
   }
   else
   {
-    DAQLogger::LogWarning("PennReciver") << "Raw buffer mode has not been tested.";
+    DAQLogger::LogWarning("PennReceiver") << "Raw buffer mode has not been tested.";
     // Create an artdaq::Fragment to format the raw data into. As a crude heuristic,
     // reserve 10 times the raw data space in the fragment for formatting overhead.
     // TODO This needs to be done more intelligently!
@@ -511,15 +738,29 @@ bool lbne::PennReceiver::getNext_(artdaq::FragmentPtrs & frags) {
 				       << float(total_bytes_received_)/(1024*1024) << " MB in " << elapsed_secs << " seconds";
   }
 
-  // Recycle the raw buffer onto the commit queue for re-use by the receiver.
-  // TODO at this point we could test the number of unused buffers on the commit queue
-  // against a low water mark and create/inject ones to keep the receiver running if necessary
+// Update buffer high and low water marks
   size_t empty_buffers_available = data_receiver_->empty_buffers_available();
   if (empty_buffers_available < empty_buffer_low_mark_)
   {
-    empty_buffer_low_mark_ = empty_buffers_available;
+          empty_buffer_low_mark_ = empty_buffers_available;
+  }
+  size_t filled_buffers_available = data_receiver_->filled_buffers_available();
+  if (filled_buffers_available > filled_buffer_high_mark_)
+  {
+          filled_buffer_high_mark_ = filled_buffers_available;
   }
 
+  if ((millislices_received_ % reporting_interval_fragments_) == 0)
+  {     // Only do the metrics at the reporting intervals, the RCEs do it every millislice 
+    metricMan_->sendMetric(empty_buffer_low_water_metric_name_, empty_buffer_low_mark_, "buffers", 1, false, true);
+    metricMan_->sendMetric(empty_buffer_available_metric_name_, empty_buffers_available, "buffers", 1, false, true);
+    metricMan_->sendMetric(filled_buffer_high_water_metric_name_, filled_buffer_high_mark_, "buffers", 1, false, true);
+    metricMan_->sendMetric(filled_buffer_available_metric_name_, filled_buffers_available, "buffers", 1, false, true);
+  }
+
+  // Recycle the raw buffer onto the commit queue for re-use by the receiver.
+  // TODO at this point we could test the number of unused buffers on the commit queue
+  // against a low water mark and create/inject ones to keep the receiver running if necessary
   data_receiver_->commit_empty_buffer(recvd_buffer);
 
   // Set fragment fields appropriately
@@ -538,7 +779,7 @@ bool lbne::PennReceiver::getNext_(artdaq::FragmentPtrs & frags) {
 
   return true;
 }
-
+#endif  // ifndef OLD_GETNEXT
 
 lbne::PennRawBufferPtr lbne::PennReceiver::create_new_buffer_from_fragment(void)
 {
@@ -714,6 +955,36 @@ void lbne::PennReceiver::generate_config_frag_emulator(std::ostringstream& confi
       << " <SendByByte>"     << penn_data_debug_partial_recv_           << "</SendByByte>" << " "
       << "</Emulator>" << " ";
 }
+
+// GBcopy - The next function is copied fropm the RCE boardreader, with comments from John
+// JCF, Dec-12-2015
+
+// startOfDatataking() will figure out whether we've started taking
+// data either by seeing that the run number's incremented since the
+// last time it was called (implying the start transition's occurred)
+// or the subrun number's incremented (implying the resume
+// transition's occurred). On the first call to the function, the
+// "last checked" values of run and subrun are set to 0, guaranteeing
+// that the first call will return true
+
+bool lbne::PennReceiver::startOfDatataking() {
+
+  static int subrun_at_last_check = 0;
+  static int run_at_last_check = 0;
+
+  bool is_start = false;
+
+  if ( (run_number() > run_at_last_check) ||
+       (subrun_number() > subrun_at_last_check) ) {
+    is_start = true;
+  } 
+
+  subrun_at_last_check=subrun_number();
+  run_at_last_check=run_number();
+
+  return is_start;
+}
+
 
 // The following macro is defined in artdaq's GeneratorMacros.hh header
 DEFINE_ARTDAQ_COMMANDABLE_GENERATOR(lbne::PennReceiver) 

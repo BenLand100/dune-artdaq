@@ -74,6 +74,8 @@ public:
 	void release_empty_buffers(void);
 	void release_filled_buffers(void);
 
+        bool exception() const { return exception_.load(); }   // GBcopy
+
 	void set_run_start_time(uint64_t value);
 	uint64_t get_run_start_time() const {return run_start_time_;};
 private:
@@ -91,6 +93,7 @@ private:
 
 	void set_deadline(DeadlineIoObject io_object, unsigned int timeout_us);
 	void check_deadline(void);
+    void set_exception( bool exception ) { exception_.store( exception ); }  // GBcopy
 
 	int debug_level_;
 
@@ -112,6 +115,7 @@ private:
 	std::atomic<bool> run_receiver_;
 	std::atomic<bool> suspend_readout_;
 	std::atomic<bool> readout_suspended_;
+        std::atomic<bool> exception_;    // GBcopy
 
 	int recv_socket_;
 

@@ -22,6 +22,7 @@
 #include "fhiclcpp/fwd.h"
 #include "artdaq-core/Data/Fragments.hh" 
 #include "artdaq/Application/CommandableFragmentGenerator.hh"
+
 #include "lbne-raw-data/Overlays/MilliSliceFragment.hh"
 #include "lbne-raw-data/Overlays/FragmentType.hh"
 #include "lbne-artdaq/Generators/pennBoard/PennClient.hh"
@@ -78,10 +79,18 @@ typedef struct CalibChannelConfig {
 
     bool getNext_(artdaq::FragmentPtrs & output) override;
 
+    // GBcopy: JCF, Dec-11-2015 
+    // GBcopy: startOfDatataking will determine whether or not we've begun
+    // GBcopy: taking data, either because of a new run (from the start
+    // GBcopy: transition) or a new subrun (from the resume transition). It's
+    // GBcopy: designed to be used to determine whether no fragments are
+    // GBcopy: getting sent downstream (likely because of upstream hardware issues)
+    bool startOfDatataking();  // GBcopy
 
     // State transition methods, for future use, if/when needed
     void start() override; // {}
     void stop() override; // {}
+    void stopNoMutex() override;     //GBcopy
     void pause() override {}
     void resume() override {}
 
@@ -157,7 +166,9 @@ typedef struct CalibChannelConfig {
     //buffer sizes
     size_t raw_buffer_size_;
     uint32_t raw_buffer_precommit_;
+    uint32_t filled_buffer_release_max_;    // GBcopy
     size_t empty_buffer_low_mark_;
+    size_t filled_buffer_high_mark_;        // GBcopy
     bool   use_fragments_as_raw_buffer_;
 
     ////EMULATOR OPTIONS
@@ -190,17 +201,20 @@ typedef struct CalibChannelConfig {
     		                                   uint8_t* dest_addr, size_t dest_size);
     uint32_t validate_millislice_from_fragment_buffer(uint8_t* data_addr, size_t data_size, 
 #ifndef REBLOCK_PENN_USLICE
-						      uint32_t us_count,
+      uint32_t us_count,
 #endif
-						      uint16_t millislice_id,
-						      uint16_t payload_count, uint16_t payload_count_counter,
-						      uint16_t payload_count_trigger, uint16_t payload_count_timestamp,
-						      uint64_t end_timestamp, uint32_t width_in_ticks, uint32_t overlap_in_ticks);
+      uint16_t millislice_id,
+      uint16_t payload_count, uint16_t payload_count_counter,
+      uint16_t payload_count_trigger, uint16_t payload_count_timestamp,
+      uint64_t end_timestamp, uint32_t width_in_ticks, uint32_t overlap_in_ticks);
 
     void generate_config_frag(std::ostringstream& config_frag);
     void generate_config_frag_emulator(std::ostringstream& config_frag);
 
     std::string instance_name_for_metrics_;
+
+    std::chrono::high_resolution_clock::time_point last_buffer_received_time_;
+    uint32_t data_timeout_usecs_;
   };
 
 }
