@@ -551,6 +551,7 @@ void lbne::PennDataReceiver::do_read(void)
 
   // The data should not go
   // Start the asynchronous receive operation into the (existing) current raw buffer.
+  // FIXME: This is not correct. Nothing enforces the data to arrive in the correct size
   data_socket_.async_receive(
       boost::asio::buffer(current_write_ptr_, next_receive_size_),
       [this](boost::system::error_code ec, std::size_t length)
