@@ -12,8 +12,8 @@ void SSPDAQ::EventPacket::DumpHeader(){
   if(peaksum & 0x00800000) {
     peaksum |= 0xFF000000;
   }
-  try {
-    lbne::DAQLogger::LogError("SSP_EventPacket")
+
+  lbne::DAQLogger::LogInfo("SSP_EventPacket")
     << "=====HEADER=======================================" << std::endl
     << "Header:                             " << header.header   << std::endl
     << "Length:                             " << header.length   << std::endl
@@ -38,29 +38,28 @@ void SSPDAQ::EventPacket::DumpHeader(){
     << "Internal timestamp:                 " << ((uint64_t)((uint64_t)header.intTimestamp[3] << 32)) + ((uint64_t)((uint64_t)header.intTimestamp[2]) << 16) + ((uint64_t)((uint64_t)header.intTimestamp[1])) <<" ("<<header.intTimestamp[3]<<" "<<header.intTimestamp[2]<<" "<<header.intTimestamp[1]<<")"<<std::endl 
     << "=================================================="<< std::endl
     << std::endl;
-  } catch (...) {}
 }
 
 void SSPDAQ::EventPacket::DumpEvent(){
-  try {
-    lbne::DAQLogger::LogError("SSP_EventPacket")<<"*****EVENT DUMP***********************************" <<std::endl<<std::endl;
-  } catch (...) {}
+
+  lbne::DAQLogger::LogInfo("SSP_EventPacket")<<"*****EVENT DUMP***********************************" <<std::endl<<std::endl;
 
   this->DumpHeader();
-  try {
-    lbne::DAQLogger::LogError("SSP_EventPacket")<<"=====ADC VALUES===================================" <<std::endl;
-  } catch (...) {}
+
+  lbne::DAQLogger::LogInfo("SSP_EventPacket")<<"=====ADC VALUES===================================" <<std::endl;
 
   unsigned int nADC=data.size()*2;
   unsigned short* adcs=reinterpret_cast<unsigned short*>(&(data[0]));
+
+  std::stringstream adcstream;
+
   for(unsigned int i=0;i<nADC;++i){
-    try {
-    lbne::DAQLogger::LogError("SSP_EventPacket")<<adcs[i]<<", ";
-    } catch (...) {}
+
+    adcstream << adcs[i] << ", ";
   }
 
-  try {
-    lbne::DAQLogger::LogError("SSP_EventPacket")<<std::endl<<"**************************************************" 
-		      <<std::endl<<std::endl;
-  } catch (...) {}
+  lbne::DAQLogger::LogInfo("SSP_EventPacket")<< adcstream.str() ;
+
+  lbne::DAQLogger::LogInfo("SSP_EventPacket")<<std::endl<<"**************************************************" 
+					     <<std::endl<<std::endl;
 }
