@@ -16,6 +16,7 @@
 #include <boost/asio/io_service.hpp>
 #include <boost/asio/deadline_timer.hpp>
 #include <boost/lexical_cast.hpp>
+#include <atomic>
 
 #include "lbne-artdaq/Generators/pennBoard/PennCompileOptions.hh"
 #include "messagefacility/MessageLogger/MessageLogger.h"
@@ -37,6 +38,7 @@ namespace lbne {
 		void send_xml(std::string const & xml_frag,std::string & xml_answer);
 		template<class T> void set_param(std::string const & name, T const & value, std::string const & );
 
+		bool exception() const {return exception_.load();};
 	private:
 
 		std::size_t send(std::string const & send_str);
@@ -51,11 +53,13 @@ namespace lbne {
 				const boost::system::error_code &error_code, std::size_t length,
 				boost::system::error_code* output_error_code, std::size_t* output_length);
 
+    void set_exception( bool exception ) { exception_.store( exception ); }
+
 		boost::asio::io_service     io_service_;
 		tcp::socket                 socket_;
 		boost::asio::deadline_timer deadline_;
 		unsigned int                timeout_usecs_;
-
+		std::atomic<bool>           exception_;
 	};
 
 	template<class T>
