@@ -31,7 +31,9 @@ public:
   // Defualt constructor (may come in handy!)
   RCEFormatter() {}
   RCEFormatter(art::Handle<artdaq::Fragments> const& rawRCE, bool scopeMode);
+  void AnalyseADCs(art::Handle<artdaq::Fragments> const& rawRCE, int firstMicroslice, int lastMicroslice);
   std::vector<std::vector<int> > const& ADCVector() const { return fADCs; }
+  std::vector<std::vector<int> > const& EVDADCVector() const { return fEVDADCs; }
   std::vector<std::vector<unsigned long> > const& TimestampVector() const { return fTimestamps; }
   uint32_t const& ScopeChannel() const { return fScopeChannel; }
   std::vector<int> const& NumBlocks() const { return fWindowingNumBlocks; }
@@ -39,6 +41,7 @@ public:
   std::vector<std::vector<short> > const& BlockSize() const { return fWindowingBlockSize; }
 
   int NumRCEs;
+  int FirstMicroslice;
   bool HasData;
   std::vector<std::string> RCEsWithData;
 
@@ -48,6 +51,7 @@ private:
   void Windowing();
 
   std::vector<std::vector<int> > fADCs;
+  std::vector<std::vector<int> > fEVDADCs;
   std::vector<std::vector<unsigned long> > fTimestamps;
   uint32_t fScopeChannel;
 
