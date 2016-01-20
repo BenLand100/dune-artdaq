@@ -67,10 +67,21 @@ void lbne::SSP::ConfigureDevice(fhicl::ParameterSet const& ps){
   fhicl::ParameterSet hardwareConfig( ps.get<fhicl::ParameterSet>("HardwareConfig") );
   std::vector<std::string> hcKeys=hardwareConfig.get_keys();
 
+  //Special case for channel_control register - first we
+  //will get the literal register values, and then look
+  //for logical settings in the .fcl and replace bits as appropriate.
+  std::vector<unsigned int> chControlReg(12,0);
+  bool haveChannelControl=false;
+
   for(auto hcIter=hcKeys.begin();hcIter!=hcKeys.end();++hcIter){
     
+    //Deal with this later on
+    if(!hcIter->compare("ChannelControl")){
+      haveChannelControl=true;
+    }
+
     //Expect to see a Literals section; parse these literal registers
-    if(!hcIter->compare("Literals")){
+    else if(!hcIter->compare("Literals")){
       fhicl::ParameterSet literalRegisters( hardwareConfig.get<fhicl::ParameterSet>("Literals") );
       std::vector<std::string> lrKeys=literalRegisters.get_keys();
 
@@ -85,6 +96,26 @@ void lbne::SSP::ConfigureDevice(fhicl::ParameterSet const& ps){
 	device_interface_->SetRegister(regAddress,regVal,regMask);
       }
     }//End Processing of Literals
+
+    //Intercept channel_control setting so that we can replace bits with logical values later...
+    else if(!hcIter->substr(4).compare("channel_control")){
+      if(!hcIter->substr(0,4).compare("ELE_")){
+	std::vector<unsigned int> vals=hardwareConfig.get<std::vector<unsigned int> >(*hcIter);
+	chControlReg[vals[0]]=vals[1];
+      }
+      else if(!hcIter->substr(0,4).compare("ALL_")){ //All array elements set to same value
+	unsigned int val=hardwareConfig.get<unsigned int>(*hcIter);
+	for(unsigned int i=0;i<12;++i){
+	  chControlReg[i]=val;
+	}
+      }
+      else if(!hcIter->substr(0,4).compare("ARR_")){ //All array elements individually
+	std::vector<unsigned int> vals=hardwareConfig.get<std::vector<unsigned int> >(*hcIter);
+	for(unsigned int i=0;i<12;++i){
+	  chControlReg[i]=vals[i];
+	}
+      }
+    }
 
     else if(!hcIter->substr(0,4).compare("ELE_")){ //Single array element
       std::vector<unsigned int> vals=hardwareConfig.get<std::vector<unsigned int> >(*hcIter);
@@ -101,6 +132,84 @@ void lbne::SSP::ConfigureDevice(fhicl::ParameterSet const& ps){
     else{ //Individual register not in an array
       unsigned int val=hardwareConfig.get<unsigned int>(*hcIter);
       device_interface_->SetRegisterByName(*hcIter,val);
+    }
+  }
+
+  //Modify channel control registers and send to hardware
+  if(haveChannelControl){
+    fhicl::ParameterSet channelControl( hardwareConfig.get<fhicl::ParameterSet>("ChannelControl"));
+    this->BuildChannelControlRegisters(channelControl,chControlReg);
+  }
+  device_interface_->SetRegisterArrayByName("channel_control",chControlReg);
+}
+
+void lbne::SSP::BuildChannelControlRegisters(fhicl::ParameterSet const& ps,std::vector<unsigned int>& reg){
+  std::vector<std::string> ccKeys=ps.get_keys();
+
+  for(auto ccIter=ccKeys.begin();ccIter!=ccKeys.end();++ccIter){
+
+    //External trigger mode
+    if(!ccIter->compare("ExtTriggerMode")){
+      unsigned int val=ps.get<unsigned int>(*ccIter);
+      switch(val){
+      case 0:                          //No external trigger
+	for(unsigned int i=0;i<12;++i){
+	  reg[i]=reg[i]&0xFFFFF0FF;
+	}
+	break;
+      case 1:                          //Edge trigger on front panel
+	for(unsigned int i=0;i<12;++i){
+	  reg[i]=reg[i]&0xFFFF6FFF;
+	}
+	break;
+      case 2:                          //Use front panel as gate
+	for(unsigned int i=0;i<12;++i){
+	  reg[i]=reg[i]&0xFFFF9FFF;
+	}
+	break;
+      case 3:                          //Timestamp trigger
+	for(unsigned int i=0;i<12;++i){
+	  reg[i]=reg[i]&0xFFFFCFFF;
+	}
+	break;
+      default:
+	try {
+	  DAQLogger::LogError("SSP_SSP_generator")<<"Error: invalid value for external trigger source setting!"<<std::endl;
+	} catch (...) {}
+	throw SSPDAQ::EDAQConfigError("");
+      }
+    }
+    else if(!ccIter->compare("LEDPolarity")){
+      unsigned int val=ps.get<unsigned int>(*ccIter);
+      switch(val){
+      case 0:                          //Negative edge
+	for(unsigned int i=0;i<12;++i){
+	  reg[i]=reg[i]&0xFFFFFBFF;
+	}
+	break;
+      case 1:                          //Positive edge
+	for(unsigned int i=0;i<12;++i){
+	  reg[i]=reg[i]&0xFFFFF7FF;
+	}
+	break;
+      default:
+	try {
+	  DAQLogger::LogError("SSP_SSP_generator")<<"Error: invalid value for trigger polarity setting!"<<std::endl;
+	} catch (...) {}
+	throw SSPDAQ::EDAQConfigError("");
+      }
+    }
+    else if(!ccIter->compare("TimestampRate")){
+      unsigned int val=ps.get<unsigned int>(*ccIter);
+      if(val>7){
+	try {
+	  DAQLogger::LogError("SSP_SSP_generator")<<"Error: invalid value for timestamp rate setting!"<<std::endl;
+	} catch (...) {}
+	throw SSPDAQ::EDAQConfigError("");
+      }
+      for(unsigned int i=0;i<12;++i){
+	reg[i]=reg[i]&(0xFFFFFF1F+2*val);
+      }
     }
   }
 }

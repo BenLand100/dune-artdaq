@@ -58,6 +58,8 @@ namespace lbne {
 
     void ConfigureDAQ(fhicl::ParameterSet const & ps);
 
+    void BuildChannelControlRegisters(fhicl::ParameterSet const& ps,std::vector<unsigned int>& reg);
+
     //    virtual void pause();
 
     //    virtual void resume();
