@@ -32,6 +32,8 @@ namespace OnlineMonitoring {
   const unsigned int NSSPChannels    = 84;
   const unsigned int NSSPs           = 7;
   const int          EventRate       = 200; //Hz
+  //NFB: What is the sampling period? Isn't the millislice supposed to be 5ms long?
+  //     that would be 0.005 s = 5000 us
   const double       SamplingPeriod  = 0.5; //us
   const TString PathDelimiter = "_";
 
@@ -40,6 +42,10 @@ namespace OnlineMonitoring {
     static int const TriggerWordSize = 32;
   }
 
+  //NFB: Not sure if I understand this logic either.
+  // the positions should not be hardcoded from the bit locations. One problem with doing this is
+  // the risk of getting into trouble due to endianess. Better to cast and then use the lbne::PennMicroSlice::Payload_Counter
+  // structure to get the exact data.
   namespace CounterPos {
     // Hard-code all the positions for each counter in one place
     // The numbers in each vector are the bit numbers corresponding to the counter position in the payload
@@ -61,11 +67,22 @@ namespace OnlineMonitoring {
     const int LowerX = -50, UpperX = 500;
   }
 
+
+
+  // what is this needed for? The PTB hit ignore time is done on purpose.
+  // It should not go into any calculations
   const long PTBHitIgnoreTime = 7; //In nova timestamp units.
-  //The coversion between nova and normal time is 1 timestamp:(16.625) ns.  The ignore time needs to be 400ns so its calculated in nova units as (400)/57.1 = 7 ticks
 
-  const double NNanoSecondsPerNovaTick = 57.1;  //This value is used to calculate PTBHitIgnoreTime above
+  //The coversion between nova and normal time is 1 timestamp:(16.625) ns.
+  // The ignore time needs to be 400ns so its calculated in nova units as (400)/57.1 = 7 ticks
+  //const double NNanoSecondsPerNovaTick = 57.1;  //This value is used to calculate PTBHitIgnoreTime above
 
+  //NFB: Don't understand the logic above. The ignore time should not be used at all
+  // using it will obviously yield the wrong number of counter rates.
+  const double NNanoSecondsPerNovaTick = 16.625;  //This value is used to calculate PTBHitIgnoreTime above
+
+
+  //NFB: A full timestamp should be used in this pair or values will be misused.
   typedef std::pair<lbne::PennMicroSlice::Payload_Header::short_nova_timestamp_t, std::bitset<TypeSizes::TriggerWordSize> > PTBTrigger;
 
   const std::vector<std::string> DAQComponents = {"RCE00","RCE01","RCE02","RCE03","RCE04","RCE05","RCE06","RCE07","RCE08","RCE09","RCE10","RCE11","RCE12","RCE13","RCE14","RCE15",
