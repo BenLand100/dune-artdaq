@@ -30,7 +30,7 @@ cet_cmake_env()
 # IS available); 0MQ is used so lbne-artdaq code can send information
 # up to RunControl
 
-set (ZEROMQ_IGNORED "FALSE")
+set (ZEROMQ_IGNORED "TRUE")
 
 if (NOT ZEROMQ_IGNORED) 
 message(STATUS "Requiring 0MQ libraries be available for build" )

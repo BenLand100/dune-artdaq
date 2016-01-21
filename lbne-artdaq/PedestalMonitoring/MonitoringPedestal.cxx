@@ -370,12 +370,12 @@ int PedestalMonitoring::MonitoringPedestal::RCEMonitoring(RCEFormatter const& rc
                     << run << ", " << int(pathology) << std::endl;      
       
       if(pathology){
+        badlist << ichannel << std::endl;
 	hADC[ichannel]->Write();
 	hADCTotal[ichannel]->Write();
 	hWaveform[ichannel]->Write();
         hMeanPiece[ichannel]->Write();
 	hRMSPiece[ichannel]->Write();
-        badlist << ichannel << std::endl;
       }
 
       MeanPiece.clear();
