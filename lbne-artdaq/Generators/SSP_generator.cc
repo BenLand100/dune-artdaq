@@ -159,17 +159,17 @@ void lbne::SSP::BuildChannelControlRegisters(fhicl::ParameterSet const& ps,std::
 	break;
       case 1:                          //Edge trigger on front panel
 	for(unsigned int i=0;i<12;++i){
-	  reg[i]=reg[i]&0xFFFF6FFF;
+	  reg[i]=(reg[i]&0xFFFF0FFF)+0x00006000;
 	}
 	break;
       case 2:                          //Use front panel as gate
 	for(unsigned int i=0;i<12;++i){
-	  reg[i]=reg[i]&0xFFFF9FFF;
+	  reg[i]=(reg[i]&0xFFFF0FFF)+0x00009000;
 	}
 	break;
       case 3:                          //Timestamp trigger
 	for(unsigned int i=0;i<12;++i){
-	  reg[i]=reg[i]&0xFFFFCFFF;
+	  reg[i]=(reg[i]&0xFFFF0FFF)+0x0000C000;
 	}
 	break;
       default:
@@ -179,18 +179,22 @@ void lbne::SSP::BuildChannelControlRegisters(fhicl::ParameterSet const& ps,std::
 	throw SSPDAQ::EDAQConfigError("");
       }
     }
-    else if(!ccIter->compare("LEDPolarity")){
+    else if(!ccIter->compare("LEDTrigger")){
       unsigned int val=ps.get<unsigned int>(*ccIter);
       switch(val){
-      case 0:                          //Negative edge
+      case 1:                          //Negative edge
 	for(unsigned int i=0;i<12;++i){
-	  reg[i]=reg[i]&0xFFFFFBFF;
+	  reg[i]=(reg[i]&0x7FFFF3FF)+0x80000800;
 	}
 	break;
-      case 1:                          //Positive edge
+      case 2:                          //Positive edge
 	for(unsigned int i=0;i<12;++i){
-	  reg[i]=reg[i]&0xFFFFF7FF;
+	  reg[i]=(reg[i]&0x7FFFF3FF)+0x80000400;
 	}
+      case 3:
+	for(unsigned int i=0;i<12;++i){//Disabled
+          reg[i]=reg[i]&0x7FFFF3FF;
+        }
 	break;
       default:
 	try {
@@ -208,7 +212,7 @@ void lbne::SSP::BuildChannelControlRegisters(fhicl::ParameterSet const& ps,std::
 	throw SSPDAQ::EDAQConfigError("");
       }
       for(unsigned int i=0;i<12;++i){
-	reg[i]=reg[i]&(0xFFFFFF1F+2*val);
+	reg[i]=(reg[i]&0xFFFFFF1F)+0x20*val;
       }
     }
   }
