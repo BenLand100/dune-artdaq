@@ -154,7 +154,7 @@ void lbne::SSP::BuildChannelControlRegisters(fhicl::ParameterSet const& ps,std::
       switch(val){
       case 0:                          //No external trigger
 	for(unsigned int i=0;i<12;++i){
-	  reg[i]=reg[i]&0xFFFFF0FF;
+	  reg[i]=reg[i]&0xFFFF0FFF;
 	}
 	break;
       case 1:                          //Edge trigger on front panel
