@@ -436,7 +436,7 @@ void lbne::PennDataReceiver::do_read(void)
         if (!buffer_available)
         {
            if ((buffer_retries > 0) && ((buffer_retries % buffer_retry_report_interval) == 0)) {
-            DAQLogger::LogWarning("PennDataReceiver") << "lbne::RceDataReceiver::receiverLoop: no buffers available on commit queue, retrying ("
+            DAQLogger::LogWarning("PennDataReceiver") << "lbne::PennDataReceiver::receiverLoop: no buffers available on commit queue, retrying ("
               << buffer_retries << " attempts so far)";
            }
            buffer_retries++;
@@ -445,14 +445,14 @@ void lbne::PennDataReceiver::do_read(void)
               if (!suspend_readout_.load()) {
                  if (!exception_.load() ) {
                    try {
-                       DAQLogger::LogError("PennDataReceiver") << "lbne::RceDataReceiver::receiverLoop: too many buffer retries, signalling an exception";
+                       DAQLogger::LogError("PennDataReceiver") << "lbne::PennDataReceiver::receiverLoop: too many buffer retries, signalling an exception";
                    } catch (...) { set_exception(true); }
                  }
               }
            }
         } else {
            if (buffer_retries > buffer_retry_report_interval) {
-              RECV_DEBUG(1) << "lbne::RceDataReceiver::receiverLoop: obtained new buffer after " << buffer_retries << " retries";
+              RECV_DEBUG(1) << "lbne::PennDataReceiver::receiverLoop: obtained new buffer after " << buffer_retries << " retries";
            }
         }
 
