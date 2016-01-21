@@ -191,7 +191,7 @@ void lbne::SSP::BuildChannelControlRegisters(fhicl::ParameterSet const& ps,std::
 	for(unsigned int i=0;i<12;++i){
 	  reg[i]=(reg[i]&0x7FFFF3FF)+0x80000400;
 	}
-      case 3:
+      case 0:
 	for(unsigned int i=0;i<12;++i){//Disabled
           reg[i]=reg[i]&0x7FFFF3FF;
         }
