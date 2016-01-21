@@ -378,9 +378,6 @@ int PedestalMonitoring::MonitoringPedestal::RCEMonitoring(RCEFormatter const& rc
         badlist << ichannel << std::endl;
       }
 
-      if(pathology)
-	badlist << ichannel << std::endl;
-      
       MeanPiece.clear();
       RMSPiece.clear();
       
