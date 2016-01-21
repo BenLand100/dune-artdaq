@@ -143,8 +143,8 @@ int PedestalMonitoring::MonitoringPedestal::RCEMonitoring(RCEFormatter const& rc
 	
 	ondatabase_file << ichannel << ", 0, 0, 0, 0, " << run
 		    << ", 1"<< std::endl;
-	offdatabase_file << offchannels.at(ichannel) << ", 0, 0, 0, 0, " << run
-			<< ", 1"<< std::endl;
+	//offdatabase_file << offchannels.at(ichannel) << ", 0, 0, 0, 0, " << run
+	//<< ", 1"<< std::endl;
 
 	continue;
       }
@@ -360,9 +360,9 @@ int PedestalMonitoring::MonitoringPedestal::RCEMonitoring(RCEFormatter const& rc
                   << noise_mean << ", " << pedestalerr << ", " << noiseerr 
 		  << ", " << run << ", " << int(pathology) << std::endl;
       
-      ondatabase_file << offchannels.at(ichannel) << ", " << pedestal_mean << ", "
-		      << noise_mean << ", " << pedestalerr << ", " << noiseerr
-		      << ", " << run << ", " << int(pathology) << std::endl;
+      //offdatabase_file << offchannels.at(ichannel) << ", " << pedestal_mean << ", "
+      //	      << noise_mean << ", " << pedestalerr << ", " << noiseerr
+      //	      << ", " << run << ", " << int(pathology) << std::endl;
 
       nosignal_file << Form("%4d",ichannel) << ", " << Form("%.1f", mean) << ", " << Form("%.1f", rms)
                     <<", " << Form("%.1f",meanerr)  << ", " << Form("%.1f",rmserr) << ", "
