@@ -440,7 +440,7 @@ void lbne::PennDataReceiver::do_read(void)
               << buffer_retries << " attempts so far)";
            }
            buffer_retries++;
-
+	   
            if (buffer_retries > max_retries) {
               if (!suspend_readout_.load()) {
                  if (!exception_.load() ) {
@@ -480,7 +480,7 @@ void lbne::PennDataReceiver::do_read(void)
     // Attempt to obtain a raw buffer to receive data into
     unsigned int buffer_retries = 0;
     bool buffer_available;
-    const unsigned int max_buffer_retries = 10;   // Used in the old code only
+    const unsigned int max_buffer_retries = 1000;   // Used in the old code only
 
     do
     {
@@ -647,9 +647,9 @@ void lbne::PennDataReceiver::do_read(void)
    */
   //data_socket_.async_receive(
   boost::asio::async_read(data_socket_,
-      boost::asio::buffer(current_write_ptr_, next_receive_size_),
-      [this](boost::system::error_code ec, std::size_t length)
-      {
+			  boost::asio::buffer(current_write_ptr_, next_receive_size_),
+			  [this](boost::system::error_code ec, std::size_t length)
+			  {
     if (!ec)
     {
       RECV_DEBUG(4) << "Received " << length << " bytes on socket";
@@ -662,7 +662,7 @@ void lbne::PennDataReceiver::do_read(void)
     {
       if (ec == boost::asio::error::eof)
       {
-        DAQLogger::LogWarning("PennDataReceiver") << "Client socket closed the connection";
+        DAQLogger::LogInfo("PennDataReceiver") << "Client socket closed the connection";
         this->do_accept();
       }
       else if (ec == boost::asio::error::operation_aborted)

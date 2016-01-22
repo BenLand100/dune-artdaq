@@ -238,18 +238,18 @@ void lbne::PennClient::send_xml(std::string const & xml_frag)
         else if (std::string((const char*)(cur_node->name)) == "run_statistics") {
           xmlAttrPtr pAttr = cur_node->properties;
           std::ostringstream msg;
-          msg << "PTB end of run statistics : \n\n";
+          msg << "PTB end of run statistics : " << std::endl;
 
           while(pAttr) {
             if (pAttr->type == XML_ATTRIBUTE_NODE) {
               std::string attr_name((const char*)pAttr->name);
               std::string attr_value((const char*)pAttr->children->content);
 
-              msg << " [" << std::setw(25) << attr_name << " ] : " << std::setw(10) << attr_value << "\n";
+              msg << " [" << std::setw(25) << attr_name << " ] : " << std::setw(10) << attr_value << "\n" << std::endl;
             }
             pAttr = pAttr->next;
           }
-          DAQLogger::LogInfo("PennClient") << msg.str() << "\n\n";
+          DAQLogger::LogInfo("PennClient") << msg.str() << "\n\n" << std::endl << std::endl;
 
         } else {
           DAQLogger::LogWarning("PennClient") << "Got an unrecognized answer from PTB with name " << (const char*)(cur_node->name);
