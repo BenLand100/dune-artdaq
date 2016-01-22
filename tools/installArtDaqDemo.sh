@@ -98,7 +98,9 @@ function install_package {
 . $products_dir/setup
 
 install_package artdaq-core v1_04_23 e7 s15
-install_package lbne-raw-data v1_03_17 e7 s15 online
+
+# The e2b221a378ceeeccc64fda9cd1598a3a9cd9d34f commit includes the Jan-22-2016 merge of Nuno's feature/penn_board_reader work
+install_package lbne-raw-data e2b221a378ceeeccc64fda9cd1598a3a9cd9d34f e7 s15 online
 
 install_package artdaq v1_12_14 e7 s15 eth
 
