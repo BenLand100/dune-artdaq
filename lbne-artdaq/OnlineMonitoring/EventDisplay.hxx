@@ -24,7 +24,7 @@
 class OnlineMonitoring::EventDisplay {
 public:
 
-  void MakeEventDisplay(RCEFormatter const& rceformatter, ChannelMap const& channelMap, double driftVelocity, int event, TString const& evdSavePath);
+  void MakeEventDisplay(RCEFormatter const& rceformatter, ChannelMap const& channelMap, double driftVelocity, int event, TString const& evdSavePath, int nEVD);
   void SaveEventDisplay();
   int GetCollectionChannel(int offlineCollectionChannel, int apa, int drift);
   double GetZ(int collectionChannel);

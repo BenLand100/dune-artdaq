@@ -12,7 +12,8 @@ void OnlineMonitoring::EventDisplay::MakeEventDisplay(RCEFormatter const& rcefor
 						      ChannelMap const& channelMap,
 						      double driftVelocity,
 						      int event,
-						      TString const& evdSavePath) {
+						      TString const& evdSavePath,
+						      int nEVD) {
 
   /// Makes crude online event display and saves it as an image to be displayed on the web
 
@@ -50,7 +51,7 @@ void OnlineMonitoring::EventDisplay::MakeEventDisplay(RCEFormatter const& rcefor
   line.SetLineStyle(2);
   line.SetLineWidth(4);
   line.DrawLine(EVD::LowerZ,0,EVD::UpperZ,0);
-  evdCanvas->SaveAs(evdSavePath+TString("evd.png"));//+ImageType);
+  evdCanvas->SaveAs(evdSavePath+TString("evd")+TString(std::to_string(nEVD))+TString(".png"));//+ImageType);
 
   // Add event file
   ofstream tmp((evdSavePath+TString("event")).Data());

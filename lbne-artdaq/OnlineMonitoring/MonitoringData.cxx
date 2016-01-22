@@ -99,7 +99,8 @@ void OnlineMonitoring::MonitoringData::FillBeforeWriting() {
 
   /// Fills all data objects which require filling just before writing out
 
-  hSSPTriggerRate->Fill(fSSPTriggers/(double)fSSPFragments);
+  for (unsigned int sspChan = 0; sspChan < NSSPChannels; ++sspChan)
+    hSSPTriggerRate->Fill(sspChan, fNSSPTriggers.at(sspChan)/(double)fNSSPFragments.at(sspChan));
 
 }
 
@@ -468,8 +469,8 @@ void OnlineMonitoring::MonitoringData::SSPMonitoring(SSPFormatter const& sspform
 
     const int channel = channelIt->first;
     const std::vector<Trigger> triggers = channelIt->second;
-    ++fSSPFragments[channel];
-    fSSPFragments[channel] += triggers.size();
+    ++fNSSPFragments[channel];
+    fNSSPTriggers[channel] += triggers.size();
 
     // Loop over triggers
     for (std::vector<Trigger>::const_iterator triggerIt = triggers.begin(); triggerIt != triggers.end(); ++triggerIt) {
