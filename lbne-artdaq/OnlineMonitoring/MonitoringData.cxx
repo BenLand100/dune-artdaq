@@ -602,13 +602,10 @@ void OnlineMonitoring::MonitoringData::PTBMonitoring(PTBFormatter const& ptb_for
   // NFB: Careful that with all counters on we might run into pretty large payload numbers (in the hundreds)
   //      Be sure that the range is large enough.
   hPTBBlockLength->Fill(payloads.size());
-  for (std::vector<unsigned int>::const_iterator payloadIt = payloads.begin(); payloadIt != payloads.end(); ++payloadIt) {
-    if (*payloadIt == lbne::PennMicroSlice::DataTypeCounter)      hPTBPayloadType->Fill("Counter",1);
+  for (std::vector<lbne::PennMicroSlice::Payload_Header::data_packet_type_t>::const_iterator payloadIt = payloads.begin(); payloadIt != payloads.end(); ++payloadIt) {
+    if (*payloadIt == lbne::PennMicroSlice::DataTypeCounter) hPTBPayloadType->Fill("Counter",1);
     else if (*payloadIt == lbne::PennMicroSlice::DataTypeTrigger) hPTBPayloadType->Fill("Trigger",1);
-    //FIXME: Calibrations should have their own entry, even though technically they are considered as
-    // triggers
-    //NFB: Checksum payloads never make it to the millislice
-    //else if (*payloadIt == 4) hPTBPayloadType->Fill("Checksum",1);
+    //else if (*payloadIt == lbne::PennMicroSlice::DataTypeCalibration) hPTBPayloadType->Fill("Calibration",1);
     else if (*payloadIt == lbne::PennMicroSlice::DataTypeTimestamp) hPTBPayloadType->Fill("Timestamp",1);
     else if (*payloadIt == lbne::PennMicroSlice::DataTypeWarning)   hPTBPayloadType->Fill("Warning",1);
     else mf::LogWarning("Monitoring") << "Warning: payload type not recognised";
@@ -619,99 +616,80 @@ void OnlineMonitoring::MonitoringData::PTBMonitoring(PTBFormatter const& ptb_for
   double hit_rate = 0;
   uint32_t counterNumber = 0;
 
-  // NFB: There are a total of 97 counters, even though not all of them are on
-  for (uint32_t i = 0; i < 98; ++i) {
+  // There are a total of 97 counters (even though not all will be on)
+  for (uint32_t i = 0; i <= 97; ++i) {
 
     ptb_formatter.AnalyzeCounter(i,activation_time,hit_rate);
 
     // Now the structures are filled according to the group they belong to
-    // This call is independent of the counter type
-    // always returns the index inside its own type
+    // This call is independent of the counter type; always returns the index inside its own type
     counterNumber = lbne::PennMicroSlice::Payload_Counter::get_counter_type_pos(i);
 
     switch (lbne::PennMicroSlice::Payload_Counter::get_counter_type(i)) {
-      case lbne::PennMicroSlice::Payload_Counter::counter_type_tsu_wu:
-        hPTBTSUCounterHitRateWU->Fill(counterNumber,hit_rate);
-        hPTBTSUCounterActivationTimeWU->Fill(counterNumber,activation_time);
-        break;
-      case lbne::PennMicroSlice::Payload_Counter::counter_type_tsu_el:
-        hPTBTSUCounterHitRateEL->Fill(counterNumber,hit_rate);
-        hPTBTSUCounterActivationTimeEL->Fill(counterNumber,activation_time);
-        break;
-      case lbne::PennMicroSlice::Payload_Counter::counter_type_tsu_extra:
-        hPTBTSUCounterHitRateExtra->Fill(counterNumber,hit_rate);
-        hPTBTSUCounterActivationTimeExtra->Fill(counterNumber,activation_time);
-        break;
-      case lbne::PennMicroSlice::Payload_Counter::counter_type_tsu_nu:
-        hPTBTSUCounterHitRateNU->Fill(counterNumber,hit_rate);
-        hPTBTSUCounterActivationTimeNU->Fill(counterNumber,activation_time);
-        break;
-      case lbne::PennMicroSlice::Payload_Counter::counter_type_tsu_sl:
-        hPTBTSUCounterHitRateSL->Fill(counterNumber,hit_rate);
-        hPTBTSUCounterActivationTimeSL->Fill(counterNumber,activation_time);
-        break;
-      case lbne::PennMicroSlice::Payload_Counter::counter_type_tsu_nl:
-        hPTBTSUCounterHitRateNL->Fill(counterNumber,hit_rate);
-        hPTBTSUCounterActivationTimeNL->Fill(counterNumber,activation_time);
-        break;
-      case lbne::PennMicroSlice::Payload_Counter::counter_type_tsu_su:
-        hPTBTSUCounterHitRateSU->Fill(counterNumber,hit_rate);
-        hPTBTSUCounterActivationTimeSU->Fill(counterNumber,activation_time);
-        break;
-      case lbne::PennMicroSlice::Payload_Counter::counter_type_bsu_rm:
-        hPTBBSUCounterHitRateRM->Fill(counterNumber,hit_rate);
-        hPTBBSUCounterActivationTimeRM->Fill(counterNumber,activation_time);
-        break;
-      case lbne::PennMicroSlice::Payload_Counter::counter_type_bsu_cu:
-        hPTBBSUCounterHitRateCU->Fill(counterNumber,hit_rate);
-        hPTBBSUCounterActivationTimeCU->Fill(counterNumber,activation_time);
-        break;
-      case lbne::PennMicroSlice::Payload_Counter::counter_type_bsu_cl:
-        hPTBBSUCounterHitRateCL->Fill(counterNumber,hit_rate);
-        hPTBBSUCounterActivationTimeCL->Fill(counterNumber,activation_time);
-        break;
-      case lbne::PennMicroSlice::Payload_Counter::counter_type_bsu_rl:
-        hPTBBSUCounterHitRateRL->Fill(counterNumber,hit_rate);
-        hPTBBSUCounterActivationTimeRL->Fill(counterNumber,activation_time);
-        break;
-      default:
-        break; // do nothing
+
+    case lbne::PennMicroSlice::Payload_Counter::counter_type_tsu_wu:
+      hPTBTSUCounterHitRateWU->Fill(counterNumber+1,hit_rate);
+      hPTBTSUCounterActivationTimeWU->Fill(counterNumber+1,activation_time);
+      break;
+    case lbne::PennMicroSlice::Payload_Counter::counter_type_tsu_el:
+      hPTBTSUCounterHitRateEL->Fill(counterNumber+1,hit_rate);
+      hPTBTSUCounterActivationTimeEL->Fill(counterNumber+1,activation_time);
+      break;
+    case lbne::PennMicroSlice::Payload_Counter::counter_type_tsu_extra:
+      hPTBTSUCounterHitRateExtra->Fill(counterNumber+1,hit_rate);
+      hPTBTSUCounterActivationTimeExtra->Fill(counterNumber+1,activation_time);
+      break;
+    case lbne::PennMicroSlice::Payload_Counter::counter_type_tsu_nu:
+      hPTBTSUCounterHitRateNU->Fill(counterNumber+1,hit_rate);
+      hPTBTSUCounterActivationTimeNU->Fill(counterNumber+1,activation_time);
+      break;
+    case lbne::PennMicroSlice::Payload_Counter::counter_type_tsu_sl:
+      hPTBTSUCounterHitRateSL->Fill(counterNumber+1,hit_rate);
+      hPTBTSUCounterActivationTimeSL->Fill(counterNumber+1,activation_time);
+      break;
+    case lbne::PennMicroSlice::Payload_Counter::counter_type_tsu_nl:
+      hPTBTSUCounterHitRateNL->Fill(counterNumber+1,hit_rate);
+      hPTBTSUCounterActivationTimeNL->Fill(counterNumber+1,activation_time);
+      break;
+    case lbne::PennMicroSlice::Payload_Counter::counter_type_tsu_su:
+      hPTBTSUCounterHitRateSU->Fill(counterNumber+1,hit_rate);
+      hPTBTSUCounterActivationTimeSU->Fill(counterNumber+1,activation_time);
+      break;
+    case lbne::PennMicroSlice::Payload_Counter::counter_type_bsu_rm:
+      hPTBBSUCounterHitRateRM->Fill(counterNumber+1,hit_rate);
+      hPTBBSUCounterActivationTimeRM->Fill(counterNumber+1,activation_time);
+      break;
+    case lbne::PennMicroSlice::Payload_Counter::counter_type_bsu_cu:
+      hPTBBSUCounterHitRateCU->Fill(counterNumber+1,hit_rate);
+      hPTBBSUCounterActivationTimeCU->Fill(counterNumber+1,activation_time);
+      break;
+    case lbne::PennMicroSlice::Payload_Counter::counter_type_bsu_cl:
+      hPTBBSUCounterHitRateCL->Fill(counterNumber+1,hit_rate);
+      hPTBBSUCounterActivationTimeCL->Fill(counterNumber+1,activation_time);
+      break;
+    case lbne::PennMicroSlice::Payload_Counter::counter_type_bsu_rl:
+      hPTBBSUCounterHitRateRL->Fill(counterNumber+1,hit_rate);
+      hPTBBSUCounterActivationTimeRL->Fill(counterNumber+1,activation_time);
+      break;
+    default:
+      break;
     }
+
   }
 
-  //NFB:  Why was this being done for each counter? This repeats the code tremendously
   // Fill the trigger hists
-  double trigger_rate = 0;
-  std::vector<lbne::PennMicroSlice::Payload_Trigger::trigger_type_t> trigger_types = {
-                                              lbne::PennMicroSlice::Payload_Trigger::TD,
-                                              lbne::PennMicroSlice::Payload_Trigger::TC,
-                                              lbne::PennMicroSlice::Payload_Trigger::TB,
-                                              lbne::PennMicroSlice::Payload_Trigger::TA};
-  std::vector<lbne::PennMicroSlice::Payload_Trigger::trigger_type_t> calib_types = {
-                                              lbne::PennMicroSlice::Payload_Trigger::C4,
-                                              lbne::PennMicroSlice::Payload_Trigger::C3,
-                                              lbne::PennMicroSlice::Payload_Trigger::C2,
-                                              lbne::PennMicroSlice::Payload_Trigger::C1};
-
-
-  std::vector<lbne::PennMicroSlice::Payload_Trigger::trigger_type_t>::iterator itMuon;
-  std::vector<lbne::PennMicroSlice::Payload_Trigger::trigger_type_t>::iterator itCalib;
-
-  for (uint32_t i = 0; i < trigger_types.size(); ++i ) {
-    ptb_formatter.AnalyzeMuonTrigger(trigger_types.at(i),trigger_rate);
-    hPTBTriggerRates->Fill(i+1,trigger_rate);
-    ptb_formatter.AnalyzeCalibrationTrigger(calib_types.at(i),trigger_rate);
-    hPTBTriggerRates->Fill(9-i,trigger_rate);
+  for (uint32_t i = 0; i < 4; ++i ) {
+    hPTBTriggerRates->Fill(i+1, ptb_formatter.AnalyzeMuonTrigger(PTBTrigger::Muon.at(i)));
+    hPTBTriggerRates->Fill(9-i,ptb_formatter.AnalyzeCalibrationTrigger(PTBTrigger::Calibration.at(i)));
   }
-  ptb_formatter.AnalyzeSSPTrigger(trigger_rate);
-  hPTBTriggerRates->Fill("SSP",trigger_rate);
-
+  hPTBTriggerRates->Fill("SSP", ptb_formatter.AnalyzeSSPTrigger());
 
   return;
 
 }
 
 #endif /*OLD_CODE*/
+
 void OnlineMonitoring::MonitoringData::WriteMonitoringData(int run, int subrun, int eventsProcessed, TString const& imageType) {
 
   /// Writes all the monitoring data currently saved in the data objects
@@ -957,14 +935,14 @@ void OnlineMonitoring::MonitoringData::MakeHistograms() {
 #ifdef OLD_CODE
   hPTBBlockLength = new TH1I("PTB__Payloads_Total_NumberPayloads_All","Total Number of Payloads_\"hist\"_none;Number of Payloads",400,0,400);
 #else
-  hPTBBlockLength = new TH1I("PTB__Payloads_Total_NumberPayloads_All","Total Number of Payloads_\"hist\"_none;Number of Payloads",400,0,400);
+  hPTBBlockLength = new TH1I("PTB__Payloads_Total_NumberPayloads_All","Total Number of Payloads_\"hist\"_none;Number of Payloads",1000,0,1000);
 #endif
   fFigureCaptions[hPTBBlockLength->GetName()] = "Number of payloads in each event (filled once per event)";
 
   hPTBPayloadType = new TH1I("PTB__Payloads_Type_PayloadType_All","Payload Type_\"hist\"_logy;Payload Type",5,1,6);
   hPTBPayloadType->GetXaxis()->SetBinLabel(1,"Counter");
   hPTBPayloadType->GetXaxis()->SetBinLabel(2,"Trigger");
-  hPTBPayloadType->GetXaxis()->SetBinLabel(3,"Checksum");
+  hPTBPayloadType->GetXaxis()->SetBinLabel(3,"Calibration");
   hPTBPayloadType->GetXaxis()->SetBinLabel(4,"Timestamp");
   hPTBPayloadType->GetXaxis()->SetBinLabel(5,"Self-test");
   fFigureCaptions[hPTBPayloadType->GetName()] = "Payload type (filled once per payload)";

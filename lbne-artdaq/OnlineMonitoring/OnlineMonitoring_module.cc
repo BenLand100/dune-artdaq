@@ -83,7 +83,6 @@ private:
   int fMicrosliceTriggerLength;
 
   double fDriftVelocity;
-  PTBTrigger fLastPTBTrigger;
 
 };
 
@@ -146,8 +145,7 @@ void OnlineMonitoring::OnlineMonitoring::analyze(art::Event const& evt) {
   // Create data formatter objects and fill monitoring data products
   RCEFormatter rceformatter(rawRCE, fScopeMonitoring);
   SSPFormatter sspformatter(rawSSP);
-  PTBFormatter ptbformatter(rawPTB, fLastPTBTrigger);
-  fLastPTBTrigger = ptbformatter.GetLastTrigger();
+  PTBFormatter ptbformatter(rawPTB);
 
   // Fill the data products in the monitoring data
   if (rawRCE.isValid()) {

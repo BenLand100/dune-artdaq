@@ -17,6 +17,8 @@
 
 #include "artdaq-core/Data/Fragments.hh"
 
+#include "messagefacility/MessageLogger/MessageLogger.h"
+
 #include <iostream>
 #include <iomanip>
 #include <vector>
@@ -122,9 +124,9 @@ public:
     fNTotalTicks(0) {}
   PTBFormatter(art::Handle<artdaq::Fragments> const& rawPTB);
   void AnalyzeCounter(uint32_t counter_index, lbne::PennMicroSlice::Payload_Timestamp::timestamp_t &activation_time, double &hit_rate) const;
-  void AnalyzeMuonTrigger(lbne::PennMicroSlice::Payload_Trigger::trigger_type_t trigger_number, double &trigger_rate) const;
-  void AnalyzeCalibrationTrigger(lbne::PennMicroSlice::Payload_Trigger::trigger_type_t trigger_number, double& trigger_rate) const;
-  void AnalyzeSSPTrigger(double& trigger_rate) const;
+  double AnalyzeMuonTrigger(lbne::PennMicroSlice::Payload_Trigger::trigger_type_t trigger_number) const;
+  double AnalyzeCalibrationTrigger(lbne::PennMicroSlice::Payload_Trigger::trigger_type_t trigger_number) const;
+  double AnalyzeSSPTrigger() const;
   uint32_t NumPayloads() const { return fPayloadTypes.size(); }
   std::vector<lbne::PennMicroSlice::Payload_Header::data_packet_type_t> Payloads() const { return fPayloadTypes; }
   long double GetTotalSeconds() { return fNTotalTicks * NNanoSecondsPerNovaTick/(1000*1000*1000); };
@@ -150,9 +152,10 @@ private:
 
 #else
   void CollectCounterBits(lbne::PennMicroSlice::Payload_Header *header,lbne::PennMicroSlice::Payload_Counter *trigger);
-  void CollectTrigger(lbne::PennMicroSlice::Payload_Header *header,lbne::PennMicroSlice::Payload_Trigger *trigger);
+  void CollectTrigger(lbne::PennMicroSlice::Payload_Trigger *trigger);
 #endif
 #ifdef OLD_CODE
+
   // Counters
   std::vector<std::bitset<TypeSizes::CounterWordSize> > fCounterBits;
   std::vector<unsigned long> fCounterTimes;

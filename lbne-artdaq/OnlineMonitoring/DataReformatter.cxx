@@ -610,6 +610,13 @@ void OnlineMonitoring::PTBFormatter::CollectMuonTrigger(uint8_t* payload, size_t
 
 }
 #else
+
+
+
+
+////////////// Nuno's code ////////////////
+
+
 OnlineMonitoring::PTBFormatter::PTBFormatter(art::Handle<artdaq::Fragments> const& rawPTB) {
 
   if (!rawPTB.isValid()) {
@@ -618,40 +625,22 @@ OnlineMonitoring::PTBFormatter::PTBFormatter(art::Handle<artdaq::Fragments> cons
   }
   PTBData = true;
 
-
   // Initialize the trigger rates
-
-  //NFB: Not sure if this is the best way to work with it.
-  // probably the best is to use the structures from lbne::PennMicroSlice::Payload_Trigger::trigger_type_t
-  std::vector<lbne::PennMicroSlice::Payload_Trigger::trigger_type_t> trigger_types = {lbne::PennMicroSlice::Payload_Trigger::TA,
-                                              lbne::PennMicroSlice::Payload_Trigger::TB,
-                                              lbne::PennMicroSlice::Payload_Trigger::TC,
-                                              lbne::PennMicroSlice::Payload_Trigger::TD};
-  std::vector<lbne::PennMicroSlice::Payload_Trigger::trigger_type_t> calib_types = {lbne::PennMicroSlice::Payload_Trigger::C1,
-                                              lbne::PennMicroSlice::Payload_Trigger::C2,
-                                              lbne::PennMicroSlice::Payload_Trigger::C3,
-                                              lbne::PennMicroSlice::Payload_Trigger::C4};
-
-//  std::vector<unsigned int> trigger_types = {1,2,4,8};
-  for (std::vector<unsigned int>::iterator triggerType = trigger_types.begin(); triggerType != trigger_types.end(); ++triggerType) {
-    fMuonTriggerRates[*triggerType] = 0;
-  }
-
-  for (std::vector<unsigned int>::iterator calibType = calib_types.begin(); calibType != calib_types.end(); ++calibType) {
-    fCalibrationTriggerRates[*calibType] = 0;
-  }
-
+  for (std::vector<lbne::PennMicroSlice::Payload_Trigger::trigger_type_t>::const_iterator m = PTBTrigger::Muon.begin(); m != PTBTrigger::Muon.end(); ++m)
+    fMuonTriggerRates[*m] = 0;
+  for (std::vector<lbne::PennMicroSlice::Payload_Trigger::trigger_type_t>::const_iterator c = PTBTrigger::Calibration.begin(); c != PTBTrigger::Calibration.end(); ++c)
+    fCalibrationTriggerRates[*c] = 0;
   fSSPTriggerRates = 0;
 
+  // Count the total ticks across the fragments
   unsigned long NTotalTicks = 0;
 
-  // loop over the fragments
+  // Loop over the fragments
   for (size_t idx = 0; idx < rawPTB->size(); ++idx) {
-    const auto& frag((*rawPTB)[idx]); // grab the fragment
 
-    //Grab the millislice fragment from the artdaq fragment
+    // Grab the millislice fragment from the artdaq fragment
+    const auto& frag((*rawPTB)[idx]);
     lbne::PennMilliSliceFragment msf(frag);
-
 
     // Count the types of each payload in the millislice
     // Actually, why are these needed?
@@ -664,76 +653,79 @@ OnlineMonitoring::PTBFormatter::PTBFormatter(art::Handle<artdaq::Fragments> cons
     NTotalTicks += msf.widthTicks();
     fNTotalTicks += msf.widthTicks();
 
-    lbne::PennMicroSlice::Payload_Header *word_header = nullptr;
-    lbne::PennMicroSlice::Payload_Counter *word_p_counter = nullptr;
-    lbne::PennMicroSlice::Payload_Timestamp *previous_timestamp = nullptr;
-    lbne::PennMicroSlice::Payload_Timestamp *future_timestamp_header = nullptr;
-    lbne::PennMicroSlice::Payload_Timestamp *future_timestamp = nullptr;
-    lbne::PennMicroSlice::Payload_Trigger *word_p_trigger = nullptr;
-    uint8_t* payload_data;
+    lbne::PennMicroSlice::Payload_Header*    word_header = nullptr;
+    lbne::PennMicroSlice::Payload_Counter*   word_p_counter = nullptr;
+    lbne::PennMicroSlice::Payload_Timestamp* previous_timestamp = nullptr;
+    lbne::PennMicroSlice::Payload_Header*    future_timestamp_header = nullptr;
+    lbne::PennMicroSlice::Payload_Timestamp* future_timestamp = nullptr;
+    lbne::PennMicroSlice::Payload_Trigger*   word_p_trigger = nullptr;
+    uint8_t* payload_data = nullptr;
     uint32_t payload_index = 0;
 
+    while (payload_data != nullptr) {
 
-    do {
-      payload_data = msf.get_next_payload(payload_index,word_header);
-      if (payload_data == nullptr) continue;
+      payload_data = msf.get_next_payload(payload_index, word_header);
+      if (payload_data == nullptr)
+	continue;
+
       fPayloadTypes.push_back(word_header->data_packet_type);
-      switch(word_header->data_packet_type) {
-        case lbne::PennMicroSlice::DataTypeCounter:
-          // cast the returned payload into a counter structure and parse it
-          // Why are the counter bits necessary? Not going to collect them for now
-          // Need to be careful with the times...should collect full timestamps
-          // but those should always be calculated from a timestamp word
 
-          word_p_counter = reinterpret_cast<lbne::PennMicroSlice::Payload_Counter*>(payload_data);
-          // Collect the counter bits
-          // FIXME: This is incredibly inefficient as it stores everything in memory.
-          // The amount of data can become quite big. I can imagine this causing troubles on
-          // the machine running the monitoring in the long term. Ideally this would be better
-          // to be calculated on-the-fly, otherwise it will mean trouble in the future.
+      // Switch with word type
+      switch (word_header->data_packet_type) {
 
-          // for now leave it as it was
-          fCounterWords.push_back(*word_p_counter);
+      // Counter
+      case lbne::PennMicroSlice::DataTypeCounter:
+	// cast the returned payload into a counter structure and parse it
+	// Why are the counter bits necessary? Not going to collect them for now
+	// Need to be careful with the times...should collect full timestamps
+	// but those should always be calculated from a timestamp word
+	word_p_counter = reinterpret_cast<lbne::PennMicroSlice::Payload_Counter*>(payload_data);
+	// Collect the counter bits
+	// FIXME: This is incredibly inefficient as it stores everything in memory. The amount of data can become quite big. I can imagine this causing troubles on the machine running the monitoring in the long term. Ideally this would be better to be calculated on-the-fly, otherwise it will mean trouble in the future. For now leave it as it was.
+	fCounterWords.push_back(*word_p_counter);
 
-          // NFB: This is risky as, unlike microslices, nothing ensures that a timestamp word is nearby
-          // The best procedure is probably to byte the bullet and transfer the full timestamps with each frame/word
-          // For now use this makeshift logic
-          if (previous_timestamp != nullptr) {
-            fCounterTimes.push_back(word_header->get_full_timestamp_post(previous_timestamp->nova_timestamp));
-          } else if (future_timestamp != nullptr) {
-            // already have a pointer to a timestamp in the future
-            fCounterTimes.push_back(word_header->get_full_timestamp_pre(future_timestamp->nova_timestamp));
-          } else {
-            // find the closest timestamp in the future
-            future_timestamp = msf.get_next_timestamp(future_timestamp_header);
-            if (future_timestamp == nullptr) {
-              // This should never happen, but if it does the fragment is useless.
-              std::cerr << "CAN'T FIND PTB TIMESTAMP WORDS IN MILLISLICE FRAGMENT!!! Logic will fail." << std::endl;
-              return;
-            } else {
-              fCounterTimes.push_back(word_header->get_full_timestamp_pre(future_timestamp->nova_timestamp));
-            }
-          }
-          break;
-        case lbne::PennMicroSlice::DataTypeTrigger:
-          word_p_trigger = reinterpret_cast<lbne::PennMicroSlice::Payload_Trigger*>(payload_data);
-          CollectTrigger(word_header,word_p_trigger);
-          break;
-        case lbne::PennMicroSlice::DataTypeTimestamp:
-          previous_timestamp = reinterpret_cast<lbne::PennMicroSlice::Payload_Timestamp*>(payload_data);
-          break;
-        default:
-          // do nothing
-          break;
+	// NFB: This is risky as, unlike microslices, nothing ensures that a timestamp word is nearby
+	// The best procedure is probably to byte the bullet and transfer the full timestamps with each frame/word
+	// For now use this makeshift logic
+	if (previous_timestamp != nullptr)
+	  fCounterTimes.push_back(word_header->get_full_timestamp_post(previous_timestamp->nova_timestamp));
+	else if (future_timestamp != nullptr)
+	  fCounterTimes.push_back(word_header->get_full_timestamp_pre(future_timestamp->nova_timestamp));
+	else {
+	  // Find the closest timestamp in the future
+	  future_timestamp = reinterpret_cast<lbne::PennMicroSlice::Payload_Timestamp*>(msf.get_next_timestamp(future_timestamp_header));
+	  if (future_timestamp == nullptr) {
+	    // This should never happen, but if it does the fragment is useless.
+	    mf::LogError("Monitoring") << "Can't find PTB timestamp words in millislice fragment! Logic will fail" << std::endl;
+	    return;
+	  }
+	  else
+	    fCounterTimes.push_back(word_header->get_full_timestamp_pre(future_timestamp->nova_timestamp));
+	}
+	break;
 
-      } // switch/case
+      // Trigger
+      case lbne::PennMicroSlice::DataTypeTrigger:
+	word_p_trigger = reinterpret_cast<lbne::PennMicroSlice::Payload_Trigger*>(payload_data);
+	CollectTrigger(word_p_trigger);
+	break;
 
-    } while (payload_data != nullptr);
+      // Timestamp
+      case lbne::PennMicroSlice::DataTypeTimestamp:
+	previous_timestamp = reinterpret_cast<lbne::PennMicroSlice::Payload_Timestamp*>(payload_data);
+	break;
 
-  } // --  for rawPTB_size
+      default:
+	// do nothing
+	break;
+	
+      }
+      
+    } // loop over payload
+    
+  } // loop over fragments
 
-  //Now calculate what the total time of the event is in seconds
-  //FIXME: Make sure that NNanoSecondsPerNovaTick is 16.625 otherwise the times will be wrong
+  // Total time of the event (in [s])
   fTimeSliceSize = NNanoSecondsPerNovaTick * NTotalTicks / (1e9);
 
   return;
@@ -762,8 +754,7 @@ void OnlineMonitoring::PTBFormatter::AnalyzeCounter(uint32_t counter_index, lbne
 
   //The time that the counter switched on.  Used for checking the ignore time
   //NFB: Again, why is the ignore time of any interest here?
-  lbne::PennMicroSlice::Payload_Timestamp::timestamp_t last_counter_time = 0;
-  uint32_t pos = 0;
+  //lbne::PennMicroSlice::Payload_Timestamp::timestamp_t last_counter_time;
   // NFB: The request was for a specific counter. Let's oblige
   for (uint32_t pos = 0; pos < fCounterWords.size(); ++pos) {
     //  for (std::vector<lbne::PennMicroSlice::Payload_Counter>::iterator countIt = fCounterWords.begin(), pos = 0; countIt != fCounterWords.end(); ++countIt, ++pos) {
@@ -771,7 +762,7 @@ void OnlineMonitoring::PTBFormatter::AnalyzeCounter(uint32_t counter_index, lbne
 
     // if we are right at the beginning of the list, just update the counter time
     if (pos == 0 && counter_currently_on) {
-      last_counter_time = fCounterTimes[pos];
+      //last_counter_time = fCounterTimes[pos];
       continue;
     }
 
@@ -793,7 +784,7 @@ void OnlineMonitoring::PTBFormatter::AnalyzeCounter(uint32_t counter_index, lbne
       lbne::PennMicroSlice::Payload_Timestamp::timestamp_t current_counter_time = fCounterTimes.at(pos);
       // The PTB takes care of the lockdowns. No need to check or set ignore times
       hit_rate++;
-      last_counter_time = current_counter_time;
+      //last_counter_time = current_counter_time;
       //Also record the activation time if it is the first time the counter has been hit
       if (hit_rate==1){
         //We need the array index to fetch the timestamp of the payload
@@ -811,63 +802,65 @@ void OnlineMonitoring::PTBFormatter::AnalyzeCounter(uint32_t counter_index, lbne
 }
 
 
-void OnlineMonitoring::PTBFormatter::AnalyzeMuonTrigger(lbne::PennMicroSlice::Payload_Trigger::trigger_type_t trigger_number, double& trigger_rate) const {
-  trigger_rate = fMuonTriggerRates.at(trigger_number);
+double OnlineMonitoring::PTBFormatter::AnalyzeMuonTrigger(lbne::PennMicroSlice::Payload_Trigger::trigger_type_t trigger_number) const {
+
+  /// Returns the trigger rate for the requested muon trigger
+
+  double trigger_rate = fMuonTriggerRates.at(trigger_number);
   trigger_rate /= fTimeSliceSize;
-  return;
+
+  return trigger_rate;
+
 }
 
-void OnlineMonitoring::PTBFormatter::AnalyzeCalibrationTrigger(lbne::PennMicroSlice::Payload_Trigger::trigger_type_t trigger_number, double& trigger_rate) const {
-  trigger_rate = fCalibrationTriggerRates.at(trigger_number);
+double OnlineMonitoring::PTBFormatter::AnalyzeCalibrationTrigger(lbne::PennMicroSlice::Payload_Trigger::trigger_type_t trigger_number) const {
+
+  /// Returns the trigger rate for the requested calibration trigger
+
+  double trigger_rate = fCalibrationTriggerRates.at(trigger_number);
   trigger_rate /= fTimeSliceSize;
-  return;
+
+  return trigger_rate;
+
 }
 
-void OnlineMonitoring::PTBFormatter::AnalyzeSSPTrigger(double& trigger_rate) const {
-  trigger_rate = fSSPTriggerRates / (double)fTimeSliceSize;
-  return;
+double OnlineMonitoring::PTBFormatter::AnalyzeSSPTrigger() const {
+
+  /// Returns the trigger rate for the SSP trigger
+
+  double trigger_rate = fSSPTriggerRates / (double)fTimeSliceSize;
+  return trigger_rate;
+
 }
 
-void OnlineMonitoring::PTBFormatter::CollectTrigger(lbne::PennMicroSlice::Payload_Header *header,lbne::PennMicroSlice::Payload_Trigger *trigger) {
-  // This does exactly the same thing as the old code, but using the provided structures
-  // Find out if this trigger is the same as the previous trigger
-  // NFB: This should no longer occur. The PTB fw now has a safeguard against retriggers.
-  //  if (timestamp - fPreviousTrigger.first < 25 and
-  //      bits == fPreviousTrigger.second)
-  //    return;
+void OnlineMonitoring::PTBFormatter::CollectTrigger(lbne::PennMicroSlice::Payload_Trigger *trigger) {
 
-  // NFB: As of last revision more than one trigger can be reported in a single
-  // word. Therefore it is better to ask for each individual trigger
-  if (trigger->has_muon_trigger()) {
-    for (std::map<lbne::PennMicroSlice::Payload_Trigger::trigger_type_t,int>::iterator it = fMuonTriggerRates.begin(); it != fMuonTriggerRates.begin(); ++it) {
-      if (trigger->has_muon_trigger(it->first)) {
-        fMuonTriggerRates[it->first]++;
-      }
-    }
-  }
-  if (trigger->has_calibration()) {
-    for (std::map<lbne::PennMicroSlice::Payload_Trigger::trigger_type_t,int>::iterator it = fCalibrationTriggerRates.begin(); it != fCalibrationTriggerRates.begin(); ++it) {
-      if (trigger->has_calibration(it->first)) {
-        fCalibrationTriggerRates[it->first]++;
-      }
-    }
-  }
-  if (trigger->has_ssp_trigger()) {
+  /// Takes the trigger payload and analyses it, counting each specific trigger
+
+  // Possible to have more than one trigger per word -- ask for each individually
+  if (trigger->has_muon_trigger())
+    for (std::vector<lbne::PennMicroSlice::Payload_Trigger::trigger_type_t>::const_iterator mTrigIt = PTBTrigger::Muon.begin(); mTrigIt != PTBTrigger::Muon.begin(); ++mTrigIt)
+      if (trigger->has_muon_trigger(*mTrigIt))
+        fMuonTriggerRates[*mTrigIt]++;
+
+  if (trigger->has_calibration())
+    for (std::vector<lbne::PennMicroSlice::Payload_Trigger::trigger_type_t>::const_iterator cTrigIt = PTBTrigger::Calibration.begin(); cTrigIt != PTBTrigger::Calibration.begin(); ++cTrigIt)
+      if (trigger->has_calibration(*cTrigIt))
+        fCalibrationTriggerRates[*cTrigIt]++;
+
+  if (trigger->has_ssp_trigger())
     ++fSSPTriggerRates;
-  }
-  // What about RCE triggers? Are they no longer needed?
+
+  // NFB: What about RCE triggers? Are they no longer needed?
+  // MW: Yes, they're needed. Haven't put them in yet! I'm sure your new code will make that easier.
+
   // Why are the bits necessary?
   // Now that the calibration and muon no longer overlap, it might be better to simply store the bits in a single place
+  // MW: Bits aren't necessary!
 
-return;
+  return;
 
 }
 
 #endif
 
-#ifdef OLD_CODE
-
-
-
-#else
-#endif
