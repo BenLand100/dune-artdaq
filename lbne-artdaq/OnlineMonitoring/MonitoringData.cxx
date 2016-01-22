@@ -605,10 +605,10 @@ void OnlineMonitoring::MonitoringData::PTBMonitoring(PTBFormatter const& ptb_for
   for (std::vector<lbne::PennMicroSlice::Payload_Header::data_packet_type_t>::const_iterator payloadIt = payloads.begin(); payloadIt != payloads.end(); ++payloadIt) {
     if (*payloadIt == lbne::PennMicroSlice::DataTypeCounter) hPTBPayloadType->Fill("Counter",1);
     else if (*payloadIt == lbne::PennMicroSlice::DataTypeTrigger) hPTBPayloadType->Fill("Trigger",1);
-    //else if (*payloadIt == lbne::PennMicroSlice::DataTypeCalibration) hPTBPayloadType->Fill("Calibration",1);
     else if (*payloadIt == lbne::PennMicroSlice::DataTypeTimestamp) hPTBPayloadType->Fill("Timestamp",1);
     else if (*payloadIt == lbne::PennMicroSlice::DataTypeWarning)   hPTBPayloadType->Fill("Warning",1);
-    else mf::LogWarning("Monitoring") << "Warning: payload type not recognised";
+    else if (*payloadIt == lbne::PennMicroSlice::DataTypeChecksum) hPTBPayloadType->Fill("Checksum",1);
+    else hPTBPayloadType->Fill("Other",1);
   }
 
   // Fill the counter hists
@@ -939,13 +939,14 @@ void OnlineMonitoring::MonitoringData::MakeHistograms() {
 #endif
   fFigureCaptions[hPTBBlockLength->GetName()] = "Number of payloads in each event (filled once per event)";
 
-  hPTBPayloadType = new TH1I("PTB__Payloads_Type_PayloadType_All","Payload Type_\"hist\"_logy;Payload Type",5,1,6);
+  hPTBPayloadType = new TH1I("PTB__Payloads_Type_PayloadType_All","Payload Type_\"hist\"_logy;Payload Type",6,1,7);
   hPTBPayloadType->GetXaxis()->SetBinLabel(1,"Counter");
   hPTBPayloadType->GetXaxis()->SetBinLabel(2,"Trigger");
   hPTBPayloadType->GetXaxis()->SetBinLabel(3,"Calibration");
   hPTBPayloadType->GetXaxis()->SetBinLabel(4,"Timestamp");
-  hPTBPayloadType->GetXaxis()->SetBinLabel(5,"Self-test");
-  fFigureCaptions[hPTBPayloadType->GetName()] = "Payload type (filled once per payload)";
+  hPTBPayloadType->GetXaxis()->SetBinLabel(5,"Warning");
+  hPTBPayloadType->GetXaxis()->SetBinLabel(6,"Other");
+  fFigureCaptions[hPTBPayloadType->GetName()] = "Payload type (filled once per payload) -- other should be empty";
 
   hPTBTSUCounterHitRateWU = new TProfile("PTB_TSUWU_Hits_Mean_Counter_All","TSU WU Counter Hit Rate_\"\"_none;Counter number;Hit Rate (Hz)",10,1,11);
   hPTBTSUCounterHitRateWU->GetXaxis()->SetNdivisions(10);

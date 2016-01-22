@@ -661,8 +661,16 @@ OnlineMonitoring::PTBFormatter::PTBFormatter(art::Handle<artdaq::Fragments> cons
     lbne::PennMicroSlice::Payload_Trigger*   word_p_trigger = nullptr;
     uint8_t* payload_data = nullptr;
     uint32_t payload_index = 0;
+    uint16_t counter, trigger, timestamp, payloadCount;
 
-    while (payload_data != nullptr) {
+    payloadCount = msf.payloadCount(counter, trigger, timestamp);
+
+    std::cout << "Number of payloads is " << payloadCount << ", of which " << counter << " are counters, " << trigger << " are triggers and " << timestamp << " are timestamps" << std::endl;
+
+    while (payload_index < (uint32_t)payloadCount-1) {
+    //while (payload_data != nullptr) {
+
+      std::cout << "Payload index is " << payload_index << std::endl;
 
       payload_data = msf.get_next_payload(payload_index, word_header);
       if (payload_data == nullptr)
@@ -675,6 +683,7 @@ OnlineMonitoring::PTBFormatter::PTBFormatter(art::Handle<artdaq::Fragments> cons
 
       // Counter
       case lbne::PennMicroSlice::DataTypeCounter:
+	std::cout << "It's a counter!" << std::endl;
 	// cast the returned payload into a counter structure and parse it
 	// Why are the counter bits necessary? Not going to collect them for now
 	// Need to be careful with the times...should collect full timestamps
@@ -706,29 +715,35 @@ OnlineMonitoring::PTBFormatter::PTBFormatter(art::Handle<artdaq::Fragments> cons
 
       // Trigger
       case lbne::PennMicroSlice::DataTypeTrigger:
+	std::cout << "It's a trigger!" << std::endl;
 	word_p_trigger = reinterpret_cast<lbne::PennMicroSlice::Payload_Trigger*>(payload_data);
 	CollectTrigger(word_p_trigger);
 	break;
 
       // Timestamp
       case lbne::PennMicroSlice::DataTypeTimestamp:
+	std::cout << "It's a timestamp!" << std::endl;
 	previous_timestamp = reinterpret_cast<lbne::PennMicroSlice::Payload_Timestamp*>(payload_data);
 	break;
 
       default:
+	std::cout << "This is a " << std::bitset<3>(word_header->data_packet_type) << std::endl;
 	// do nothing
 	break;
 	
       }
       
     } // loop over payload
-    
+
   } // loop over fragments
 
   // Total time of the event (in [s])
   fTimeSliceSize = NNanoSecondsPerNovaTick * NTotalTicks / (1e9);
 
+  std::cout << "Total ticks " << NTotalTicks << " and that makes total event length " << fTimeSliceSize << std::endl;
+
   return;
+
 }
 
 void OnlineMonitoring::PTBFormatter::AnalyzeCounter(uint32_t counter_index, lbne::PennMicroSlice::Payload_Timestamp::timestamp_t& activation_time, double& hit_rate) const {
