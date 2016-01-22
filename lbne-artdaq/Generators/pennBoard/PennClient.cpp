@@ -19,7 +19,8 @@
 lbne::PennClient::PennClient(const std::string& host_name, const std::string& port_or_service, const unsigned int timeout_usecs) :
 socket_(io_service_),
 deadline_(io_service_),
-timeout_usecs_(timeout_usecs)
+timeout_usecs_(timeout_usecs),
+exception_(false)
 {
 #ifdef __PTB_DEVEL_MODE__
   DAQLogger::LogDebug("PennClient") << "lbne::PennClient constructor";
@@ -166,7 +167,7 @@ void lbne::PennClient::send_xml(std::string const & xml_frag)
   while ( retries++ < max_retries) {
     // NFB : It seems that the response arrived incomplete.
     response += this->receive();
-    DAQLogger::LogInfo("PennClient") << "Received answer : [" << response << "]";
+    // DAQLogger::LogInfo("PennClient") << "Received answer : [" << response << "]";
     //	  doc = xmlReadMemory(response.c_str(), response.length()-1, "noname.xml", NULL, 0);
     doc = xmlReadMemory(response.c_str(), response.length(), "noname.xml", NULL, 0);
     if(doc != NULL) {
