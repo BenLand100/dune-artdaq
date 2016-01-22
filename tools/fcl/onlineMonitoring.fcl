@@ -21,7 +21,7 @@ physics:
       module_type:                "OnlineMonitoring"
       DetailedMonitoring:         false
       ScopeMonitoring:            false
-      DataDirPath:                "/data/lbnedaq/data/transferred_files/"
+      DataDirPath:                "/data/lbnedaq/data/"
       MonitorSavePath:            "/home/lbnedaq/wallbank/monitoring/"
       EVDSavePath:                "/home/lbnedaq/wallbank/monitoring/"
       ChannelMapFile:             "/home/lbnedaq/wallbank/lbne-artdaq-base/lbne-artdaq/lbne-artdaq/OnlineMonitoring/detailedMap.txt"
