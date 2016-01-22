@@ -975,7 +975,7 @@ void lbne::PennDataReceiver::handle_received_data(std::size_t length)
           DAQLogger::LogWarning("PennDataReceiver") << "Expected the first word to be a timestamp.  ";
         }
         current_data_ptr+= sizeof(lbne::PennMicroSlice::Payload_Header);
-        lbne::PennMilliSlice::TimestampPayload *ts_word = reinterpret_cast_checked<lbne::PennMilliSlice::TimestampPayload*>(current_data_ptr);
+        lbne::PennMicroSlice::Payload_Timestamp *ts_word = reinterpret_cast_checked<lbne::PennMicroSlice::Payload_Timestamp*>(current_data_ptr);
 	
         run_start_time_ = ts_word->nova_timestamp;
         boundary_time_  = (run_start_time_ + millislice_size_ - 1);

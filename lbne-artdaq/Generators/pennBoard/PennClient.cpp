@@ -117,20 +117,6 @@ lbne::PennClient::~PennClient()
   }
 }
 
-void lbne::PennClient::send_command(std::string const & command, std::string & answer)
-{
-
-  DAQLogger::LogInfo("PennClient") << "Sending command: " << command << " expecting an answer.";
-
-  // Build XML fragment containing command enclosing the parameter
-  std::ostringstream xml_frag;
-  xml_frag << "<command>" << command;
-  xml_frag << "</command>";
-
-  // Send it
-  this->send_xml(xml_frag.str(), answer);
-}
-
 void lbne::PennClient::send_command(std::string const & command)
 {
   DAQLogger::LogInfo("PennClient") << "Sending command: " << command;
@@ -149,8 +135,7 @@ void lbne::PennClient::send_config(std::string const & config)
   DAQLogger::LogDebug("PennClient") << "Sending config: " << config;
 #endif
 
-  std::string ptb_answer;
-  this->send_xml(config,ptb_answer);
+  this->send_xml(config);
 
   // If anything else than the status is expected, it is returned by ptb_answer
 
@@ -160,12 +145,7 @@ void lbne::PennClient::send_config(std::string const & config)
   //	this->send_xml(config_frag.str());
 }
 
-void lbne::PennClient::send_xml(std::string const & xml_frag) {
-  std::string dummy_answer;
-  send_xml(xml_frag,dummy_answer);
-}
-
-void lbne::PennClient::send_xml(std::string const & xml_frag, std::string &xml_answer)
+void lbne::PennClient::send_xml(std::string const & xml_frag)
 {
 
   // Wrap the XML fragment for this request in the root system tags
