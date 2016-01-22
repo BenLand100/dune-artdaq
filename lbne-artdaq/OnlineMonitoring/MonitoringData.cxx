@@ -68,11 +68,6 @@ void OnlineMonitoring::MonitoringData::BeginMonitoring(int run, int subrun, TStr
       this->MakeDetailedHistograms();
   }
 
-  for (unsigned int sspChan = 0; sspChan < NSSPChannels; ++sspChan) {
-    fNSSPTriggers[sspChan] = 0;
-    fNSSPFragments[sspChan] = 0;
-  }
-
 }
 
 void OnlineMonitoring::MonitoringData::EndMonitoring() {
@@ -92,14 +87,6 @@ void OnlineMonitoring::MonitoringData::EndMonitoring() {
     delete fDataTree;
   delete fDataFile;
   delete fCanvas;
-
-}
-
-void OnlineMonitoring::MonitoringData::FillBeforeWriting() {
-
-  /// Fills all data objects which require filling just before writing out
-
-  hSSPTriggerRate->Fill(fSSPTriggers/(double)fSSPFragments);
 
 }
 
@@ -330,14 +317,14 @@ void OnlineMonitoring::MonitoringData::RCEMonitoring(RCEFormatter const& rceform
     }
 
     // Fill hists for channel
-    hADCMeanChannelAPA1 ->Fill(channel,mean);
-    hADCMeanChannelAPA2 ->Fill(channel,mean);
-    hADCMeanChannelAPA3 ->Fill(channel,mean);
-    hADCMeanChannelAPA4 ->Fill(channel,mean);
-    hADCRMSChannelAPA1  ->Fill(channel,rms);
-    hADCRMSChannelAPA2  ->Fill(channel,rms);
-    hADCRMSChannelAPA3  ->Fill(channel,rms);
-    hADCRMSChannelAPA4  ->Fill(channel,rms);
+    hADCMeanChannelAPA1     ->Fill(channel,mean);
+    hADCMeanChannelAPA2     ->Fill(channel,mean);
+    hADCMeanChannelAPA3     ->Fill(channel,mean);
+    hADCMeanChannelAPA4     ->Fill(channel,mean);
+    hADCRMSChannelAPA1      ->Fill(channel,rms);
+    hADCRMSChannelAPA2      ->Fill(channel,rms);
+    hADCRMSChannelAPA3      ->Fill(channel,rms);
+    hADCRMSChannelAPA4      ->Fill(channel,rms);
     hAvADCChannelEvent  ->Fill(event,channel,mean);
     hTotalRCEHitsChannel->Fill(channel+1,totalRCEHitsChannel);
     int tbit = 1;
@@ -468,8 +455,6 @@ void OnlineMonitoring::MonitoringData::SSPMonitoring(SSPFormatter const& sspform
 
     const int channel = channelIt->first;
     const std::vector<Trigger> triggers = channelIt->second;
-    ++fSSPFragments[channel];
-    fSSPFragments[channel] += triggers.size();
 
     // Loop over triggers
     for (std::vector<Trigger>::const_iterator triggerIt = triggers.begin(); triggerIt != triggers.end(); ++triggerIt) {
@@ -713,8 +698,6 @@ void OnlineMonitoring::MonitoringData::WriteMonitoringData(int run, int subrun, 
 
   /// Writes all the monitoring data currently saved in the data objects
 
-  this->FillBeforeWriting();
-
   // Get the time we're writing the data out
   time_t rawtime;
   struct tm* timeinfo;
@@ -935,8 +918,6 @@ void OnlineMonitoring::MonitoringData::MakeHistograms() {
   fFigureCaptions["SSP__ADC_Pedestal_Channel_All"] = "Pedestal of the SSP waveforms (profiled across all events)";
   hWaveformNumTicks = new TProfile("SSP__Ticks__Channel_All","Num Ticks in Trigger_\"hist\"_none;Channel;Number of Ticks",NSSPChannels,0,NSSPChannels);
   fFigureCaptions["SSP__Ticks__Channel_All"] = "Number of ticks in each trigger";
-  hSSPTriggerRate = new TProfile("SSP__Triggers_Rate_Channel_All","SSP Trigger Rate_\"hist\"_none;Channel;TriggerRate",NSSPChannels,0,NSSPChannels);
-  fFigureCaptions["SSP__Triggers_Rate_Channel_All"] = "SSP trigger rate (determined as the number of trigger / number of fragments parsed)";
   hNumberOfTriggers = new TH1I("SSP__Triggers_Total_Channel_All","Number of Triggers_\"hist\"_none;Channel;Number of Triggers",NSSPChannels,0,NSSPChannels);
   fFigureCaptions["SSP__Triggers_Total_Channel_All"] = "Total number of triggers per channel";
   hTriggerFraction = new TProfile("SSP__Triggers_Fraction_Channel_All","Fraction of Events With Trigger_\"hist\"_none;Channel;Number of Triggers",NSSPChannels,0,NSSPChannels);
@@ -1094,7 +1075,6 @@ void OnlineMonitoring::MonitoringData::MakeHistograms() {
   fHistArray.Add(hWaveformMean); fHistArray.Add(hWaveformRMS);
   fHistArray.Add(hWaveformPeakHeight); fHistArray.Add(hWaveformPedestal);
   fHistArray.Add(hWaveformIntegral); fHistArray.Add(hWaveformIntegralNorm);
-  fHistArray.Add(hSSPTriggerRate);
   fHistArray.Add(hNumberOfTriggers); fHistArray.Add(hTriggerFraction);
   fHistArray.Add(hWaveformNumTicks);
 
