@@ -440,7 +440,7 @@ void lbne::PennDataReceiver::do_read(void)
               << buffer_retries << " attempts so far)";
            }
            buffer_retries++;
-
+	   
            if (buffer_retries > max_retries) {
               if (!suspend_readout_.load()) {
                  if (!exception_.load() ) {
@@ -480,7 +480,7 @@ void lbne::PennDataReceiver::do_read(void)
     // Attempt to obtain a raw buffer to receive data into
     unsigned int buffer_retries = 0;
     bool buffer_available;
-    const unsigned int max_buffer_retries = 10;   // Used in the old code only
+    const unsigned int max_buffer_retries = 1000;   // Used in the old code only
 
     do
     {
@@ -634,16 +634,25 @@ void lbne::PennDataReceiver::do_read(void)
 
   // The data should not go
   // Start the asynchronous receive operation into the (existing) current raw buffer.
-  data_socket_.async_receive(
-      boost::asio::buffer(current_write_ptr_, next_receive_size_),
-      [this](boost::system::error_code ec, std::size_t length)
-      {
+  // FIXME: This is not correct. Nothing enforces the data to arrive in the correct size
+  // There is an enforcement that it arrives at most with the correct size, but there is no
+  // safeguard for arriving under the size
+
+  // NFB -- Jan, 14 2016
+  // According to boost documentation:
+  /**
+   * The receive operation may not receive all of the requested number of bytes.
+   * Consider using the async_read function if you need to ensure that the requested
+   * amount of data is received before the asynchronous operation completes.
+   */
+  //data_socket_.async_receive(
+  boost::asio::async_read(data_socket_,
+			  boost::asio::buffer(current_write_ptr_, next_receive_size_),
+			  [this](boost::system::error_code ec, std::size_t length)
+			  {
     if (!ec)
     {
       RECV_DEBUG(4) << "Received " << length << " bytes on socket";
-      // -- Received something from the PTB. Time to ask it for the StartRunTime?
-      // -- Don't have access to the control thread from here.
-      // -- Need to do it from the generator
 
       this->handle_received_data(length);
 
@@ -653,7 +662,7 @@ void lbne::PennDataReceiver::do_read(void)
     {
       if (ec == boost::asio::error::eof)
       {
-        DAQLogger::LogWarning("PennDataReceiver") << "Client socket closed the connection";
+        DAQLogger::LogInfo("PennDataReceiver") << "Client socket closed the connection";
         this->do_accept();
       }
       else if (ec == boost::asio::error::operation_aborted)
@@ -694,6 +703,10 @@ void lbne::PennDataReceiver::handle_received_data(std::size_t length)
   // The problem with this approach is that it might fail if
   // there are packets that should not be sent inside the microslice.
 
+  //FIXME: If the TCP stack sends a stream that is not the proper size the processing will fail.
+  // 2 situations can happen:
+  //  == 1. The TCP stack splits the packet into smaller fragments: The
+
 
   //update size of uslice component, uslice & mslice
   state_nbytes_recvd_    += length;
@@ -730,10 +743,19 @@ void lbne::PennDataReceiver::handle_received_data(std::size_t length)
     // now implement a more sophisticated test which throws an
     // exception if we don't ULTIMATELY get all the bytes
 
-    DAQLogger::LogWarning("PennDataReceiver") << "Incomplete " << nextReceiveStateToString(next_receive_state_)
+    // NFB, Jan-14-2016
+
+    // I've upgraded back to an error. Replacing boost::async_receive by boost::async_read
+    // should force the right amount of bytes to be collected from the socket.
+
+    try{
+    DAQLogger::LogError("PennDataReceiver") << "Incomplete " << nextReceiveStateToString(next_receive_state_)
 						      << " received for microslice " << microslices_recvd_
 						      << " (got " << state_nbytes_recvd_
 						      << " bytes, expected " << nbytes_expected << ")";
+    } catch(...) {
+      set_exception(true);
+    }
     return;
   }
 
@@ -926,16 +948,11 @@ void lbne::PennDataReceiver::handle_received_data(std::size_t length)
 	display_bits(receiver_state_start_ptr_,length,"PennDataReceiver");
         set_exception(true);    // GB+JM-A	
       }
-      //TODO add a better way of getting a start time, to calculate millislice boundaries from (presumably read the Penn)
       // NFB : The very first packet from the PTB should have been a timestamp word.
-      // TODO: Confirm that the above statement is true
       // NFB Dec-02-2015
-      // The run start time should have been sent as an answer to the StartRun command
-      // If for some reason it didn't, then the run_start_time should be computed from the
-      // first short timestamp, and the first full timestamp word
 
       if(!run_start_time_) {
-        DAQLogger::LogWarning("PennDataReceiver") << "Run start time not yet set. Estimating from the time of the first payload.";
+        DAQLogger::LogInfo("PennDataReceiver") << "This is the first MicroSlice. Estimating run start time from the first payload.";
 	
         // NFB Dec-06-2015
         // This is tricky. The easiest way would be to drop the data until a timestamp was found.
@@ -946,72 +963,26 @@ void lbne::PennDataReceiver::handle_received_data(std::size_t length)
         //3. Calculate the difference between the rollovers and subtract from the full TS
         //4. Set the start run time to that value
 	
-	uint8_t *current_data_ptr = static_cast<uint8_t*>(receiver_state_start_ptr_);
+        uint8_t *current_data_ptr = static_cast<uint8_t*>(receiver_state_start_ptr_);
 
-	// I know that the first microslice sent by the PTB 
-	// is a timestamp. Just grab it
-	
-	// 1. -- Grab the first timestamp -- confirm it is indeed a timestamp
+        // I know that the first microslice sent by the PTB
+        // is a timestamp. Just grab it
+
+        // 1. -- Grab the first timestamp -- confirm it is indeed a timestamp
         lbne::PennMicroSlice::Payload_Header *payload_header = static_cast<lbne::PennMicroSlice::Payload_Header *>(receiver_state_start_ptr_);
 
-	if (payload_header->data_packet_type != lbne::PennMicroSlice::DataTypeTimestamp) {
-	  DAQLogger::LogWarning("PennDataReceiver") << "Expected the first word to be a timestamp. ";
-	}
-	current_data_ptr+= sizeof(lbne::PennMicroSlice::Payload_Header);
-	lbne::PennMilliSlice::TimestampPayload *ts_word = reinterpret_cast_checked<lbne::PennMilliSlice::TimestampPayload*>(current_data_ptr);
+        if (payload_header->data_packet_type != lbne::PennMicroSlice::DataTypeTimestamp) {
+          DAQLogger::LogWarning("PennDataReceiver") << "Expected the first word to be a timestamp.  ";
+        }
+        current_data_ptr+= sizeof(lbne::PennMicroSlice::Payload_Header);
+        lbne::PennMicroSlice::Payload_Timestamp *ts_word = reinterpret_cast_checked<lbne::PennMicroSlice::Payload_Timestamp*>(current_data_ptr);
 	
-
-	/**
-        uint64_t first_payload_time = (uint64_t)payload_header->short_nova_timestamp;
-        uint64_t first_ts_word = first_payload_time;
-        bool found_timestamp = false;
-        // 2 -- Walk over the payloads until a timestamp is found.
-        do {
-          switch(payload_header->data_packet_type) {
-          case lbne::PennMicroSlice::DataTypeTimestamp:
-	    {
-	      // 3 -- Calculate the difference between rollovers
-	      current_data_ptr+= sizeof(lbne::PennMicroSlice::Payload_Header);
-	      lbne::PennMilliSlice::TimestampPayload *ts_word = reinterpret_cast_checked<lbne::PennMilliSlice::TimestampPayload*>(current_data_ptr);
-
-	      first_ts_word = ts_word->nova_timestamp;
-	      found_timestamp = true;
-#ifdef __PTB_BOARD_READER_DEVEL_MODE__
-	      DAQLogger::LogInfo("PennDataReceiver") << "Collected timestamp : " << first_ts_word;
-	      display_bits(current_data_ptr,lbne::PennMicroSlice::payload_size_timestamp,"PennDataReceiver");
-#endif
-	      break;
-	    }
-          case lbne::PennMicroSlice::DataTypeChecksum:
-            current_data_ptr += sizeof(lbne::PennMicroSlice::Payload_Header)+lbne::PennMicroSlice::payload_size_checksum;
-            break;
-          case lbne::PennMicroSlice::DataTypeCounter:
-            current_data_ptr += sizeof(lbne::PennMicroSlice::Payload_Header)+lbne::PennMicroSlice::payload_size_counter;
-            break;
-          case lbne::PennMicroSlice::DataTypeTrigger:
-            current_data_ptr += sizeof(lbne::PennMicroSlice::Payload_Header)+lbne::PennMicroSlice::payload_size_trigger;
-            break;
-	  case lbne::PennMicroSlice::DataTypeWarning:
-            current_data_ptr += sizeof(lbne::PennMicroSlice::Payload_Header)+lbne::PennMicroSlice::payload_size_warning;
-            break;
-          default:
-            DAQLogger::LogError("PennDataReceiver") << "Unkown packet type " << std::bitset<3>(payload_header->data_packet_type);
-            break;
-          }
-        } while (!found_timestamp || (current_data_ptr < current_write_ptr_));
-
-        if (found_timestamp) {
-          run_start_time_ = first_ts_word - ((first_ts_word & 0x7FFFFFF) - first_payload_time);
-	*/
-	run_start_time_ = ts_word->nova_timestamp;
-	boundary_time_  = (run_start_time_ + millislice_size_ - 1);
-	overlap_time_   = (boundary_time_  - millislice_overlap_size_);
-	DAQLogger::LogWarning("PennDataReceiver") << "start run time estimated to be " << run_start_time_
+        run_start_time_ = ts_word->nova_timestamp;
+        boundary_time_  = (run_start_time_ + millislice_size_ - 1);
+        overlap_time_   = (boundary_time_  - millislice_overlap_size_);
+        DAQLogger::LogInfo("PennDataReceiver") << "start run time estimated to be " << run_start_time_
 						  << " boundary_time " << boundary_time_ 
 						  << " overlap time " << overlap_time_;
-        // } else {
-        //   DAQLogger::LogError("PennDataReceiver") << "Couldn't find timestamp in present microslice.";
-        // }
       } // if !run_start_time_
 
       //form a microslice

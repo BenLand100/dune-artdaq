@@ -56,6 +56,7 @@ public:
 
   void BeginMonitoring(int run, int subrun, TString const& monitorSavePath, bool detailedMonitoring, bool scopeMonitoring);
   void EndMonitoring();
+  void FillBeforeWriting();
   void FillTree(RCEFormatter const& rce_formatter, SSPFormatter const& ssp_formatter);
   void GeneralMonitoring(RCEFormatter const& rceformatter, SSPFormatter const& sspformatter, PTBFormatter const& ptbformatter, TString const& dataDirPath);
   void RCEMonitoring(RCEFormatter const& rce_formatter, int event);
@@ -88,6 +89,7 @@ private:
   std::map<std::string,TLegend*> fFigureLegends;
 
   std::vector<std::vector<int> > fRCEADC, fSSPADC;
+  std::vector<int> fNSSPTriggers, fNSSPFragments;
 
   // Monitoring Data ---------------------------------------------------------------------------------------------------------------------------------------------------------
   // General
@@ -114,6 +116,7 @@ private:
   // SSP
   TProfile *hWaveformMean, *hWaveformRMS, *hWaveformPeakHeight, *hWaveformIntegral, *hWaveformIntegralNorm, *hWaveformPedestal, *hWaveformNumTicks, *hTriggerFraction;
   TH1I *hNumberOfTriggers;
+  TProfile *hSSPTriggerRate;
 
   // PTB
   TProfile *hPTBTriggerRates;
