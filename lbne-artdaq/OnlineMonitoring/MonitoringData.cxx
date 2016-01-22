@@ -590,6 +590,12 @@ void OnlineMonitoring::MonitoringData::PTBMonitoring(PTBFormatter const& ptb_for
 
 }
 #else
+
+
+
+
+/////////////// Nuno's code /////////////////////////
+
 void OnlineMonitoring::MonitoringData::PTBMonitoring(PTBFormatter const& ptb_formatter) {
 
   /// Produces PTB monitoring histograms
@@ -599,8 +605,6 @@ void OnlineMonitoring::MonitoringData::PTBMonitoring(PTBFormatter const& ptb_for
 
   // Fill the payload hists
   const std::vector<lbne::PennMicroSlice::Payload_Header::data_packet_type_t> payloads = ptb_formatter.Payloads();
-  // NFB: Careful that with all counters on we might run into pretty large payload numbers (in the hundreds)
-  //      Be sure that the range is large enough.
   hPTBBlockLength->Fill(payloads.size());
   for (std::vector<lbne::PennMicroSlice::Payload_Header::data_packet_type_t>::const_iterator payloadIt = payloads.begin(); payloadIt != payloads.end(); ++payloadIt) {
     if (*payloadIt == lbne::PennMicroSlice::DataTypeCounter) hPTBPayloadType->Fill("Counter",1);

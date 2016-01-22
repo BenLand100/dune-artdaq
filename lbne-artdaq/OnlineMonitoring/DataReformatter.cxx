@@ -661,16 +661,16 @@ OnlineMonitoring::PTBFormatter::PTBFormatter(art::Handle<artdaq::Fragments> cons
     lbne::PennMicroSlice::Payload_Trigger*   word_p_trigger = nullptr;
     uint8_t* payload_data = nullptr;
     uint32_t payload_index = 0;
-    uint16_t counter, trigger, timestamp, payloadCount;
 
-    payloadCount = msf.payloadCount(counter, trigger, timestamp);
+    // uint16_t counter, trigger, timestamp, payloadCount;
+    // payloadCount = msf.payloadCount(counter, trigger, timestamp);
+    // std::cout << "Number of payloads is " << payloadCount << ", of which " << counter << " are counters, " << trigger << " are triggers and " << timestamp << " are timestamps" << std::endl;
 
-    std::cout << "Number of payloads is " << payloadCount << ", of which " << counter << " are counters, " << trigger << " are triggers and " << timestamp << " are timestamps" << std::endl;
-
-    while (payload_index < (uint32_t)payloadCount-1) {
+    //while (payload_index < (uint32_t)payloadCount-1) {
     //while (payload_data != nullptr) {
+    do {
 
-      std::cout << "Payload index is " << payload_index << std::endl;
+      //std::cout << "Payload index is " << payload_index << std::endl;
 
       payload_data = msf.get_next_payload(payload_index, word_header);
       if (payload_data == nullptr)
@@ -733,7 +733,7 @@ OnlineMonitoring::PTBFormatter::PTBFormatter(art::Handle<artdaq::Fragments> cons
 	
       }
       
-    } // loop over payload
+    } while (payload_data != nullptr); // loop over payload
 
   } // loop over fragments
 
@@ -753,69 +753,41 @@ void OnlineMonitoring::PTBFormatter::AnalyzeCounter(uint32_t counter_index, lbne
 
   // NFB: Where is counter_index coming from? What does it actually mean?
 
-  //We need to loop through the requested counter to check
-  //  A) when it switched back on
-  //  B) How many times it switched on
-  //For now, we are going to ingore the counter if it begins the millislice activated UNTIL it switches off
-  //
-  //New addition: ignore whatever a counter does until a specifc time has passed (defined to be 400 ns) nominally
+  // We need to loop through the requested counter to check
+  //   A) when it switched back on
+  //   B) How many times it switched on
 
-  //Initialize the values to be returned
+  // Initialize the values to be returned
   activation_time = 0.;
   hit_rate = 0;
-  //Assume that the counter was on in the previous millislice (this shouldn't be detrimental to the logic)
-  // why not assume it was off and therefore the logic in the loop can be simplified, right?
+
   bool counter_previously_on = true;
-
-  //The time that the counter switched on.  Used for checking the ignore time
-  //NFB: Again, why is the ignore time of any interest here?
-  //lbne::PennMicroSlice::Payload_Timestamp::timestamp_t last_counter_time;
-  // NFB: The request was for a specific counter. Let's oblige
   for (uint32_t pos = 0; pos < fCounterWords.size(); ++pos) {
-    //  for (std::vector<lbne::PennMicroSlice::Payload_Counter>::iterator countIt = fCounterWords.begin(), pos = 0; countIt != fCounterWords.end(); ++countIt, ++pos) {
     bool counter_currently_on = fCounterWords.at(pos).get_counter_status(counter_index);
-
-    // if we are right at the beginning of the list, just update the counter time
-    if (pos == 0 && counter_currently_on) {
-      //last_counter_time = fCounterTimes[pos];
+    if (counter_previously_on && counter_currently_on)
       continue;
-    }
-
-    //
-    if (counter_previously_on && counter_currently_on) {
-      //If the counter was previously on and it is still on, just continue
-      continue;
-    } else if (counter_previously_on && !counter_currently_on) {
-      // counter was on, but is no longer
+    else if (counter_previously_on && !counter_currently_on)
       counter_previously_on = false;
-    } else if (!counter_previously_on && !counter_currently_on){
-      //The counter was off and it is still off so very little to do here.  Continue!
+    else if (!counter_previously_on && !counter_currently_on)
       continue;
-    } else if (!counter_previously_on && counter_currently_on){
-      //The counter has switched on!!!!!
-      //Record that it is now on and record some numbers
+    else if (!counter_previously_on && counter_currently_on) {
+      // Counter has switched on!
       counter_previously_on = true;
-      //Get the time that the counter switched on.
+      // Get the time that the counter switched on
       lbne::PennMicroSlice::Payload_Timestamp::timestamp_t current_counter_time = fCounterTimes.at(pos);
-      // The PTB takes care of the lockdowns. No need to check or set ignore times
-      hit_rate++;
-      //last_counter_time = current_counter_time;
-      //Also record the activation time if it is the first time the counter has been hit
-      if (hit_rate==1){
-        //We need the array index to fetch the timestamp of the payload
+      ++hit_rate;
+      if (hit_rate==1)
         activation_time = current_counter_time;
-      }
-    } else {
-       // we should never get here
-       std::cout<<"ERROR IN PTBFORMATTER'S LOGIC IN COUNTER ANALYSIS"<<std::endl;
     }
+    else
+      mf::LogWarning("Monitoring") << "Error in PTBReformatter logic" << std::endl;
 
   }
 
   hit_rate /= fTimeSliceSize;
   return;
-}
 
+}
 
 double OnlineMonitoring::PTBFormatter::AnalyzeMuonTrigger(lbne::PennMicroSlice::Payload_Trigger::trigger_type_t trigger_number) const {
 
