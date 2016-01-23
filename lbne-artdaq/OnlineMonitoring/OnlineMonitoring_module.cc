@@ -75,6 +75,7 @@ private:
   int fInitialMonitoringUpdate;
   int fEventDisplayRefreshRate;
   int fLastSaveTime;
+  int fLastEVDTime;
   int fNEVDsMade;
   bool fSavedFirstMonitoring;
 
@@ -121,6 +122,7 @@ void OnlineMonitoring::OnlineMonitoring::beginSubRun(art::SubRun const& sr) {
 
   // Monitoring data write out
   fLastSaveTime = std::time(0);
+  fLastEVDTime = std::time(0);
   fSavedFirstMonitoring = false;
   fNEVDsMade = 0;
 
@@ -175,10 +177,12 @@ void OnlineMonitoring::OnlineMonitoring::analyze(art::Event const& evt) {
   // if (ptbformatter.MakeEventDisplay())
   // int evdRefreshInterval = std::round((double)fEventDisplayRefreshRate / 1.6e-3);
   // if (fEventNumber % evdRefreshInterval == 0)
-  if (fNEVDsMade <= 10 and rceformatter.FirstMicroslice >= 2 and rceformatter.FirstMicroslice <= 5) {
+  if (fNEVDsMade <= 10 and ((std::time(0) - fLastEVDTime) > fEventDisplayRefreshRate) and rceformatter.FirstMicroslice >= 2 and rceformatter.FirstMicroslice <= 5) {
     ++fNEVDsMade;
+    fLastEVDTime = std::time(0);
     rceformatter.AnalyseADCs(rawRCE, rceformatter.FirstMicroslice+fMicroslicePreBuffer, rceformatter.FirstMicroslice+fMicroslicePreBuffer+fMicrosliceTriggerLength);
-    fEventDisplay.MakeEventDisplay(rceformatter, fChannelMap, fDriftVelocity, fEventNumber, fEVDSavePath, fNEVDsMade);
+    fEventDisplay.MakeEventDisplay(rceformatter, fChannelMap, fDriftVelocity);
+    fEventDisplay.SaveEventDisplay(evt.run(), evt.subRun(), fEventNumber, fNEVDsMade, fEVDSavePath);
   }
 
   // Consider detaching!
