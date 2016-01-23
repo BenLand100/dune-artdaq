@@ -55,7 +55,7 @@ void OnlineMonitoring::EventDisplay::MakeEventDisplay(RCEFormatter const& rcefor
 
   // Add event file
   ofstream tmp((evdSavePath+TString("event")).Data());
-  tmp << event;
+  tmp << nEVD;
   tmp.flush();
   tmp.close();
 

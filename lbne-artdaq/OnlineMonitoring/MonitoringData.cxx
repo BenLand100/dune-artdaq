@@ -68,6 +68,11 @@ void OnlineMonitoring::MonitoringData::BeginMonitoring(int run, int subrun, TStr
       this->MakeDetailedHistograms();
   }
 
+  for (unsigned int sspChan = 0; sspChan < NSSPChannels; ++sspChan) {
+    fNSSPFragments.push_back(0);
+    fNSSPTriggers.push_back(0);
+  }
+
 }
 
 void OnlineMonitoring::MonitoringData::EndMonitoring() {
@@ -464,8 +469,8 @@ void OnlineMonitoring::MonitoringData::SSPMonitoring(SSPFormatter const& sspform
 
     const int channel = channelIt->first;
     const std::vector<Trigger> triggers = channelIt->second;
-    ++fNSSPFragments[channel];
-    fNSSPTriggers[channel] += triggers.size();
+    ++fNSSPFragments.at(channel);
+    fNSSPTriggers.at(channel) += triggers.size();
 
     // Loop over triggers
     for (std::vector<Trigger>::const_iterator triggerIt = triggers.begin(); triggerIt != triggers.end(); ++triggerIt) {
@@ -709,6 +714,8 @@ void OnlineMonitoring::MonitoringData::WriteMonitoringData(int run, int subrun, 
 
   /// Writes all the monitoring data currently saved in the data objects
 
+  this->FillBeforeWriting();
+
   // Get the time we're writing the data out
   time_t rawtime;
   struct tm* timeinfo;
@@ -929,6 +936,8 @@ void OnlineMonitoring::MonitoringData::MakeHistograms() {
   fFigureCaptions["SSP__ADC_Pedestal_Channel_All"] = "Pedestal of the SSP waveforms (profiled across all events)";
   hWaveformNumTicks = new TProfile("SSP__Ticks__Channel_All","Num Ticks in Trigger_\"hist\"_none;Channel;Number of Ticks",NSSPChannels,0,NSSPChannels);
   fFigureCaptions["SSP__Ticks__Channel_All"] = "Number of ticks in each trigger";
+  hSSPTriggerRate = new TProfile("SSP__Triggers_Rate_Channel_All","SSP Trigger Rate_\"hist\"_none;Channel;Trigger rate",NSSPChannels,0,NSSPChannels);
+  fFigureCaptions[hSSPTriggerRate->GetName()] = "Trigger rate (defined as number of triggers / number of fragments) per channel";
   hNumberOfTriggers = new TH1I("SSP__Triggers_Total_Channel_All","Number of Triggers_\"hist\"_none;Channel;Number of Triggers",NSSPChannels,0,NSSPChannels);
   fFigureCaptions["SSP__Triggers_Total_Channel_All"] = "Total number of triggers per channel";
   hTriggerFraction = new TProfile("SSP__Triggers_Fraction_Channel_All","Fraction of Events With Trigger_\"hist\"_none;Channel;Number of Triggers",NSSPChannels,0,NSSPChannels);
@@ -1086,6 +1095,7 @@ void OnlineMonitoring::MonitoringData::MakeHistograms() {
   fHistArray.Add(hWaveformMean); fHistArray.Add(hWaveformRMS);
   fHistArray.Add(hWaveformPeakHeight); fHistArray.Add(hWaveformPedestal);
   fHistArray.Add(hWaveformIntegral); fHistArray.Add(hWaveformIntegralNorm);
+  fHistArray.Add(hSSPTriggerRate);
   fHistArray.Add(hNumberOfTriggers); fHistArray.Add(hTriggerFraction);
   fHistArray.Add(hWaveformNumTicks);
 
