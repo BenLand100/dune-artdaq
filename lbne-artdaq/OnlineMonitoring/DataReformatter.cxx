@@ -683,7 +683,7 @@ OnlineMonitoring::PTBFormatter::PTBFormatter(art::Handle<artdaq::Fragments> cons
 
       // Counter
       case lbne::PennMicroSlice::DataTypeCounter:
-	//std::cout << "It's a counter!" << std::endl;
+	std::cout << "It's a counter!" << std::endl;
 	// cast the returned payload into a counter structure and parse it
 	// Why are the counter bits necessary? Not going to collect them for now
 	// Need to be careful with the times...should collect full timestamps
@@ -715,19 +715,19 @@ OnlineMonitoring::PTBFormatter::PTBFormatter(art::Handle<artdaq::Fragments> cons
 
       // Trigger
       case lbne::PennMicroSlice::DataTypeTrigger:
-	//std::cout << "It's a trigger!" << std::endl;
+	std::cout << "It's a trigger!" << std::endl;
 	word_p_trigger = reinterpret_cast<lbne::PennMicroSlice::Payload_Trigger*>(payload_data);
 	CollectTrigger(word_p_trigger);
 	break;
 
       // Timestamp
       case lbne::PennMicroSlice::DataTypeTimestamp:
-	//std::cout << "It's a timestamp!" << std::endl;
+	std::cout << "It's a timestamp!" << std::endl;
 	previous_timestamp = reinterpret_cast<lbne::PennMicroSlice::Payload_Timestamp*>(payload_data);
 	break;
 
       default:
-	//std::cout << "This is a " << std::bitset<3>(word_header->data_packet_type) << std::endl;
+	std::cout << "This is a " << std::bitset<3>(word_header->data_packet_type) << std::endl;
 	// do nothing
 	break;
 	
@@ -740,7 +740,7 @@ OnlineMonitoring::PTBFormatter::PTBFormatter(art::Handle<artdaq::Fragments> cons
   // Total time of the event (in [s])
   fTimeSliceSize = NNanoSecondsPerNovaTick * NTotalTicks / (1e9);
 
-  //std::cout << "Total ticks " << NTotalTicks << " and that makes total event length " << fTimeSliceSize << std::endl;
+  std::cout << "Total ticks " << NTotalTicks << " and that makes total event length " << fTimeSliceSize << std::endl;
 
   return;
 

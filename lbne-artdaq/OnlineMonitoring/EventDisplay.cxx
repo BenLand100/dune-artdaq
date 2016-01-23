@@ -10,11 +10,14 @@
 
 void OnlineMonitoring::EventDisplay::MakeEventDisplay(RCEFormatter const& rceformatter,
 						      ChannelMap const& channelMap,
-						      double driftVelocity) {
+						      double driftVelocity,
+						      int event,
+						      TString const& evdSavePath,
+						      int nEVD) {
 
   /// Makes crude online event display and saves it as an image to be displayed on the web
 
-  fEVD = new TH2D("EVD",";z (cm);x (cm)",EVD::UpperZ-EVD::LowerZ,EVD::LowerZ,EVD::UpperZ,EVD::UpperX-EVD::LowerX,EVD::LowerX,EVD::UpperX);
+  TH2D* EVD = new TH2D("EVD",";z (cm);x (cm)",EVD::UpperZ-EVD::LowerZ,EVD::LowerZ,EVD::UpperZ,EVD::UpperX-EVD::LowerX,EVD::LowerX,EVD::UpperX);
 
   const std::vector<std::vector<int> > ADCs = rceformatter.EVDADCVector();
   double x,z;
@@ -31,15 +34,10 @@ void OnlineMonitoring::EventDisplay::MakeEventDisplay(RCEFormatter const& rcefor
       int ADC = ADCs.at(channel).at(tick);
       x = tick * driftVelocity / 2;
       x /= 10;
-      if (drift == 0) fEVD->Fill(z,(int)-x,ADC);
-      if (drift == 1) fEVD->Fill(z,x,ADC);
+      if (drift == 0) EVD->Fill(z,(int)-x,ADC);
+      if (drift == 1) EVD->Fill(z,x,ADC);
     }
   }
-}
-
-void OnlineMonitoring::EventDisplay::SaveEventDisplay(int run, int subrun, int event, int nEVD, TString evdSavePath) {
-
-  /// Function to call to save the event display and sync to web
 
   // Save the event display and make it look pretty
   // Double_t Red[2] = { 1.00, 0.00 };
@@ -48,7 +46,7 @@ void OnlineMonitoring::EventDisplay::SaveEventDisplay(int run, int subrun, int e
   // Double_t Length[2] = { 0.00, 1.00 };
   // TColor::CreateGradientColorTable(2, Length, Red, Green, Blue, 1000);
   TCanvas* evdCanvas = new TCanvas();
-  fEVD->Draw("colz");
+  EVD->Draw("colz");
   TLine line;
   line.SetLineStyle(2);
   line.SetLineWidth(4);
@@ -57,11 +55,11 @@ void OnlineMonitoring::EventDisplay::SaveEventDisplay(int run, int subrun, int e
 
   // Add event file
   ofstream tmp((evdSavePath+TString("event")).Data());
-  tmp << nEVD << " " << event << " " << run << " " << subrun;
+  tmp << nEVD;
   tmp.flush();
   tmp.close();
 
-  delete evdCanvas;
+  delete evdCanvas; delete EVD;
 
   mf::LogInfo("Monitoring") << "New event display for event " << event << " is viewable at http://lbne-dqm.fnal.gov/EventDisplay.";
 
