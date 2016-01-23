@@ -9,6 +9,7 @@ add_subdirectory(Triggers)
 add_subdirectory(Plugins)
 add_subdirectory(DAQLogger)
 add_subdirectory(OnlineMonitoring)
+add_subdirectory(PedestalMonitoring)
 
 if (NOT ZEROMQ_IGNORED)
 add_subdirectory(RCConnection)
