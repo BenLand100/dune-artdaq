@@ -164,12 +164,12 @@ void lbne::SSP::BuildChannelControlRegisters(fhicl::ParameterSet const& ps,std::
 	break;
       case 2:                          //Use front panel as gate
 	for(unsigned int i=0;i<12;++i){
-	  reg[i]=(reg[i]&0xFFFF0FFF)+0x00009000;
+	  reg[i]=(reg[i]&0xFFFF0FFF)+0x00005000;
 	}
 	break;
       case 3:                          //Timestamp trigger
 	for(unsigned int i=0;i<12;++i){
-	  reg[i]=(reg[i]&0xFFFF0FFF)+0x0000C000;
+	  reg[i]=(reg[i]&0xFFFF0FFF)+0x0000E000;
 	}
 	break;
       default:
