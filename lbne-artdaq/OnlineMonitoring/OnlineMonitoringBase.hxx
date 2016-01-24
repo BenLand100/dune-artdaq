@@ -32,7 +32,7 @@ namespace OnlineMonitoring {
   const unsigned int NSSPs           = 7;
   const int          EventRate       = 200; //Hz
   const double       SamplingPeriod  = 0.5; //us
-  const TString PathDelimiter = "_";
+  const TString      PathDelimiter = "_";
 
   //NFB: What is the sampling period? Isn't the millislice supposed to be 5ms long?
   //     that would be 0.005 s = 5000 us

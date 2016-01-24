@@ -175,7 +175,7 @@ void OnlineMonitoring::OnlineMonitoring::analyze(art::Event const& evt) {
   // if (ptbformatter.MakeEventDisplay())
   // int evdRefreshInterval = std::round((double)fEventDisplayRefreshRate / 1.6e-3);
   // if (fEventNumber % evdRefreshInterval == 0)
-  if (fNEVDsMade <= 10 and rceformatter.FirstMicroslice >= 2 and rceformatter.FirstMicroslice <= 5) {
+  if (fNEVDsMade == 0 and rceformatter.FirstMicroslice >= 2 and rceformatter.FirstMicroslice <= 5) {
     ++fNEVDsMade;
     rceformatter.AnalyseADCs(rawRCE, rceformatter.FirstMicroslice+fMicroslicePreBuffer, rceformatter.FirstMicroslice+fMicroslicePreBuffer+fMicrosliceTriggerLength);
     fEventDisplay.MakeEventDisplay(rceformatter, fChannelMap, fDriftVelocity, fEventNumber, fEVDSavePath, fNEVDsMade);
