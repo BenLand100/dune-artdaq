@@ -197,6 +197,10 @@ private:
   long double fTimeSliceSize;
   unsigned long fNTotalTicks;
 
+  // NFB: Two vectors that contain all trigger types
+  static const std::vector<lbne::PennMicroSlice::Payload_Trigger::trigger_type_t> fMuonTriggerTypes;
+  static const std::vector<lbne::PennMicroSlice::Payload_Trigger::trigger_type_t> fCalibrationTypes;
+
 #endif /*OLD_CODE*/
 
 };

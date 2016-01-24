@@ -350,7 +350,6 @@ OnlineMonitoring::PTBFormatter::PTBFormatter(art::Handle<artdaq::Fragments> cons
   fPreviousTrigger = previousTrigger;
 
   // Initialise the trigger rates (both muon and calibration triggers have the same types)
-
   std::vector<unsigned int> trigger_types = {1,2,4,8};
   for (std::vector<unsigned int>::iterator triggerType = trigger_types.begin(); triggerType != trigger_types.end(); ++triggerType) {
     fMuonTriggerRates[*triggerType] = 0;
@@ -615,6 +614,19 @@ void OnlineMonitoring::PTBFormatter::CollectMuonTrigger(uint8_t* payload, size_t
 
 
 ////////////// Nuno's code ////////////////
+// NFB: Init of static consts
+const std::vector<lbne::PennMicroSlice::Payload_Trigger::trigger_type_t> OnlineMonitoring::PTBFormatter::fMuonTriggerTypes = {
+    lbne::PennMicroSlice::Payload_Trigger::TD,
+    lbne::PennMicroSlice::Payload_Trigger::TC,
+    lbne::PennMicroSlice::Payload_Trigger::TB,
+    lbne::PennMicroSlice::Payload_Trigger::TA };
+const std::vector<lbne::PennMicroSlice::Payload_Trigger::trigger_type_t > OnlineMonitoring::PTBFormatter::fCalibrationTypes = {
+    lbne::PennMicroSlice::Payload_Trigger::C4,
+    lbne::PennMicroSlice::Payload_Trigger::C3,
+    lbne::PennMicroSlice::Payload_Trigger::C2,
+    lbne::PennMicroSlice::Payload_Trigger::C1 };
+
+
 
 
 OnlineMonitoring::PTBFormatter::PTBFormatter(art::Handle<artdaq::Fragments> const& rawPTB) {
@@ -625,11 +637,14 @@ OnlineMonitoring::PTBFormatter::PTBFormatter(art::Handle<artdaq::Fragments> cons
   }
   PTBData = true;
 
-  // Initialize the trigger rates
-  for (std::vector<lbne::PennMicroSlice::Payload_Trigger::trigger_type_t>::const_iterator m = PTBTrigger::Muon.begin(); m != PTBTrigger::Muon.end(); ++m)
-    fMuonTriggerRates[*m] = 0;
-  for (std::vector<lbne::PennMicroSlice::Payload_Trigger::trigger_type_t>::const_iterator c = PTBTrigger::Calibration.begin(); c != PTBTrigger::Calibration.end(); ++c)
-    fCalibrationTriggerRates[*c] = 0;
+  // NFB: I don't understad the logic below. I replaced by one that is simpler to me, as I am not 
+  // sure of the behaviour of iterators to bitfields.
+  
+  for (uint32_t i = 0; i < fMuonTriggerTypes.size(); ++i) 
+    fMuonTriggerRates[fMuonTriggerTypes.at(i)] = 0;
+  for (uint32_t i = 0; i < fCalibrationTypes.size(); ++i) 
+    fCalibrationTriggerRates[fCalibrationTypes.at(i)] = 0;
+
   fSSPTriggerRates = 0;
 
   // Count the total ticks across the fragments
@@ -640,18 +655,27 @@ OnlineMonitoring::PTBFormatter::PTBFormatter(art::Handle<artdaq::Fragments> cons
 
     // Grab the millislice fragment from the artdaq fragment
     const auto& frag((*rawPTB)[idx]);
+    std::cout << "Processing fragment " << idx << std::endl;
+
+
     lbne::PennMilliSliceFragment msf(frag);
 
     // Count the types of each payload in the millislice
     // Actually, why are these needed?
     // Use the get_next_payload()
-    //lbne::PennMilliSlice::Header::payload_count_t n_frames, n_frames_counter, n_frames_trigger, n_frames_timestamp, n_frames_warning;
-    // TODO: Add a function
-    //n_frames = msf.payloadCount(n_frames_counter, n_frames_trigger, n_frames_timestamp, n_frames_warning);
+    lbne::PennMilliSlice::Header::payload_count_t n_frames, n_frames_counter, n_frames_trigger, n_frames_timestamp;
+    n_frames = msf.payloadCount(n_frames_counter, n_frames_trigger, n_frames_timestamp);
+    
+    std::cout << "Reporting " << n_frames << " frames (C,T,TS) = (" << n_frames_counter << ", " 
+	      << n_frames_trigger << ", " << n_frames_timestamp << ")" << std::endl;
+    
 
     // Add on the total number of ticks in this millislice
     NTotalTicks += msf.widthTicks();
     fNTotalTicks += msf.widthTicks();
+    
+    std::cout << "Fragment has " << NTotalTicks << " ticks (" <<  fNTotalTicks << " total)"<< std::endl;
+    
 
     lbne::PennMicroSlice::Payload_Header*    word_header = nullptr;
     lbne::PennMicroSlice::Payload_Counter*   word_p_counter = nullptr;
@@ -665,16 +689,17 @@ OnlineMonitoring::PTBFormatter::PTBFormatter(art::Handle<artdaq::Fragments> cons
     // uint16_t counter, trigger, timestamp, payloadCount;
     // payloadCount = msf.payloadCount(counter, trigger, timestamp);
     // std::cout << "Number of payloads is " << payloadCount << ", of which " << counter << " are counters, " << trigger << " are triggers and " << timestamp << " are timestamps" << std::endl;
-
+    uint32_t *data = nullptr;
     //while (payload_index < (uint32_t)payloadCount-1) {
     //while (payload_data != nullptr) {
     do {
 
-      //std::cout << "Payload index is " << payload_index << std::endl;
-
       payload_data = msf.get_next_payload(payload_index, word_header);
-      if (payload_data == nullptr)
+      if ((payload_data == nullptr ) || payload_index == n_frames) {
+	std::cout << " Returned NULL at index " << payload_index << std::endl;
 	continue;
+      }
+      std::cout << "Payload index " << payload_index << std::endl;
 
       fPayloadTypes.push_back(word_header->data_packet_type);
 
@@ -689,6 +714,12 @@ OnlineMonitoring::PTBFormatter::PTBFormatter(art::Handle<artdaq::Fragments> cons
 	// Need to be careful with the times...should collect full timestamps
 	// but those should always be calculated from a timestamp word
 	word_p_counter = reinterpret_cast<lbne::PennMicroSlice::Payload_Counter*>(payload_data);
+	data = reinterpret_cast<uint32_t*>(payload_data);
+	std::cout << std::bitset<32>(data[3]) << " " 
+		  << std::bitset<32>(data[2]) << " " 
+		  << std::bitset<32>(data[1]) << " " 
+		  << std::bitset<32>(data[0]) << " " << std::endl;
+
 	// Collect the counter bits
 	// FIXME: This is incredibly inefficient as it stores everything in memory. The amount of data can become quite big. I can imagine this causing troubles on the machine running the monitoring in the long term. Ideally this would be better to be calculated on-the-fly, otherwise it will mean trouble in the future. For now leave it as it was.
 	fCounterWords.push_back(*word_p_counter);
@@ -705,7 +736,8 @@ OnlineMonitoring::PTBFormatter::PTBFormatter(art::Handle<artdaq::Fragments> cons
 	  future_timestamp = reinterpret_cast<lbne::PennMicroSlice::Payload_Timestamp*>(msf.get_next_timestamp(future_timestamp_header));
 	  if (future_timestamp == nullptr) {
 	    // This should never happen, but if it does the fragment is useless.
-	    mf::LogError("Monitoring") << "Can't find PTB timestamp words in millislice fragment! Logic will fail" << std::endl;
+	    std::cout  << "Can't find PTB timestamp words in millislice fragment! Logic will fail" << std::endl;
+	    //mf::LogError("Monitoring") << "Can't find PTB timestamp words in millislice fragment! Logic will fail" << std::endl;
 	    return;
 	  }
 	  else
@@ -716,14 +748,15 @@ OnlineMonitoring::PTBFormatter::PTBFormatter(art::Handle<artdaq::Fragments> cons
       // Trigger
       case lbne::PennMicroSlice::DataTypeTrigger:
 	std::cout << "It's a trigger!" << std::endl;
+	std::cout << std::bitset<32>(*reinterpret_cast<uint32_t*>(payload_data));
 	word_p_trigger = reinterpret_cast<lbne::PennMicroSlice::Payload_Trigger*>(payload_data);
 	CollectTrigger(word_p_trigger);
 	break;
 
       // Timestamp
       case lbne::PennMicroSlice::DataTypeTimestamp:
-	std::cout << "It's a timestamp!" << std::endl;
 	previous_timestamp = reinterpret_cast<lbne::PennMicroSlice::Payload_Timestamp*>(payload_data);
+	std::cout << "It's a timestamp!  (" <<  previous_timestamp->nova_timestamp << ")"<< std::endl;
 	break;
 
       default:
@@ -825,25 +858,29 @@ void OnlineMonitoring::PTBFormatter::CollectTrigger(lbne::PennMicroSlice::Payloa
   /// Takes the trigger payload and analyses it, counting each specific trigger
 
   // Possible to have more than one trigger per word -- ask for each individually
-  if (trigger->has_muon_trigger())
-    for (std::vector<lbne::PennMicroSlice::Payload_Trigger::trigger_type_t>::const_iterator mTrigIt = PTBTrigger::Muon.begin(); mTrigIt != PTBTrigger::Muon.begin(); ++mTrigIt)
-      if (trigger->has_muon_trigger(*mTrigIt))
-        fMuonTriggerRates[*mTrigIt]++;
-
-  if (trigger->has_calibration())
-    for (std::vector<lbne::PennMicroSlice::Payload_Trigger::trigger_type_t>::const_iterator cTrigIt = PTBTrigger::Calibration.begin(); cTrigIt != PTBTrigger::Calibration.begin(); ++cTrigIt)
-      if (trigger->has_calibration(*cTrigIt))
-        fCalibrationTriggerRates[*cTrigIt]++;
+  if (trigger->has_muon_trigger()) {
+    for (uint32_t i = 0; i < fMuonTriggerTypes.size(); ++i) {
+      if (trigger->has_muon_trigger(fMuonTriggerTypes.at(i))) {
+	std::cout << "Collecting trigger: " << std::bitset<4>(fMuonTriggerTypes.at(i)) << std::endl;
+        fMuonTriggerRates[fMuonTriggerTypes.at(i)]++;
+      }
+    }
+  }
+  if (trigger->has_calibration()) {
+    for (uint32_t i = 0; i < fCalibrationTypes.size(); ++i) {
+      if (trigger->has_calibration(fCalibrationTypes.at(i))) {
+	std::cout << "Collecting calibration: " << std::bitset<4>(fCalibrationTypes.at(i)) << std::endl;
+        fCalibrationTriggerRates[fCalibrationTypes.at(i)]++;
+      }
+    }
+  }
 
   if (trigger->has_ssp_trigger())
     ++fSSPTriggerRates;
-
+  
   // NFB: What about RCE triggers? Are they no longer needed?
   // MW: Yes, they're needed. Haven't put them in yet! I'm sure your new code will make that easier.
 
-  // Why are the bits necessary?
-  // Now that the calibration and muon no longer overlap, it might be better to simply store the bits in a single place
-  // MW: Bits aren't necessary!
 
   return;
 
