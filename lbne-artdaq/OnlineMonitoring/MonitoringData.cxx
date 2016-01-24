@@ -68,6 +68,11 @@ void OnlineMonitoring::MonitoringData::BeginMonitoring(int run, int subrun, TStr
       this->MakeDetailedHistograms();
   }
 
+  for (unsigned int sspChan = 0; sspChan < NSSPChannels; ++sspChan) {
+    fNSSPFragments.push_back(0);
+    fNSSPTriggers.push_back(0);
+  }
+
 }
 
 void OnlineMonitoring::MonitoringData::EndMonitoring() {
@@ -87,6 +92,15 @@ void OnlineMonitoring::MonitoringData::EndMonitoring() {
     delete fDataTree;
   delete fDataFile;
   delete fCanvas;
+
+}
+
+void OnlineMonitoring::MonitoringData::FillBeforeWriting() {
+
+  /// Fills all data objects which require filling just before writing out
+
+  for (unsigned int sspChan = 0; sspChan < NSSPChannels; ++sspChan)
+    hSSPTriggerRate->Fill(sspChan, fNSSPTriggers.at(sspChan)/(double)fNSSPFragments.at(sspChan));
 
 }
 
@@ -455,6 +469,8 @@ void OnlineMonitoring::MonitoringData::SSPMonitoring(SSPFormatter const& sspform
 
     const int channel = channelIt->first;
     const std::vector<Trigger> triggers = channelIt->second;
+    ++fNSSPFragments.at(channel);
+    fNSSPTriggers.at(channel) += triggers.size();
 
     // Loop over triggers
     for (std::vector<Trigger>::const_iterator triggerIt = triggers.begin(); triggerIt != triggers.end(); ++triggerIt) {
@@ -480,6 +496,7 @@ void OnlineMonitoring::MonitoringData::SSPMonitoring(SSPFormatter const& sspform
 
 }
 
+#ifdef OLD_CODE
 void OnlineMonitoring::MonitoringData::PTBMonitoring(PTBFormatter const& ptb_formatter) {
 
   /// Produces PTB monitoring histograms
@@ -489,6 +506,8 @@ void OnlineMonitoring::MonitoringData::PTBMonitoring(PTBFormatter const& ptb_for
 
   // Fill the payload hists
   const std::vector<unsigned int> payloads = ptb_formatter.Payloads();
+  // NFB: Careful that with all counters on we might run into pretty large payload numbers (in the hundreds)
+  //      Be sure that the range is large enough.
   hPTBBlockLength->Fill(payloads.size());
   for (std::vector<unsigned int>::const_iterator payloadIt = payloads.begin(); payloadIt != payloads.end(); ++payloadIt) {
     if (*payloadIt == 1)      hPTBPayloadType->Fill("Counter",1);
@@ -504,6 +523,8 @@ void OnlineMonitoring::MonitoringData::PTBMonitoring(PTBFormatter const& ptb_for
   double hit_rate = 0;
   int counterNumber = 0;
 
+  //NFB: This logic is completely insane, specially when combining with the
+  // original logic of OnlineMonitoring::PTBFormatter::AnalyzeCounter
   for (int i = 0; i < 97; ++i) {
 
     ptb_formatter.AnalyzeCounter(i,activation_time,hit_rate);
@@ -584,10 +605,116 @@ void OnlineMonitoring::MonitoringData::PTBMonitoring(PTBFormatter const& ptb_for
   return;
 
 }
+#else
+
+
+
+
+/////////////// Nuno's code /////////////////////////
+
+void OnlineMonitoring::MonitoringData::PTBMonitoring(PTBFormatter const& ptb_formatter) {
+
+  /// Produces PTB monitoring histograms
+
+  if (ptb_formatter.Payloads().size() == 0)
+    return;
+
+  // Fill the payload hists
+  const std::vector<lbne::PennMicroSlice::Payload_Header::data_packet_type_t> payloads = ptb_formatter.Payloads();
+  hPTBBlockLength->Fill(payloads.size());
+  for (std::vector<lbne::PennMicroSlice::Payload_Header::data_packet_type_t>::const_iterator payloadIt = payloads.begin(); payloadIt != payloads.end(); ++payloadIt) {
+    if (*payloadIt == lbne::PennMicroSlice::DataTypeCounter) hPTBPayloadType->Fill("Counter",1);
+    else if (*payloadIt == lbne::PennMicroSlice::DataTypeTrigger) hPTBPayloadType->Fill("Trigger",1);
+    else if (*payloadIt == lbne::PennMicroSlice::DataTypeTimestamp) hPTBPayloadType->Fill("Timestamp",1);
+    else if (*payloadIt == lbne::PennMicroSlice::DataTypeWarning)   hPTBPayloadType->Fill("Warning",1);
+    else if (*payloadIt == lbne::PennMicroSlice::DataTypeChecksum) hPTBPayloadType->Fill("Checksum",1);
+    else hPTBPayloadType->Fill("Other",1);
+  }
+
+  // Fill the counter hists
+  lbne::PennMicroSlice::Payload_Timestamp::timestamp_t activation_time = 0;
+  double hit_rate = 0;
+  uint32_t counterNumber = 0;
+
+  // There are a total of 97 counters (even though not all will be on)
+  for (uint32_t i = 0; i <= 97; ++i) {
+
+    ptb_formatter.AnalyzeCounter(i,activation_time,hit_rate);
+
+    // Now the structures are filled according to the group they belong to
+    // This call is independent of the counter type; always returns the index inside its own type
+    counterNumber = lbne::PennMicroSlice::Payload_Counter::get_counter_type_pos(i);
+
+    switch (lbne::PennMicroSlice::Payload_Counter::get_counter_type(i)) {
+
+    case lbne::PennMicroSlice::Payload_Counter::counter_type_tsu_wu:
+      hPTBTSUCounterHitRateWU->Fill(counterNumber+1,hit_rate);
+      hPTBTSUCounterActivationTimeWU->Fill(counterNumber+1,activation_time);
+      break;
+    case lbne::PennMicroSlice::Payload_Counter::counter_type_tsu_el:
+      hPTBTSUCounterHitRateEL->Fill(counterNumber+1,hit_rate);
+      hPTBTSUCounterActivationTimeEL->Fill(counterNumber+1,activation_time);
+      break;
+    case lbne::PennMicroSlice::Payload_Counter::counter_type_tsu_extra:
+      hPTBTSUCounterHitRateExtra->Fill(counterNumber+1,hit_rate);
+      hPTBTSUCounterActivationTimeExtra->Fill(counterNumber+1,activation_time);
+      break;
+    case lbne::PennMicroSlice::Payload_Counter::counter_type_tsu_nu:
+      hPTBTSUCounterHitRateNU->Fill(counterNumber+1,hit_rate);
+      hPTBTSUCounterActivationTimeNU->Fill(counterNumber+1,activation_time);
+      break;
+    case lbne::PennMicroSlice::Payload_Counter::counter_type_tsu_sl:
+      hPTBTSUCounterHitRateSL->Fill(counterNumber+1,hit_rate);
+      hPTBTSUCounterActivationTimeSL->Fill(counterNumber+1,activation_time);
+      break;
+    case lbne::PennMicroSlice::Payload_Counter::counter_type_tsu_nl:
+      hPTBTSUCounterHitRateNL->Fill(counterNumber+1,hit_rate);
+      hPTBTSUCounterActivationTimeNL->Fill(counterNumber+1,activation_time);
+      break;
+    case lbne::PennMicroSlice::Payload_Counter::counter_type_tsu_su:
+      hPTBTSUCounterHitRateSU->Fill(counterNumber+1,hit_rate);
+      hPTBTSUCounterActivationTimeSU->Fill(counterNumber+1,activation_time);
+      break;
+    case lbne::PennMicroSlice::Payload_Counter::counter_type_bsu_rm:
+      hPTBBSUCounterHitRateRM->Fill(counterNumber+1,hit_rate);
+      hPTBBSUCounterActivationTimeRM->Fill(counterNumber+1,activation_time);
+      break;
+    case lbne::PennMicroSlice::Payload_Counter::counter_type_bsu_cu:
+      hPTBBSUCounterHitRateCU->Fill(counterNumber+1,hit_rate);
+      hPTBBSUCounterActivationTimeCU->Fill(counterNumber+1,activation_time);
+      break;
+    case lbne::PennMicroSlice::Payload_Counter::counter_type_bsu_cl:
+      hPTBBSUCounterHitRateCL->Fill(counterNumber+1,hit_rate);
+      hPTBBSUCounterActivationTimeCL->Fill(counterNumber+1,activation_time);
+      break;
+    case lbne::PennMicroSlice::Payload_Counter::counter_type_bsu_rl:
+      hPTBBSUCounterHitRateRL->Fill(counterNumber+1,hit_rate);
+      hPTBBSUCounterActivationTimeRL->Fill(counterNumber+1,activation_time);
+      break;
+    default:
+      break;
+    }
+
+  }
+
+  // Fill the trigger hists
+  for (uint32_t i = 0; i < 4; ++i ) {
+    hPTBTriggerRates->Fill(i+1, ptb_formatter.AnalyzeMuonTrigger(PTBTrigger::Muon.at(i)));
+    hPTBTriggerRates->Fill(9-i,ptb_formatter.AnalyzeCalibrationTrigger(PTBTrigger::Calibration.at(i)));
+  }
+  hPTBTriggerRates->Fill("SSP", ptb_formatter.AnalyzeSSPTrigger());
+
+  return;
+
+}
+
+#endif /*OLD_CODE*/
 
 void OnlineMonitoring::MonitoringData::WriteMonitoringData(int run, int subrun, int eventsProcessed, TString const& imageType) {
 
   /// Writes all the monitoring data currently saved in the data objects
+
+  this->FillBeforeWriting();
 
   // Get the time we're writing the data out
   time_t rawtime;
@@ -809,6 +936,8 @@ void OnlineMonitoring::MonitoringData::MakeHistograms() {
   fFigureCaptions["SSP__ADC_Pedestal_Channel_All"] = "Pedestal of the SSP waveforms (profiled across all events)";
   hWaveformNumTicks = new TProfile("SSP__Ticks__Channel_All","Num Ticks in Trigger_\"hist\"_none;Channel;Number of Ticks",NSSPChannels,0,NSSPChannels);
   fFigureCaptions["SSP__Ticks__Channel_All"] = "Number of ticks in each trigger";
+  hSSPTriggerRate = new TProfile("SSP__Triggers_Rate_Channel_All","SSP Trigger Rate_\"hist\"_none;Channel;Trigger rate",NSSPChannels,0,NSSPChannels);
+  fFigureCaptions[hSSPTriggerRate->GetName()] = "Trigger rate (defined as number of triggers / number of fragments) per channel";
   hNumberOfTriggers = new TH1I("SSP__Triggers_Total_Channel_All","Number of Triggers_\"hist\"_none;Channel;Number of Triggers",NSSPChannels,0,NSSPChannels);
   fFigureCaptions["SSP__Triggers_Total_Channel_All"] = "Total number of triggers per channel";
   hTriggerFraction = new TProfile("SSP__Triggers_Fraction_Channel_All","Fraction of Events With Trigger_\"hist\"_none;Channel;Number of Triggers",NSSPChannels,0,NSSPChannels);
@@ -827,16 +956,21 @@ void OnlineMonitoring::MonitoringData::MakeHistograms() {
   hPTBTriggerRates->GetXaxis()->SetBinLabel(9,"Calibration C4");
   fFigureCaptions[hPTBTriggerRates->GetName()] = "Average hit rates per millislice of the muon trigger system";
 
-  hPTBBlockLength = new TH1I("PTB__Payloads_Total_NumberPayloads_All","Total Number of Payloads_\"hist\"_none;Number of Payloads",100,0,100);
+#ifdef OLD_CODE
+  hPTBBlockLength = new TH1I("PTB__Payloads_Total_NumberPayloads_All","Total Number of Payloads_\"hist\"_none;Number of Payloads",400,0,400);
+#else
+  hPTBBlockLength = new TH1I("PTB__Payloads_Total_NumberPayloads_All","Total Number of Payloads_\"hist\"_none;Number of Payloads",1000,0,1000);
+#endif
   fFigureCaptions[hPTBBlockLength->GetName()] = "Number of payloads in each event (filled once per event)";
 
-  hPTBPayloadType = new TH1I("PTB__Payloads_Type_PayloadType_All","Payload Type_\"hist\"_logy;Payload Type",5,1,6);
+  hPTBPayloadType = new TH1I("PTB__Payloads_Type_PayloadType_All","Payload Type_\"hist\"_logy;Payload Type",6,1,7);
   hPTBPayloadType->GetXaxis()->SetBinLabel(1,"Counter");
   hPTBPayloadType->GetXaxis()->SetBinLabel(2,"Trigger");
-  hPTBPayloadType->GetXaxis()->SetBinLabel(3,"Checksum");
+  hPTBPayloadType->GetXaxis()->SetBinLabel(3,"Calibration");
   hPTBPayloadType->GetXaxis()->SetBinLabel(4,"Timestamp");
-  hPTBPayloadType->GetXaxis()->SetBinLabel(5,"Self-test");
-  fFigureCaptions[hPTBPayloadType->GetName()] = "Payload type (filled once per payload)";
+  hPTBPayloadType->GetXaxis()->SetBinLabel(5,"Warning");
+  hPTBPayloadType->GetXaxis()->SetBinLabel(6,"Other");
+  fFigureCaptions[hPTBPayloadType->GetName()] = "Payload type (filled once per payload) -- other should be empty";
 
   hPTBTSUCounterHitRateWU = new TProfile("PTB_TSUWU_Hits_Mean_Counter_All","TSU WU Counter Hit Rate_\"\"_none;Counter number;Hit Rate (Hz)",10,1,11);
   hPTBTSUCounterHitRateWU->GetXaxis()->SetNdivisions(10);
@@ -961,6 +1095,7 @@ void OnlineMonitoring::MonitoringData::MakeHistograms() {
   fHistArray.Add(hWaveformMean); fHistArray.Add(hWaveformRMS);
   fHistArray.Add(hWaveformPeakHeight); fHistArray.Add(hWaveformPedestal);
   fHistArray.Add(hWaveformIntegral); fHistArray.Add(hWaveformIntegralNorm);
+  fHistArray.Add(hSSPTriggerRate);
   fHistArray.Add(hNumberOfTriggers); fHistArray.Add(hTriggerFraction);
   fHistArray.Add(hWaveformNumTicks);
 

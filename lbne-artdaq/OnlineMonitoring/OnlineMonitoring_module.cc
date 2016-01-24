@@ -75,15 +75,14 @@ private:
   int fInitialMonitoringUpdate;
   int fEventDisplayRefreshRate;
   int fLastSaveTime;
+  int fNEVDsMade;
   bool fSavedFirstMonitoring;
-  bool fMadeFirstEVD;
 
   // EVD creation
   int fMicroslicePreBuffer;
   int fMicrosliceTriggerLength;
 
   double fDriftVelocity;
-  PTBTrigger fLastPTBTrigger;
 
 };
 
@@ -123,7 +122,7 @@ void OnlineMonitoring::OnlineMonitoring::beginSubRun(art::SubRun const& sr) {
   // Monitoring data write out
   fLastSaveTime = std::time(0);
   fSavedFirstMonitoring = false;
-  fMadeFirstEVD = false;
+  fNEVDsMade = 0;
 
 }
 
@@ -146,8 +145,7 @@ void OnlineMonitoring::OnlineMonitoring::analyze(art::Event const& evt) {
   // Create data formatter objects and fill monitoring data products
   RCEFormatter rceformatter(rawRCE, fScopeMonitoring);
   SSPFormatter sspformatter(rawSSP);
-  PTBFormatter ptbformatter(rawPTB, fLastPTBTrigger);
-  fLastPTBTrigger = ptbformatter.GetLastTrigger();
+  PTBFormatter ptbformatter(rawPTB);
 
   // Fill the data products in the monitoring data
   if (rawRCE.isValid()) {
@@ -177,10 +175,10 @@ void OnlineMonitoring::OnlineMonitoring::analyze(art::Event const& evt) {
   // if (ptbformatter.MakeEventDisplay())
   // int evdRefreshInterval = std::round((double)fEventDisplayRefreshRate / 1.6e-3);
   // if (fEventNumber % evdRefreshInterval == 0)
-  if (!fMadeFirstEVD and rceformatter.FirstMicroslice >= 2 and rceformatter.FirstMicroslice <= 5) {
-    fMadeFirstEVD = true;
+  if (fNEVDsMade == 0 and rceformatter.FirstMicroslice >= 2 and rceformatter.FirstMicroslice <= 5) {
+    ++fNEVDsMade;
     rceformatter.AnalyseADCs(rawRCE, rceformatter.FirstMicroslice+fMicroslicePreBuffer, rceformatter.FirstMicroslice+fMicroslicePreBuffer+fMicrosliceTriggerLength);
-    fEventDisplay.MakeEventDisplay(rceformatter, fChannelMap, fDriftVelocity, fEventNumber, fEVDSavePath);
+    fEventDisplay.MakeEventDisplay(rceformatter, fChannelMap, fDriftVelocity, fEventNumber, fEVDSavePath, fNEVDsMade);
   }
 
   // Consider detaching!

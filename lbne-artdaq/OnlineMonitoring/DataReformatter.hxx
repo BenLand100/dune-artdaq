@@ -13,7 +13,11 @@
 #include "lbne-raw-data/Overlays/TpcMilliSliceFragment.hh"
 #include "lbne-raw-data/Overlays/SSPFragment.hh"
 #include "lbne-raw-data/Overlays/PennMilliSliceFragment.hh"
+#include "lbne-raw-data/Overlays/PennMicroSlice.hh"
+
 #include "artdaq-core/Data/Fragments.hh"
+
+#include "messagefacility/MessageLogger/MessageLogger.h"
 
 #include <iostream>
 #include <iomanip>
@@ -118,6 +122,15 @@ public:
   // Defualt constructor (may come in handy!)
   PTBFormatter() :
     fNTotalTicks(0) {}
+  PTBFormatter(art::Handle<artdaq::Fragments> const& rawPTB);
+  void AnalyzeCounter(uint32_t counter_index, lbne::PennMicroSlice::Payload_Timestamp::timestamp_t &activation_time, double &hit_rate) const;
+  double AnalyzeMuonTrigger(lbne::PennMicroSlice::Payload_Trigger::trigger_type_t trigger_number) const;
+  double AnalyzeCalibrationTrigger(lbne::PennMicroSlice::Payload_Trigger::trigger_type_t trigger_number) const;
+  double AnalyzeSSPTrigger() const;
+  uint32_t NumPayloads() const { return fPayloadTypes.size(); }
+  std::vector<lbne::PennMicroSlice::Payload_Header::data_packet_type_t> Payloads() const { return fPayloadTypes; }
+  long double GetTotalSeconds() { return fNTotalTicks * NNanoSecondsPerNovaTick/(1000*1000*1000); };
+#ifdef OLD_CODE
   PTBFormatter(art::Handle<artdaq::Fragments> const& rawPTB, PTBTrigger const& previousTrigger);
   void AnalyzeCounter(int counter_index, unsigned long &activation_time, double &hit_rate) const;
   void AnalyzeMuonTrigger(int trigger_number, double &trigger_rate) const;
@@ -127,13 +140,21 @@ public:
   std::vector<unsigned int> Payloads() const { return fPayloadTypes; }
   long double GetTotalSeconds() { return fNTotalTicks * NNanoSecondsPerNovaTick/(1000*1000*1000); };
   PTBTrigger GetLastTrigger() const { return fPreviousTrigger; }
+#endif
 
   bool PTBData;
 
 private:
 
+#ifdef OLD_CODE
   void CollectCounterBits(uint8_t* payload, size_t payload_size);
   void CollectMuonTrigger(uint8_t* payload, size_t payload_size, lbne::PennMicroSlice::Payload_Header::short_nova_timestamp_t timestamp);
+
+#else
+  void CollectCounterBits(lbne::PennMicroSlice::Payload_Header *header,lbne::PennMicroSlice::Payload_Counter *trigger);
+  void CollectTrigger(lbne::PennMicroSlice::Payload_Trigger *trigger);
+#endif
+#ifdef OLD_CODE
 
   // Counters
   std::vector<std::bitset<TypeSizes::CounterWordSize> > fCounterBits;
@@ -153,6 +174,30 @@ private:
   unsigned long fNTotalTicks;
 
   PTBTrigger fPreviousTrigger;
+
+#else
+  // Counters
+  // NFB: I don't think that it is necessary to keep track of the individual words
+  //std::vector<std::bitset<TypeSizes::CounterWordSize> > fCounterBits;
+  std::vector<lbne::PennMicroSlice::Payload_Timestamp::timestamp_t> fCounterTimes;
+
+  std::vector<lbne::PennMicroSlice::Payload_Counter> fCounterWords;
+
+  // Triggers and calibrations
+  std::vector<lbne::PennMicroSlice::Payload_Timestamp::timestamp_t> fMuonTriggerTimes;
+  //std::vector<std::bitset<TypeSizes::TriggerWordSize> > fMuonTriggerBits;
+  std::map<lbne::PennMicroSlice::Payload_Trigger::trigger_type_t,int> fMuonTriggerRates;
+
+  //std::vector<std::bitset<TypeSizes::TriggerWordSize> > fCalibrationTriggerBits;
+  std::map<lbne::PennMicroSlice::Payload_Trigger::trigger_type_t,int> fCalibrationTriggerRates;
+  std::vector<lbne::PennMicroSlice::Payload_Timestamp::timestamp_t> fCalibrationTriggerTimes;
+
+  int fSSPTriggerRates;
+  std::vector<lbne::PennMicroSlice::Payload_Header::data_packet_type_t> fPayloadTypes;
+  long double fTimeSliceSize;
+  unsigned long fNTotalTicks;
+
+#endif /*OLD_CODE*/
 
 };
 

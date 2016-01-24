@@ -223,7 +223,11 @@ data_timeout_usecs_(ps.get<uint32_t>("data_timeout_usecs", 60000000))
 
   // What does this actually do? FLushes the registers?
   //  penn_client_->send_command("HardReset");
-  penn_client_->send_command("SoftReset");
+  penn_client_->send_command("HardReset");
+  if (penn_client_->exception()) {
+    set_exception(true);
+    DAQLogger::LogError("PennReceiver") << "lbne::PennReceiver::constructor_ : found penn client in exception state";
+  }
   sleep(1);
   std::ostringstream config_frag;
   this->generate_config_frag(config_frag);
@@ -269,7 +273,10 @@ data_timeout_usecs_(ps.get<uint32_t>("data_timeout_usecs", 60000000))
 #ifdef __PTB_DEBUG__
   DAQLogger::LogDebug("PennReceiver") << "Configuration sent to the PTB";
 #endif
-
+  if (penn_client_->exception()) {
+    set_exception(true);
+    DAQLogger::LogError("PennReceiver") << "lbne::PennReceiver::constructor_ : found control thread in exception state";
+  }
 }
 
 void lbne::PennReceiver::start(void)
@@ -330,6 +337,11 @@ void lbne::PennReceiver::start(void)
   //penn_client_->send_command("SoftReset");
   penn_client_->send_command("StartRun");
   
+  // check if there was no problem starting the run. If there was then fail.
+  if (penn_client_->exception()) {
+    set_exception(true);
+    DAQLogger::LogError("PennReceiver") << "lbne::PennReceiver::start_ : found control thread in exception state";
+  }
   
   // if (xml_answer.size() == 0) {
   //   DAQLogger::LogWarning("PennReceiver") << "PTB didn't send a start of run timestamp. Will estimate from data flow.";
@@ -348,8 +360,9 @@ void lbne::PennReceiver::stopNoMutex(void)
 {
         DAQLogger::LogInfo("PennReceiver") << "In stopNoMutex - instructing PTB to stop";
 
-        // Instruct the DPM to stop
+        // Instruct the PTB to stop
         penn_client_->send_command("StopRun");  // GBcopy
+        // no need to look for exception state....is there?
 }
 
 void lbne::PennReceiver::stop(void)
