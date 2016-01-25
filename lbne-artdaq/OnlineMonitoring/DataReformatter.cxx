@@ -689,7 +689,7 @@ OnlineMonitoring::PTBFormatter::PTBFormatter(art::Handle<artdaq::Fragments> cons
     // uint16_t counter, trigger, timestamp, payloadCount;
     // payloadCount = msf.payloadCount(counter, trigger, timestamp);
     // std::cout << "Number of payloads is " << payloadCount << ", of which " << counter << " are counters, " << trigger << " are triggers and " << timestamp << " are timestamps" << std::endl;
-    uint32_t *data = nullptr;
+    //uint32_t *data = nullptr;
     //while (payload_index < (uint32_t)payloadCount-1) {
     //while (payload_data != nullptr) {
     do {
@@ -714,7 +714,7 @@ OnlineMonitoring::PTBFormatter::PTBFormatter(art::Handle<artdaq::Fragments> cons
 	// Need to be careful with the times...should collect full timestamps
 	// but those should always be calculated from a timestamp word
 	word_p_counter = reinterpret_cast<lbne::PennMicroSlice::Payload_Counter*>(payload_data);
-	data = reinterpret_cast<uint32_t*>(payload_data);
+	// data = reinterpret_cast<uint32_t*>(payload_data);
 	// std::cout << std::bitset<32>(data[3]) << " " 
 	// 	  << std::bitset<32>(data[2]) << " " 
 	// 	  << std::bitset<32>(data[1]) << " " 
