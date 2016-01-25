@@ -655,7 +655,7 @@ OnlineMonitoring::PTBFormatter::PTBFormatter(art::Handle<artdaq::Fragments> cons
 
     // Grab the millislice fragment from the artdaq fragment
     const auto& frag((*rawPTB)[idx]);
-    std::cout << "Processing fragment " << idx << std::endl;
+    //std::cout << "Processing fragment " << idx << std::endl;
 
 
     lbne::PennMilliSliceFragment msf(frag);
@@ -666,15 +666,15 @@ OnlineMonitoring::PTBFormatter::PTBFormatter(art::Handle<artdaq::Fragments> cons
     lbne::PennMilliSlice::Header::payload_count_t n_frames, n_frames_counter, n_frames_trigger, n_frames_timestamp;
     n_frames = msf.payloadCount(n_frames_counter, n_frames_trigger, n_frames_timestamp);
     
-    std::cout << "Reporting " << n_frames << " frames (C,T,TS) = (" << n_frames_counter << ", " 
-	      << n_frames_trigger << ", " << n_frames_timestamp << ")" << std::endl;
+    // std::cout << "Reporting " << n_frames << " frames (C,T,TS) = (" << n_frames_counter << ", " 
+    // 	      << n_frames_trigger << ", " << n_frames_timestamp << ")" << std::endl;
     
 
     // Add on the total number of ticks in this millislice
     NTotalTicks += msf.widthTicks();
     fNTotalTicks += msf.widthTicks();
     
-    std::cout << "Fragment has " << NTotalTicks << " ticks (" <<  fNTotalTicks << " total)"<< std::endl;
+    //std::cout << "Fragment has " << NTotalTicks << " ticks (" <<  fNTotalTicks << " total)"<< std::endl;
     
 
     lbne::PennMicroSlice::Payload_Header*    word_header = nullptr;
@@ -696,10 +696,10 @@ OnlineMonitoring::PTBFormatter::PTBFormatter(art::Handle<artdaq::Fragments> cons
 
       payload_data = msf.get_next_payload(payload_index, word_header);
       if ((payload_data == nullptr ) || payload_index == n_frames) {
-	std::cout << " Returned NULL at index " << payload_index << std::endl;
+	//std::cout << " Returned NULL at index " << payload_index << std::endl;
 	continue;
       }
-      std::cout << "Payload index " << payload_index << std::endl;
+      //std::cout << "Payload index " << payload_index << std::endl;
 
       fPayloadTypes.push_back(word_header->data_packet_type);
 
@@ -708,17 +708,17 @@ OnlineMonitoring::PTBFormatter::PTBFormatter(art::Handle<artdaq::Fragments> cons
 
       // Counter
       case lbne::PennMicroSlice::DataTypeCounter:
-	std::cout << "It's a counter!" << std::endl;
+	//std::cout << "It's a counter!" << std::endl;
 	// cast the returned payload into a counter structure and parse it
 	// Why are the counter bits necessary? Not going to collect them for now
 	// Need to be careful with the times...should collect full timestamps
 	// but those should always be calculated from a timestamp word
 	word_p_counter = reinterpret_cast<lbne::PennMicroSlice::Payload_Counter*>(payload_data);
 	data = reinterpret_cast<uint32_t*>(payload_data);
-	std::cout << std::bitset<32>(data[3]) << " " 
-		  << std::bitset<32>(data[2]) << " " 
-		  << std::bitset<32>(data[1]) << " " 
-		  << std::bitset<32>(data[0]) << " " << std::endl;
+	// std::cout << std::bitset<32>(data[3]) << " " 
+	// 	  << std::bitset<32>(data[2]) << " " 
+	// 	  << std::bitset<32>(data[1]) << " " 
+	// 	  << std::bitset<32>(data[0]) << " " << std::endl;
 
 	// Collect the counter bits
 	// FIXME: This is incredibly inefficient as it stores everything in memory. The amount of data can become quite big. I can imagine this causing troubles on the machine running the monitoring in the long term. Ideally this would be better to be calculated on-the-fly, otherwise it will mean trouble in the future. For now leave it as it was.
@@ -736,7 +736,7 @@ OnlineMonitoring::PTBFormatter::PTBFormatter(art::Handle<artdaq::Fragments> cons
 	  future_timestamp = reinterpret_cast<lbne::PennMicroSlice::Payload_Timestamp*>(msf.get_next_timestamp(future_timestamp_header));
 	  if (future_timestamp == nullptr) {
 	    // This should never happen, but if it does the fragment is useless.
-	    std::cout  << "Can't find PTB timestamp words in millislice fragment! Logic will fail" << std::endl;
+	    //std::cout  << "Can't find PTB timestamp words in millislice fragment! Logic will fail" << std::endl;
 	    //mf::LogError("Monitoring") << "Can't find PTB timestamp words in millislice fragment! Logic will fail" << std::endl;
 	    return;
 	  }
@@ -747,8 +747,8 @@ OnlineMonitoring::PTBFormatter::PTBFormatter(art::Handle<artdaq::Fragments> cons
 
       // Trigger
       case lbne::PennMicroSlice::DataTypeTrigger:
-	std::cout << "It's a trigger!" << std::endl;
-	std::cout << std::bitset<32>(*reinterpret_cast<uint32_t*>(payload_data));
+	//std::cout << "It's a trigger!" << std::endl;
+	//std::cout << std::bitset<32>(*reinterpret_cast<uint32_t*>(payload_data));
 	word_p_trigger = reinterpret_cast<lbne::PennMicroSlice::Payload_Trigger*>(payload_data);
 	CollectTrigger(word_p_trigger);
 	break;
@@ -756,11 +756,11 @@ OnlineMonitoring::PTBFormatter::PTBFormatter(art::Handle<artdaq::Fragments> cons
       // Timestamp
       case lbne::PennMicroSlice::DataTypeTimestamp:
 	previous_timestamp = reinterpret_cast<lbne::PennMicroSlice::Payload_Timestamp*>(payload_data);
-	std::cout << "It's a timestamp!  (" <<  previous_timestamp->nova_timestamp << ")"<< std::endl;
+	//std::cout << "It's a timestamp!  (" <<  previous_timestamp->nova_timestamp << ")"<< std::endl;
 	break;
 
       default:
-	std::cout << "This is a " << std::bitset<3>(word_header->data_packet_type) << std::endl;
+	//std::cout << "This is a " << std::bitset<3>(word_header->data_packet_type) << std::endl;
 	// do nothing
 	break;
 	
@@ -773,7 +773,7 @@ OnlineMonitoring::PTBFormatter::PTBFormatter(art::Handle<artdaq::Fragments> cons
   // Total time of the event (in [s])
   fTimeSliceSize = NNanoSecondsPerNovaTick * NTotalTicks / (1e9);
 
-  std::cout << "Total ticks " << NTotalTicks << " and that makes total event length " << fTimeSliceSize << std::endl;
+  //std::cout << "Total ticks " << NTotalTicks << " and that makes total event length " << fTimeSliceSize << std::endl;
 
   return;
 
@@ -861,7 +861,7 @@ void OnlineMonitoring::PTBFormatter::CollectTrigger(lbne::PennMicroSlice::Payloa
   if (trigger->has_muon_trigger()) {
     for (uint32_t i = 0; i < fMuonTriggerTypes.size(); ++i) {
       if (trigger->has_muon_trigger(fMuonTriggerTypes.at(i))) {
-	std::cout << "Collecting trigger: " << std::bitset<4>(fMuonTriggerTypes.at(i)) << std::endl;
+	//std::cout << "Collecting trigger: " << std::bitset<4>(fMuonTriggerTypes.at(i)) << std::endl;
         fMuonTriggerRates[fMuonTriggerTypes.at(i)]++;
       }
     }
@@ -869,7 +869,7 @@ void OnlineMonitoring::PTBFormatter::CollectTrigger(lbne::PennMicroSlice::Payloa
   if (trigger->has_calibration()) {
     for (uint32_t i = 0; i < fCalibrationTypes.size(); ++i) {
       if (trigger->has_calibration(fCalibrationTypes.at(i))) {
-	std::cout << "Collecting calibration: " << std::bitset<4>(fCalibrationTypes.at(i)) << std::endl;
+	//std::cout << "Collecting calibration: " << std::bitset<4>(fCalibrationTypes.at(i)) << std::endl;
         fCalibrationTriggerRates[fCalibrationTypes.at(i)]++;
       }
     }
