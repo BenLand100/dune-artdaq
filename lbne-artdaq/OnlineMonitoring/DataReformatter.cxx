@@ -755,6 +755,7 @@ OnlineMonitoring::PTBFormatter::PTBFormatter(art::Handle<artdaq::Fragments> cons
 
       // Timestamp
       case lbne::PennMicroSlice::DataTypeTimestamp:
+	//std::cout << "It's a timestamp!" << std::endl;
 	previous_timestamp = reinterpret_cast<lbne::PennMicroSlice::Payload_Timestamp*>(payload_data);
 	//std::cout << "It's a timestamp!  (" <<  previous_timestamp->nova_timestamp << ")"<< std::endl;
 	break;
