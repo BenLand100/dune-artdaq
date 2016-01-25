@@ -80,7 +80,7 @@ void OnlineMonitoring::MonitoringData::EndMonitoring() {
   /// Clear up after writing out the monitoring data
 
   // Free the memory for the histograms
-  //fHistArray.Delete();
+  fHistArray.Delete();
 
   // Free up all used memory
   if (fDetailedMonitoring)
@@ -227,7 +227,7 @@ void OnlineMonitoring::MonitoringData::GeneralMonitoring(RCEFormatter const& rce
 
       // Add a plot on the graph for the SSP we've just finished looking at
       int plot_index = std::distance(channelTriggers.begin(), channelIt) / NSSPChannelsPerSSP;
-      hTimeSyncSSPs[plot_index]->SetPoint(hTimeSyncSSPs[plot_index]->GetN(),min_average_time,max_average_time-min_average_time);
+      //hTimeSyncSSPs[plot_index]->SetPoint(hTimeSyncSSPs[plot_index]->GetN(),min_average_time,max_average_time-min_average_time);
 
       // Store average SSP time
       average_ssp_trigger_time /= NSSPTriggers;
@@ -252,8 +252,8 @@ void OnlineMonitoring::MonitoringData::GeneralMonitoring(RCEFormatter const& rce
     average_of_average_ssp_times /= NSSPsWithTriggers;
   for (std::map<int,long double>::iterator sspIt = average_ssp_times.begin(); sspIt != average_ssp_times.end(); ++sspIt)
     if (sspIt->second > 0) {
-      int plot_index = std::distance(average_ssp_times.begin(), sspIt);
-      hTimeSyncAverageSSPs[plot_index]->SetPoint(hTimeSyncAverageSSPs[plot_index]->GetN(),average_of_average_ssp_times,sspIt->second-average_of_average_ssp_times);
+      // int plot_index = std::distance(average_ssp_times.begin(), sspIt);
+      // hTimeSyncAverageSSPs[plot_index]->SetPoint(hTimeSyncAverageSSPs[plot_index]->GetN(),average_of_average_ssp_times,sspIt->second-average_of_average_ssp_times);
     }
 
 }
@@ -745,7 +745,7 @@ void OnlineMonitoring::MonitoringData::WriteMonitoringData(int run, int subrun, 
   if (fDetailedMonitoring) fDataTree->Write();
 
   // Contruct MultiGraphs for the timing sync before saving
-  ConstructTimingSyncGraphs();
+  //ConstructTimingSyncGraphs();
 
   // Save all the histograms as images and write to file
   for (int histIt = 0; histIt < fHistArray.GetEntriesFast(); ++histIt) {
@@ -845,29 +845,29 @@ void OnlineMonitoring::MonitoringData::MakeHistograms() {
   fFigureCaptions["General__Last20Files_Size_RunSubrun_All"] = "Size of the data files made by the DAQ for the last 20 runs";
   hSizeOfFilesPerEvent = new TH1D("General__Last20Files_SizePerEvent_RunSubrun_All","Size of Event in Data Files_\"colz\"_none;Run&Subrun;Size (MB/event);",20,0,20);
   fFigureCaptions["General__Last20Files_SizePerEvent_RunSubrun_All"] = "Size of event in each of the last 20 data files made by the DAQ (size of file / number of events in file)";
-  // SSP time sync
-  hSSPTimeSync = new TMultiGraph("General_SSP_TimeSync_Difference_MinChannelTime_All",
-				 "Max -- Min Average Trigger Times (All SSPs)_\"AL\"_none;Min average channel time;(Max-min) channel time");
-  fFigureCaptions[hSSPTimeSync->GetName()] = "Max-min average trigger times for all SSPs";
-  hSSPTimeSyncAverage = new TMultiGraph("General_SSP_TimeSync_Average_AverageChannelTime_All",
-					"Average SSP Trigger Time -- Average Channel Trigger Time_\"AL\"_none;Average channel trigger time;SSP average trigger time - average channel trigger time");
-  fFigureCaptions[hSSPTimeSyncAverage->GetName()] = "Average SSP trigger time - average channel trigger time for all SSPs";
-  for (unsigned int ssp = 0; ssp < NSSPs; ++ssp) {
-    hTimeSyncSSPs[ssp] = new TGraph();
-    hTimeSyncSSPs[ssp]->SetName(("General_SSP"+std::to_string(ssp)+"_TimeSync_Difference_MinChannelTime_All").c_str());
-    hTimeSyncSSPs[ssp]->SetTitle("Max -- Min Average Trigger Times for SSP "+ssp);
-    hTimeSyncSSPs[ssp]->SetLineColor(ssp+1);
-    hTimeSyncSSPs[ssp]->SetMarkerColor(ssp+1);
-    hTimeSyncSSPs[ssp]->SetLineStyle(ssp+2);
-    hTimeSyncSSPs[ssp]->SetLineWidth(2);
-    hTimeSyncAverageSSPs[ssp] = new TGraph();
-    hTimeSyncAverageSSPs[ssp]->SetName(("General_SSP"+std::to_string(ssp)+"_TimeSync_Average_MinChannelTime_All").c_str());
-    hTimeSyncAverageSSPs[ssp]->SetTitle("Max -- Min Average Trigger Times for All SSPs");
-    hTimeSyncAverageSSPs[ssp]->SetLineColor(ssp+1);
-    hTimeSyncAverageSSPs[ssp]->SetMarkerColor(ssp+1);
-    hTimeSyncAverageSSPs[ssp]->SetLineStyle(ssp+2);
-    hTimeSyncAverageSSPs[ssp]->SetLineWidth(2);
-  }
+  // // SSP time sync
+  // hSSPTimeSync = new TMultiGraph("General_SSP_TimeSync_Difference_MinChannelTime_All",
+  // 				 "Max -- Min Average Trigger Times (All SSPs)_\"AL\"_none;Min average channel time;(Max-min) channel time");
+  // fFigureCaptions[hSSPTimeSync->GetName()] = "Max-min average trigger times for all SSPs";
+  // hSSPTimeSyncAverage = new TMultiGraph("General_SSP_TimeSync_Average_AverageChannelTime_All",
+  // 					"Average SSP Trigger Time -- Average Channel Trigger Time_\"AL\"_none;Average channel trigger time;SSP average trigger time - average channel trigger time");
+  // fFigureCaptions[hSSPTimeSyncAverage->GetName()] = "Average SSP trigger time - average channel trigger time for all SSPs";
+  // for (unsigned int ssp = 0; ssp < NSSPs; ++ssp) {
+  //   hTimeSyncSSPs[ssp] = new TGraph();
+  //   hTimeSyncSSPs[ssp]->SetName(("General_SSP"+std::to_string(ssp)+"_TimeSync_Difference_MinChannelTime_All").c_str());
+  //   hTimeSyncSSPs[ssp]->SetTitle("Max -- Min Average Trigger Times for SSP "+ssp);
+  //   hTimeSyncSSPs[ssp]->SetLineColor(ssp+1);
+  //   hTimeSyncSSPs[ssp]->SetMarkerColor(ssp+1);
+  //   hTimeSyncSSPs[ssp]->SetLineStyle(ssp+2);
+  //   hTimeSyncSSPs[ssp]->SetLineWidth(2);
+  //   hTimeSyncAverageSSPs[ssp] = new TGraph();
+  //   hTimeSyncAverageSSPs[ssp]->SetName(("General_SSP"+std::to_string(ssp)+"_TimeSync_Average_MinChannelTime_All").c_str());
+  //   hTimeSyncAverageSSPs[ssp]->SetTitle("Max -- Min Average Trigger Times for All SSPs");
+  //   hTimeSyncAverageSSPs[ssp]->SetLineColor(ssp+1);
+  //   hTimeSyncAverageSSPs[ssp]->SetMarkerColor(ssp+1);
+  //   hTimeSyncAverageSSPs[ssp]->SetLineStyle(ssp+2);
+  //   hTimeSyncAverageSSPs[ssp]->SetLineWidth(2);
+  // }
 
   // RCE hists
   hADCMeanChannelAPA1 = new TProfile("RCE_APA0_ADC_Mean_Channel_All","RCE ADC Mean APA0_\"histl\"_none;Channel;RCE ADC Mean",512,0,511);
@@ -1076,7 +1076,7 @@ void OnlineMonitoring::MonitoringData::MakeHistograms() {
   fHistArray.Add(hSubDetectorsPresent); fHistArray.Add(hSubDetectorsWithData);
   fHistArray.Add(hSizeOfFiles); fHistArray.Add(hSizeOfFilesPerEvent);
 
-  fHistArray.Add(hSSPTimeSync); fHistArray.Add(hSSPTimeSyncAverage);
+  //fHistArray.Add(hSSPTimeSync); fHistArray.Add(hSSPTimeSyncAverage);
 
   fHistArray.Add(hADCMeanChannelAPA1); fHistArray.Add(hADCMeanChannelAPA2);
   fHistArray.Add(hADCMeanChannelAPA3); fHistArray.Add(hADCMeanChannelAPA4);
@@ -1141,34 +1141,34 @@ void OnlineMonitoring::MonitoringData::MakeScopeHistograms() {
 
 }
 
-void OnlineMonitoring::MonitoringData::ConstructTimingSyncGraphs() {
+// void OnlineMonitoring::MonitoringData::ConstructTimingSyncGraphs() {
 
-  TLegend* sspTimeSyncLegend = new TLegend(0.8,0.5,0.9,0.9);
+//   TLegend* sspTimeSyncLegend = new TLegend(0.8,0.5,0.9,0.9);
 
-  bool should_draw = false;
-  for (unsigned int ssp = 0; ssp < NSSPs; ++ssp) {
-    if (!hTimeSyncSSPs[ssp]) continue;
-    if (hTimeSyncSSPs[ssp]->GetN() > 0) {
-      should_draw = true;
-      hSSPTimeSync->Add(hTimeSyncSSPs[ssp]);
-      sspTimeSyncLegend->AddEntry(hTimeSyncSSPs[ssp],("SSP "+std::to_string(ssp+1)).c_str(),"l");
-    }
-  }
-  if (should_draw)
-    fFigureLegends[hSSPTimeSync->GetName()] = sspTimeSyncLegend;
+//   bool should_draw = false;
+//   for (unsigned int ssp = 0; ssp < NSSPs; ++ssp) {
+//     if (!hTimeSyncSSPs[ssp]) continue;
+//     if (hTimeSyncSSPs[ssp]->GetN() > 0) {
+//       should_draw = true;
+//       hSSPTimeSync->Add(hTimeSyncSSPs[ssp]);
+//       sspTimeSyncLegend->AddEntry(hTimeSyncSSPs[ssp],("SSP "+std::to_string(ssp+1)).c_str(),"l");
+//     }
+//   }
+//   if (should_draw)
+//     fFigureLegends[hSSPTimeSync->GetName()] = sspTimeSyncLegend;
 
-  TLegend* sspTimeSyncAverageLegend = new TLegend(0.8,0.5,0.9,0.9);
+//   TLegend* sspTimeSyncAverageLegend = new TLegend(0.8,0.5,0.9,0.9);
 
-  should_draw = false;
-  for (unsigned int ssp = 0; ssp < NSSPs; ++ssp) {
-    if (!hTimeSyncAverageSSPs[ssp]) continue;
-    if (hTimeSyncAverageSSPs[ssp]->GetN() > 0) {
-      should_draw = true;
-      hSSPTimeSyncAverage->Add(hTimeSyncAverageSSPs[ssp]);
-      sspTimeSyncAverageLegend->AddEntry(hTimeSyncAverageSSPs[ssp],("SSP "+std::to_string(ssp+1)).c_str(),"l");
-    }
-  }
-  if (should_draw)
-    fFigureLegends[hSSPTimeSyncAverage->GetName()] = sspTimeSyncAverageLegend;
+//   should_draw = false;
+//   for (unsigned int ssp = 0; ssp < NSSPs; ++ssp) {
+//     if (!hTimeSyncAverageSSPs[ssp]) continue;
+//     if (hTimeSyncAverageSSPs[ssp]->GetN() > 0) {
+//       should_draw = true;
+//       hSSPTimeSyncAverage->Add(hTimeSyncAverageSSPs[ssp]);
+//       sspTimeSyncAverageLegend->AddEntry(hTimeSyncAverageSSPs[ssp],("SSP "+std::to_string(ssp+1)).c_str(),"l");
+//     }
+//   }
+//   if (should_draw)
+//     fFigureLegends[hSSPTimeSyncAverage->GetName()] = sspTimeSyncAverageLegend;
 
-}
+// }

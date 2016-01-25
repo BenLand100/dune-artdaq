@@ -95,8 +95,8 @@ private:
   // General
   TH1I *hNumSubDetectorsPresent, *hSizeOfFiles, *hSubDetectorsWithData, *hSubDetectorsPresent;
   TH1D *hSizeOfFilesPerEvent;
-  TGraph *hTimeSyncSSPs[NSSPs], *hTimeSyncAverageSSPs[NSSPs];
-  TMultiGraph *hSSPTimeSync, *hSSPTimeSyncAverage;
+  // TGraph *hTimeSyncSSPs[NSSPs], *hTimeSyncAverageSSPs[NSSPs];
+  // TMultiGraph *hSSPTimeSync, *hSSPTimeSyncAverage;
 
   // RCE
   TH1I *hTotalADCEvent, *hTotalRCEHitsEvent, *hTotalRCEHitsChannel, *hTimesADCGoesOverThreshold,  *hNumMicroslicesInMillislice, *hNumNanoslicesInMicroslice, *hNumNanoslicesInMillislice;
