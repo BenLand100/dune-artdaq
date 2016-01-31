@@ -30,6 +30,7 @@ physics:
       InitialMonitoringUpdate:    30
       EventDisplayRefreshRate:    30 #8
       DriftVelocity:              0.9 #mm/us
+      CollectionPedestal:         550
       MicroslicePreBuffer:        5
       MicrosliceTriggerLength:    5
     }
