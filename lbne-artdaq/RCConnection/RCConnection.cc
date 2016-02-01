@@ -13,7 +13,7 @@
 namespace lbne {
 
   RCConnection::RCConnection() :
-    runcontrol_socket_address_("tcp://192.168.100.1:5000"),
+    runcontrol_socket_address_("tcp://10.226.8.24:5000"),
     connection_opened_(false)
   {
   }

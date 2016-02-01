@@ -60,7 +60,7 @@ namespace OnlineMonitoring {
 											    lbne::PennMicroSlice::Payload_Trigger::C4};
   }
 
-  const double NNanoSecondsPerNovaTick = 16.625; // FIXME: Make sure that NNanoSecondsPerNovaTick is 16.625 otherwise the times will be wrong
+  const double NNanoSecondsPerNovaTick = 15.625; //ns
 
   const std::vector<std::string> DAQComponents = {"RCE00","RCE01","RCE02","RCE03","RCE04","RCE05","RCE06","RCE07","RCE08","RCE09","RCE10","RCE11","RCE12","RCE13","RCE14","RCE15",
 						  "SSP01","SSP02","SSP03","SSP04","SSP05","SSP06","SSP07",

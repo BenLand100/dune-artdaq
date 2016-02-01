@@ -8,36 +8,56 @@
 
 #include "EventDisplay.hxx"
 
-void OnlineMonitoring::EventDisplay::MakeEventDisplay(RCEFormatter const& rceformatter,
-						      ChannelMap const& channelMap,
-						      double driftVelocity,
-						      int event,
-						      TString const& evdSavePath,
-						      int nEVD) {
+void OnlineMonitoring::EventDisplay::MakeEventDisplay(RCEFormatter const& rceformatter, ChannelMap const& channelMap, int collectionPedestal, double driftVelocity) {
 
   /// Makes crude online event display and saves it as an image to be displayed on the web
 
-  TH2D* EVD = new TH2D("EVD",";z (cm);x (cm)",EVD::UpperZ-EVD::LowerZ,EVD::LowerZ,EVD::UpperZ,EVD::UpperX-EVD::LowerX,EVD::LowerX,EVD::UpperX);
+  fEVD = new TH2D("EVD",";z (cm);x (cm)",EVD::UpperZ-EVD::LowerZ,EVD::LowerZ,EVD::UpperZ,EVD::UpperX-EVD::LowerX,EVD::LowerX,EVD::UpperX);
 
   const std::vector<std::vector<int> > ADCs = rceformatter.EVDADCVector();
   double x,z;
 
+  // Loop over channels
   for (unsigned int channel = 0; channel < ADCs.size(); ++channel) {
+
     if (!ADCs.at(channel).size())
       continue;
+
     // Only consider collection plane
     if (channelMap.GetPlane(channel) != 2) continue;
     int drift = channelMap.GetDriftVolume(channel);
-    int collectionChannel = GetCollectionChannel(channelMap.GetOfflineChannel(channel), channelMap.GetAPA(channel), drift);
+    int apa = channelMap.GetAPA(channel);
+    int collectionChannel = GetCollectionChannel(channelMap.GetOfflineChannel(channel), apa, drift);
     z = GetZ(collectionChannel);
+
+    // Loop over ticks
     for (unsigned int tick = 0; tick < ADCs.at(channel).size(); ++tick) {
-      int ADC = ADCs.at(channel).at(tick);
-      x = tick * driftVelocity / 2;
-      x /= 10;
-      if (drift == 0) EVD->Fill(z,(int)-x,ADC);
-      if (drift == 1) EVD->Fill(z,x,ADC);
-    }
-  }
+
+      // Correct for pedestal
+      int ADC = ADCs.at(channel).at(tick) - collectionPedestal;
+
+      // If in certain range fill event display
+      if (ADC > -100 and ADC < 250) {
+
+	// Subtract pedestal again for one of the small APAs (they overlap)
+	if (apa == 3) ADC -= collectionPedestal;
+
+	x = tick * driftVelocity / 2;
+	x /= 10;
+	if (drift == 0) fEVD->Fill(z,(int)-x,ADC);
+	if (drift == 1) fEVD->Fill(z,x,ADC);
+
+      } // evd range
+
+    } // ticks
+
+  } // channels
+
+}
+
+void OnlineMonitoring::EventDisplay::SaveEventDisplay(int run, int subrun, int event, TString const& evdSavePath) {
+
+  /// Saves the online event display in the specified directory and sets up info for the cron job to sync
 
   // Save the event display and make it look pretty
   // Double_t Red[2] = { 1.00, 0.00 };
@@ -46,20 +66,20 @@ void OnlineMonitoring::EventDisplay::MakeEventDisplay(RCEFormatter const& rcefor
   // Double_t Length[2] = { 0.00, 1.00 };
   // TColor::CreateGradientColorTable(2, Length, Red, Green, Blue, 1000);
   TCanvas* evdCanvas = new TCanvas();
-  EVD->Draw("colz");
+  fEVD->Draw("colz");
   TLine line;
   line.SetLineStyle(2);
   line.SetLineWidth(4);
   line.DrawLine(EVD::LowerZ,0,EVD::UpperZ,0);
-  evdCanvas->SaveAs(evdSavePath+TString("evd")+TString(std::to_string(nEVD))+TString(".png"));//+ImageType);
+  evdCanvas->SaveAs(evdSavePath+TString("evd")+TString(".png"));//+ImageType);
 
   // Add event file
   ofstream tmp((evdSavePath+TString("event")).Data());
-  tmp << nEVD;
+  tmp << run << " " << subrun << " " << event;
   tmp.flush();
   tmp.close();
 
-  delete evdCanvas; delete EVD;
+  delete evdCanvas;
 
   mf::LogInfo("Monitoring") << "New event display for event " << event << " is viewable at http://lbne-dqm.fnal.gov/EventDisplay.";
 
