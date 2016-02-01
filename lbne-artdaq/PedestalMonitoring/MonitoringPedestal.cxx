@@ -123,8 +123,10 @@ int PedestalMonitoring::MonitoringPedestal::RCEMonitoring(RCEFormatter const& rc
   }
     
   if(channels_ok){
+
     logfile << event << std::endl;
     std::cout << "Running pedestal analysis..." << std::endl;
+    offdatabase_file << "channel,mean,rms,meanerr,rmserr,tv" << std::endl;
 
     for (unsigned int ichannel = 0; ichannel < ADCs.size(); ichannel++) {
       ADC = 0;
@@ -145,8 +147,7 @@ int PedestalMonitoring::MonitoringPedestal::RCEMonitoring(RCEFormatter const& rc
 	ondatabase_file << ichannel << ", 0, 0, 0, 0, " << run
 			<< ", 1"<< std::endl;
 	offdatabase_file << offchannels.at(ichannel) << ", 0, 0, 0, 0, " << run
-	<< ", 1"<< std::endl;
-
+			 << std::endl;
 	continue;
       }
 
@@ -205,7 +206,6 @@ int PedestalMonitoring::MonitoringPedestal::RCEMonitoring(RCEFormatter const& rc
       if (float(nostuck.size())/float(ADCs.at(ichannel).size()) > 0.5) 
 	fifty_percent++;
       average_stuck += float(ADCs.at(ichannel).size() - nostuck.size())/float(ADCs.at(ichannel).size());
-
 
       //**************************************************************************************
       //Signal Fiding Algorithm
@@ -363,7 +363,7 @@ int PedestalMonitoring::MonitoringPedestal::RCEMonitoring(RCEFormatter const& rc
       
       offdatabase_file << offchannels.at(ichannel) << ", " << pedestal_mean << ", "
 		       << noise_mean << ", " << pedestalerr << ", " << noiseerr
-		       << ", " << run << ", " << int(pathology) << std::endl;
+		       << ", " << run << std::endl;
 
       nosignal_file << Form("%4d",ichannel) << ", " << Form("%.1f", mean) << ", " << Form("%.1f", rms)
                     <<", " << Form("%.1f",meanerr)  << ", " << Form("%.1f",rmserr) << ", "

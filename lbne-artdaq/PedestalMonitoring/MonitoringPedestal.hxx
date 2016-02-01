@@ -112,7 +112,6 @@ private:
   ofstream nosignal_file;
   ofstream dumb_file;
   ofstream log_file;
-  ofstream event_file;
 
   // File
   TFile *fDataFile;
