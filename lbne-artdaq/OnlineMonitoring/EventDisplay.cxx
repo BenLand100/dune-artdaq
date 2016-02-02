@@ -12,10 +12,17 @@ void OnlineMonitoring::EventDisplay::MakeEventDisplay(RCEFormatter const& rcefor
 
   /// Makes crude online event display and saves it as an image to be displayed on the web
 
-  fEVD = new TH2D("EVD",";z (cm);x (cm)",EVD::UpperZ-EVD::LowerZ,EVD::LowerZ,EVD::UpperZ,EVD::UpperX-EVD::LowerX,EVD::LowerX,EVD::UpperX);
+  // double cmToWire = 10./4.5;
+  // double cmToTick = 10 * driftVelocity / 2;
+  //fEVD = new TH2D("EVD",";z (cm);x (cm)",(EVD::UpperZ-EVD::LowerZ)*cmToWire,EVD::LowerZ,EVD::UpperZ,(EVD::UpperX-EVD::LowerX)*cmToTick,EVD::LowerX,EVD::UpperX);
+  if (driftVelocity > 10)
+    std::cout << std::endl;
+
+  fEVD = new TH2D("EVD",";Collection wire;Tick",386,0,386,7000,-1000,6000);
 
   const std::vector<std::vector<int> > ADCs = rceformatter.EVDADCVector();
-  double x,z;
+  //double x,z;
+  int drift, apa, collectionChannel, ADC;
 
   // Loop over channels
   for (unsigned int channel = 0; channel < ADCs.size(); ++channel) {
@@ -25,27 +32,27 @@ void OnlineMonitoring::EventDisplay::MakeEventDisplay(RCEFormatter const& rcefor
 
     // Only consider collection plane
     if (channelMap.GetPlane(channel) != 2) continue;
-    int drift = channelMap.GetDriftVolume(channel);
-    int apa = channelMap.GetAPA(channel);
-    int collectionChannel = GetCollectionChannel(channelMap.GetOfflineChannel(channel), apa, drift);
-    z = GetZ(collectionChannel);
+    drift = channelMap.GetDriftVolume(channel);
+    apa = channelMap.GetAPA(channel);
+    collectionChannel = GetCollectionChannel(channelMap.GetOfflineChannel(channel), apa, drift);
+    //z = GetZ(collectionChannel);
 
     // Loop over ticks
     for (unsigned int tick = 0; tick < ADCs.at(channel).size(); ++tick) {
 
       // Correct for pedestal
-      int ADC = ADCs.at(channel).at(tick) - collectionPedestal;
+      ADC = ADCs.at(channel).at(tick) - collectionPedestal;
 
       // If in certain range fill event display
       if (ADC > -100 and ADC < 250) {
 
-	// Subtract pedestal again for one of the small APAs (they overlap)
-	if (apa == 3) ADC -= collectionPedestal;
+	// // Subtract pedestal again for one of the small APAs (they overlap)
+	// if (apa == 3) ADC -= collectionPedestal;
 
-	x = tick * driftVelocity / 2;
-	x /= 10;
-	if (drift == 0) fEVD->Fill(z,(int)-x,ADC);
-	if (drift == 1) fEVD->Fill(z,x,ADC);
+	// x = tick * driftVelocity / 2;
+	// x /= 10;
+	if (drift == 0) fEVD->Fill(collectionChannel,(int)-tick,ADC);
+	if (drift == 1) fEVD->Fill(collectionChannel,tick,ADC);
 
       } // evd range
 
@@ -67,10 +74,18 @@ void OnlineMonitoring::EventDisplay::SaveEventDisplay(int run, int subrun, int e
   // TColor::CreateGradientColorTable(2, Length, Red, Green, Blue, 1000);
   TCanvas* evdCanvas = new TCanvas();
   fEVD->Draw("colz");
-  TLine line;
-  line.SetLineStyle(2);
-  line.SetLineWidth(4);
-  line.DrawLine(EVD::LowerZ,0,EVD::UpperZ,0);
+  TLine DriftLine, APALine;
+  DriftLine.SetLineStyle(2);
+  DriftLine.SetLineWidth(4);
+  APALine.SetLineStyle(7);
+  APALine.SetLineWidth(4);
+  APALine.SetLineColor(2);
+  //line.DrawLine(EVD::LowerZ,0,EVD::UpperZ,0);
+  DriftLine.DrawLine(0,0,386,0);
+  APALine.DrawLine(112,-1000,112,6000);
+  APALine.DrawLine(137,-1000,137,6000);
+  APALine.DrawLine(249,-1000,249,6000);
+  APALine.DrawLine(274,-1000,274,6000);
   evdCanvas->SaveAs(evdSavePath+TString("evd")+TString(".png"));//+ImageType);
 
   // Add event file
@@ -104,16 +119,19 @@ int OnlineMonitoring::EventDisplay::GetCollectionChannel(int offlineCollectionCh
   case 1:
     if (drift == 0) collectionChannel = offlineCollectionChannel - 688;
     if (drift == 1) collectionChannel = offlineCollectionChannel - 800;
+    collectionChannel += 25;
     break;
 
   case 2:
     if (drift == 0) collectionChannel = offlineCollectionChannel - 1200;
     if (drift == 1) collectionChannel = offlineCollectionChannel - 1312;
+    collectionChannel += 25;
     break;
 
   case 3:
     if (drift == 0) collectionChannel = offlineCollectionChannel - 1600;
     if (drift == 1) collectionChannel = offlineCollectionChannel - 1712;
+    collectionChannel += 50;
     break;
 
   }
