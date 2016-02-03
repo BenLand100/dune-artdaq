@@ -144,8 +144,8 @@ int PedestalMonitoring::MonitoringPedestal::RCEMonitoring(RCEFormatter const& rc
 		      << ", " << 0  << ", " 
 		      << 0 << ", " << run << ", 1" << std::endl;
 	
-	ondatabase_file << ichannel << ", 0, 0, 0, 0, " << run
-			<< ", 1"<< std::endl;
+	ondatabase_file << ichannel << ",0,0,0,0," << run
+			<< ",1"<< std::endl;
 	offdatabase_file << offchannels.at(ichannel) << ",0,0,0,0," << run
 			 << std::endl;
 	continue;
@@ -361,9 +361,9 @@ int PedestalMonitoring::MonitoringPedestal::RCEMonitoring(RCEFormatter const& rc
 	issues[10]++;
       }
       
-      ondatabase_file << ichannel << ", " << pedestal_mean << ", "
-                  << noise_mean << ", " << pedestalerr << ", " << noiseerr 
-		  << ", " << run << ", " << int(pathology) << std::endl;
+      ondatabase_file << ichannel << "," << pedestal_mean << ","
+                  << noise_mean << "," << pedestalerr << "," << noiseerr 
+		  << "," << run << "," << int(pathology) << std::endl;
       
       offdatabase_file << offchannels.at(ichannel) << "," << pedestal_mean << ","
 		       << noise_mean << "," << pedestalerr << "," << noiseerr
