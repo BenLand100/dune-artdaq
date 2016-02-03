@@ -146,7 +146,7 @@ int PedestalMonitoring::MonitoringPedestal::RCEMonitoring(RCEFormatter const& rc
 	
 	ondatabase_file << ichannel << ", 0, 0, 0, 0, " << run
 			<< ", 1"<< std::endl;
-	offdatabase_file << offchannels.at(ichannel) << ", 0, 0, 0, 0, " << run
+	offdatabase_file << offchannels.at(ichannel) << ",0,0,0,0," << run
 			 << std::endl;
 	continue;
       }
@@ -214,7 +214,7 @@ int PedestalMonitoring::MonitoringPedestal::RCEMonitoring(RCEFormatter const& rc
       std::vector<double> MeanPiece;
       std::vector<double> RMSPiece;
       
-      if(int(nostuck.size())<window){
+      if(int(nostuck.size()) < window){
 	if(nostuck.size() == 0){
 	  issues[1]++;
 	  logfile << "Channel " << ichannel
@@ -270,7 +270,8 @@ int PedestalMonitoring::MonitoringPedestal::RCEMonitoring(RCEFormatter const& rc
 	if(MeanPiece.size() - 1 - dropped != 0){
 	  numsamples = MeanPiece.size() - 1 - dropped;
 	  pedestal_mean = float(pedestal_mean)/float(numsamples);
-	  pedestal_rms = sqrt(pedestal_rms/numsamples - (pedestal_mean*pedestal_mean));
+	  if(pedestal_mean*pedestal_mean > pedestal_rms/numsamples) pedestal_rms = 0.01;          
+	  else pedestal_rms = sqrt(pedestal_rms/numsamples - (pedestal_mean*pedestal_mean));
 	  pedestalerr = pedestal_rms/sqrt(numsamples);
 	  hDroppedMean->SetBinContent(ichannel, float(dropped+1)/float(MeanPiece.size()));
 	}
@@ -278,6 +279,7 @@ int PedestalMonitoring::MonitoringPedestal::RCEMonitoring(RCEFormatter const& rc
 	  issues[4]++;
 	  logfile << "Channel = " << ichannel << " has 0 windows." << std::endl;
 	}
+
 	dropped = 0;
 	numsamples = 0;
 	for (unsigned int ipiece=0; ipiece < RMSPiece.size() - 1; ++ipiece){
@@ -292,13 +294,15 @@ int PedestalMonitoring::MonitoringPedestal::RCEMonitoring(RCEFormatter const& rc
 	if(RMSPiece.size() - 1 - dropped != 0){
 	  numsamples = RMSPiece.size() -1- dropped;
 	  noise_mean = float(noise_mean)/float(numsamples);
-	  noise_rms = sqrt(noise_rms/numsamples - (noise_mean*noise_mean));
+          if(noise_mean*noise_mean > noise_rms/numsamples) noise_rms = 0.01;
+	  else noise_rms = sqrt(noise_rms/numsamples - (noise_mean*noise_mean));
 	  noiseerr = noise_rms/sqrt(numsamples);
 	  hDroppedRMS->SetBinContent(ichannel, float(dropped+1)/float(RMSPiece.size()));
 	}
 	else{
 	  issues[5]++;
           logfile << "Channel = " << ichannel << " has 0 windows." << std::endl;
+	  noiseerr = 0;
 	}
 
 	hRelSizes->SetBinContent(ichannel, float(RMSPiece.size()) / float(MeanPiece.size()));
@@ -361,9 +365,9 @@ int PedestalMonitoring::MonitoringPedestal::RCEMonitoring(RCEFormatter const& rc
                   << noise_mean << ", " << pedestalerr << ", " << noiseerr 
 		  << ", " << run << ", " << int(pathology) << std::endl;
       
-      offdatabase_file << offchannels.at(ichannel) << ", " << pedestal_mean << ", "
-		       << noise_mean << ", " << pedestalerr << ", " << noiseerr
-		       << ", " << run << std::endl;
+      offdatabase_file << offchannels.at(ichannel) << "," << pedestal_mean << ","
+		       << noise_mean << "," << pedestalerr << "," << noiseerr
+		       << "," << run << std::endl;
 
       nosignal_file << Form("%4d",ichannel) << ", " << Form("%.1f", mean) << ", " << Form("%.1f", rms)
                     <<", " << Form("%.1f",meanerr)  << ", " << Form("%.1f",rmserr) << ", "

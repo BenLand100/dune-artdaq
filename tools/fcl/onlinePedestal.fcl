@@ -19,9 +19,7 @@ physics:
     monitoring:
     {
       module_type:                "OnlinePedestal"
-      MakeTree:                   "true"
-      MonitoringRefreshRate:      500
-      EventDisplayRefreshRate:    100000 #8
+      WindowSize:                "100"
     }
   }
   analysis: [ monitoring ] //Directory for histograms
