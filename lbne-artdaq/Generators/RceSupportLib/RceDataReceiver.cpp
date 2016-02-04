@@ -328,7 +328,7 @@ void lbne::RceDataReceiver::do_read(void)
 			if (!buffer_available)
 			{
 				if ((buffer_retries > 0) && ((buffer_retries % buffer_retry_report_interval) == 0)) {
-					DAQLogger::LogWarning(instance_name_) << "lbne::RceDataReceiver::receiverLoop: no buffers available on commit queue, retrying ("
+					DAQLogger::LogWarning(instance_name_) << "lbne::RceDataReceiver::receiverLoop: no buffers available on commit queue due to more data entering the RceDataReceiver than leaving it, retrying ("
 							<< buffer_retries << " attempts so far)";
 				}
 				buffer_retries++;
