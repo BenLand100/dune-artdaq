@@ -107,7 +107,15 @@ void lbne::RceDataReceiver::start(void)
 		}
 		if (flush_length > 0)
 		{
-			DAQLogger::LogInfo(instance_name_) << "lbne::RceDataReceiver::start: flushed " << flush_length << " bytes stale data off open socket";
+		  // JCF, Feb-4-2016
+
+		  // I've promoted this "stale data" message to a
+		  // warning since there appears to be a 1-1
+		  // correspondence between this condition being met
+		  // and a subsequent "Error on asynchronous read"
+		  // error later in the run
+
+			DAQLogger::LogWarning(instance_name_) << "lbne::RceDataReceiver::start: flushed " << flush_length << " bytes stale data off open socket";
 		}
 		else
 		{
