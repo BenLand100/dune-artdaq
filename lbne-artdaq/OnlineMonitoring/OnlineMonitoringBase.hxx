@@ -50,10 +50,11 @@ namespace OnlineMonitoring {
 
   // PTB trigger types
   namespace PTBTrigger {
-    const std::vector<lbne::PennMicroSlice::Payload_Trigger::trigger_type_t> Muon = {lbne::PennMicroSlice::Payload_Trigger::TA,
-										     lbne::PennMicroSlice::Payload_Trigger::TB,
-										     lbne::PennMicroSlice::Payload_Trigger::TC,
-										     lbne::PennMicroSlice::Payload_Trigger::TD};
+    const std::vector<lbne::PennMicroSlice::Payload_Trigger::trigger_type_t> Muon = {lbne::PennMicroSlice::Payload_Trigger::TD,  // TSU EL-WU (bin 1)
+										     lbne::PennMicroSlice::Payload_Trigger::TC,  // TSU SU-NL
+										     lbne::PennMicroSlice::Payload_Trigger::TB,  // TSU NU-SL
+										     lbne::PennMicroSlice::Payload_Trigger::TA}; // BSU RM-CL (bin 4)
+
     const std::vector<lbne::PennMicroSlice::Payload_Trigger::trigger_type_t> Calibration = {lbne::PennMicroSlice::Payload_Trigger::C1,
 											    lbne::PennMicroSlice::Payload_Trigger::C2,
 											    lbne::PennMicroSlice::Payload_Trigger::C3,
