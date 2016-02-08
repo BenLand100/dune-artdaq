@@ -18,6 +18,9 @@
 
 #include "OnlineMonitoringBase.hxx"
 
+// framework
+#include "messagefacility/MessageLogger/MessageLogger.h"
+
 struct OnlineMonitoring::Channel {
   Channel(int onlineChannel, int offlineChannel, int plane, int apa, int drift) {
     OnlineChannel = onlineChannel;
@@ -36,16 +39,24 @@ struct OnlineMonitoring::Channel {
 class OnlineMonitoring::ChannelMap {
 public:
 
+  ChannelMap();
+
   int GetAPA(int onlineChannel) const { return fChannelMap.at(onlineChannel)->APA; }
   int GetDriftVolume(int onlineChannel) const { return fChannelMap.at(onlineChannel)->Drift; }
   std::map<int,std::unique_ptr<Channel> > const& GetChannelMap() const { return fChannelMap; }
   int GetOfflineChannel(int onlineChannel) const { return fChannelMap.at(onlineChannel)->OfflineChannel; }
   int GetPlane(int onlineChannel) const { return fChannelMap.at(onlineChannel)->Plane; }
+  int GetPedestal(int onlineChannel) const { return fPedestalMap.at(onlineChannel); }
   void MakeChannelMap(TString const& channelMapFile);
+  void MakePedestalMap(TString const& pedestalMapFile);
+  bool hasPedestalData() const { return fHasPedestal; }
 
 private:
 
   std::map<int,std::unique_ptr<Channel> > fChannelMap;
+  std::map<int,int> fPedestalMap;
+
+  bool fHasPedestal;
 
 };
 

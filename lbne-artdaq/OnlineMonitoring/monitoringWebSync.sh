@@ -24,10 +24,17 @@ do
 	# Copy the directory to the server
 	cp -r $directory /web/sites/lbne-dqm.fnal.gov/htdocs/OnlineMonitoring
 
+	# Remove the root file from the web area (not enough space on the web to keep them; they are saved in the /data/lbnedaq/monitoring directory)
+	rm -f /web/sites/lbne-dqm.fnal.gov/htdocs/OnlineMonitoring/Run${run}Subrun${subrun}/*root
+
 	# Add this new directory to index.html so it's displayed on web
-	RECENTRUN=`sed '7q;d' /web/sites/lbne-dqm.fnal.gov/htdocs/OnlineMonitoring/index.html`
-	if [[ ! ${RECENTRUN} == "</br><a href=\"Run${run}Subrun${subrun}"* ]]; then
-	    sed -i "7i</br><a href=\"Run${run}Subrun${subrun}\">Run ${run}, Subrun ${subrun} (updated ${date})</a>" /web/sites/lbne-dqm.fnal.gov/htdocs/OnlineMonitoring/index.html
+	RECENTRUN=`sed '8q;d' /web/sites/lbne-dqm.fnal.gov/htdocs/OnlineMonitoring/index.html`
+	if [[ ! ${RECENTRUN} == "</br><a href=\"Run${run}Subrun${subrun}"* ]]
+	then
+	    sed -i "8i</br><a href=\"Run${run}Subrun${subrun}\">Run ${run}, Subrun ${subrun} (updated ${date})</a>" /web/sites/lbne-dqm.fnal.gov/htdocs/OnlineMonitoring/index.html
+	else
+	    sed -ie '8d' /web/sites/lbne-dqm.fnal.gov/htdocs/OnlineMonitoring/index.html
+	    sed -i "8i</br><a href=\"Run${run}Subrun${subrun}\">Run ${run}, Subrun ${subrun} (updated ${date})</a>" /web/sites/lbne-dqm.fnal.gov/htdocs/OnlineMonitoring/index.html
 	fi
 
 	# Tidy up
@@ -40,11 +47,26 @@ do
 done
 
 # Look at event display
-cd /data/lbnedaq/eventDisplay
+cd /data/lbnedaq/eventDisplay/
 
 if [ -e event ]; then
 
-    cp evd.png /web/sites/lbne-dqm.fnal.gov/htdocs/EventDisplay/
+    # Get run/subrun
+    read -r runsubrunevent < event
     rm -f event
+    rsre=( ${runsubrunevent} )
+    run=${rsre[0]}
+    subrun=${rsre[1]}
+    evt=${rsre[2]}
+
+    date=`date +"%A %B %_d %Y, %H:%M (%Z)"`
+
+    cp evd.png /web/sites/lbne-dqm.fnal.gov/htdocs/EventDisplay/
+
+    # Update the html
+    sed -ie '13d' /web/sites/lbne-dqm.fnal.gov/htdocs/EventDisplay/index.html
+    sed -i "13i<h2 align=\"center\">Run ${run}, Subrun ${subrun}</h2>" /web/sites/lbne-dqm.fnal.gov/htdocs/EventDisplay/index.html
+    sed -ie '14d' /web/sites/lbne-dqm.fnal.gov/htdocs/EventDisplay/index.html
+    sed -i "14i<center>Last updated ${date} for event ${evt}</center>" /web/sites/lbne-dqm.fnal.gov/htdocs/EventDisplay/index.html
 
 fi

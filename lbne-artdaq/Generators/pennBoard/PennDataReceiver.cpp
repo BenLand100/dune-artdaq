@@ -139,7 +139,16 @@ void lbne::PennDataReceiver::start(void)
 		}
 		if (flush_length > 0)
 		{
-			DAQLogger::LogInfo("PennDataReceiver") << "lbne::PennDataReceiver::start: flushed " << flush_length << " bytes stale data off open socket";
+		  // JCF, Feb-4-2016
+
+		  // I've observed that when the RceDataReceiver has
+		  // to flush bytes of stale data it pretty much
+		  // guarantees an error later in the run; given that
+		  // this code is largely based on the
+		  // RceDataReceiver, then, I've promoted this message
+		  // from "Info" level to "Warning" level
+
+			DAQLogger::LogWarning("PennDataReceiver") << "lbne::PennDataReceiver::start: flushed " << flush_length << " bytes stale data off open socket";
 		}
 		else
 		{
@@ -436,7 +445,7 @@ void lbne::PennDataReceiver::do_read(void)
         if (!buffer_available)
         {
            if ((buffer_retries > 0) && ((buffer_retries % buffer_retry_report_interval) == 0)) {
-            DAQLogger::LogWarning("PennDataReceiver") << "lbne::PennDataReceiver::receiverLoop: no buffers available on commit queue, retrying ("
+            DAQLogger::LogWarning("PennDataReceiver") << "lbne::PennDataReceiver::receiverLoop: no buffers available on commit queue due to more data entering the PennDataReceiver than leaving it, retrying ("
               << buffer_retries << " attempts so far)";
            }
            buffer_retries++;

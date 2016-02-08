@@ -22,7 +22,7 @@ void OnlineMonitoring::EventDisplay::MakeEventDisplay(RCEFormatter const& rcefor
 
   const std::vector<std::vector<int> > ADCs = rceformatter.EVDADCVector();
   //double x,z;
-  int drift, apa, collectionChannel, ADC;
+  int drift, apa, collectionChannel, ADC, pedestal;
 
   // Loop over channels
   for (unsigned int channel = 0; channel < ADCs.size(); ++channel) {
@@ -32,8 +32,14 @@ void OnlineMonitoring::EventDisplay::MakeEventDisplay(RCEFormatter const& rcefor
 
     // Only consider collection plane
     if (channelMap.GetPlane(channel) != 2) continue;
+
+    // Find properties of this channel
     drift = channelMap.GetDriftVolume(channel);
     apa = channelMap.GetAPA(channel);
+    if (channelMap.hasPedestalData())
+      pedestal = channelMap.GetPedestal(channel);
+    else
+      pedestal = collectionPedestal;
     collectionChannel = GetCollectionChannel(channelMap.GetOfflineChannel(channel), apa, drift);
     //z = GetZ(collectionChannel);
 
@@ -41,7 +47,7 @@ void OnlineMonitoring::EventDisplay::MakeEventDisplay(RCEFormatter const& rcefor
     for (unsigned int tick = 0; tick < ADCs.at(channel).size(); ++tick) {
 
       // Correct for pedestal
-      ADC = ADCs.at(channel).at(tick) - collectionPedestal;
+      ADC = ADCs.at(channel).at(tick) - pedestal;
 
       // If in certain range fill event display
       if (ADC > -100 and ADC < 250) {

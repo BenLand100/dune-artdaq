@@ -948,7 +948,7 @@ void OnlineMonitoring::MonitoringData::MakeHistograms() {
   hPTBTriggerRates->GetXaxis()->SetBinLabel(1,"Muon TSU EL-WU");
   hPTBTriggerRates->GetXaxis()->SetBinLabel(2,"Muon TSU SU-NL");
   hPTBTriggerRates->GetXaxis()->SetBinLabel(3,"Muon TSU SL-NU");
-  hPTBTriggerRates->GetXaxis()->SetBinLabel(4,"Muon BSU RM-CM");
+  hPTBTriggerRates->GetXaxis()->SetBinLabel(4,"Muon BSU RM-CL");
   hPTBTriggerRates->GetXaxis()->SetBinLabel(5,"SSP");
   hPTBTriggerRates->GetXaxis()->SetBinLabel(6,"Calibration C1");
   hPTBTriggerRates->GetXaxis()->SetBinLabel(7,"Calibration C2");
