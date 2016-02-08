@@ -61,6 +61,9 @@ private:
 
   bool pathology;
 
+  TCanvas*  fCanvas;
+  TCanvas*  figcanvas;
+
   TH1I *hIssues;
 
   TH1I *hADC[2048];
@@ -87,6 +90,13 @@ private:
   TH1I *hSizes;
   TH1F *hAllSizes;
   TH1F *hRelSizes;
+  TH1F *hRatioPed;
+  TH1F *hRatioNoise;
+
+  TH1F *hPedChanAPA[NAPA];
+  TH1F *hNoiseChanAPA[NAPA];
+  TH1F *hPedPlane[NPlanes];
+  TH1F *hNoisePlane[NPlanes];
 
   double mean;
   double rms;

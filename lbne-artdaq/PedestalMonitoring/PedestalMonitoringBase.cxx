@@ -18,6 +18,9 @@ namespace PedestalMonitoring {
   class MonitoringPedestal;
 
   const unsigned int NRCEChannels = 2048;
+  const unsigned int NAPAChannels = 512;
+  const unsigned int NAPA = 4;
+  const unsigned int NPlanes = 3;
 
   const TString HistSavePath  = "/data/lbnedaq/scratch/santucci/pedestalruns/";
 

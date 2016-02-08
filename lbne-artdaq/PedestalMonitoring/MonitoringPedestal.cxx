@@ -14,6 +14,9 @@
 
 void PedestalMonitoring::MonitoringPedestal::BeginMonitoring(int run, int subrun) {
 
+  fCanvas = new TCanvas("canv","",800,600);
+  figcanvas = new TCanvas("c0","",900,700);
+
   // Get directory for this run                                                                      
   std::ostringstream directory;
   directory << HistSavePath << "Run" << run << "/";
@@ -33,6 +36,16 @@ void PedestalMonitoring::MonitoringPedestal::BeginMonitoring(int run, int subrun
   rootfile = HistSavePath + "Run" + std::to_string(run)+ "/monitoringPedestal_Run" + std::to_string(run) + "Subrun" + std::to_string(subrun) + ".root";
 
   fDataFile = new TFile(rootfile,"RECREATE");
+
+  for (unsigned int iapa = 0; iapa < NAPA; ++iapa){
+    hPedChanAPA[iapa] = new TH1F(Form("hPedChanAPA_%d",iapa),"", NAPAChannels, NAPAChannels*iapa, iapa*NAPAChannels + NAPAChannels);
+    hNoiseChanAPA[iapa] = new TH1F(Form("hNoiseChanAPA_%d",iapa),"", NAPAChannels, NAPAChannels*iapa, iapa*NAPAChannels + NAPAChannels);
+  }
+
+  for(unsigned int iplane = 0; iplane < NPlanes; ++iplane){
+    hPedPlane[iplane] = new TH1F(Form("hPedPlane_%d",iplane),"",4096,-0.5,4095.5 );
+    hNoisePlane[iplane] =new TH1F(Form("hNoisePlane_%d",iplane),"",4096,-0.5,4095.5 );
+  }
 
   for (int ichan = 0; ichan < NumChannels; ++ichan){
     hADC[ichan] = new TH1I(Form("hADC_%d", ichan),"",4096,-0.5,4095.5 );
@@ -60,6 +73,8 @@ void PedestalMonitoring::MonitoringPedestal::BeginMonitoring(int run, int subrun
   hAllSizes = new TH1F("hAllSizes","",2048,0.5,2048.5);
   hRelSizes = new TH1F("hRelSizes","",2048,0.5,2048.5);
   hIssues = new TH1I("hIssues","",numissues,0.5,numissues+0.5);
+  hRatioPed = new TH1F("hRatioPed","Pedestal Ratio",2048,0.5,2048.5);
+  hRatioNoise = new TH1F("hRatioNoise","Noise Ratio",2048,0.5,2048.5);
 
 }
 
@@ -70,6 +85,7 @@ void PedestalMonitoring::MonitoringPedestal::EndMonitoring() {
   offdatabase_file.close();
   nosignal_file.close();
   log_file.close();
+  delete fCanvas;
 }
 
 int PedestalMonitoring::MonitoringPedestal::RCEMonitoring(RCEFormatter const& rceformatter, int window){
@@ -77,6 +93,11 @@ int PedestalMonitoring::MonitoringPedestal::RCEMonitoring(RCEFormatter const& rc
   const std::vector<std::vector<int> > ADCs = rceformatter.ADCVector();
   std::vector<int> nostuck;
   std::vector<int> offchannels;
+  std::vector<int> planeschannels;
+  std::vector<int> apachannels;
+  std::vector<int> pedchannels;
+  std::vector<int> noisechannels;
+  std::vector<int> badchannels;
 
   int stuckADC;
   int ADC = 0;
@@ -104,6 +125,36 @@ int PedestalMonitoring::MonitoringPedestal::RCEMonitoring(RCEFormatter const& rc
     offchannels.push_back(atoi(word.c_str()));
   }
   off_file.close();
+  ifstream apa_file;
+  apa_file.open(HistSavePath + "/apa.txt",std::ios::in);
+  while(apa_file >> word){
+    apachannels.push_back(atoi(word.c_str()));
+  }
+  apa_file.close();
+  ifstream planes_file;
+  planes_file.open(HistSavePath + "/planes.txt",std::ios::in);
+  while(planes_file >> word){
+    planeschannels.push_back(atoi(word.c_str()));
+  }
+  planes_file.close();
+  ifstream ped_file;
+  ped_file.open(HistSavePath + "/ped.txt",std::ios::in);
+  while(ped_file >> word){
+    pedchannels.push_back(atoi(word.c_str()));
+  }
+  ped_file.close();
+  ifstream noise_file;
+  noise_file.open(HistSavePath + "/noise.txt",std::ios::in);
+  while(noise_file >> word){
+    noisechannels.push_back(atoi(word.c_str()));
+  }
+  noise_file.close();
+  ifstream bad_file;
+  bad_file.open(HistSavePath + "/bad.txt",std::ios::in);
+  while(bad_file >> word){
+    badchannels.push_back(atoi(word.c_str()));
+  }
+  bad_file.close();
   
   std::ostringstream directory;
   directory << HistSavePath << "Run" << run << "/";
@@ -126,7 +177,7 @@ int PedestalMonitoring::MonitoringPedestal::RCEMonitoring(RCEFormatter const& rc
 
     logfile << event << std::endl;
     std::cout << "Running pedestal analysis..." << std::endl;
-    offdatabase_file << "channel,mean,rms,meanerr,rmserr,tv" << std::endl;
+    offdatabase_file << "channel,tv,mean,meanerr,rms,rmserr" << std::endl;
 
     for (unsigned int ichannel = 0; ichannel < ADCs.size(); ichannel++) {
       ADC = 0;
@@ -146,8 +197,8 @@ int PedestalMonitoring::MonitoringPedestal::RCEMonitoring(RCEFormatter const& rc
 	
 	ondatabase_file << ichannel << ",0,0,0,0," << run
 			<< ",1"<< std::endl;
-	offdatabase_file << offchannels.at(ichannel) << ",0,0,0,0," << run
-			 << std::endl;
+	offdatabase_file << offchannels.at(ichannel) << "," << run 
+			 << ",0,0,0,0" << std::endl;
 	continue;
       }
 
@@ -317,7 +368,20 @@ int PedestalMonitoring::MonitoringPedestal::RCEMonitoring(RCEFormatter const& rc
       hDiffRMS->Fill(rms-noise_mean);
       hDiffMeanChannel->SetBinContent(ichannel, mean-pedestal_mean);
       hDiffRMSChannel->SetBinContent(ichannel, rms-noise_mean);
-      
+      if (pedchannels.at(ichannel)!=0)
+	hRatioPed->SetBinContent(ichannel, pedestal_mean/pedchannels.at(ichannel));
+      else
+	hRatioPed->SetBinContent(ichannel, 0);
+      if (noisechannels.at(ichannel)!=0)
+        hRatioNoise->SetBinContent(ichannel, noise_mean/noisechannels.at(ichannel));
+      else
+	hRatioNoise->SetBinContent(ichannel, 0);
+
+      hPedChanAPA[int(ichannel/NAPAChannels)]->SetBinContent(ichannel%NAPAChannels,pedestal_mean);
+      hNoiseChanAPA[int(ichannel/NAPAChannels)]->SetBinContent(ichannel%NAPAChannels,noise_mean);
+      hPedPlane[planeschannels.at(ichannel)]->Fill(pedestal_mean);
+      hNoisePlane[planeschannels.at(ichannel)]->Fill(noise_mean);
+
       if(abs(mean-pedestal_mean) > 10 or abs(rms-noise_mean) > 5){
 	logfile << "Channel " << ichannel << " - Difference between methods:\n" 
 		<< "mean = " << mean << ", pedestal = " << pedestal_mean
@@ -365,9 +429,10 @@ int PedestalMonitoring::MonitoringPedestal::RCEMonitoring(RCEFormatter const& rc
                   << noise_mean << "," << pedestalerr << "," << noiseerr 
 		  << "," << run << "," << int(pathology) << std::endl;
       
-      offdatabase_file << offchannels.at(ichannel) << "," << pedestal_mean << ","
-		       << noise_mean << "," << pedestalerr << "," << noiseerr
-		       << "," << run << std::endl;
+      offdatabase_file << offchannels.at(ichannel) << "," << run << ","
+		       << pedestal_mean << "," << pedestalerr << ","
+		       << noise_mean << "," << noiseerr
+		       << std::endl;
 
       nosignal_file << Form("%4d",ichannel) << ", " << Form("%.1f", mean) << ", " << Form("%.1f", rms)
                     <<", " << Form("%.1f",meanerr)  << ", " << Form("%.1f",rmserr) << ", "
@@ -408,6 +473,54 @@ int PedestalMonitoring::MonitoringPedestal::RCEMonitoring(RCEFormatter const& rc
     hAllSizes->Write();
     hRelSizes->Write();
     hIssues->Write();
+    hRatioPed->Write();
+    hRatioNoise->Write();
+
+    TString canvas;
+
+    for (unsigned int iapa = 0; iapa < NAPA; ++iapa){
+      hPedChanAPA[iapa]->Write();
+      hPedChanAPA[iapa]->Draw();
+      canvas = directory.str() + "/pedapa_" + std::to_string(iapa) + ".png";
+      fCanvas->SaveAs(canvas);
+      hNoiseChanAPA[iapa]->Write();
+      hNoiseChanAPA[iapa]->Draw();
+      canvas = directory.str() + "/noiseapa_" + std::to_string(iapa) + ".png";
+      fCanvas->SaveAs(canvas);
+    }
+
+    for (unsigned int iplane = 0; iplane < NPlanes; ++iplane){
+      hPedPlane[iplane]->Write();
+      hPedPlane[iplane]->Draw();
+      canvas = directory.str() + "/pedplane_" + std::to_string(iplane) + ".png";
+      fCanvas->SetLogy(1);
+      fCanvas->SaveAs(canvas);
+      hNoisePlane[iplane]->Write();
+      hNoisePlane[iplane]->Draw();
+      canvas = directory.str() + "/noiseplane_" + std::to_string(iplane) + ".png";
+      fCanvas->SetLogy(1);
+      fCanvas->SaveAs(canvas);
+    }
+
+    hPed->Draw();
+    canvas = directory.str() + "/pedestal.png";
+    fCanvas->SaveAs(canvas);
+    hNoise->Draw();
+    canvas = directory.str() + "/noise.png";
+    fCanvas->SaveAs(canvas);
+
+    figcanvas->Divide(2,2,0,0);
+    gStyle->SetOptStat(0);
+    figcanvas->cd(1);
+    hPedChannel->Draw();
+    figcanvas->cd(2);
+    hNoiseChannel->Draw();
+    figcanvas->cd(3);
+    hRatioPed->Draw();
+    figcanvas->cd(4);
+    hRatioNoise->Draw();
+    canvas = directory.str() + "/validation_plots.png";
+    figcanvas->SaveAs(canvas);
 
     std::cout << "Fraction of channels with more than 50% Stuck codes: " 
 	      << 100-float(fifty_percent*100)/num_channels << "%" << std::endl;
