@@ -224,11 +224,22 @@ void OnlineMonitoring::OnlineMonitoring::analyze(art::Event const& evt) {
 
 void OnlineMonitoring::OnlineMonitoring::endSubRun(art::SubRun const& sr) {
 
-  // Save the data at the end of the subrun
-  fMonitoringData.WriteMonitoringData(sr.run(), sr.subRun(), fEventNumber, fImageType);
+    // JCF, Feb-9-2106
 
-  // Clear up
-  fMonitoringData.EndMonitoring();
+    // Time the call to fMonitoringData.WriteMonitoringData and
+    // fMonitoringData.EndMonitoring, and print the result
+
+    auto write_begin_time = std::chrono::high_resolution_clock::now();
+
+    // Save the data at the end of the subrun
+    fMonitoringData.WriteMonitoringData(sr.run(), sr.subRun(), fEventNumber, fImageType);
+
+    // Clear up
+    fMonitoringData.EndMonitoring();
+
+    auto write_duration = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now() - write_begin_time).count();
+
+    mf::LogInfo("Monitoring") << "Time to write monitoring data and end monitoring: " << write_duration / 1000000.0 << " seconds";
 
 }
 
