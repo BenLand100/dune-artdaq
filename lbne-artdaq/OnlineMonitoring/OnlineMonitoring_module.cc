@@ -170,7 +170,19 @@ void OnlineMonitoring::OnlineMonitoring::analyze(art::Event const& evt) {
   // Write the data out every-so-often
   if ( (!fSavedFirstMonitoring and ((std::time(0) - fLastSaveTime) > fInitialMonitoringUpdate)) or ((std::time(0) - fLastSaveTime) > fMonitoringRefreshRate) ) {
     if (!fSavedFirstMonitoring) fSavedFirstMonitoring = true;
+
+    // JCF, Feb-9-2106
+
+    // Time the call to fMonitoringData.WriteMonitoringData, and print the result
+
+    auto write_begin_time = std::chrono::high_resolution_clock::now();
+
     fMonitoringData.WriteMonitoringData(evt.run(), evt.subRun(), fEventNumber, fImageType);
+
+    auto write_duration = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now() - write_begin_time).count();
+
+    mf::LogInfo("Monitoring") << "Time to write monitoring data: " << write_duration / 1000000.0 << " seconds";
+
     fLastSaveTime = std::time(0);
   }
 
@@ -182,9 +194,21 @@ void OnlineMonitoring::OnlineMonitoring::analyze(art::Event const& evt) {
   // if (fEventNumber % evdRefreshInterval == 0)
   if (fNEVDsMade == 0 and rceformatter.FirstMicroslice >= 2 and rceformatter.FirstMicroslice <= 5) {
     ++fNEVDsMade;
+
+    // JCF, Feb-9-2106
+
+    // Time how long it takes to make and save the event display, and print the result
+
+    auto evd_begin_time = std::chrono::high_resolution_clock::now();    
+
     rceformatter.AnalyseADCs(rawRCE, rceformatter.FirstMicroslice+fMicroslicePreBuffer, rceformatter.FirstMicroslice+fMicroslicePreBuffer+fMicrosliceTriggerLength);
     fEventDisplay.MakeEventDisplay(rceformatter, fChannelMap, fCollectionPedestal, fDriftVelocity);
     fEventDisplay.SaveEventDisplay(evt.run(), evt.subRun(), fEventNumber, fEVDSavePath);
+
+    auto evd_duration = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now() - evd_begin_time).count();
+
+    mf::LogInfo("Monitoring") << "Time to make and save the event display: " << evd_duration / 1000000.0 << " seconds";
+
   }
 
   // Consider detaching!
