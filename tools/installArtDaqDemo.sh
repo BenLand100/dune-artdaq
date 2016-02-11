@@ -101,7 +101,7 @@ install_package artdaq-core v1_04_23 e7 s15
 
 install_package lbne-raw-data v1_03_19 e7 s15 online
 
-install_package artdaq v1_12_14 e7 s15 eth
+install_package artdaq feature/lbne35t e7 s15 eth
 
 setup_qualifier="e7"
 
