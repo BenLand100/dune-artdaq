@@ -127,17 +127,39 @@ data_timeout_usecs_(ps.get<uint32_t>("data_timeout_usecs", 60000000))
 
   }
 
+  if (penn_data_microslice_size_ > ((1<<27)-1)) {
+    DAQLogger::LogError("PennReceiver") << "Microslice size ( "  << penn_data_microslice_size_
+        << " ) must fit in 27 bits  [ max : " << (1<<27)-1 << "]";
+  }
+
   ptb_pulse_width_ = ps.get<uint32_t>("hardware.pulse_width",2);
 
+  if (ptb_pulse_width_ > ((1<<6)-1)) {
+    DAQLogger::LogError("PennReceiver") << "Pulse width ( "  << ptb_pulse_width_
+        << " ) must fit in 6 bits  [ max : " << (1<<6)-1 << "]";
+  }
   // -- Channel masks
   penn_channel_mask_bsu_ =
-      ps.get<uint64_t>("channel_mask.BSU", 0x1FFFFFFFFFFFF);
+      ps.get<uint64_t>("channel_mask.BSU", 0x3FFFFFFFFFFFF);
   penn_channel_mask_tsu_ =
       ps.get<uint64_t>("channel_mask.TSU", 0xFFFFFFFFFFFF);
 
   // -- How to deal with external triggers
-  penn_ext_triggers_mask_ = ps.get<uint8_t>("external_triggers.mask",0x1F);
+  penn_ext_triggers_mask_ = ps.get<uint8_t>("external_triggers.mask",0xF);
+
   penn_ext_triggers_echo_ = ps.get<bool>("external_triggers.echo_triggers",false);
+
+  penn_ext_triggers_gate_ = ps.get<uint32_t>("external_triggers.gate",5);
+  if (penn_ext_triggers_gate_ > ((1<<11)-1)) {
+    DAQLogger::LogError("PennReceiver") << "External trigger gate width ( "  << penn_ext_triggers_gate_
+        << " ) must fit in 11 bits  [ max : " << (1<<11)-1 << "]";
+  }
+
+  penn_ext_triggers_prescale_ = ps.get<uint32_t>("external_triggers.prescale",0);
+  if (penn_ext_triggers_prescale_ > ((1<<8)-1)) {
+    DAQLogger::LogError("PennReceiver") << "External trigger prescale ( "  << penn_ext_triggers_prescale_
+        << " ) must fit in 8 bits  [ max : " << (1<<8)-1 << "]";
+  }
 
   // -- Calibrations
   for (uint32_t i = 1; i <= penn_num_calibration_channels_; ++i) {
@@ -925,8 +947,10 @@ void lbne::PennReceiver::generate_config_frag(std::ostringstream& config_frag) {
 
   std::string status_bool = (penn_ext_triggers_echo_)?"true":"false";
   config_frag << "<ExtTriggers>"
-      << "<Mask>0x" << std::hex << static_cast<uint32_t>(penn_ext_triggers_mask_) << std::dec << "</Mask>"
-      << "<EchoTriggers>" <<  status_bool << "</EchoTriggers>"
+      << "<mask>0x" << std::hex << static_cast<uint32_t>(penn_ext_triggers_mask_) << std::dec << "</mask>"
+      << "<echo_enabled>" <<  status_bool << "</echo_enabled>"
+      << "<gate>" << penn_ext_triggers_gate_ << "</gate>"
+      << "<prescale>" << penn_ext_triggers_prescale_ << "</prescale>"
       << "</ExtTriggers>";
 
   // -- Calibration channels
