@@ -36,14 +36,13 @@ data_timeout_usecs_(ps.get<uint32_t>("data_timeout_usecs", 60000000))
 
 ////////////////////////////
   // HARDWARE OPTIONS
-
   // config stream connection parameters
   penn_client_host_addr_ =
-      ps.get<std::string>("penn_client_host_addr", "192.168.1.2");
+      ps.get<std::string>("PTB.penn_client_host_addr", "192.168.1.2");
   penn_client_host_port_ =
-      ps.get<std::string>("penn_client_host_port", "8992");
+      ps.get<std::string>("PTB.penn_client_host_port", "8992");
   penn_client_timeout_usecs_ =
-      ps.get<uint32_t>("penn_client_timeout_usecs", 0);
+      ps.get<uint32_t>("PTB.penn_client_timeout_usecs", 0);
 
 
   ////////////////////////////
@@ -51,7 +50,7 @@ data_timeout_usecs_(ps.get<uint32_t>("data_timeout_usecs", 60000000))
 
   // time that the board reader waits for an answer before considering that a timeout occurred.
   receiver_tick_period_usecs_ =
-      ps.get<uint32_t>("receiver_tick_period_usecs", 10000);
+      ps.get<uint32_t>("PTB.receiver_tick_period_usecs", 10000);
 
   // millislice size parameters
   // the size is calculated in clock ticks. Up to the configuration user to
@@ -63,36 +62,36 @@ data_timeout_usecs_(ps.get<uint32_t>("data_timeout_usecs", 60000000))
   // updated at 64 MHz. What we care is not the effective clock ticks but the
   // timestamp ticks
   millislice_size_ =
-      ps.get<uint32_t>("millislice_size",320000); // -- default: 5 ms
+      ps.get<uint32_t>("PTB.millislice_size",320000); // -- default: 5 ms
 
   millislice_overlap_size_ = 
-      ps.get<uint16_t>("millislice_overlap_size", 0); // -- no overlap by default
+      ps.get<uint16_t>("PTB.millislice_overlap_size", 0); // -- no overlap by default
 
   // boardreader printout options
 
   int receiver_debug_level =
-      ps.get<int>("receiver_debug_level", 0);
+      ps.get<int>("PTB.receiver_debug_level", 0);
 #ifdef __PTB_DEBUG__  
  DAQLogger::LogInfo("PennReceiver") << "Debug level set to " << receiver_debug_level;
 #endif
   reporting_interval_fragments_ =
-      ps.get<uint32_t>("reporting_interval_fragments", 100);
+      ps.get<uint32_t>("PTB.reporting_interval_fragments", 100);
   reporting_interval_time_ = 
-      ps.get<uint32_t>("reporting_interval_time", 0);
+      ps.get<uint32_t>("PTB.reporting_interval_time", 0);
 
   // boardreader buffer sizes -- These might need some tuning
 
   raw_buffer_size_ =
-      ps.get<size_t>("raw_buffer_size", 10000); // 10 kB buffer
+      ps.get<size_t>("PTB.raw_buffer_size", 10000); // 10 kB buffer
   // Number of raw buffers that are added to the stack
   raw_buffer_precommit_ =
-      ps.get<uint32_t>("raw_buffer_precommit", 10);
+      ps.get<uint32_t>("PTB.raw_buffer_precommit", 10);
   filled_buffer_release_max_ =                                 // GBcopy
-    ps.get<uint32_t>("filled_buffer_release_max", 10);         // GBcopy
+    ps.get<uint32_t>("PTB.filled_buffer_release_max", 10);         // GBcopy
   // NFB -- This means that artDAQ fragments are used instead of PennRawBuffers
   // Not really sure what is effectively the difference between one and the other here
   use_fragments_as_raw_buffer_ =
-      ps.get<bool>("use_fragments_as_raw_buffer", true);
+      ps.get<bool>("PTB.use_fragments_as_raw_buffer", true);
 #ifdef REBLOCK_PENN_USLICE
   if(use_fragments_as_raw_buffer_ == false) {
     DAQLogger::LogError("PennReceiver") << "use_fragments_as_raw_buffer == false has not been implemented";
@@ -108,18 +107,24 @@ data_timeout_usecs_(ps.get<uint32_t>("data_timeout_usecs", 60000000))
   ///
   /////////////////////////////////////////////////////////////////////////////////
 
+  penn_dry_run_ = ps.get<bool>("PTB.dry_run_mode",false);
+
+  if (penn_dry_run_) {
+    DAQLogger::LogWarning("PennReceiver") << "Dry run mode requested for PTB. No data will be produced.";
+  }
+
   // -- data stream connection parameters
   penn_data_dest_host_ =
-      ps.get<std::string>("penn_data_buffer.daq_host", "lbnedaq5");
+      ps.get<std::string>("PTB.penn_data_buffer.daq_host", "lbnedaq5");
   penn_data_dest_port_ =
-      ps.get<uint16_t>("penn_data_buffer.daq_port", 8992);
+      ps.get<uint16_t>("PTB.penn_data_buffer.daq_port", 8992);
 
   penn_data_dest_rollover_ = 
-      ps.get<uint32_t>("penn_data_buffer.daq_rollover",80);
+      ps.get<uint32_t>("PTB.penn_data_buffer.daq_rollover",80);
 
   // Penn microslice duration (in NOvA clock ticks)
   penn_data_microslice_size_ =
-      ps.get<uint32_t>("penn_data_buffer.daq_microslice_size", 1000);
+      ps.get<uint32_t>("PTB.penn_data_buffer.daq_microslice_size", 1000);
 
   if (penn_data_microslice_size_ >= millislice_size_) {
       DAQLogger::LogError("PennReceiver") << "Microslice size (" << penn_data_microslice_size_
@@ -132,30 +137,33 @@ data_timeout_usecs_(ps.get<uint32_t>("data_timeout_usecs", 60000000))
         << " ) must fit in 27 bits  [ max : " << (1<<27)-1 << "]";
   }
 
-  ptb_pulse_width_ = ps.get<uint32_t>("hardware.pulse_width",2);
+
+  // -- Channel masks
+  penn_channel_mask_bsu_ =
+      ps.get<uint64_t>("PTB.channel_mask.BSU", 0x3FFFFFFFFFFFF);
+  penn_channel_mask_tsu_ =
+      ps.get<uint64_t>("PTB.channel_mask.TSU", 0xFFFFFFFFFFFF);
+
+  // -- Pulse width
+  ptb_pulse_width_ = ps.get<uint32_t>("PTB.hardware.pulse_width",2);
 
   if (ptb_pulse_width_ > ((1<<6)-1)) {
     DAQLogger::LogError("PennReceiver") << "Pulse width ( "  << ptb_pulse_width_
         << " ) must fit in 6 bits  [ max : " << (1<<6)-1 << "]";
   }
-  // -- Channel masks
-  penn_channel_mask_bsu_ =
-      ps.get<uint64_t>("channel_mask.BSU", 0x3FFFFFFFFFFFF);
-  penn_channel_mask_tsu_ =
-      ps.get<uint64_t>("channel_mask.TSU", 0xFFFFFFFFFFFF);
 
   // -- How to deal with external triggers
-  penn_ext_triggers_mask_ = ps.get<uint8_t>("external_triggers.mask",0xF);
+  penn_ext_triggers_mask_ = ps.get<uint8_t>("PTB.external_triggers.mask",0xF);
 
-  penn_ext_triggers_echo_ = ps.get<bool>("external_triggers.echo_triggers",false);
+  penn_ext_triggers_echo_ = ps.get<bool>("PTB.external_triggers.echo_triggers",false);
 
-  penn_ext_triggers_gate_ = ps.get<uint32_t>("external_triggers.gate",5);
+  penn_ext_triggers_gate_ = ps.get<uint32_t>("PTB.external_triggers.gate",5);
   if (penn_ext_triggers_gate_ > ((1<<11)-1)) {
     DAQLogger::LogError("PennReceiver") << "External trigger gate width ( "  << penn_ext_triggers_gate_
         << " ) must fit in 11 bits  [ max : " << (1<<11)-1 << "]";
   }
 
-  penn_ext_triggers_prescale_ = ps.get<uint32_t>("external_triggers.prescale",0);
+  penn_ext_triggers_prescale_ = ps.get<uint32_t>("PTB.external_triggers.prescale",0);
   if (penn_ext_triggers_prescale_ > ((1<<8)-1)) {
     DAQLogger::LogError("PennReceiver") << "External trigger prescale ( "  << penn_ext_triggers_prescale_
         << " ) must fit in 8 bits  [ max : " << (1<<8)-1 << "]";
@@ -165,7 +173,7 @@ data_timeout_usecs_(ps.get<uint32_t>("data_timeout_usecs", 60000000))
   for (uint32_t i = 1; i <= penn_num_calibration_channels_; ++i) {
     CalibChannelConfig channel;
     std::ostringstream channel_name;
-    channel_name << "calibrations.C";
+    channel_name << "PTB.calibrations.C";
     channel_name << i;
 
     channel.id           = ps.get<std::string>(channel_name.str() + ".id");
@@ -179,15 +187,15 @@ data_timeout_usecs_(ps.get<uint32_t>("data_timeout_usecs", 60000000))
   // -- Muon triggers
   // This is the more elaborated part:
   // First grab the global parameters
-  penn_muon_num_triggers_ = ps.get<uint32_t>("muon_triggers.num_triggers",4);
-  penn_trig_in_window_ = ps.get<uint32_t>("muon_triggers.trig_window",3);
-  penn_trig_lockdown_window_ = ps.get<uint32_t>("muon_triggers.trig_lockdown",13);
+  penn_muon_num_triggers_ = ps.get<uint32_t>("PTB.muon_triggers.num_triggers",4);
+  penn_trig_in_window_ = ps.get<uint32_t>("PTB.muon_triggers.trig_window",3);
+  penn_trig_lockdown_window_ = ps.get<uint32_t>("PTB.muon_triggers.trig_lockdown",13);
 
   // And now grab the individual trigger mask configuration
   for (uint32_t i = 0; i < penn_muon_num_triggers_; ++i) {
     MuonTriggerMaskConfig mask;
     std::ostringstream trig_name;
-    trig_name << "muon_triggers.trigger_";
+    trig_name << "PTB.muon_triggers.trigger_";
     trig_name << i;
 
     std::string first_param = trig_name.str() + ".id";
@@ -213,25 +221,25 @@ data_timeout_usecs_(ps.get<uint32_t>("data_timeout_usecs", 60000000))
 
   // amount of data to generate
   penn_data_num_millislices_ =
-      ps.get<uint32_t>("penn_data_num_millislices", 10);
+      ps.get<uint32_t>("PTB.penn_data_num_millislices", 10);
   penn_data_num_microslices_ =
-      ps.get<uint32_t>("penn_data_num_microslices", 10);
+      ps.get<uint32_t>("PTB.penn_data_num_microslices", 10);
   penn_data_frag_rate_ =
-      ps.get<float>("penn_data_frag_rate", 10.0);
+      ps.get<float>("PTB.penn_data_frag_rate", 10.0);
 
   // type of data to generate
   penn_data_payload_mode_ =
-      ps.get<uint16_t>("penn_data_payload_mode", 0);
+      ps.get<uint16_t>("PTB.penn_data_payload_mode", 0);
   penn_data_trigger_mode_ =
-      ps.get<uint16_t>("penn_data_trigger_mode", 0);
+      ps.get<uint16_t>("PTB.penn_data_trigger_mode", 0);
   penn_data_fragment_microslice_at_ticks_ =
-      ps.get<int32_t>("penn_data_fragment_microslice_at_ticks", 0);
+      ps.get<int32_t>("PTB.penn_data_fragment_microslice_at_ticks", 0);
 
   // special debug options
   penn_data_repeat_microslices_ =
-      ps.get<bool>("penn_data_repeat_microslices", false);
+      ps.get<bool>("PTB.penn_data_repeat_microslices", false);
   penn_data_debug_partial_recv_ =
-      ps.get<bool>("penn_data_debug_partial_recv", false);
+      ps.get<bool>("PTB.penn_data_debug_partial_recv", false);
 
 
   ///
@@ -906,8 +914,10 @@ void lbne::PennReceiver::generate_config_frag(std::ostringstream& config_frag) {
       << "<PulseWidth>" << ptb_pulse_width_ << "</PulseWidth>"
       << "</Hardware>";
 
+  std::string dry_run_bool = (penn_dry_run_)?"true":"false";
   // -- DataBuffer section. Controls the reader itself
   config_frag << "<DataBuffer>"
+      << "<DryRun>" << dry_run_bool << "</DryRun>"
       << "<DaqHost>" << penn_data_dest_host_ << "</DaqHost>"
       << "<DaqPort>" << penn_data_dest_port_ << "</DaqPort>"
       // FIXME: Add missing variables

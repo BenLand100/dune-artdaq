@@ -135,6 +135,7 @@ typedef struct CalibChannelConfig {
     uint8_t     penn_calib_channel_mask_;
     uint8_t     penn_calib_pulse_width_;
 
+    bool        penn_dry_run_;
 
 
     /// Muon trigger configuration
