@@ -204,7 +204,7 @@ void lbne::PennDataReceiver::start(void)
   remaining_payloads_recvd_counter_ = 0;
   remaining_payloads_recvd_trigger_ = 0;
   remaining_payloads_recvd_timestamp_ = 0;
-  remaining_payloads_recvd_selftest_ = 0;
+  remaining_payloads_recvd_warning_ = 0;
   remaining_payloads_recvd_checksum_ = 0;
 
   // Clear the counters used for the overlap period
@@ -213,7 +213,7 @@ void lbne::PennDataReceiver::start(void)
   overlap_payloads_recvd_counter_ = 0;
   overlap_payloads_recvd_trigger_ = 0;
   overlap_payloads_recvd_timestamp_ = 0;
-  overlap_payloads_recvd_selftest_ = 0;
+  overlap_payloads_recvd_warning_ = 0;
   overlap_payloads_recvd_checksum_ = 0;
 
   // Clear suspend readout handshake flags
@@ -521,7 +521,7 @@ void lbne::PennDataReceiver::do_read(void)
       payloads_recvd_counter_ = 0;
       payloads_recvd_trigger_ = 0;
       payloads_recvd_timestamp_ = 0;
-      payloads_recvd_selftest_  = 0;
+      payloads_recvd_warning_  = 0;
       payloads_recvd_checksum_  = 0;
 
       // Set the write pointer to the body of the raw buffer.
@@ -548,8 +548,8 @@ void lbne::PennDataReceiver::do_read(void)
             << " total words ("     << overlap_payloads_recvd_counter_
             << " counter + "        << overlap_payloads_recvd_trigger_
             << " trigger + "        << overlap_payloads_recvd_timestamp_
-            << " timestamp + "      << overlap_payloads_recvd_selftest_
-            << " selftest + "       << overlap_payloads_recvd_checksum_
+            << " timestamp + "      << overlap_payloads_recvd_warning_
+            << " warning+ "       << overlap_payloads_recvd_checksum_
             << "checksum)";
 
         //increment size & payload counters
@@ -561,7 +561,7 @@ void lbne::PennDataReceiver::do_read(void)
         // These should never be incremented!!
         // the selftests are now caught at the board level and the checksums
         // are supposed to be filtered out when collected
-        payloads_recvd_selftest_  += overlap_payloads_recvd_selftest_;
+        payloads_recvd_warning_  += overlap_payloads_recvd_warning_;
         payloads_recvd_checksum_  += overlap_payloads_recvd_checksum_;
         //reset 'overlap' counters
         overlap_size_                     = 0;
@@ -569,7 +569,7 @@ void lbne::PennDataReceiver::do_read(void)
         overlap_payloads_recvd_counter_   = 0;
         overlap_payloads_recvd_trigger_   = 0;
         overlap_payloads_recvd_timestamp_ = 0;
-        overlap_payloads_recvd_selftest_  = 0;
+        overlap_payloads_recvd_warning_  = 0;
         overlap_payloads_recvd_checksum_  = 0;
       }
 
@@ -585,8 +585,8 @@ void lbne::PennDataReceiver::do_read(void)
             << " total words ("    << remaining_payloads_recvd_counter_
             << " counter + "       << remaining_payloads_recvd_trigger_
             << " trigger + "       << remaining_payloads_recvd_timestamp_
-            << " timestamp + "     << remaining_payloads_recvd_selftest_
-            << " selftest + "      << remaining_payloads_recvd_checksum_
+            << " timestamp + "     << remaining_payloads_recvd_warning_
+            << " warning + "      << remaining_payloads_recvd_checksum_
             << "checksum)";
         //increment size & payload counters
         millislice_size_recvd_    += remaining_size_;
@@ -595,7 +595,7 @@ void lbne::PennDataReceiver::do_read(void)
         payloads_recvd_trigger_   += remaining_payloads_recvd_trigger_;
         payloads_recvd_timestamp_ += remaining_payloads_recvd_timestamp_;
         // This should not go into the millislice
-        payloads_recvd_selftest_  += remaining_payloads_recvd_selftest_;
+        payloads_recvd_warning_  += remaining_payloads_recvd_warning_;
         payloads_recvd_checksum_  += remaining_payloads_recvd_checksum_;
         //reset 'remaining' counters
         remaining_size_                     = 0;
@@ -603,7 +603,7 @@ void lbne::PennDataReceiver::do_read(void)
         remaining_payloads_recvd_counter_   = 0;
         remaining_payloads_recvd_trigger_   = 0;
         remaining_payloads_recvd_timestamp_ = 0;
-        remaining_payloads_recvd_selftest_  = 0;
+        remaining_payloads_recvd_warning_  = 0;
         remaining_payloads_recvd_checksum_  = 0;
       }
     }
@@ -1037,10 +1037,10 @@ void lbne::PennDataReceiver::handle_received_data(std::size_t length)
               n_warning_words, n_checksum_words,
               remaining_payloads_recvd_, remaining_payloads_recvd_counter_,
               remaining_payloads_recvd_trigger_, remaining_payloads_recvd_timestamp_,
-              remaining_payloads_recvd_selftest_, remaining_payloads_recvd_checksum_,
+              remaining_payloads_recvd_warning_, remaining_payloads_recvd_checksum_,
               overlap_payloads_recvd_, overlap_payloads_recvd_counter_,
               overlap_payloads_recvd_trigger_, overlap_payloads_recvd_timestamp_,
-              overlap_payloads_recvd_selftest_, overlap_payloads_recvd_checksum_,
+              overlap_payloads_recvd_warning_, overlap_payloads_recvd_checksum_,
               hardware_checksum,
               false, microslice_size_);
 
@@ -1142,7 +1142,7 @@ void lbne::PennDataReceiver::handle_received_data(std::size_t length)
           << " counter + "       << n_trigger_words
           << " trigger + "       << n_timestamp_words
           << " timestamp + "     << n_warning_words
-          << " selftest + "      << n_checksum_words
+          << " warning + "      << n_checksum_words
           << "checksum)"
           << " before the millislice boundary";
 
@@ -1159,7 +1159,7 @@ void lbne::PennDataReceiver::handle_received_data(std::size_t length)
       payloads_recvd_counter_   += n_counter_words;
       payloads_recvd_trigger_   += n_trigger_words;
       payloads_recvd_timestamp_ += n_timestamp_words;
-      payloads_recvd_selftest_  += n_warning_words;
+      payloads_recvd_warning_  += n_warning_words;
       payloads_recvd_checksum_  += n_checksum_words;
 
       // JCF, Jul-30-2015
@@ -1206,8 +1206,8 @@ void lbne::PennDataReceiver::handle_received_data(std::size_t length)
         << " payload words (" << payloads_recvd_counter_
         << " counter + "      << payloads_recvd_trigger_
         << " trigger + "      << payloads_recvd_timestamp_
-        << " timestamp + "    << payloads_recvd_selftest_
-        << " selftest + "     << payloads_recvd_checksum_
+        << " timestamp + "    << payloads_recvd_warning_
+        << " warning + "     << payloads_recvd_checksum_
         << " checksum)";
     millislices_recvd_++;
     millislice_state_ = MillisliceComplete;
