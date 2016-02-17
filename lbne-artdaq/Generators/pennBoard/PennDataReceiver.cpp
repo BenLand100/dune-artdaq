@@ -229,8 +229,9 @@ void lbne::PennDataReceiver::stop(void)
   // Suspend readout and wait for receiver thread to respond accordingly
   suspend_readout_.store(true);
 
-  const uint32_t stop_timeout_usecs = 5000000;
-  uint32_t max_timeout_count = stop_timeout_usecs / tick_period_usecs_;
+//  const uint32_t stop_timeout_usecs = 5000000;
+ // uint32_t max_timeout_count = stop_timeout_usecs / tick_period_usecs_;
+  uint32_t max_timeout_count = sleep_on_stop_ / tick_period_usecs_;
   uint32_t timeout_count = 0;
   while (!readout_suspended_.load())
   {
@@ -455,7 +456,11 @@ void lbne::PennDataReceiver::do_read(void)
                  if (!exception_.load() ) {
                    try {
                        DAQLogger::LogError("PennDataReceiver") << "lbne::PennDataReceiver::receiverLoop: too many buffer retries, signalling an exception";
-                   } catch (...) { set_exception(true); }
+                   } catch (...) {
+                     set_exception(true);
+                     // FIXME: This return might be causing troubles.
+                     return;
+                   }
                  }
               }
            }
@@ -532,9 +537,6 @@ void lbne::PennDataReceiver::do_read(void)
       //add the overlap period with the previous millislice
       // to the start of this millislice
       if(overlap_size_) {
-        // TODO: Make sure that these are already stripped of the frames
-        // that are not suposed to go into the millislice
-        // header,checksum,warnings
         //move the overlap period to the start of the new millislice
         memmove(current_write_ptr_, overlap_ptr_, overlap_size_);
         current_write_ptr_ = (void*)((uint8_t*)current_write_ptr_ + overlap_size_);
@@ -576,8 +578,6 @@ void lbne::PennDataReceiver::do_read(void)
       //add any remains of the previous microslice (due to millislice boundary
       // occurring within it) to the start of this millislice
       if(remaining_size_) {
-        //TODO: Strip the remaining_ptr from the frames that are not supposed to go into the millislice
-        // header, checksum and warnings
         memmove(current_write_ptr_, remaining_ptr_, remaining_size_);
         current_write_ptr_ = (void*)((uint8_t*)current_write_ptr_ + remaining_size_);
         RECV_DEBUG(2) << "Added the last "   << remaining_size_ << " bytes of previous microslice to this millislice. "
@@ -643,9 +643,6 @@ void lbne::PennDataReceiver::do_read(void)
 
   // The data should not go
   // Start the asynchronous receive operation into the (existing) current raw buffer.
-  // FIXME: This is not correct. Nothing enforces the data to arrive in the correct size
-  // There is an enforcement that it arrives at most with the correct size, but there is no
-  // safeguard for arriving under the size
 
   // NFB -- Jan, 14 2016
   // According to boost documentation:
@@ -711,11 +708,6 @@ void lbne::PennDataReceiver::handle_received_data(std::size_t length)
   // pointers to subtract stuff that should not be going there.
   // The problem with this approach is that it might fail if
   // there are packets that should not be sent inside the microslice.
-
-  //FIXME: If the TCP stack sends a stream that is not the proper size the processing will fail.
-  // 2 situations can happen:
-  //  == 1. The TCP stack splits the packet into smaller fragments: The
-
 
   //update size of uslice component, uslice & mslice
   state_nbytes_recvd_    += length;
@@ -1113,7 +1105,7 @@ void lbne::PennDataReceiver::handle_received_data(std::size_t length)
 	  try {
 	    DAQLogger::LogError("PennDataReceiver") << "ERROR buffer overflow for 'remaining bytes of microslice, after the millislice boundary'";
 	  } catch (...) {
-	    set_exception(true); //TODO  find out the largest possible microslice size (multiple-fragments) & set remaining_buffer_size appropriately
+	    set_exception(true);
 	  }
         }
         RECV_DEBUG(2) << "Millislice boundary found within microslice " << microslices_recvd_timestamp_
@@ -1128,7 +1120,7 @@ void lbne::PennDataReceiver::handle_received_data(std::size_t length)
 	  try {
 	    DAQLogger::LogError("PennDataReceiver") << "ERROR buffer overflow for 'overlap bytes of microslice, after the millislice boundary'";
 	  } catch (...) {
-	    set_exception(true); //TODO find out the largest possible overlap size & set overlap_buffer_size_ appropriately
+	    set_exception(true);
 	  }
         }
         RECV_DEBUG(2) << "Overlap period found within microslice " << microslices_recvd_timestamp_
@@ -1351,16 +1343,6 @@ std::size_t lbne::PennDataReceiver::nextReceiveStateToExpectedBytes(NextReceiveS
   }
 }
 
-void lbne::PennDataReceiver::set_run_start_time(uint64_t value) {
-  if (run_start_time_ != 0) {
-    DAQLogger::LogWarning("PennDataReceiver") << "Run start time already set to " <<run_start_time_
-        <<". **Not** going to overwrite with received value " << value;
-  } else {
-    DAQLogger::LogInfo("PennDataReceiver") << "Setting run start time  to " << value;
-    run_start_time_ = value;
-  }
-}
-
 void lbne::PennDataReceiver::validate_microslice_header(void) {
   // Capture the microslice version, length and sequence ID from the header
   lbne::PennMicroSlice::Header* header = reinterpret_cast_checked<lbne::PennMicroSlice::Header*>( receiver_state_start_ptr_ );
@@ -1459,7 +1441,6 @@ void lbne::PennDataReceiver::validate_microslice_payload(void) {
   current_ptr -= sizeof_timestamp_frame;
   payload_header = reinterpret_cast_checked<lbne::PennMicroSlice::Payload_Header *>(current_ptr);
   // The second to last packet should be a timestamp
-  // FIXME: Have to make this smarter. It seems that the data sometimes is mismapped
   if (payload_header->data_packet_type != lbne::PennMicroSlice::DataTypeTimestamp) {
     display_bits(current_ptr,4);
    try { 

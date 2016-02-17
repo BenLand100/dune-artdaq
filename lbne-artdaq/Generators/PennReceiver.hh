@@ -105,6 +105,7 @@ typedef struct CalibChannelConfig {
     std::string penn_client_host_addr_;
     std::string penn_client_host_port_;
     uint32_t	penn_client_timeout_usecs_;
+    uint32_t client_sleep_on_stop_;
 
     /// Data buffer options
     // data stream connection

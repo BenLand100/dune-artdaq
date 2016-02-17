@@ -22,14 +22,15 @@ penn_standard: {
     fragment_id: 0
     board_id: 0
     
-    # Don't know what this is for. Seems to be some sort of wait 
-    # time between sending stop command to PTB and issuing the stop
-    # transition to the board reader    
-    #sleep_on_stop_us: 1000000
-    sleep_on_stop_us: 500000
-    #sleep_on_stop_us: 0
     
     PTB : {
+    
+      # Wait time between sending stop command to PTB and issuing the stop
+      # transition to the board reader    
+      #sleep_on_stop_us: 0
+      sleep_on_stop_us: 5000000
+    
+    
       # The real configuration options for the PTB
       penn_client_host_addr     : '192.168.1.205' # the IP of the PTB
       penn_client_host_port     : 8991                # client port
