@@ -75,6 +75,7 @@ private:
   int fMonitoringRefreshRate;
   int fInitialMonitoringUpdate;
   int fEventDisplayRefreshRate;
+  int fLessFrequentFillRate;
   int fLastSaveTime;
   int fNEVDsMade;
   bool fSavedFirstMonitoring;
@@ -107,6 +108,7 @@ void OnlineMonitoring::OnlineMonitoring::reconfigure(fhicl::ParameterSet const& 
   fMonitoringRefreshRate   = p.get<int>("MonitoringRefreshRate");
   fInitialMonitoringUpdate = p.get<int>("InitialMonitoringUpdate");
   fEventDisplayRefreshRate = p.get<int>("EventDisplayRefreshRate");
+  fLessFrequentFillRate    = p.get<int>("LessFrequentFillRate");
   fDriftVelocity           = p.get<double>("DriftVelocity");
   fCollectionPedestal      = p.get<int>("CollectionPedestal");
   fMicroslicePreBuffer     = p.get<int>("MicroslicePreBuffer");
@@ -157,7 +159,7 @@ void OnlineMonitoring::OnlineMonitoring::analyze(art::Event const& evt) {
     if (fScopeMonitoring) fMonitoringData.RCEScopeMonitoring(rceformatter, fEventNumber);
     else {
       fMonitoringData.RCEMonitoring(rceformatter, fEventNumber);
-      if ((std::time(0) - fLastSaveTime) % 30 == 0) fMonitoringData.RCELessFrequentMonitoring(rceformatter);
+      if ((std::time(0) - fLastSaveTime) % fLessFrequentFillRate == 0) fMonitoringData.RCELessFrequentMonitoring(rceformatter);
     }
   }
   if (!fScopeMonitoring) {
