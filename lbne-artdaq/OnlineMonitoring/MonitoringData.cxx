@@ -293,6 +293,10 @@ void OnlineMonitoring::MonitoringData::RCEMonitoring(RCEFormatter const& rceform
     double mean = TMath::Mean(ADCs.at(channel).begin(),ADCs.at(channel).end());
     double rms  = TMath::RMS (ADCs.at(channel).begin(),ADCs.at(channel).end());
 
+    // Make a vector of DNoise!
+    // DNoise is the difference in ADC between two neighbouring channels for the same tick
+    std::vector<int> dNoise;
+
     for (unsigned int tick = 0; tick < ADCs.at(channel).size(); ++tick) {
 
       int ADC = ADCs.at(channel).at(tick);
@@ -300,8 +304,8 @@ void OnlineMonitoring::MonitoringData::RCEMonitoring(RCEFormatter const& rceform
       // Fill hists for tick
       if (fDetailedMonitoring)
 	hADCChannelMap.at(channel)->Fill(tick,ADC);
-      if (channel && !ADCs.at(channel-1).empty() && tick < ADCs.at(channel-1).size())
-	hRCEDNoiseChannel->Fill(channel,ADC-ADCs.at(channel-1).at(tick));
+      if (channel and !ADCs.at(channel-1).empty() and tick < ADCs.at(channel-1).size())
+	dNoise.push_back(ADC-ADCs.at(channel-1).at(tick));
       hADCChannel->Fill(channel,ADC,1);
 
       // Increase variables
@@ -330,16 +334,23 @@ void OnlineMonitoring::MonitoringData::RCEMonitoring(RCEFormatter const& rceform
 
     }
 
+    // Find the RMS of the DNoise
+    double dNoiseRMS = TMath::RMS(dNoise.begin(), dNoise.end());
+
     // Fill hists for channel
-    hADCMeanChannelAPA1     ->Fill(channel,mean);
-    hADCMeanChannelAPA2     ->Fill(channel,mean);
-    hADCMeanChannelAPA3     ->Fill(channel,mean);
-    hADCMeanChannelAPA4     ->Fill(channel,mean);
-    hADCRMSChannelAPA1      ->Fill(channel,rms);
-    hADCRMSChannelAPA2      ->Fill(channel,rms);
-    hADCRMSChannelAPA3      ->Fill(channel,rms);
-    hADCRMSChannelAPA4      ->Fill(channel,rms);
-    hAvADCChannelEvent  ->Fill(event,channel,mean);
+    hADCMeanChannelAPA1->Fill(channel,mean);
+    hADCMeanChannelAPA2->Fill(channel,mean);
+    hADCMeanChannelAPA3->Fill(channel,mean);
+    hADCMeanChannelAPA4->Fill(channel,mean);
+    hADCRMSChannelAPA1->Fill(channel,rms);
+    hADCRMSChannelAPA2->Fill(channel,rms);
+    hADCRMSChannelAPA3->Fill(channel,rms);
+    hADCRMSChannelAPA4->Fill(channel,rms);
+    hADCDNoiseRMSChannelAPA1->Fill(channel,dNoiseRMS);
+    hADCDNoiseRMSChannelAPA2->Fill(channel,dNoiseRMS);
+    hADCDNoiseRMSChannelAPA3->Fill(channel,dNoiseRMS);
+    hADCDNoiseRMSChannelAPA4->Fill(channel,dNoiseRMS);
+    hAvADCChannelEvent->Fill(event,channel,mean);
     hTotalRCEHitsChannel->Fill(channel+1,totalRCEHitsChannel);
     int tbit = 1;
     for (int bitIt = 0; bitIt < 16; ++bitIt) {
@@ -351,7 +362,6 @@ void OnlineMonitoring::MonitoringData::RCEMonitoring(RCEFormatter const& rceform
     // Get tick ratio
     double tickRatio = ADCs.at(channel).size() / (double)maxNumTicks;
     hTickRatioChannel->Fill(channel,tickRatio);
-    hTickTotalChannel->Fill(channel,ADCs.at(channel).size());
 
     // Loop over blocks to look at the asymmetry
     for (int block = 0; block < rceformatter.NumBlocks().at(channel); ++block) {
@@ -763,6 +773,11 @@ void OnlineMonitoring::MonitoringData::WriteMonitoringData(int run, int subrun, 
       fFigureLegends[_h->GetName()]->Draw();
     }
     else fCanvas->SetRightMargin(0.1);
+    if (strstr(histTitle->At(2)->GetName(),"logy")) fCanvas->SetLogy(1);
+    else fCanvas->SetLogy(0);
+    if (strstr(histTitle->At(2)->GetName(),"logz")) fCanvas->SetLogz(1);
+    else fCanvas->SetLogz(0);
+    fCanvas->Modified();
     fCanvas->Update();
     TLine line = TLine();
     line.SetLineColor(2);
@@ -770,21 +785,25 @@ void OnlineMonitoring::MonitoringData::WriteMonitoringData(int run, int subrun, 
     line.SetLineStyle(7);
     TText text = TText();
     text.SetTextColor(2);
+    double lowerY, upperY;
+    if (strstr(histTitle->At(2)->GetName(),"logy")) {
+      lowerY = TMath::Power(10,fCanvas->GetFrame()->GetY1());
+      upperY = TMath::Power(10,fCanvas->GetFrame()->GetY2());
+    }
+    else {
+      lowerY = fCanvas->GetFrame()->GetY1();
+      upperY = fCanvas->GetFrame()->GetY2();
+    }
     if (strstr(histName->At(0)->GetName(),"SSP"))
       for (unsigned int sspchan = 0; sspchan <= NSSPChannels; sspchan+=12) {
-	line.DrawLine(sspchan,fCanvas->GetFrame()->GetY1(),sspchan,fCanvas->GetFrame()->GetY2());
-	text.DrawText(sspchan+2,fCanvas->GetFrame()->GetY1()+0.001,(std::to_string(((int)sspchan/12)+1)).c_str());
+	line.DrawLine(sspchan,lowerY,sspchan,upperY);
+	text.DrawText(sspchan+2,lowerY+0.001,(std::to_string(((int)sspchan/12)+1)).c_str());
       }
     else if (strstr(histName->At(0)->GetName(),"RCE"))// and strstr(histName->At(4)->GetName(),"Channel"))
       for (unsigned int rcechan = 0; rcechan <= NRCEChannels; rcechan+=128) {
-	line.DrawLine(rcechan,fCanvas->GetFrame()->GetY1(),rcechan,fCanvas->GetFrame()->GetY2());
-	text.DrawText(rcechan+5,fCanvas->GetFrame()->GetY1()+0.001,(std::to_string((int)rcechan/128)).c_str());
+	line.DrawLine(rcechan,lowerY,rcechan,upperY);
+	text.DrawText(rcechan+5,lowerY+0.001,(std::to_string((int)rcechan/128)).c_str());
       }
-    if (strstr(histTitle->At(2)->GetName(),"logy")) fCanvas->SetLogy(1);
-    else fCanvas->SetLogy(0);
-    if (strstr(histTitle->At(2)->GetName(),"logz")) fCanvas->SetLogz(1);
-    else fCanvas->SetLogz(0);
-    fCanvas->Modified();
     fCanvas->Update();
     fCanvas->SaveAs(fHistSaveDirectory+TString(histName->At(0)->GetName())+TString("/")+TString(_h->GetName())+imageType);
     fDataFile->cd();
@@ -886,6 +905,14 @@ void OnlineMonitoring::MonitoringData::MakeHistograms() {
   fFigureCaptions["RCE_APA2_ADC_RMS_Channel_All"] = "RMS of the ADC values for each channel read out by the RCEs (profiled over all events read)";
   hADCRMSChannelAPA4 = new TProfile("RCE_APA3_ADC_RMS_Channel_All","RCE ADC RMS APA3_\"histl\"_logy;Channel;RCE ADC RMS",512,1536,2047);
   fFigureCaptions["RCE_APA3_ADC_RMS_Channel_All"] = "RMS of the ADC values for each channel read out by the RCEs (profiled over all events read)";
+  hADCDNoiseRMSChannelAPA1 = new TProfile("RCE_APA0_ADC_DNoise_Channel_All","RCE DNoise APA0_\"hist\"_none;Channel;DNoise",512,0,511);
+  fFigureCaptions["RCE_APA0_ADC_DNoise_Channel_All"] = "DNoise (RMS(ADC[channel_i][tick_i]-ADC[channel_i+1][tick_i])) for APA0 (profiled over all events read)";
+  hADCDNoiseRMSChannelAPA2 = new TProfile("RCE_APA1_ADC_DNoise_Channel_All","RCE DNoise APA1_\"hist\"_none;Channel;DNoise",512,512,1023);
+  fFigureCaptions["RCE_APA1_ADC_DNoise_Channel_All"] = "DNoise (RMS(ADC[channel_i][tick_i]-ADC[channel_i+1][tick_i])) for APA1 (profiled over all events read)";
+  hADCDNoiseRMSChannelAPA3 = new TProfile("RCE_APA2_ADC_DNoise_Channel_All","RCE DNoise APA2_\"hist\"_none;Channel;DNoise",512,1024,1535);
+  fFigureCaptions["RCE_APA2_ADC_DNoise_Channel_All"] = "DNoise (RMS(ADC[channel_i][tick_i]-ADC[channel_i+1][tick_i])) for APA2 (profiled over all events read)";
+  hADCDNoiseRMSChannelAPA4 = new TProfile("RCE_APA3_ADC_DNoise_Channel_All","RCE DNoise APA3_\"hist\"_none;Channel;DNoise",512,1536,2047);
+  fFigureCaptions["RCE_APA3_ADC_DNoise_Channel_All"] = "DNoise (RMS(ADC[channel_i][tick_i]-ADC[channel_i+1][tick_i])) for APA3 (profiled over all events read)";
   hFFTChannelRCE00 = new TProfile2D("RCE_RCE00_ADC_FFT_Channel_FirstEvent","ADC FFT for RCE00_\"colz\"_logz;Channel;FFT (MHz)",128,0,128,100,0,1);
   fFigureCaptions["RCE_RCE00_ADC_FFT_Channel_FirstEvent"] = "FFT of ADC values in RCE00";
   hFFTChannelRCE00->GetZaxis()->SetRangeUser(0,5000);
@@ -893,12 +920,8 @@ void OnlineMonitoring::MonitoringData::MakeHistograms() {
   fFigureCaptions["RCE__ADC_Value_Channel_All"] = "ADC value for each channel (one entry per tick)";
   hTickRatioChannel = new TH2D("RCE__NumberOfTicks_Ratio_Channel_All","Ratio of Number of Tick to Max In Event_\"colz\"_none;Channel;Number of Ticks/Max Number of Ticks in Event",NRCEChannels,0,NRCEChannels,101,0,1.01);
   fFigureCaptions["RCE__NumberOfTicks_Ratio_Channel_All"] = "Number of ticks in a particular channel as ratio of maximum number of ticks across all channels in the event (filled once per channel per event) -- should be 1";
-  hTickTotalChannel                     = new TH2D("RCE__NumberOfTicks_Total_Channel_All","Total Ticks in Channel_\"hist\"_none;Channel;Total ticks in event",NRCEChannels,0,NRCEChannels,10001,0,10001);
-  fFigureCaptions["RCE__NumberOfTicks_Total_Channel_All"] = "Total number of tick in an event per channel (filled once per channel per event)";
   hAvADCChannelEvent = new TH2D("RCE__ADC_Mean_Event_First100","Average RCE ADC Value_\"colz\"_none;Event;Channel",100,0,100,NRCEChannels,0,NRCEChannels);
   fFigureCaptions["RCE__ADC_Mean_Event_First100"] = "Average RCE ADC across a channel for an event, shown for the first 100 events";
-  hRCEDNoiseChannel = new TProfile("RCE__ADC_DNoise_Channel_All","RCE DNoise_\"colz\"_none;Channel;DNoise",NRCEChannels,0,NRCEChannels);
-  fFigureCaptions["RCE__ADC_DNoise_Channel_All"] = "DNoise (difference in ADC between neighbouring channels for the same tick) for the RCE ADCs (profiled over all events read)";
   hTotalADCEvent = new TH1I("RCE__ADC_Total__All","Total RCE ADC_\"colz\"_logy;Total ADC;",100,0,1000000000);
   fFigureCaptions["RCE__ADC_Total__All"] = "Total RCE ADC recorded for an event across all channels (one entry per event)";
   hTotalRCEHitsEvent = new TH1I("RCE__Hits_Total__All","Total RCE Hits in Event_\"colz\"_logy;Total RCE Hits;",100,0,10000000);
@@ -1082,9 +1105,10 @@ void OnlineMonitoring::MonitoringData::MakeHistograms() {
   fHistArray.Add(hADCMeanChannelAPA3); fHistArray.Add(hADCMeanChannelAPA4);
   fHistArray.Add(hADCRMSChannelAPA1); fHistArray.Add(hADCRMSChannelAPA2);
   fHistArray.Add(hADCRMSChannelAPA3); fHistArray.Add(hADCRMSChannelAPA4);
+  fHistArray.Add(hADCDNoiseRMSChannelAPA1); fHistArray.Add(hADCDNoiseRMSChannelAPA2);
+  fHistArray.Add(hADCDNoiseRMSChannelAPA3); fHistArray.Add(hADCDNoiseRMSChannelAPA4);
   fHistArray.Add(hADCChannel); fHistArray.Add(hFFTChannelRCE00);
-  fHistArray.Add(hTickRatioChannel); fHistArray.Add(hTickTotalChannel);
-  fHistArray.Add(hRCEDNoiseChannel);
+  fHistArray.Add(hTickRatioChannel);
   fHistArray.Add(hAvADCChannelEvent); fHistArray.Add(hTotalRCEHitsChannel);
   fHistArray.Add(hTotalADCEvent); fHistArray.Add(hTotalRCEHitsEvent);
   fHistArray.Add(hAsymmetry); fHistArray.Add(hTimesADCGoesOverThreshold);
