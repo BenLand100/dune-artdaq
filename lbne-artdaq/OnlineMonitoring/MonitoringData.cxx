@@ -335,7 +335,7 @@ void OnlineMonitoring::MonitoringData::RCEMonitoring(RCEFormatter const& rceform
     }
 
     // Find the RMS of the DNoise
-    double dNoiseRMS = TMath::RMS(dNoise.begin(), dNoise.end());
+    double dNoiseRMS = TMath::RMS(dNoise.begin(), dNoise.end()) / TMath::Sqrt(2);
 
     // Fill hists for channel
     hADCMeanChannelAPA1->Fill(channel,mean);
@@ -760,9 +760,9 @@ void OnlineMonitoring::MonitoringData::WriteMonitoringData(int run, int subrun, 
   // Save all the histograms as images and write to file
   for (int histIt = 0; histIt < fHistArray.GetEntriesFast(); ++histIt) {
     fCanvas->cd();
-    TH1 *_h = (TH1*)fHistArray.At(histIt);
-    TObjArray *histTitle = TString(_h->GetTitle()).Tokenize(PathDelimiter);
-    TObjArray *histName = TString(_h->GetName()).Tokenize(PathDelimiter);
+    TH1* _h = (TH1*)fHistArray.At(histIt);
+    TObjArray* histTitle = TString(_h->GetTitle()).Tokenize(PathDelimiter);
+    TObjArray* histName = TString(_h->GetName()).Tokenize(PathDelimiter);
     _h->Draw((char*)histTitle->At(1)->GetName());
     TPaveText *canvTitle = new TPaveText(0.05,0.92,0.6,0.98,"NDC");
     canvTitle->AddText((std::string(histTitle->At(0)->GetName())+": Run "+std::to_string(run)+", SubRun "+std::to_string(subrun)).c_str());
@@ -810,6 +810,42 @@ void OnlineMonitoring::MonitoringData::WriteMonitoringData(int run, int subrun, 
     fDataFile->cd(histName->At(0)->GetName());
     _h->Write();
     *componentHTML[histName->At(0)->GetName()] << "<figure><a href=\"" << (TString(_h->GetName())+imageType).Data() << "\"><img src=\"" << (TString(_h->GetName())+imageType).Data() << "\" width=\"650\"></a><figcaption>" << fFigureCaptions.at(_h->GetName()) << "</figcaption></figure>" << std::endl;
+    if (strstr(_h->GetName(),"RCE_APA3_ADC_DNoise_Channel_All")) { // Make special noise plot!
+      fCanvas->cd();
+      for (int apa = 0; apa < 4; ++apa) {
+	TPaveText *canvTitle = new TPaveText(0.05,0.92,0.6,0.98,"NDC");
+	canvTitle->AddText(("APA"+std::to_string(apa)+" RMS and DNoise: Run "+std::to_string(run)+", SubRun "+std::to_string(subrun)).c_str());
+	canvTitle->SetBorderSize(1);
+	canvTitle->Draw();
+	TLegend* _l = new TLegend(0.1,0.9,0.1,0.9,"","NDC");
+	TH1* _hRMS = (TH1*)fHistArray.FindObject(TString("RCE_APA")+TString(std::to_string(apa))+TString("_ADC_RMS_Channel_All"));
+	_hRMS->SetLineColor(8);
+	_hRMS->Draw("hist");
+	_l->AddEntry(_hRMS,"RMS","l");
+	TH1* _hDNoise = (TH1*)fHistArray.FindObject(TString("RCE_APA")+TString(std::to_string(apa))+TString("_ADC_DNoise_Channel_All"));
+	_hDNoise->Draw("hist same");
+	_l->AddEntry(_hDNoise,"DNoise","l");
+	_l->Draw();
+	fCanvas->SetLogy();
+	fCanvas->Modified();
+	fCanvas->Update();
+	TLine line = TLine();
+	line.SetLineColor(2);
+	line.SetLineWidth(1);
+	line.SetLineStyle(7);
+	TText text = TText();
+	text.SetTextColor(2);
+	double lowerY = TMath::Power(10,fCanvas->GetFrame()->GetY1());
+	double upperY = TMath::Power(10,fCanvas->GetFrame()->GetY2());
+	for (unsigned int rcechan = 0; rcechan <= NRCEChannels; rcechan+=128) {
+	  line.DrawLine(rcechan,lowerY,rcechan,upperY);
+	  text.DrawText(rcechan+5,lowerY+0.001,(std::to_string((int)rcechan/128)).c_str());
+	}
+	fCanvas->Update();
+	fCanvas->SaveAs(fHistSaveDirectory+TString("RCE/")+TString("RCE_APA")+TString(std::to_string(apa))+TString("_ADC_DNoiseRMS_Channel_All")+imageType);
+	*componentHTML["RCE"] << "<figure><a href=\"RCE_APA" << apa << "_ADC_DNoiseRMS_Channel_All" << imageType.Data() << "\"<img src=\"RCE_APA" << apa << "_ADC_DNoiseRMS_Channel_All" << imageType.Data() << "\" width=\"650\"></a><figcaption>RMS (green) and DNoise (blue) for APA " << apa << "</figcaptions></figure>" << std::endl;
+      }
+    }
   }
 
   mainHTML << "<div class=\"bannerbottom\"></div></body>" << std::endl;
@@ -822,11 +858,12 @@ void OnlineMonitoring::MonitoringData::WriteMonitoringData(int run, int subrun, 
   }
 
   // Write other histograms
-  fDataFile->cd();
-  fDataFile->cd("RCE");
-  if (fDetailedMonitoring)
+  if (fDetailedMonitoring) {
+    fDataFile->cd();
+    fDataFile->cd("RCE");
     for (unsigned int channel = 0; channel < NRCEChannels; ++channel)
       hADCChannelMap.at(channel)->Write();
+  }
 
   // Add run file
   ofstream tmp((fHistSaveDirectory+TString("run").Data()));
@@ -905,14 +942,14 @@ void OnlineMonitoring::MonitoringData::MakeHistograms() {
   fFigureCaptions["RCE_APA2_ADC_RMS_Channel_All"] = "RMS of the ADC values for each channel read out by the RCEs (profiled over all events read)";
   hADCRMSChannelAPA4 = new TProfile("RCE_APA3_ADC_RMS_Channel_All","RCE ADC RMS APA3_\"histl\"_logy;Channel;RCE ADC RMS",512,1536,2047);
   fFigureCaptions["RCE_APA3_ADC_RMS_Channel_All"] = "RMS of the ADC values for each channel read out by the RCEs (profiled over all events read)";
-  hADCDNoiseRMSChannelAPA1 = new TProfile("RCE_APA0_ADC_DNoise_Channel_All","RCE DNoise APA0_\"hist\"_none;Channel;DNoise",512,0,511);
-  fFigureCaptions["RCE_APA0_ADC_DNoise_Channel_All"] = "DNoise (RMS(ADC[channel_i][tick_i]-ADC[channel_i+1][tick_i])) for APA0 (profiled over all events read)";
-  hADCDNoiseRMSChannelAPA2 = new TProfile("RCE_APA1_ADC_DNoise_Channel_All","RCE DNoise APA1_\"hist\"_none;Channel;DNoise",512,512,1023);
-  fFigureCaptions["RCE_APA1_ADC_DNoise_Channel_All"] = "DNoise (RMS(ADC[channel_i][tick_i]-ADC[channel_i+1][tick_i])) for APA1 (profiled over all events read)";
-  hADCDNoiseRMSChannelAPA3 = new TProfile("RCE_APA2_ADC_DNoise_Channel_All","RCE DNoise APA2_\"hist\"_none;Channel;DNoise",512,1024,1535);
-  fFigureCaptions["RCE_APA2_ADC_DNoise_Channel_All"] = "DNoise (RMS(ADC[channel_i][tick_i]-ADC[channel_i+1][tick_i])) for APA2 (profiled over all events read)";
-  hADCDNoiseRMSChannelAPA4 = new TProfile("RCE_APA3_ADC_DNoise_Channel_All","RCE DNoise APA3_\"hist\"_none;Channel;DNoise",512,1536,2047);
-  fFigureCaptions["RCE_APA3_ADC_DNoise_Channel_All"] = "DNoise (RMS(ADC[channel_i][tick_i]-ADC[channel_i+1][tick_i])) for APA3 (profiled over all events read)";
+  hADCDNoiseRMSChannelAPA1 = new TProfile("RCE_APA0_ADC_DNoise_Channel_All","RCE DNoise APA0_\"hist\"_logy;Channel;DNoise/sqrt(2)",512,0,511);
+  fFigureCaptions["RCE_APA0_ADC_DNoise_Channel_All"] = "DNoise (RMS(ADC[channel_i][tick_i]-ADC[channel_i+1][tick_i])/sqrt(2)) for APA0 (profiled over all events read)";
+  hADCDNoiseRMSChannelAPA2 = new TProfile("RCE_APA1_ADC_DNoise_Channel_All","RCE DNoise APA1_\"hist\"_logy;Channel;DNoise/sqrt(2)",512,512,1023);
+  fFigureCaptions["RCE_APA1_ADC_DNoise_Channel_All"] = "DNoise (RMS(ADC[channel_i][tick_i]-ADC[channel_i+1][tick_i])/sqrt(2)) for APA1 (profiled over all events read)";
+  hADCDNoiseRMSChannelAPA3 = new TProfile("RCE_APA2_ADC_DNoise_Channel_All","RCE DNoise APA2_\"hist\"_logy;Channel;DNoise/sqrt(2)",512,1024,1535);
+  fFigureCaptions["RCE_APA2_ADC_DNoise_Channel_All"] = "DNoise (RMS(ADC[channel_i][tick_i]-ADC[channel_i+1][tick_i])/sqrt(2)) for APA2 (profiled over all events read)";
+  hADCDNoiseRMSChannelAPA4 = new TProfile("RCE_APA3_ADC_DNoise_Channel_All","RCE DNoise APA3_\"hist\"_logy;Channel;DNoise/sqrt(2)",512,1536,2047);
+  fFigureCaptions["RCE_APA3_ADC_DNoise_Channel_All"] = "DNoise (RMS(ADC[channel_i][tick_i]-ADC[channel_i+1][tick_i])/sqrt(2)) for APA3 (profiled over all events read)";
   hFFTChannelRCE00 = new TProfile2D("RCE_RCE00_ADC_FFT_Channel_FirstEvent","ADC FFT for RCE00_\"colz\"_logz;Channel;FFT (MHz)",128,0,128,100,0,1);
   fFigureCaptions["RCE_RCE00_ADC_FFT_Channel_FirstEvent"] = "FFT of ADC values in RCE00";
   hFFTChannelRCE00->GetZaxis()->SetRangeUser(0,5000);
