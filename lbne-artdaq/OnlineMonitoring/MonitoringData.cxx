@@ -843,7 +843,7 @@ void OnlineMonitoring::MonitoringData::WriteMonitoringData(int run, int subrun, 
 	}
 	fCanvas->Update();
 	fCanvas->SaveAs(fHistSaveDirectory+TString("RCE/")+TString("RCE_APA")+TString(std::to_string(apa))+TString("_ADC_DNoiseRMS_Channel_All")+imageType);
-	*componentHTML["RCE"] << "<figure><a href=\"RCE_APA" << apa << "_ADC_DNoiseRMS_Channel_All" << imageType.Data() << "\"<img src=\"RCE_APA" << apa << "_ADC_DNoiseRMS_Channel_All" << imageType.Data() << "\" width=\"650\"></a><figcaption>RMS (green) and DNoise (blue) for APA " << apa << "</figcaptions></figure>" << std::endl;
+	*componentHTML["RCE"] << "<figure><a href=\"RCE_APA" << apa << "_ADC_DNoiseRMS_Channel_All" << imageType.Data() << "\"><img src=\"RCE_APA" << apa << "_ADC_DNoiseRMS_Channel_All" << imageType.Data() << "\" width=\"650\"></a><figcaption>RMS (green) and DNoise (blue) for APA " << apa << "</figcaption></figure>" << std::endl;
       }
     }
   }

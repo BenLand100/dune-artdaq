@@ -79,6 +79,7 @@ void OnlineMonitoring::EventDisplay::SaveEventDisplay(int run, int subrun, int e
   // Double_t Length[2] = { 0.00, 1.00 };
   // TColor::CreateGradientColorTable(2, Length, Red, Green, Blue, 1000);
   TCanvas* evdCanvas = new TCanvas();
+  fEVD->GetZaxis()->SetRangeUser(-100,250);
   fEVD->Draw("colz");
   TLine DriftLine, APALine;
   DriftLine.SetLineStyle(2);
