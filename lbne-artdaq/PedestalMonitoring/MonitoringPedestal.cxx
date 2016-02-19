@@ -479,6 +479,7 @@ int PedestalMonitoring::MonitoringPedestal::RCEMonitoring(RCEFormatter const& rc
     TString canvas;
 
     for (unsigned int iapa = 0; iapa < NAPA; ++iapa){
+      fCanvas->cd();
       hPedChanAPA[iapa]->Write();
       hPedChanAPA[iapa]->Draw();
       canvas = directory.str() + "/pedapa_" + std::to_string(iapa) + ".png";
@@ -490,6 +491,7 @@ int PedestalMonitoring::MonitoringPedestal::RCEMonitoring(RCEFormatter const& rc
     }
 
     for (unsigned int iplane = 0; iplane < NPlanes; ++iplane){
+      fCanvas->cd();
       hPedPlane[iplane]->Write();
       hPedPlane[iplane]->Draw();
       canvas = directory.str() + "/pedplane_" + std::to_string(iplane) + ".png";
@@ -502,18 +504,25 @@ int PedestalMonitoring::MonitoringPedestal::RCEMonitoring(RCEFormatter const& rc
       fCanvas->SaveAs(canvas);
     }
 
+    fCanvas->cd();
     hPed->Draw();
     canvas = directory.str() + "/pedestal.png";
+    fCanvas->SetLogy(1);
     fCanvas->SaveAs(canvas);
     hNoise->Draw();
     canvas = directory.str() + "/noise.png";
+    fCanvas->SetLogy(1);
     fCanvas->SaveAs(canvas);
 
+    figcanvas->cd();
+    gPad->SetLogy(1);
     figcanvas->Divide(2,2,0,0);
     gStyle->SetOptStat(0);
     figcanvas->cd(1);
+    gPad->SetLogy(1);
     hPedChannel->Draw();
     figcanvas->cd(2);
+    gPad->SetLogy(1);
     hNoiseChannel->Draw();
     figcanvas->cd(3);
     hRatioPed->Draw();

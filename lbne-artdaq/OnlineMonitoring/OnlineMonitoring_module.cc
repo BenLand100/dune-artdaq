@@ -75,6 +75,7 @@ private:
   int fMonitoringRefreshRate;
   int fInitialMonitoringUpdate;
   int fEventDisplayRefreshRate;
+  int fLessFrequentFillRate;
   int fLastSaveTime;
   int fNEVDsMade;
   bool fSavedFirstMonitoring;
@@ -107,6 +108,7 @@ void OnlineMonitoring::OnlineMonitoring::reconfigure(fhicl::ParameterSet const& 
   fMonitoringRefreshRate   = p.get<int>("MonitoringRefreshRate");
   fInitialMonitoringUpdate = p.get<int>("InitialMonitoringUpdate");
   fEventDisplayRefreshRate = p.get<int>("EventDisplayRefreshRate");
+  fLessFrequentFillRate    = p.get<int>("LessFrequentFillRate");
   fDriftVelocity           = p.get<double>("DriftVelocity");
   fCollectionPedestal      = p.get<int>("CollectionPedestal");
   fMicroslicePreBuffer     = p.get<int>("MicroslicePreBuffer");
@@ -157,7 +159,7 @@ void OnlineMonitoring::OnlineMonitoring::analyze(art::Event const& evt) {
     if (fScopeMonitoring) fMonitoringData.RCEScopeMonitoring(rceformatter, fEventNumber);
     else {
       fMonitoringData.RCEMonitoring(rceformatter, fEventNumber);
-      if ((std::time(0) - fLastSaveTime) % 30 == 0) fMonitoringData.RCELessFrequentMonitoring(rceformatter);
+      if ((std::time(0) - fLastSaveTime) % fLessFrequentFillRate == 0) fMonitoringData.RCELessFrequentMonitoring(rceformatter);
     }
   }
   if (!fScopeMonitoring) {
@@ -190,9 +192,8 @@ void OnlineMonitoring::OnlineMonitoring::analyze(art::Event const& evt) {
   // Eventually will check for flag in the PTB monitoring which suggests the event
   // is interesting enough to make an event display for!
   // if (ptbformatter.MakeEventDisplay())
-  // int evdRefreshInterval = std::round((double)fEventDisplayRefreshRate / 1.6e-3);
-  // if (fEventNumber % evdRefreshInterval == 0)
-  if (fNEVDsMade == 0 and rceformatter.FirstMicroslice >= 2 and rceformatter.FirstMicroslice <= 5) {
+  std::cout << "First microslice is " << rceformatter.FirstMicroslice << std::endl;
+  if (fNEVDsMade == 0 and rceformatter.FirstMicroslice >= 2 and rceformatter.FirstMicroslice <= 9) {
     ++fNEVDsMade;
 
     // JCF, Feb-9-2106

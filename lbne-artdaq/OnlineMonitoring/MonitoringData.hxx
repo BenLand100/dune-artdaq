@@ -101,10 +101,12 @@ private:
   // RCE
   TH1I *hTotalADCEvent, *hTotalRCEHitsEvent, *hTotalRCEHitsChannel, *hTimesADCGoesOverThreshold,  *hNumMicroslicesInMillislice, *hNumNanoslicesInMicroslice, *hNumNanoslicesInMillislice;
   TH2I *hRCEBitCheckAnd, *hRCEBitCheckOr;
-  TH2D *hAvADCChannelEvent, *hADCChannel, *hTickRatioChannel, *hTickTotalChannel;
-  TProfile *hADCMeanChannelAPA1, *hADCMeanChannelAPA2, *hADCMeanChannelAPA3, *hADCMeanChannelAPA4, *hADCRMSChannelAPA1, *hADCRMSChannelAPA2, *hADCRMSChannelAPA3, *hADCRMSChannelAPA4;
+  TH2D *hAvADCChannelEvent, *hADCChannel, *hTickRatioChannel;
+  TProfile *hADCMeanChannelAPA1, *hADCMeanChannelAPA2, *hADCMeanChannelAPA3, *hADCMeanChannelAPA4;
+  TProfile *hADCRMSChannelAPA1, *hADCRMSChannelAPA2, *hADCRMSChannelAPA3, *hADCRMSChannelAPA4;
+  TProfile *hADCDNoiseRMSChannelAPA1, *hADCDNoiseRMSChannelAPA2, *hADCDNoiseRMSChannelAPA3, *hADCDNoiseRMSChannelAPA4;
+  TProfile *hAsymmetry, *hLastSixBitsCheckOff, *hLastSixBitsCheckOn;
   TProfile2D *hFFTChannelRCE00;
-  TProfile *hRCEDNoiseChannel, *hAsymmetry, *hLastSixBitsCheckOff, *hLastSixBitsCheckOn;
   std::map<int,TProfile*> hADCChannelMap;
   std::map<int,TH1D*> hAvADCMillislice;
   std::map<int,TH1D*> hAvADCMillisliceChannel;

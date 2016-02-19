@@ -24,6 +24,13 @@ void OnlineMonitoring::EventDisplay::MakeEventDisplay(RCEFormatter const& rcefor
   //double x,z;
   int drift, apa, collectionChannel, ADC, pedestal;
 
+  // for (unsigned int tick = 0; tick < 6000; ++tick) {
+  //   for (unsigned int channel = 0; channel < ADCs.size(); ++channel) {
+  //     int ADC = ADCs.at(channel).at(tick) - channelMap.GetPedestal(channel);
+  //     std::cout << "Tick " << tick << ", channel " << channel << " has ADC " << ADC << std::endl;
+  //   }
+  // }
+
   // Loop over channels
   for (unsigned int channel = 0; channel < ADCs.size(); ++channel) {
 
@@ -47,6 +54,8 @@ void OnlineMonitoring::EventDisplay::MakeEventDisplay(RCEFormatter const& rcefor
     for (unsigned int tick = 0; tick < ADCs.at(channel).size(); ++tick) {
 
       // Correct for pedestal
+      if (pedestal > 10000)
+	std::cout << std::endl;
       ADC = ADCs.at(channel).at(tick) - pedestal;
 
       // If in certain range fill event display
@@ -73,12 +82,13 @@ void OnlineMonitoring::EventDisplay::SaveEventDisplay(int run, int subrun, int e
   /// Saves the online event display in the specified directory and sets up info for the cron job to sync
 
   // Save the event display and make it look pretty
-  // Double_t Red[2] = { 1.00, 0.00 };
-  // Double_t Green[2] = { 1.00, 0.00 };
-  // Double_t Blue[2] = { 1.00, 0.00 };
-  // Double_t Length[2] = { 0.00, 1.00 };
-  // TColor::CreateGradientColorTable(2, Length, Red, Green, Blue, 1000);
-  TCanvas* evdCanvas = new TCanvas();
+  Double_t Red[2] = { 1.00, 0.00 };
+  Double_t Green[2] = { 1.00, 0.00 };
+  Double_t Blue[2] = { 1.00, 0.00 };
+  Double_t Length[2] = { 0.00, 1.00 };
+  TColor::CreateGradientColorTable(2, Length, Red, Green, Blue, 1000);
+  TCanvas* evdCanvas = new TCanvas("","",1600,1800);
+  //fEVD->GetZaxis()->SetRangeUser(-100,250);
   fEVD->Draw("colz");
   TLine DriftLine, APALine;
   DriftLine.SetLineStyle(2);

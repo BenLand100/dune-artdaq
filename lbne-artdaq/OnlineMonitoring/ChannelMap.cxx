@@ -46,10 +46,14 @@ void OnlineMonitoring::ChannelMap::MakePedestalMap(TString const& pedestalMapFil
   }
 
   while (std::getline(inFile,line)) {
-    int onlineChannel, pedestal, noise, pedestalError, noiseError, run, subrun;
+    std::vector<int> lineVector;
     std::stringstream linestream(line);
-    linestream >> onlineChannel >> pedestal >> noise >> pedestalError >> noiseError >> run >> subrun;
-    fPedestalMap[onlineChannel] = pedestal;
+    while (linestream) {
+      std::string s;
+      if (std::getline(linestream, s, ','))
+	lineVector.push_back(atoi(s.c_str()));
+    }
+    fPedestalMap[lineVector.at(0)] = lineVector.at(1);
   }
 
   inFile.close();
