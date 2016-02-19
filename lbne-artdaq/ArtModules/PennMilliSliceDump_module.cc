@@ -115,9 +115,6 @@ void lbne::PennMilliSliceDump::analyze(art::Event const & evt)
 	///> Find the width of the millislice overlap period in NOvA clock ticks
 	lbne::PennMilliSlice::Header::ticks_t ms_overlap_in_ticks = msf.overlapTicks();
 
-	///> Find the checksum of the millislice
-	lbne::PennMilliSlice::checksum_t ms_checksum = msf.checksum();
-
 	DAQLogger::LogInfo("PennMilliSliceDump") << std::endl
 		  << "PennMilliSlice fragment ID " << frag.fragmentID()
 		  << " with version " << ms_version << " and sequence ID " << ms_sequence_id
@@ -128,11 +125,10 @@ void lbne::PennMilliSliceDump::analyze(art::Event const & evt)
 		  << n_frames_counter    << " counter + "
 		  << n_frames_trigger    << " trigger + "
 		  << n_frames_timestamp  << " timestamp + "
-		  << n_frames - n_frames_counter - n_frames_trigger - n_frames_timestamp << " selftest & checksum)"
+		  << n_frames - n_frames_counter - n_frames_trigger - n_frames_timestamp << " warning )"
 		  << std::endl
 		  << " with width " << ms_width_in_ticks << " ticks (excluding overlap of " << ms_overlap_in_ticks
 		  << " ticks) and end timestamp " << ms_end_timestamp << std::endl
-		  << " with checksum " << ms_checksum
 		  << std::endl << std::endl;
 
 	///> Create variables to store the payload information

@@ -273,17 +273,16 @@ data_timeout_usecs_(ps.get<uint32_t>("data_timeout_usecs", 60000000))
 
   // Create a PennDataReceiver instance
   // This should be where the PTB connects. 
-#ifdef __PTB_BOARD_READER_DEVEL_MODE__
-  DAQLogger::LogDebug(instance_name_for_metrics_) << "Creating data receiver with parameters :receiver_tick_period_usecs_ ["
+  //#ifdef __PTB_BOARD_READER_DEVEL_MODE__
+  DAQLogger::LogInfo(instance_name_for_metrics_) << "Creating data receiver with parameters :receiver_tick_period_usecs_ ["
         << receiver_tick_period_usecs_
         << "] millislice_size_ : [" << millislice_size_
         << "] millislice_overlap_size_ : [" << millislice_overlap_size_;
-#endif
+  //#endif
 
 
   //-- Dump the configuration as received:
   // FIXME: Continue here
-  DAQLogger::LogInfo();
 
   data_receiver_ =
       std::unique_ptr<lbne::PennDataReceiver>(new lbne::PennDataReceiver(receiver_debug_level,
