@@ -770,11 +770,13 @@ void OnlineMonitoring::MonitoringData::WriteMonitoringData(int run, int subrun, 
       TH1* _hRMS = (TH1*)fHistArray.FindObject(TString("RCE_")+TString(histName->At(1)->GetName())+TString("_ADC_RMS_Channel_All"));
       _hRMS->Draw("hist");
       _h->Draw((TString(histTitle->At(1)->GetName())+TString(" same")).Data());
-      _l->AddEntry(_h,"DNoise","l");
-      _l->AddEntry(_hRMS,"RMS","l");
+      _l->AddEntry(_h->Clone(),"DNoise","l");
+      _l->AddEntry(_hRMS->Clone(),"RMS","l");
     }
     else _h->Draw((char*)histTitle->At(1)->GetName());
-    _l->Draw();
+    fCanvas->cd();
+    _l->DrawClone();
+    fCanvas->SaveAs(fHistSaveDirectory+TString(histName->At(0)->GetName())+TString("/")+TString(_h->GetName())+TString("_tmp")+imageType);
     TPaveText *canvTitle = new TPaveText(0.05,0.92,0.6,0.98,"NDC");
     canvTitle->AddText((std::string(histTitle->At(0)->GetName())+": Run "+std::to_string(run)+", SubRun "+std::to_string(subrun)).c_str());
     canvTitle->SetBorderSize(1);
@@ -821,6 +823,7 @@ void OnlineMonitoring::MonitoringData::WriteMonitoringData(int run, int subrun, 
     fDataFile->cd(histName->At(0)->GetName());
     _h->Write();
     *componentHTML[histName->At(0)->GetName()] << "<figure><a href=\"" << (TString(_h->GetName())+imageType).Data() << "\"><img src=\"" << (TString(_h->GetName())+imageType).Data() << "\" width=\"650\"></a><figcaption>" << fFigureCaptions.at(_h->GetName()) << "</figcaption></figure>" << std::endl;
+    delete _l;
   }
 
   mainHTML << "<div class=\"bannerbottom\"></div></body>" << std::endl;

@@ -17,6 +17,8 @@ OnlineMonitoring::RCEFormatter::RCEFormatter(art::Handle<artdaq::Fragments> cons
     return;
   }
 
+  FirstMicroslice = -1;
+
   this->AnalyseADCs(rawRCE, scopeMode);
   this->Windowing();
 
