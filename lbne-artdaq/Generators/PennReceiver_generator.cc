@@ -30,9 +30,9 @@ data_timeout_usecs_(ps.get<uint32_t>("data_timeout_usecs", 60000000))
   int fragment_id = ps.get<int>("fragment_id");
   fragment_ids_.push_back(fragment_id);
 
-  instance_name_for_metrics_ = instance_name_for_metrics_;
+  instance_name_for_metrics_ = "PennReceiver";
 
-  DAQLogger::LogInfo(instance_name_for_metrics_) << "Starting up";
+  DAQLogger::LogInfo("PennReceiver") << "Starting up";
 
 ////////////////////////////
   // HARDWARE OPTIONS
@@ -72,7 +72,7 @@ data_timeout_usecs_(ps.get<uint32_t>("data_timeout_usecs", 60000000))
   int receiver_debug_level =
       ps.get<int>("PTB.receiver_debug_level", 0);
 #ifdef __PTB_DEBUG__  
- DAQLogger::LogInfo(instance_name_for_metrics_) << "Debug level set to " << receiver_debug_level;
+ DAQLogger::LogInfo("PennReceiver") << "Debug level set to " << receiver_debug_level;
 #endif
   reporting_interval_fragments_ =
       ps.get<uint32_t>("PTB.reporting_interval_fragments", 100);
@@ -94,9 +94,9 @@ data_timeout_usecs_(ps.get<uint32_t>("data_timeout_usecs", 60000000))
       ps.get<bool>("PTB.use_fragments_as_raw_buffer", true);
 #ifdef REBLOCK_PENN_USLICE
   if(use_fragments_as_raw_buffer_ == false) {
-    DAQLogger::LogError(instance_name_for_metrics_) << "use_fragments_as_raw_buffer == false has not been implemented";
+    DAQLogger::LogError("PennReceiver") << "use_fragments_as_raw_buffer == false has not been implemented";
   } else {
-    DAQLogger::LogInfo(instance_name_for_metrics_) << "Using artdaq::Fragment as raw buffers";
+    DAQLogger::LogInfo("PennReceiver") << "Using artdaq::Fragment as raw buffers";
   }
 
 #endif
@@ -109,7 +109,7 @@ data_timeout_usecs_(ps.get<uint32_t>("data_timeout_usecs", 60000000))
   penn_dry_run_ = ps.get<bool>("PTB.dry_run_mode",false);
 
   if (penn_dry_run_) {
-    DAQLogger::LogWarning(instance_name_for_metrics_) << "Dry run mode requested for PTB. No data will be produced.";
+    DAQLogger::LogWarning("PennReceiver") << "Dry run mode requested for PTB. No data will be produced.";
   }
 
   // -- data stream connection parameters
@@ -126,13 +126,13 @@ data_timeout_usecs_(ps.get<uint32_t>("data_timeout_usecs", 60000000))
       ps.get<uint32_t>("PTB.penn_data_buffer.daq_microslice_size", 64000);
 
   if (penn_data_microslice_size_ >= millislice_size_) {
-      DAQLogger::LogError(instance_name_for_metrics_) << "Microslice size (" << penn_data_microslice_size_
+      DAQLogger::LogError("PennReceiver") << "Microslice size (" << penn_data_microslice_size_
           << ") must be smaller than the millislice (" << millislice_size_ << ")";
 
   }
 
   if (penn_data_microslice_size_ > ((1<<27)-1)) {
-    DAQLogger::LogError(instance_name_for_metrics_) << "Microslice size ( "  << penn_data_microslice_size_
+    DAQLogger::LogError("PennReceiver") << "Microslice size ( "  << penn_data_microslice_size_
         << " ) must fit in 27 bits  [ max : " << (1<<27)-1 << "]";
   }
 
@@ -147,7 +147,7 @@ data_timeout_usecs_(ps.get<uint32_t>("data_timeout_usecs", 60000000))
   ptb_pulse_width_ = ps.get<uint32_t>("PTB.hardware.pulse_width",5);
 
   if (ptb_pulse_width_ > ((1<<6)-1)) {
-    DAQLogger::LogError(instance_name_for_metrics_) << "Pulse width ( "  << ptb_pulse_width_
+    DAQLogger::LogError("PennReceiver") << "Pulse width ( "  << ptb_pulse_width_
         << " ) must fit in 6 bits  [ max : " << (1<<6)-1 << "]";
   }
 
@@ -158,13 +158,13 @@ data_timeout_usecs_(ps.get<uint32_t>("data_timeout_usecs", 60000000))
 
   penn_ext_triggers_gate_ = ps.get<uint32_t>("PTB.external_triggers.gate",5);
   if (penn_ext_triggers_gate_ > ((1<<11)-1)) {
-    DAQLogger::LogError(instance_name_for_metrics_) << "External trigger gate width ( "  << penn_ext_triggers_gate_
+    DAQLogger::LogError("PennReceiver") << "External trigger gate width ( "  << penn_ext_triggers_gate_
         << " ) must fit in 11 bits  [ max : " << (1<<11)-1 << "]";
   }
 
   penn_ext_triggers_prescale_ = ps.get<uint32_t>("PTB.external_triggers.prescale",0);
   if (penn_ext_triggers_prescale_ > ((1<<8)-1)) {
-    DAQLogger::LogError(instance_name_for_metrics_) << "External trigger prescale ( "  << penn_ext_triggers_prescale_
+    DAQLogger::LogError("PennReceiver") << "External trigger prescale ( "  << penn_ext_triggers_prescale_
         << " ) must fit in 8 bits  [ max : " << (1<<8)-1 << "]";
   }
 
@@ -255,7 +255,7 @@ data_timeout_usecs_(ps.get<uint32_t>("data_timeout_usecs", 60000000))
   penn_client_->send_command("HardReset");
   if (penn_client_->exception()) {
     set_exception(true);
-    DAQLogger::LogError(instance_name_for_metrics_) << "lbne::PennReceiver::constructor_ : found penn client in exception state";
+    DAQLogger::LogError("PennReceiver") << "lbne::PennReceiver::constructor_ : found penn client in exception state";
   }
   sleep(1);
   std::ostringstream config_frag;
@@ -274,10 +274,10 @@ data_timeout_usecs_(ps.get<uint32_t>("data_timeout_usecs", 60000000))
   // Create a PennDataReceiver instance
   // This should be where the PTB connects. 
   //#ifdef __PTB_BOARD_READER_DEVEL_MODE__
-  DAQLogger::LogInfo(instance_name_for_metrics_) << "Creating data receiver with parameters :receiver_tick_period_usecs_ ["
+  DAQLogger::LogInfo("PennReceiver") << "Creating data receiver with parameters :receiver_tick_period_usecs_ ["
         << receiver_tick_period_usecs_
         << "] millislice_size_ : [" << millislice_size_
-        << "] millislice_overlap_size_ : [" << millislice_overlap_size_;
+				     << "] millislice_overlap_size_ : [" << millislice_overlap_size_ << "]";
   //#endif
 
 
@@ -299,23 +299,23 @@ data_receiver_->set_stop_delay(client_sleep_on_stop_);
   usleep(500000);
 
 #ifdef __PTB_DEBUG__
-  DAQLogger::LogDebug(instance_name_for_metrics_) << "Sending the configuration to the PTB";
+  DAQLogger::LogDebug("PennReceiver") << "Sending the configuration to the PTB";
 #endif
   // Can I send the coonfiguration after creating the receiver?
   penn_client_->send_config(config_frag.str());
 #ifdef __PTB_DEBUG__
-  DAQLogger::LogDebug(instance_name_for_metrics_) << "Configuration sent to the PTB";
+  DAQLogger::LogDebug("PennReceiver") << "Configuration sent to the PTB";
 #endif
   if (penn_client_->exception()) {
     set_exception(true);
-    DAQLogger::LogError(instance_name_for_metrics_) << "lbne::PennReceiver::constructor_ : found control thread in exception state";
+    DAQLogger::LogError("PennReceiver") << "lbne::PennReceiver::constructor_ : found control thread in exception state";
   }
 }
 
 void lbne::PennReceiver::start(void)
 {
 #ifdef __PTB_DEBUG__
-  DAQLogger::LogDebug(instance_name_for_metrics_) << "start() called";
+  DAQLogger::LogDebug("PennReceiver") << "start() called";
 #endif
   // Tell the data receiver to drain any unused buffers from the empty queue
   data_receiver_->release_empty_buffers();
@@ -329,7 +329,7 @@ void lbne::PennReceiver::start(void)
   // Pre-commit buffers to the data receiver object - creating either fragments or raw buffers depending on raw buffer mode
   // What is effectively the difference between the modes?
 #ifdef __PTB_DEBUG__
-  DAQLogger::LogDebug(instance_name_for_metrics_) << "Pre-committing " << raw_buffer_precommit_ << " buffers of size " << raw_buffer_size_ << " to receiver";
+  DAQLogger::LogDebug("PennReceiver") << "Pre-committing " << raw_buffer_precommit_ << " buffers of size " << raw_buffer_size_ << " to receiver";
 #endif
   empty_buffer_low_mark_ = 0;
   for (unsigned int i = 0; i < raw_buffer_precommit_; i++)
@@ -338,7 +338,7 @@ void lbne::PennReceiver::start(void)
     // Use artDAQ fragments to build the raw buffer
     if (use_fragments_as_raw_buffer_)
     {
-      //DAQLogger::LogWarning(instance_name_for_metrics_) << "getNext_ : Using fragments as raw buffers. This does not remove warning words from the Millislices.";
+      //DAQLogger::LogWarning("PennReceiver") << "getNext_ : Using fragments as raw buffers. This does not remove warning words from the Millislices.";
 
       raw_buffer = this->create_new_buffer_from_fragment();
     }
@@ -348,7 +348,7 @@ void lbne::PennReceiver::start(void)
       raw_buffer = lbne::PennRawBufferPtr(new PennRawBuffer(raw_buffer_size_));
     }
 #ifdef __PTB_DEBUG__
-    DAQLogger::LogDebug(instance_name_for_metrics_) << "Pre-commiting raw buffer " << i << " at address " << (void*)(raw_buffer->dataPtr());
+    DAQLogger::LogDebug("PennReceiver") << "Pre-commiting raw buffer " << i << " at address " << (void*)(raw_buffer->dataPtr());
 #endif
     data_receiver_->commit_empty_buffer(raw_buffer);
     empty_buffer_low_mark_++;
@@ -372,11 +372,11 @@ void lbne::PennReceiver::start(void)
   // check if there was no problem starting the run. If there was then fail.
   if (penn_client_->exception()) {
     set_exception(true);
-    DAQLogger::LogError(instance_name_for_metrics_) << "lbne::PennReceiver::start_ : found control thread in exception state";
+    DAQLogger::LogError("PennReceiver") << "lbne::PennReceiver::start_ : found control thread in exception state";
   }
   
   // if (xml_answer.size() == 0) {
-  //   DAQLogger::LogWarning(instance_name_for_metrics_) << "PTB didn't send a start of run timestamp. Will estimate from data flow.";
+  //   DAQLogger::LogWarning("PennReceiver") << "PTB didn't send a start of run timestamp. Will estimate from data flow.";
   // } else {
   //   std::stringstream tmpVal;
   //   tmpVal << xml_answer;
@@ -390,7 +390,7 @@ void lbne::PennReceiver::start(void)
 // GBcopy  but the RCEs tell the hardware to stop sending data here, so I have moved it?
 void lbne::PennReceiver::stopNoMutex(void)
 {
-        DAQLogger::LogInfo(instance_name_for_metrics_) << "In stopNoMutex - instructing PTB to stop";
+        DAQLogger::LogInfo("PennReceiver") << "In stopNoMutex - instructing PTB to stop";
 
         // Instruct the PTB to stop
         penn_client_->send_command("StopRun");  // GBcopy
@@ -399,7 +399,7 @@ void lbne::PennReceiver::stopNoMutex(void)
 
 void lbne::PennReceiver::stop(void)
 {
-  // GBcopy (done in stopNoMutex instead): DAQLogger::LogInfo(instance_name_for_metrics_) << "stop() called";
+  // GBcopy (done in stopNoMutex instead): DAQLogger::LogInfo("PennReceiver") << "stop() called";
 
   // Instruct the PENN to stop
   // NFB Dec-02-2015
@@ -411,15 +411,15 @@ void lbne::PennReceiver::stop(void)
   // GBcopy (done in stopNoMutex instead): penn_client_->send_command("StopRun");
 
 
-  DAQLogger::LogInfo(instance_name_for_metrics_) << "stop() called: Low water mark on empty buffer queue is " << empty_buffer_low_mark_;
-  DAQLogger::LogInfo(instance_name_for_metrics_) << "stop() called: High water mark on filled buffer queue is " << filled_buffer_high_mark_;
+  DAQLogger::LogInfo("PennReceiver") << "stop() called: Low water mark on empty buffer queue is " << empty_buffer_low_mark_;
+  DAQLogger::LogInfo("PennReceiver") << "stop() called: High water mark on filled buffer queue is " << filled_buffer_high_mark_;
 
   auto elapsed_msecs = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - start_time_).count();
   double elapsed_secs = ((double)elapsed_msecs) / 1000;
   double rate = ((double)millislices_received_) / elapsed_secs;
   double data_rate_mbs = ((double)total_bytes_received_) / ((1024*1024) * elapsed_secs);
 
-  DAQLogger::LogInfo(instance_name_for_metrics_) << "Received " << millislices_received_ << " millislices in "
+  DAQLogger::LogInfo("PennReceiver") << "Received " << millislices_received_ << " millislices in "
       << elapsed_secs << " seconds, rate "
       << rate << " Hz, total data " << total_bytes_received_ << " bytes, rate " << data_rate_mbs << " MB/s";
 
@@ -428,8 +428,8 @@ void lbne::PennReceiver::stop(void)
 
   // NFB: The low water mark inicates if a run has had too few millislices being collected
   // For all purposes it seems that this value could take any form.
-  DAQLogger::LogInfo(instance_name_for_metrics_) << "Low water mark on empty buffer queue is " << empty_buffer_low_mark_;
-  DAQLogger::LogInfo(instance_name_for_metrics_) << "High water mark on filled buffer queue is " << filled_buffer_high_mark_;
+  DAQLogger::LogInfo("PennReceiver") << "Low water mark on empty buffer queue is " << empty_buffer_low_mark_;
+  DAQLogger::LogInfo("PennReceiver") << "High water mark on filled buffer queue is " << filled_buffer_high_mark_;
 
   /*
   auto elapsed_msecs = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - start_time_).count();
@@ -437,7 +437,7 @@ void lbne::PennReceiver::stop(void)
   double rate = ((double)millislices_received_) / elapsed_secs;
   double data_rate_mbs = ((double)total_bytes_received_) / ((1024*1024) * elapsed_secs);
 
-  DAQLogger::LogInfo(instance_name_for_metrics_) << "Received " << millislices_received_ << " millislices in "
+  DAQLogger::LogInfo("PennReceiver") << "Received " << millislices_received_ << " millislices in "
       << elapsed_secs << " seconds, rate "
       << rate << " Hz, total data " << total_bytes_received_ << " bytes, rate " << data_rate_mbs << " MB/s";
   */
@@ -450,7 +450,7 @@ void lbne::PennReceiver::stop(void)
   //   msg << it->second;
   // }
 
-  // DAQLogger::LogInfo(instance_name_for_metrics_) << msg;
+  // DAQLogger::LogInfo("PennReceiver") << msg;
 
 }
 
@@ -484,7 +484,7 @@ bool lbne::PennReceiver::getNext_(artdaq::FragmentPtrs & frags) {
 	// point in time)
 
 	if ( startOfDatataking() ) {
-	  DAQLogger::LogInfo(instance_name_for_metrics_) << "Penn: start of datataking";
+	  DAQLogger::LogInfo("PennReceiver") << "Penn: start of datataking";
 	  last_buffer_received_time_ = std::chrono::high_resolution_clock::now();
 	}
 
@@ -499,14 +499,14 @@ bool lbne::PennReceiver::getNext_(artdaq::FragmentPtrs & frags) {
 
 		if (!buffer_available)
 		{
-			DAQLogger::LogWarning(instance_name_for_metrics_) << "lbne::PennReceiver::getNext_ : "
+			DAQLogger::LogWarning("PennReceiver") << "lbne::PennReceiver::getNext_ : "
 					<< "receiver indicated buffers available but unable to retrieve one within timeout";
 			continue;
 		}
 
 		if (recvd_buffer->size() == 0)
 		{
-			DAQLogger::LogWarning(instance_name_for_metrics_) << "lbne::PennReceiver::getNext_ : no data received in raw buffer";
+			DAQLogger::LogWarning("PennReceiver") << "lbne::PennReceiver::getNext_ : no data received in raw buffer";
 			continue;
 		}
 
@@ -554,7 +554,7 @@ bool lbne::PennReceiver::getNext_(artdaq::FragmentPtrs & frags) {
 			}
 			else
 			{
-				DAQLogger::LogError(instance_name_for_metrics_) << "lbne::PennReceiver::getNext_ : cannot map raw buffer with data address"
+				DAQLogger::LogError("PennReceiver") << "lbne::PennReceiver::getNext_ : cannot map raw buffer with data address"
 						<< (void*)recvd_buffer->dataPtr() << " back onto fragment";
 				continue;
 			}
@@ -562,7 +562,7 @@ bool lbne::PennReceiver::getNext_(artdaq::FragmentPtrs & frags) {
 		// Otherwise format the raw buffer into a new fragment
 		else
 		{
-		  DAQLogger::LogError(instance_name_for_metrics_) << "You must use_fragments_as_raw_buffer, the other option is not implemented, change PTB configuration please";
+		  DAQLogger::LogError("PennReceiver") << "You must use_fragments_as_raw_buffer, the other option is not implemented, change PTB configuration please";
 		}
 
 		// Recycle the raw buffer onto the commit queue for re-use by the receiver.
@@ -600,7 +600,7 @@ bool lbne::PennReceiver::getNext_(artdaq::FragmentPtrs & frags) {
 			auto elapsed_msecs = std::chrono::duration_cast<std::chrono::milliseconds>(now - start_time_).count();
 			double elapsed_secs = ((double)elapsed_msecs)/1000;
 
-			DAQLogger::LogInfo(instance_name_for_metrics_) << "lbne::PennReceiver::getNext_ : received " << millislices_received_ << " millislices, "
+			DAQLogger::LogInfo("PennReceiver") << "lbne::PennReceiver::getNext_ : received " << millislices_received_ << " millislices, "
 					<< float(total_bytes_received_)/(1024*1024) << " MB in " << elapsed_secs << " seconds";
 
 			report_time_ = std::chrono::high_resolution_clock::now();
@@ -623,13 +623,13 @@ bool lbne::PennReceiver::getNext_(artdaq::FragmentPtrs & frags) {
 		if (data_receiver_->filled_buffers_available() > 0)
 		{
 			// Don't signal board reader can stop if there are still buffers available to release as fragments
-			DAQLogger::LogDebug(instance_name_for_metrics_)
+			DAQLogger::LogDebug("PennReceiver")
 				<< "lbne::PennReceiver::getNext_ : should_stop() is true but buffers available";
 		}
 		else
 		{
 			// If all buffers released, set is_active false to signal board reader can stop
-			DAQLogger::LogInfo(instance_name_for_metrics_)
+			DAQLogger::LogInfo("PennReceiver")
 				<< "lbne::PennReceiver::getNext_ : no unprocessed filled buffers available at end of run";
 			is_active = false;
 		}
@@ -637,7 +637,7 @@ bool lbne::PennReceiver::getNext_(artdaq::FragmentPtrs & frags) {
 	if (data_receiver_->exception())
 	{
 	  set_exception(true);
-	  DAQLogger::LogError(instance_name_for_metrics_) << "lbne::PennReceiver::getNext_ : found receiver thread in exception state";
+	  DAQLogger::LogError("PennReceiver") << "lbne::PennReceiver::getNext_ : found receiver thread in exception state";
 	}
 
 	// JCF, Dec-11-2015
@@ -650,7 +650,7 @@ bool lbne::PennReceiver::getNext_(artdaq::FragmentPtrs & frags) {
 	  auto time_since_last_buffer = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now() - last_buffer_received_time_).count();
 
 	  if (time_since_last_buffer > data_timeout_usecs_) {
-	    DAQLogger::LogError(instance_name_for_metrics_) << "lbne::PennReceiver::getNext_ : timeout due to no data appearing after " << time_since_last_buffer / 1000000.0 << " seconds";
+	    DAQLogger::LogError("PennReceiver") << "lbne::PennReceiver::getNext_ : timeout due to no data appearing after " << time_since_last_buffer / 1000000.0 << " seconds";
 	  }
 	}
 
@@ -673,7 +673,7 @@ bool lbne::PennReceiver::getNext_(artdaq::FragmentPtrs & frags) {
       (reporting_interval_time_ * 1000))
       {
         report_time_ = std::chrono::high_resolution_clock::now();
-        DAQLogger::LogDebug(instance_name_for_metrics_) << "Received " << millislices_received_ << " millislices so far";
+        DAQLogger::LogDebug("PennReceiver") << "Received " << millislices_received_ << " millislices so far";
 
       }
     }
@@ -697,7 +697,7 @@ bool lbne::PennReceiver::getNext_(artdaq::FragmentPtrs & frags) {
     }
     else
     {
-      DAQLogger::LogInfo(instance_name_for_metrics_) << "No unprocessed filled buffers available at end of run";
+      DAQLogger::LogInfo("PennReceiver") << "No unprocessed filled buffers available at end of run";
     }
 
     return false;
@@ -708,7 +708,7 @@ bool lbne::PennReceiver::getNext_(artdaq::FragmentPtrs & frags) {
   // an empty list
   if (recvd_buffer->size() == 0)
   {
-    DAQLogger::LogWarning(instance_name_for_metrics_) << "getNext_ : no data received in raw buffer";
+    DAQLogger::LogWarning("PennReceiver") << "getNext_ : no data received in raw buffer";
     return true;
   }
 
@@ -719,7 +719,7 @@ bool lbne::PennReceiver::getNext_(artdaq::FragmentPtrs & frags) {
 
   if (use_fragments_as_raw_buffer_)
   {
-    //DAQLogger::LogWarning(instance_name_for_metrics_) << "getNext_ : Using fragments as raw buffers. This does not remove warning words from the Millislices.";
+    //DAQLogger::LogWarning("PennReceiver") << "getNext_ : Using fragments as raw buffers. This does not remove warning words from the Millislices.";
 
     // Map back onto the fragment from the raw buffer data pointer we have just received
     if (raw_to_frag_map_.count(data_ptr))
@@ -748,13 +748,13 @@ bool lbne::PennReceiver::getNext_(artdaq::FragmentPtrs & frags) {
     }
     else
     {
-      DAQLogger::LogError(instance_name_for_metrics_) << "Cannot map raw buffer with data address" << (void*)recvd_buffer->dataPtr() << " back onto fragment";
+      DAQLogger::LogError("PennReceiver") << "Cannot map raw buffer with data address" << (void*)recvd_buffer->dataPtr() << " back onto fragment";
       return true;
     }
   }
   else
   {
-    DAQLogger::LogWarning(instance_name_for_metrics_) << "Raw buffer mode has not been tested.";
+    DAQLogger::LogWarning("PennReceiver") << "Raw buffer mode has not been tested.";
     // Create an artdaq::Fragment to format the raw data into. As a crude heuristic,
     // reserve 10 times the raw data space in the fragment for formatting overhead.
     size_t fragDataSize = recvd_buffer->size() * 10;
@@ -778,7 +778,7 @@ bool lbne::PennReceiver::getNext_(artdaq::FragmentPtrs & frags) {
     auto elapsed_msecs = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - start_time_).count();
     double elapsed_secs = ((double)elapsed_msecs)/1000;
 
-    DAQLogger::LogDebug(instance_name_for_metrics_) << "Received " << millislices_received_ << " millislices, "
+    DAQLogger::LogDebug("PennReceiver") << "Received " << millislices_received_ << " millislices, "
 				       << float(total_bytes_received_)/(1024*1024) << " MB in " << elapsed_secs << " seconds";
   }
 
@@ -829,7 +829,7 @@ lbne::PennRawBufferPtr lbne::PennReceiver::create_new_buffer_from_fragment(void)
   PennRawBufferPtr raw_buffer;
 
 #ifdef __PTB_BOARD_READER_DEVEL_MODE__
-  DAQLogger::LogDebug(instance_name_for_metrics_) << "Producing a artdaq fragment with size: "
+  DAQLogger::LogDebug("PennReceiver") << "Producing a artdaq fragment with size: "
       << raw_buffer_size_ + sizeof(PennMilliSlice::Header);
 #endif
   std::unique_ptr<artdaq::Fragment> frag = artdaq::Fragment::FragmentBytes(raw_buffer_size_ + sizeof(PennMilliSlice::Header));
@@ -856,7 +856,7 @@ uint32_t lbne::PennReceiver::format_millislice_from_raw_buffer(uint16_t* src_add
   for (uint32_t udx = 0; udx < number_of_microslices_to_generate_; ++udx) {
     microslice_writer_ptr = millislice_writer.reserveMicroSlice(MICROSLICE_BUFFER_SIZE);
     if (microslice_writer_ptr.get() == 0) {
-      DAQLogger::LogError(instance_name_for_metrics_)
+      DAQLogger::LogError("PennReceiver")
       << "Unable to create microslice number " << udx;
     }
     else {
@@ -874,7 +874,7 @@ uint32_t lbne::PennReceiver::format_millislice_from_raw_buffer(uint16_t* src_add
   // Check if we have overrun the end of the raw buffer
   if (sample_addr > (src_addr + src_size))
   {
-    DAQLogger::LogError(instance_name_for_metrics_)
+    DAQLogger::LogError("PennReceiver")
     << "Raw buffer overrun during millislice formatting by " << ((src_addr + src_size) - sample_addr);
   }
   millislice_writer.finalize();
