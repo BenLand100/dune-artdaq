@@ -776,7 +776,6 @@ void OnlineMonitoring::MonitoringData::WriteMonitoringData(int run, int subrun, 
     else _h->Draw((char*)histTitle->At(1)->GetName());
     fCanvas->cd();
     _l->DrawClone();
-    fCanvas->SaveAs(fHistSaveDirectory+TString(histName->At(0)->GetName())+TString("/")+TString(_h->GetName())+TString("_tmp")+imageType);
     TPaveText *canvTitle = new TPaveText(0.05,0.92,0.6,0.98,"NDC");
     canvTitle->AddText((std::string(histTitle->At(0)->GetName())+": Run "+std::to_string(run)+", SubRun "+std::to_string(subrun)).c_str());
     canvTitle->SetBorderSize(1);
