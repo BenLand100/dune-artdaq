@@ -114,11 +114,11 @@ trig::PennBoardTrigger::PennBoardTrigger(fhicl::ParameterSet const & p)
 
   fFilterOnTriggerType = p.get<bool>("FilterOnTriggerType", false);
   fTriggerType = p.get<lbne::PennMicroSlice::Payload_Trigger::trigger_type_t>("TriggerType", 0x00);
-  fTriggerTypeName = lbne::PennMicroSlice::Payload_Trigger::getTriggerName(fTriggerType);
+  fTriggerTypeName = lbne::PennMicroSlice::Payload_Trigger::getTriggerTypeName(fTriggerType);
 
   fFilterOnTriggerPattern = p.get<bool>("FilterOnTriggerPattern", false);
   fTriggerPatternBit = p.get<lbne::PennMicroSlice::Payload_Trigger::trigger_type_t>("TriggerPatternBit", 1);
-  fTriggerPatternBitName = lbne::PennMicroSlice::Payload_Trigger::getTriggerName(fTriggerPatternBit);
+  fTriggerPatternBitName = lbne::PennMicroSlice::Payload_Trigger::getTriggerTypeName(fTriggerPatternBit);
 
   //setup TriggerPatternNames
 

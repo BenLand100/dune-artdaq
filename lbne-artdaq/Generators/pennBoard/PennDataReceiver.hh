@@ -74,10 +74,11 @@ public:
 	void release_empty_buffers(void);
 	void release_filled_buffers(void);
 
-        bool exception() const { return exception_.load(); }   // GBcopy
+  bool exception() const { return exception_.load(); }   // GBcopy
 
-	void set_run_start_time(uint64_t value);
-	uint64_t get_run_start_time() const {return run_start_time_;};
+  void set_stop_delay(uint32_t delay_us) {sleep_on_stop_ = delay_us;};
+  uint32_t get_stop_delay() {return sleep_on_stop_;};
+
 private:
 
 	enum DeadlineIoObject { None, Acceptor, DataSocket };
@@ -149,7 +150,7 @@ private:
   uint32_t         payloads_recvd_counter_;
   uint32_t         payloads_recvd_trigger_;
   uint32_t         payloads_recvd_timestamp_;
-  uint32_t         payloads_recvd_selftest_;
+  uint32_t         payloads_recvd_warning_;
   uint32_t         payloads_recvd_checksum_;
   lbne::PennMicroSlice::Header::block_size_t microslice_size_;
   size_t           microslice_size_recvd_;
@@ -178,7 +179,7 @@ private:
   lbne::PennMicroSlice::sample_count_t overlap_payloads_recvd_counter_;
   lbne::PennMicroSlice::sample_count_t overlap_payloads_recvd_trigger_;
   lbne::PennMicroSlice::sample_count_t overlap_payloads_recvd_timestamp_;
-  lbne::PennMicroSlice::sample_count_t overlap_payloads_recvd_selftest_;
+  lbne::PennMicroSlice::sample_count_t overlap_payloads_recvd_warning_;
   lbne::PennMicroSlice::sample_count_t overlap_payloads_recvd_checksum_;
 
   size_t           current_microslice_;
@@ -193,13 +194,15 @@ private:
   lbne::PennMicroSlice::sample_count_t remaining_payloads_recvd_counter_;
   lbne::PennMicroSlice::sample_count_t remaining_payloads_recvd_trigger_;
   lbne::PennMicroSlice::sample_count_t remaining_payloads_recvd_timestamp_;
-  lbne::PennMicroSlice::sample_count_t remaining_payloads_recvd_selftest_;
+  lbne::PennMicroSlice::sample_count_t remaining_payloads_recvd_warning_;
   lbne::PennMicroSlice::sample_count_t remaining_payloads_recvd_checksum_;
 
   uint64_t boundary_time_;    //unit is 64MHz NOvA clock ticks
   uint64_t run_start_time_;   //unit is 64MHz NOvA clock ticks
 
   uint64_t overlap_time_; //unit is 64MHz NOvA clock ticks
+
+  uint32_t sleep_on_stop_; // time (us) to sleep before stopping
 
 };
 

@@ -105,6 +105,7 @@ typedef struct CalibChannelConfig {
     std::string penn_client_host_addr_;
     std::string penn_client_host_port_;
     uint32_t	penn_client_timeout_usecs_;
+    uint32_t client_sleep_on_stop_;
 
     /// Data buffer options
     // data stream connection
@@ -127,12 +128,15 @@ typedef struct CalibChannelConfig {
     // These are triggers that are received on the trigger-in channels
     uint8_t     penn_ext_triggers_mask_;
     bool        penn_ext_triggers_echo_;
+    uint32_t    penn_ext_triggers_gate_;
+    uint32_t    penn_ext_triggers_prescale_;
 
     /// Calibrations
     uint16_t    penn_calib_period_;
     uint8_t     penn_calib_channel_mask_;
     uint8_t     penn_calib_pulse_width_;
 
+    bool        penn_dry_run_;
 
 
     /// Muon trigger configuration
