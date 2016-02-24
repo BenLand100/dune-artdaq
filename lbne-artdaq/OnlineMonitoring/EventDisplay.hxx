@@ -13,6 +13,7 @@
 #include "TCanvas.h"
 #include "TLine.h"
 #include "TColor.h"
+#include "TStyle.h"
 
 #include "OnlineMonitoringBase.hxx"
 #include "ChannelMap.hxx"

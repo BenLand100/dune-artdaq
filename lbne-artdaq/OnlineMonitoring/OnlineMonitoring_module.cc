@@ -131,6 +131,11 @@ void OnlineMonitoring::OnlineMonitoring::beginSubRun(art::SubRun const& sr) {
   fSavedFirstMonitoring = false;
   fNEVDsMade = 0;
 
+  // art::ServiceHandle<ChannelMappingService> chanMap;
+
+  // for (unsigned int chan = 0; chan < 2048; ++chan) 
+  //   std::cout << "Online channel " <<  chan << " is mapped to " << chanMap->Offline(chan) << std::endl;
+
 }
 
 void OnlineMonitoring::OnlineMonitoring::analyze(art::Event const& evt) {

@@ -82,11 +82,14 @@ void OnlineMonitoring::EventDisplay::SaveEventDisplay(int run, int subrun, int e
   /// Saves the online event display in the specified directory and sets up info for the cron job to sync
 
   // Save the event display and make it look pretty
-  Double_t Red[2] = { 1.00, 0.00 };
-  Double_t Green[2] = { 1.00, 0.00 };
-  Double_t Blue[2] = { 1.00, 0.00 };
-  Double_t Length[2] = { 0.00, 1.00 };
-  TColor::CreateGradientColorTable(2, Length, Red, Green, Blue, 1000);
+
+  // Want a black and white colour scale
+  Double_t RedBW[2] = { 1.00, 0.00 };
+  Double_t GreenBW[2] = { 1.00, 0.00 };
+  Double_t BlueBW[2] = { 1.00, 0.00 };
+  Double_t LengthBW[2] = { 0.00, 1.00 };
+  TColor::CreateGradientColorTable(2, LengthBW, RedBW, GreenBW, BlueBW, 1000);
+
   TCanvas* evdCanvas = new TCanvas("","",1600,1800);
   //fEVD->GetZaxis()->SetRangeUser(-100,250);
   fEVD->Draw("colz");
@@ -111,8 +114,11 @@ void OnlineMonitoring::EventDisplay::SaveEventDisplay(int run, int subrun, int e
   tmp.close();
 
   delete evdCanvas;
+  gStyle->SetPalette(1);
 
   mf::LogInfo("Monitoring") << "New event display for event " << event << " is viewable at http://lbne-dqm.fnal.gov/EventDisplay.";
+
+  return;
 
 }
 
