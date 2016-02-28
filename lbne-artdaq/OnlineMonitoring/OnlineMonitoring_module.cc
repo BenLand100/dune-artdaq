@@ -17,7 +17,7 @@
 
 #include "lbne-raw-data/Overlays/TpcMilliSliceFragment.hh"
 #include "lbne-raw-data/Overlays/SSPFragment.hh"
-#include "lbne-raw-data/Services/ChannelMap/ChannelMapService.h"
+//#include "lbne-raw-data/Services/ChannelMap/ChannelMapService.h"
 #include "artdaq-core/Data/Fragments.hh"
 #include "messagefacility/MessageLogger/MessageLogger.h"
 
