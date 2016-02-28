@@ -17,6 +17,7 @@
 
 #include "lbne-raw-data/Overlays/TpcMilliSliceFragment.hh"
 #include "lbne-raw-data/Overlays/SSPFragment.hh"
+#include "lbne-raw-data/Services/ChannelMap/ChannelMapService.h"
 #include "artdaq-core/Data/Fragments.hh"
 #include "messagefacility/MessageLogger/MessageLogger.h"
 
@@ -130,11 +131,6 @@ void OnlineMonitoring::OnlineMonitoring::beginSubRun(art::SubRun const& sr) {
   fLastSaveTime = std::time(0);
   fSavedFirstMonitoring = false;
   fNEVDsMade = 0;
-
-  // art::ServiceHandle<ChannelMappingService> chanMap;
-
-  // for (unsigned int chan = 0; chan < 2048; ++chan) 
-  //   std::cout << "Online channel " <<  chan << " is mapped to " << chanMap->Offline(chan) << std::endl;
 
 }
 

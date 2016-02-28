@@ -26,7 +26,7 @@ void OnlineMonitoring::ChannelMap::MakeChannelMap(TString const& channelMapFile)
     linestream >> onlineChannel >> rce >> rcechannel >> apa >> plane >> offlineChannel;
     if (rce == 0 or rce == 1 or rce == 4 or rce == 5 or rce == 8 or rce == 9 or rce == 12 or rce == 13) drift = 1;
     else drift = 0;
-    fChannelMap[onlineChannel] = (std::unique_ptr<Channel>) new Channel(onlineChannel, offlineChannel, plane, apa, drift);
+    fChannelMap[onlineChannel] = std::make_unique<Channel>(onlineChannel, offlineChannel, plane, apa, drift);
   }
 
   inFile.close();

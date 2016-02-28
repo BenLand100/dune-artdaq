@@ -1,6 +1,11 @@
+#include "channelmap_35t.fcl"
+
 process_name: OnlineMonitoring
 
-services:{}
+services:
+{
+  ChannelMapService: @local::channelmap35t
+}
 
 source:
 {

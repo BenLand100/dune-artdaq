@@ -7,6 +7,8 @@ art_make( LIBRARY_NAME  OnlineMonitoring
  			${MF_MESSAGELOGGER}
 			${MF_UTILITIES}
 	  MODULE_LIBRARIES OnlineMonitoring
+	  		   lbne-raw-data_Services_ChannelMap_ChannelMapService_service
+	  		   #ChannelMappingService
 	                   ${ART_FRAMEWORK_CORE}
 			   ${ART_FRAMEWORK_PRINCIPAL}
 			   ${ART_FRAMEWORK_SERVICES_REGISTRY}
