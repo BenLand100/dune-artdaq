@@ -1,14 +1,12 @@
 
 art_make( LIBRARY_NAME  OnlineMonitoring
 	  LIB_LIBRARIES lbne-raw-data_Overlays
-	                #lbne-raw-data_Services
 			${CETLIB}
 			${ROOT_BASIC_LIB_LIST}
  			${MF_MESSAGELOGGER}
 			${MF_UTILITIES}
 	  MODULE_LIBRARIES OnlineMonitoring
-	  		   lbne-raw-data_Services_ChannelMap_ChannelMapService_service
-	  		   #ChannelMappingService
+	  		   #lbne-raw-data_Services_ChannelMap_ChannelMapService_service
 	                   ${ART_FRAMEWORK_CORE}
 			   ${ART_FRAMEWORK_PRINCIPAL}
 			   ${ART_FRAMEWORK_SERVICES_REGISTRY}
