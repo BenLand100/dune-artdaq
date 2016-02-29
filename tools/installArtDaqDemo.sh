@@ -99,11 +99,7 @@ function install_package {
 
 install_package artdaq-core v1_04_23 e7 s15
 
-# Commit hash 87849ed2e70824fed6411af97b460a0293aff51e for
-# lbne-raw-data includes the merging of the feature/penn_board_reader,
-# performed on Feb-23-2016
-
-install_package lbne-raw-data 87849ed2e70824fed6411af97b460a0293aff51e e7 s15 online
+install_package lbne-raw-data v1_03_21 e7 s15 online
 
 install_package artdaq feature/lbne35t e7 s15 eth
 
