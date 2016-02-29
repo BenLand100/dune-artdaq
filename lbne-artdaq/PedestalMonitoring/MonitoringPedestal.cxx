@@ -516,20 +516,38 @@ int PedestalMonitoring::MonitoringPedestal::RCEMonitoring(RCEFormatter const& rc
     fCanvas->SetLogy(1);
     fCanvas->SaveAs(canvas);
 
-    figcanvas->cd();
-    gPad->SetLogy(1);
-    figcanvas->Divide(2,2,0,0);
+    figcanvas->Clear();
+    fpad1->SetRightMargin(0.02);
+    fpad1->Draw();
+    fpad2->SetRightMargin(0.02);
+    fpad2->Draw();
+
     gStyle->SetOptStat(0);
-    figcanvas->cd(1);
-    gPad->SetLogy(1);
+    figcanvas->Divide(2,2,0,0);
+    fpad1->cd();
+    fpad1->SetLogy(1);
+    hPedChannel->GetXaxis()->SetTitle("Channel number");
+    hPedChannel->GetYaxis()->SetTitle("Pedestal values (ADC counts)");
+    hPedChannel->GetYaxis()->SetTitleOffset(1.2);
     hPedChannel->Draw();
-    figcanvas->cd(2);
-    gPad->SetLogy(1);
+    fpad2->cd();
+    fpad2->SetLogy(1);
+    hNoiseChannel->GetXaxis()->SetTitle("Channel number");
+    hNoiseChannel->GetYaxis()->SetTitle("Noise (ADC counts)");
+    hNoiseChannel->GetYaxis()->SetTitleOffset(1.2);
     hNoiseChannel->Draw();
-    figcanvas->cd(3);
+    fpad3->cd();
+    hRatioPed->GetXaxis()->SetTitle("Pedestal Ratio");
     hRatioPed->Draw();
-    figcanvas->cd(4);
+    fpad4->cd();
+    hRatioNoise->GetXaxis()->SetTitle("Noise Ratio");
     hRatioNoise->Draw();
+
+    figcanvas->cd(0);
+    fLabel->SetNDC();
+    fLabel->SetText(0.35,0.92,"Benchmark Plots");
+    fLabel->Draw();
+
     canvas = directory.str() + "/validation_plots.png";
     figcanvas->SaveAs(canvas);
 
