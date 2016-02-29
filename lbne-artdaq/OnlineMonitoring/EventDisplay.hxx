@@ -14,6 +14,7 @@
 #include "TLine.h"
 #include "TColor.h"
 #include "TStyle.h"
+#include "TLatex.h"
 
 #include "OnlineMonitoringBase.hxx"
 #include "ChannelMap.hxx"

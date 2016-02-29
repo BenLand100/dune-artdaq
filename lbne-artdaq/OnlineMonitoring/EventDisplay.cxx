@@ -80,6 +80,15 @@ void OnlineMonitoring::EventDisplay::SaveEventDisplay(int run, int subrun, int e
 
   // Save the event display and make it look pretty
 
+  // Get time of saving
+  time_t rawtime;
+  struct tm* timeinfo;
+  char buffer[80];
+  time(&rawtime);
+  timeinfo = localtime(&rawtime);
+  strftime(buffer,80,"%B %d, %Y, %R",timeinfo);
+  std::string time = std::string(buffer);
+
   // Want a black and white colour scale
   Double_t RedBW[2] = { 1.00, 0.00 };
   Double_t GreenBW[2] = { 1.00, 0.00 };
@@ -87,9 +96,21 @@ void OnlineMonitoring::EventDisplay::SaveEventDisplay(int run, int subrun, int e
   Double_t LengthBW[2] = { 0.00, 1.00 };
   TColor::CreateGradientColorTable(2, LengthBW, RedBW, GreenBW, BlueBW, 1000);
 
+  // Make canvas to save on
   TCanvas* evdCanvas = new TCanvas("","",1600,1800);
   fEVD->GetZaxis()->SetRangeUser(-100,250);
+  fEVD->GetXaxis()->SetLabelSize(0.025);
+  fEVD->GetYaxis()->SetLabelSize(0.025);
+  fEVD->GetZaxis()->SetLabelSize(0.025);
+  fEVD->GetXaxis()->SetTitleSize(0.025);
+  fEVD->GetYaxis()->SetTitleSize(0.025);
+  fEVD->GetZaxis()->SetTitleSize(0.025);
+  fEVD->GetYaxis()->SetTitleOffset(2);
+
+  // Draw EVD
   fEVD->Draw("colz");
+
+  // Draw lines
   TLine DriftLine, APALine;
   DriftLine.SetLineStyle(2);
   DriftLine.SetLineWidth(6);
@@ -103,6 +124,17 @@ void OnlineMonitoring::EventDisplay::SaveEventDisplay(int run, int subrun, int e
   APALine.DrawLine(116,-1000,116,6000);
   APALine.DrawLine(228,-1000,228,6000);
   APALine.DrawLine(232,-1000,232,6000);
+  
+  // Draw text
+  std::stringstream evdText;
+  evdText << "Run " << run << ", Subrun " << subrun << ": Event " << event;
+  TLatex text;
+  text.SetTextSize(0.02);
+  text.DrawLatex(5,5800,"#it{DUNE 35t Event Display}");
+  text.DrawLatex(5,5600,evdText.str().c_str());
+  text.DrawLatex(5,5400,time.c_str());
+
+  // Save the image
   evdCanvas->SaveAs(evdSavePath+TString("evd")+TString(".png"));//+ImageType);
 
   // Add event file
