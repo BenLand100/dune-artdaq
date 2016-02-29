@@ -47,7 +47,7 @@ do
 done
 
 # Look at event display
-cd /data/lbnedaq/eventDisplay/
+cd /data/lbnedaq/eventDisplay
 
 if [ -e event ]; then
 
@@ -62,11 +62,12 @@ if [ -e event ]; then
     date=`date +"%A %B %_d %Y, %H:%M (%Z)"`
 
     cp evd.png /web/sites/lbne-dqm.fnal.gov/htdocs/EventDisplay/
+    cp evd.png archive/evd_run${run}_subrun${subrun}_event${evt}.png
 
     # Update the html
-    sed -ie '13d' /web/sites/lbne-dqm.fnal.gov/htdocs/EventDisplay/index.html
-    sed -i "13i<h2 align=\"center\">Run ${run}, Subrun ${subrun}</h2>" /web/sites/lbne-dqm.fnal.gov/htdocs/EventDisplay/index.html
-    sed -ie '14d' /web/sites/lbne-dqm.fnal.gov/htdocs/EventDisplay/index.html
-    sed -i "14i<center>Last updated ${date} for event ${evt}</center>" /web/sites/lbne-dqm.fnal.gov/htdocs/EventDisplay/index.html
+    sed -ie '15d' /web/sites/lbne-dqm.fnal.gov/htdocs/EventDisplay/index.html
+    sed -i "15i<h2 align=\"center\">Run ${run}, Subrun ${subrun}</h2>" /web/sites/lbne-dqm.fnal.gov/htdocs/EventDisplay/index.html
+    sed -ie '16d' /web/sites/lbne-dqm.fnal.gov/htdocs/EventDisplay/index.html
+    sed -i "16i<center>Last updated ${date} for event ${evt}</center>" /web/sites/lbne-dqm.fnal.gov/htdocs/EventDisplay/index.html
 
 fi

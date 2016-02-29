@@ -8,7 +8,7 @@
 
 #include "EventDisplay.hxx"
 
-void OnlineMonitoring::EventDisplay::MakeEventDisplay(RCEFormatter const& rceformatter, ChannelMap const& channelMap, int collectionPedestal, double driftVelocity) {
+void OnlineMonitoring::EventDisplay::MakeEventDisplay(RCEFormatter const& rceformatter, ChannelMap const& pedestalMap, int collectionPedestal, double driftVelocity) {
 
   /// Makes crude online event display and saves it as an image to be displayed on the web
 
@@ -18,18 +18,11 @@ void OnlineMonitoring::EventDisplay::MakeEventDisplay(RCEFormatter const& rcefor
   if (driftVelocity > 10)
     std::cout << std::endl;
 
-  fEVD = new TH2D("EVD",";Collection wire;Tick",386,0,386,7000,-1000,6000);
+  fEVD = new TH2D("EVD",";Collection wire;Tick",344,0,344,7000,-1000,6000);
 
   const std::vector<std::vector<int> > ADCs = rceformatter.EVDADCVector();
   //double x,z;
-  int drift, apa, collectionChannel, ADC, pedestal;
-
-  // for (unsigned int tick = 0; tick < 6000; ++tick) {
-  //   for (unsigned int channel = 0; channel < ADCs.size(); ++channel) {
-  //     int ADC = ADCs.at(channel).at(tick) - channelMap.GetPedestal(channel);
-  //     std::cout << "Tick " << tick << ", channel " << channel << " has ADC " << ADC << std::endl;
-  //   }
-  // }
+  int drift, apa, rce, collectionChannel, ADC, pedestal = 0;
 
   // Loop over channels
   for (unsigned int channel = 0; channel < ADCs.size(); ++channel) {
@@ -38,31 +31,35 @@ void OnlineMonitoring::EventDisplay::MakeEventDisplay(RCEFormatter const& rcefor
       continue;
 
     // Only consider collection plane
-    if (channelMap.GetPlane(channel) != 2) continue;
+    if (fChannelMap->PlaneFromOnlineChannel(channel) != 2) continue;
 
     // Find properties of this channel
-    drift = channelMap.GetDriftVolume(channel);
-    apa = channelMap.GetAPA(channel);
-    if (channelMap.hasPedestalData())
-      pedestal = channelMap.GetPedestal(channel);
+    rce = fChannelMap->RCEFromOnlineChannel(channel);
+    if (rce == 0 or rce == 1 or rce == 4 or rce == 5 or rce == 8 or rce == 9 or rce == 12 or rce == 13) drift = 1;
+    else drift = 0;
+    apa = fChannelMap->APAFromOnlineChannel(channel);
+    if (pedestalMap.hasPedestalData())
+      pedestal = pedestalMap.GetPedestal(channel);
     else
       pedestal = collectionPedestal;
-    collectionChannel = GetCollectionChannel(channelMap.GetOfflineChannel(channel), apa, drift);
+    collectionChannel = GetCollectionChannel(fChannelMap->Offline(channel), apa, drift);
     //z = GetZ(collectionChannel);
 
     // Loop over ticks
     for (unsigned int tick = 0; tick < ADCs.at(channel).size(); ++tick) {
 
       // Correct for pedestal
-      if (pedestal > 10000)
-	std::cout << std::endl;
       ADC = ADCs.at(channel).at(tick) - pedestal;
 
-      // If in certain range fill event display
-      if (ADC > -100 and ADC < 250) {
+      // If in certain range fill event display (range will be limited later...)
+      if (ADC > -1000 and ADC < 1000) {
 
 	// // Subtract pedestal again for one of the small APAs (they overlap)
 	// if (apa == 3) ADC -= collectionPedestal;
+
+	// Set limits on the filled charge!
+	ADC = TMath::Min(ADC, 250);
+	ADC = TMath::Max(ADC, -100);
 
 	// x = tick * driftVelocity / 2;
 	// x /= 10;
@@ -91,20 +88,21 @@ void OnlineMonitoring::EventDisplay::SaveEventDisplay(int run, int subrun, int e
   TColor::CreateGradientColorTable(2, LengthBW, RedBW, GreenBW, BlueBW, 1000);
 
   TCanvas* evdCanvas = new TCanvas("","",1600,1800);
-  //fEVD->GetZaxis()->SetRangeUser(-100,250);
+  fEVD->GetZaxis()->SetRangeUser(-100,250);
   fEVD->Draw("colz");
   TLine DriftLine, APALine;
   DriftLine.SetLineStyle(2);
-  DriftLine.SetLineWidth(4);
+  DriftLine.SetLineWidth(6);
+  DriftLine.SetLineColor(4);
   APALine.SetLineStyle(7);
   APALine.SetLineWidth(4);
   APALine.SetLineColor(2);
   //line.DrawLine(EVD::LowerZ,0,EVD::UpperZ,0);
-  DriftLine.DrawLine(0,0,386,0);
+  DriftLine.DrawLine(0,0,344,0);
   APALine.DrawLine(112,-1000,112,6000);
-  APALine.DrawLine(137,-1000,137,6000);
-  APALine.DrawLine(249,-1000,249,6000);
-  APALine.DrawLine(274,-1000,274,6000);
+  APALine.DrawLine(116,-1000,116,6000);
+  APALine.DrawLine(228,-1000,228,6000);
+  APALine.DrawLine(232,-1000,232,6000);
   evdCanvas->SaveAs(evdSavePath+TString("evd")+TString(".png"));//+ImageType);
 
   // Add event file
@@ -141,19 +139,19 @@ int OnlineMonitoring::EventDisplay::GetCollectionChannel(int offlineCollectionCh
   case 1:
     if (drift == 0) collectionChannel = offlineCollectionChannel - 688;
     if (drift == 1) collectionChannel = offlineCollectionChannel - 800;
-    collectionChannel += 25;
+    collectionChannel += 4;
     break;
 
   case 2:
     if (drift == 0) collectionChannel = offlineCollectionChannel - 1200;
     if (drift == 1) collectionChannel = offlineCollectionChannel - 1312;
-    collectionChannel += 25;
+    collectionChannel += 4;
     break;
 
   case 3:
     if (drift == 0) collectionChannel = offlineCollectionChannel - 1600;
     if (drift == 1) collectionChannel = offlineCollectionChannel - 1712;
-    collectionChannel += 50;
+    collectionChannel += 8;
     break;
 
   }

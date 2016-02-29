@@ -21,6 +21,8 @@
 
 // framework
 #include "messagefacility/MessageLogger/MessageLogger.h"
+#include "art/Framework/Services/Registry/ServiceHandle.h"
+#include "lbne-raw-data/Services/ChannelMap/ChannelMapService.h"
 
 class OnlineMonitoring::EventDisplay {
 public:
@@ -33,6 +35,7 @@ public:
 private:
 
   TH2D* fEVD;
+  art::ServiceHandle<lbne::ChannelMapService> fChannelMap;
 
 };
 

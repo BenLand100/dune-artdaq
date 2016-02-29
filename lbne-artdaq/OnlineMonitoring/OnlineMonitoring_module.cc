@@ -17,7 +17,7 @@
 
 #include "lbne-raw-data/Overlays/TpcMilliSliceFragment.hh"
 #include "lbne-raw-data/Overlays/SSPFragment.hh"
-//#include "lbne-raw-data/Services/ChannelMap/ChannelMapService.h"
+#include "lbne-raw-data/Services/ChannelMap/ChannelMapService.h"
 #include "artdaq-core/Data/Fragments.hh"
 #include "messagefacility/MessageLogger/MessageLogger.h"
 
@@ -104,7 +104,6 @@ void OnlineMonitoring::OnlineMonitoring::reconfigure(fhicl::ParameterSet const& 
   fMonitorSavePath = TString(p.get<std::string>("MonitorSavePath"));
   fEVDSavePath     = TString(p.get<std::string>("EVDSavePath"));
   fImageType       = TString(p.get<std::string>("ImageType"));
-  fChannelMapFile  = TString(p.get<std::string>("ChannelMapFile"));
   fPedestalFile    = TString(p.get<std::string>("PedestalFile"));
   fMonitoringRefreshRate   = p.get<int>("MonitoringRefreshRate");
   fInitialMonitoringUpdate = p.get<int>("InitialMonitoringUpdate");
@@ -124,7 +123,6 @@ void OnlineMonitoring::OnlineMonitoring::beginSubRun(art::SubRun const& sr) {
   fMonitoringData.BeginMonitoring(sr.run(), sr.subRun(), fMonitorSavePath, fDetailedMonitoring, fScopeMonitoring);
 
   // Make the channel map and pedestal map for this subrun
-  fChannelMap.MakeChannelMap(fChannelMapFile);
   fChannelMap.MakePedestalMap(fPedestalFile);
 
   // Monitoring data write out

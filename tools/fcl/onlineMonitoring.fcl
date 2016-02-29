@@ -29,7 +29,6 @@ physics:
       DataDirPath:                "/data/lbnedaq/data/"
       MonitorSavePath:            "/home/lbnedaq/wallbank/monitoring/"
       EVDSavePath:                "/home/lbnedaq/wallbank/monitoring/"
-      ChannelMapFile:             "/home/lbnedaq/wallbank/lbne-artdaq-base/lbne-artdaq/lbne-artdaq/OnlineMonitoring/detailedMap.txt"
       PedestalFile:               "/home/lbnedaq/wallbank/online_database.csv"
       ImageType:                  ".png"
       MonitoringRefreshRate:      500
