@@ -432,7 +432,17 @@ void lbne::RceDataReceiver::do_read(void)
 			  	  << " next recv size " << next_receive_size_;
 
 	// Start the asynchronous receive operation into the current raw buffer.
-	data_socket_.async_receive(
+	// JCF, Feb-29-2016
+
+	// In light of Nuno changing the call from
+	// data_socket_.async_receive() to boost::asio::async_read in
+	// PennDataReceiver, I'll try the same thing here. The
+	// morivation is that async_read, unlike async_receive,
+	// ensures the requested amount of data arrives before the
+	// operation completes
+
+	//	data_socket_.async_receive(
+	boost::asio::async_read(data_socket_,
 		boost::asio::buffer(current_write_ptr_, next_receive_size_),
 		[this](boost::system::error_code ec, std::size_t length)
 		{
