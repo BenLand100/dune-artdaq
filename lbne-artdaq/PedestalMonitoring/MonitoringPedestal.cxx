@@ -15,7 +15,16 @@
 void PedestalMonitoring::MonitoringPedestal::BeginMonitoring(int run, int subrun) {
 
   fCanvas = new TCanvas("canv","",800,600);
+  fCpad1 = new TPad("canvp1","",0.0,0.5,0.5,1.0);
+  fCpad2 = new TPad("canvp2","",0.5,0.5,1.0,1.0);
+  fCpad3 = new TPad("canvp3","",0.0,0.0,0.5,0.5);
+  fCpad4 = new TPad("canvp4","",0.5,0.0,1.0,0.5);
+
   figcanvas = new TCanvas("c0","",900,700);
+  fpad1 = new TPad("c0p1","",0.0,0.0,0.5,1.0);
+  fpad2 = new TPad("c0p2","",0.5,0.0,1.0,1.0);
+
+  fLabel = new TLatex();
 
   // Get directory for this run                                                                      
   std::ostringstream directory;
@@ -92,7 +101,6 @@ int PedestalMonitoring::MonitoringPedestal::RCEMonitoring(RCEFormatter const& rc
 
   const std::vector<std::vector<int> > ADCs = rceformatter.ADCVector();
   std::vector<int> nostuck;
-  std::vector<int> offchannels;
   std::vector<int> planeschannels;
   std::vector<int> apachannels;
   std::vector<int> pedchannels;
@@ -119,12 +127,6 @@ int PedestalMonitoring::MonitoringPedestal::RCEMonitoring(RCEFormatter const& rc
     run = atoi(word.c_str());
   infile.close();
 
-  ifstream off_file;
-  off_file.open(HistSavePath + "/off_map.txt",std::ios::in);
-  while(off_file >> word){
-    offchannels.push_back(atoi(word.c_str()));
-  }
-  off_file.close();
   ifstream apa_file;
   apa_file.open(HistSavePath + "/apa.txt",std::ios::in);
   while(apa_file >> word){
@@ -197,7 +199,7 @@ int PedestalMonitoring::MonitoringPedestal::RCEMonitoring(RCEFormatter const& rc
 	
 	ondatabase_file << ichannel << ",0,0,0,0," << run
 			<< ",1"<< std::endl;
-	offdatabase_file << offchannels.at(ichannel) << "," << run 
+	offdatabase_file << ichannel << "," << run 
 			 << ",0,0,0,0" << std::endl;
 	continue;
       }
@@ -429,7 +431,7 @@ int PedestalMonitoring::MonitoringPedestal::RCEMonitoring(RCEFormatter const& rc
                   << noise_mean << "," << pedestalerr << "," << noiseerr 
 		  << "," << run << "," << int(pathology) << std::endl;
       
-      offdatabase_file << offchannels.at(ichannel) << "," << run << ","
+      offdatabase_file << ichannel << "," << run << ","
 		       << pedestal_mean << "," << pedestalerr << ","
 		       << noise_mean << "," << noiseerr
 		       << std::endl;
