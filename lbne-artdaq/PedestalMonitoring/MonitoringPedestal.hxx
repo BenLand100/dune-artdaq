@@ -65,14 +65,10 @@ private:
   TCanvas*  fCanvas;
   TCanvas*  figcanvas;
 
-  TPad* fpad1;
-  TPad* fpad2;
   TPad* fCpad1;
   TPad* fCpad2;
   TPad* fCpad3;
   TPad* fCpad4;
-
-  TLatex* fLabel;
 
   TH1I *hIssues;
 

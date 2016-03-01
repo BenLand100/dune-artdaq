@@ -15,16 +15,11 @@
 void PedestalMonitoring::MonitoringPedestal::BeginMonitoring(int run, int subrun) {
 
   fCanvas = new TCanvas("canv","",800,600);
-  fCpad1 = new TPad("canvp1","",0.0,0.5,0.5,1.0);
-  fCpad2 = new TPad("canvp2","",0.5,0.5,1.0,1.0);
-  fCpad3 = new TPad("canvp3","",0.0,0.0,0.5,0.5);
-  fCpad4 = new TPad("canvp4","",0.5,0.0,1.0,0.5);
-
   figcanvas = new TCanvas("c0","",900,700);
-  fpad1 = new TPad("c0p1","",0.0,0.0,0.5,1.0);
-  fpad2 = new TPad("c0p2","",0.5,0.0,1.0,1.0);
-
-  fLabel = new TLatex();
+  fCpad1 = new TPad("canvp1","",0.0,0.5,0.5,0.0);
+  fCpad2 = new TPad("canvp2","",0.5,0.5,1.0,0.0);
+  fCpad3 = new TPad("canvp3","",0.0,1.0,0.5,0.5);
+  fCpad4 = new TPad("canvp4","",0.5,1.0,1.0,0.5);
 
   // Get directory for this run                                                                      
   std::ostringstream directory;
@@ -516,37 +511,32 @@ int PedestalMonitoring::MonitoringPedestal::RCEMonitoring(RCEFormatter const& rc
     fCanvas->SetLogy(1);
     fCanvas->SaveAs(canvas);
 
-    figcanvas->Clear();
-    fCpad1->SetRightMargin(0.02);
-    fCpad1->Draw();
-    fCpad2->SetRightMargin(0.02);
-    fCpad2->Draw();
-
     gStyle->SetOptStat(0);
+    figcanvas->Clear();
     figcanvas->Divide(2,2,0,0);
-    fCpad1->cd();
-    fCpad1->SetLogy(1);
+    fCpad1->Draw();
+    fCpad2->Draw();
+    fCpad3->Draw();
+    fCpad4->Draw();
+
+    fCpad3->cd();
+    fCpad3->SetLogy(1);
     hPedChannel->GetXaxis()->SetTitle("Channel number");
     hPedChannel->GetYaxis()->SetTitle("Pedestal values (ADC counts)");
     hPedChannel->GetYaxis()->SetTitleOffset(1.2);
     hPedChannel->Draw();
-    fCpad2->cd();
-    fCpad2->SetLogy(1);
+    fCpad4->cd();
+    fCpad4->SetLogy(1);
     hNoiseChannel->GetXaxis()->SetTitle("Channel number");
     hNoiseChannel->GetYaxis()->SetTitle("Noise (ADC counts)");
     hNoiseChannel->GetYaxis()->SetTitleOffset(1.2);
     hNoiseChannel->Draw();
-    fCpad3->cd();
+    fCpad1->cd();
     hRatioPed->GetXaxis()->SetTitle("Pedestal Ratio");
     hRatioPed->Draw();
-    fCpad4->cd();
+    fCpad2->cd();
     hRatioNoise->GetXaxis()->SetTitle("Noise Ratio");
     hRatioNoise->Draw();
-
-    figcanvas->cd(0);
-    fLabel->SetNDC();
-    fLabel->SetText(0.35,0.92,"Benchmark Plots");
-    fLabel->Draw();
 
     canvas = directory.str() + "/validation_plots.png";
     figcanvas->SaveAs(canvas);
