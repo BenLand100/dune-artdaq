@@ -62,7 +62,7 @@ private:
 
   // art data label
   std::string fTPCModuleLabel;
-  std::string fPhotonModuleLabel;
+  std::vector<std::string> fPhotonModuleLabel;
   std::string fTriggerModuleLabel;
 
   // Monitoring options
@@ -104,7 +104,7 @@ OnlineMonitoring::OnlineMonitoring::OnlineMonitoring(fhicl::ParameterSet const& 
 
 void OnlineMonitoring::OnlineMonitoring::reconfigure(fhicl::ParameterSet const& p) {
   fTPCModuleLabel          = p.get<std::string>("TPCModuleLabel");
-  fPhotonModuleLabel       = p.get<std::string>("PhotonModuleLabel");
+  fPhotonModuleLabel       = p.get<std::vector<std::string> >("PhotonModuleLabel");
   fTriggerModuleLabel      = p.get<std::string>("TriggerModuleLabel");
   fDetailedMonitoring      = p.get<bool>("DetailedMonitoring");
   fScopeMonitoring         = p.get<bool>("ScopeMonitoring");
@@ -150,7 +150,8 @@ void OnlineMonitoring::OnlineMonitoring::analyze(art::Event const& evt) {
 
   // Look for SSP data
   art::Handle<artdaq::Fragments> rawSSP;
-  evt.getByLabel(fPhotonModuleLabel,"PHOTON",rawSSP);
+  for (std::vector<std::string>::iterator photonLabelIt = fPhotonModuleLabel.begin(); photonLabelIt != fPhotonModuleLabel.end() && rawSSP.isValid() == 0; ++photonLabelIt)
+    evt.getByLabel(*photonLabelIt,"PHOTON",rawSSP);
 
   // Look for PTB data
   art::Handle<artdaq::Fragments> rawPTB;

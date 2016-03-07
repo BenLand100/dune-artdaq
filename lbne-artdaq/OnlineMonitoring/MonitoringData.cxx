@@ -485,6 +485,9 @@ void OnlineMonitoring::MonitoringData::SSPMonitoring(SSPFormatter const& sspform
     // Loop over triggers
     for (std::vector<Trigger>::const_iterator triggerIt = triggers.begin(); triggerIt != triggers.end(); ++triggerIt) {
 
+      if (triggerIt->NTicks == 0)
+	continue;
+
       // Fill trigger level hists
       hWaveformMean->Fill(channel,triggerIt->Mean);
       hWaveformRMS->Fill(channel,triggerIt->RMS);

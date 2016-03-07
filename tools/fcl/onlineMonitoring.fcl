@@ -25,7 +25,7 @@ physics:
     {
       module_type:                "OnlineMonitoring"
       TPCModuleLabel:             "daq"
-      PhotonModuleLabel:          "sparceSsp"
+      PhotonModuleLabel:          [ "sparseSsp", "daq" ]
       TriggerModuleLabel:         "daq"
       DetailedMonitoring:         false
       ScopeMonitoring:            false
