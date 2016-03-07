@@ -24,6 +24,9 @@ physics:
     monitoring:
     {
       module_type:                "OnlineMonitoring"
+      TPCModuleLabel:             "daq"
+      PhotonModuleLabel:          "sparceSsp"
+      TriggerModuleLabel:         "daq"
       DetailedMonitoring:         false
       ScopeMonitoring:            false
       DataDirPath:                "/data/lbnedaq/data/"

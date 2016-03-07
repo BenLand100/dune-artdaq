@@ -60,6 +60,11 @@ private:
   EventDisplay fEventDisplay;
   ChannelMap fChannelMap;
 
+  // art data label
+  std::string fTPCModuleLabel;
+  std::string fPhotonModuleLabel;
+  std::string fTriggerModuleLabel;
+
   // Monitoring options
   bool fDetailedMonitoring;
   bool fScopeMonitoring;
@@ -98,6 +103,9 @@ OnlineMonitoring::OnlineMonitoring::OnlineMonitoring(fhicl::ParameterSet const& 
 }
 
 void OnlineMonitoring::OnlineMonitoring::reconfigure(fhicl::ParameterSet const& p) {
+  fTPCModuleLabel          = p.get<std::string>("TPCModuleLabel");
+  fPhotonModuleLabel       = p.get<std::string>("PhotonModuleLabel");
+  fTriggerModuleLabel      = p.get<std::string>("TriggerModuleLabel");
   fDetailedMonitoring      = p.get<bool>("DetailedMonitoring");
   fScopeMonitoring         = p.get<bool>("ScopeMonitoring");
   fDataDirPath     = TString(p.get<std::string>("DataDirPath"));
@@ -138,15 +146,15 @@ void OnlineMonitoring::OnlineMonitoring::analyze(art::Event const& evt) {
 
   // Look for RCE millislice fragments
   art::Handle<artdaq::Fragments> rawRCE;
-  evt.getByLabel("daq","TPC",rawRCE);
+  evt.getByLabel(fTPCModuleLabel,"TPC",rawRCE);
 
   // Look for SSP data
   art::Handle<artdaq::Fragments> rawSSP;
-  evt.getByLabel("daq","PHOTON",rawSSP);
+  evt.getByLabel(fPhotonModuleLabel,"PHOTON",rawSSP);
 
   // Look for PTB data
   art::Handle<artdaq::Fragments> rawPTB;
-  evt.getByLabel("daq","TRIGGER",rawPTB);
+  evt.getByLabel(fTriggerModuleLabel,"TRIGGER",rawPTB);
 
   // Create data formatter objects and fill monitoring data products
   RCEFormatter rceformatter(rawRCE, fScopeMonitoring);
