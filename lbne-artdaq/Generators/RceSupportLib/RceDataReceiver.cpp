@@ -318,7 +318,7 @@ void lbne::RceDataReceiver::do_read(void)
 
 		// Attempt to obtain a raw buffer to receive data into
 		unsigned int buffer_retries = 0;
-		const unsigned int max_retries = 10;
+		const unsigned int max_retries = 100;
 		const unsigned int buffer_retry_report_interval = 10;
 		bool buffer_available;
 
