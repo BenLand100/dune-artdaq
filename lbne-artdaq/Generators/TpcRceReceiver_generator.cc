@@ -229,15 +229,6 @@ void lbne::TpcRceReceiver::start(void)
 	start_time_ = std::chrono::high_resolution_clock::now();
 	report_time_ = start_time_;
 
-	// JCF, Mar-7-2016
-
-	// On Matt Graham's suggestion, try setting enable BEFORE
-	// calling data_receiver_->start(), to flush out the system
-
-#ifndef NO_RCE_CLIENT
-	dpm_client_->send_command("SetRunState", "Enable");
-#endif
-
 	// Start the data receiver
 	data_receiver_->start();
 
@@ -281,7 +272,7 @@ void lbne::TpcRceReceiver::start(void)
 	dpm_client_->send_config(config_frag.str());
 
 	// Set the run state to enabled
-	//	dpm_client_->send_command("SetRunState", "Enable");
+	dpm_client_->send_command("SetRunState", "Enable");
 
 #endif
 
