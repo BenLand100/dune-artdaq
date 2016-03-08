@@ -99,7 +99,7 @@ function install_package {
 
 install_package artdaq-core v1_04_23 e7 s15
 
-install_package lbne-raw-data v1_03_21 e7 s15 online
+install_package lbne-raw-data v1_03_22 e7 s15 online
 
 install_package artdaq feature/lbne35t e7 s15 eth
 
