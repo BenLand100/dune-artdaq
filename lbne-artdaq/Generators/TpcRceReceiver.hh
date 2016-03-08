@@ -153,6 +153,7 @@ namespace lbne {
     uint32_t data_timeout_usecs_;
 
     std::size_t max_rce_events_;
+    std::size_t max_buffer_attempts_;
 
   };
 }

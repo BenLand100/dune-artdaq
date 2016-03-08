@@ -32,7 +32,8 @@ lbne::TpcRceReceiver::TpcRceReceiver(fhicl::ParameterSet const & ps)
   instance_name_("TpcRceReceiver"),
   run_receiver_(false),
   data_timeout_usecs_(ps.get<uint32_t>("data_timeout_usecs", 60000000)),
-  max_rce_events_(ps.get<std::size_t>("max_rce_events", 0))
+  max_rce_events_(ps.get<std::size_t>("max_rce_events", 0)),
+  max_buffer_attempts_(ps.get<std::size_t>("max_buffer_attempts",10))
 {
 
   int board_id = ps.get<int>("board_id", 0);
@@ -186,7 +187,7 @@ lbne::TpcRceReceiver::TpcRceReceiver(fhicl::ParameterSet const & ps)
 
   // Create a RceDataReceiver instance
   data_receiver_ = std::unique_ptr<lbne::RceDataReceiver>(new lbne::RceDataReceiver(instance_name_,
-		  receiver_debug_level, receiver_tick_period_usecs_, receive_port_, number_of_microslices_per_millislice_));
+										    receiver_debug_level, receiver_tick_period_usecs_, receive_port_, number_of_microslices_per_millislice_, max_buffer_attempts_));
 
 }
 

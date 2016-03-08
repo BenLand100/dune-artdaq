@@ -32,7 +32,8 @@ class RceDataReceiver {
 public:
 	RceDataReceiver(const std::string& instance_name, int debug_level,
 			uint32_t tick_period_usecs, uint16_t udp_receive_port,
-			uint16_t number_of_microslices_per_millislice);
+			uint16_t number_of_microslices_per_millislice,
+			std::size_t max_buffer_attempts);
 	virtual ~RceDataReceiver();
 
 	void start();
@@ -82,6 +83,7 @@ private:
         std::atomic<bool> exception_;
 
 	int recv_socket_;
+        size_t max_buffer_attempts_;
 
 	std::unique_ptr<std::thread> receiver_thread_;
 

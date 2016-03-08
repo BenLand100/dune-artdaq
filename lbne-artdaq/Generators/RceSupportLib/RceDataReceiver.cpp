@@ -23,7 +23,7 @@ struct RceMicrosliceHeader
 #define RECV_DEBUG(level) if (level <= debug_level_) DAQLogger::LogDebug(instance_name_)
 
 lbne::RceDataReceiver::RceDataReceiver(const std::string& instance_name, int debug_level, uint32_t tick_period_usecs,
-		uint16_t receive_port, uint16_t number_of_microslices_per_millislice) :
+				       uint16_t receive_port, uint16_t number_of_microslices_per_millislice, std::size_t max_buffer_attempts) :
 	instance_name_(instance_name),
 	debug_level_(debug_level),
 	acceptor_(io_service_, tcp::endpoint(tcp::v4(), (short)receive_port)),
@@ -38,7 +38,8 @@ lbne::RceDataReceiver::RceDataReceiver(const std::string& instance_name, int deb
 	suspend_readout_(false),
 	readout_suspended_(false),
 	exception_(false),
-	recv_socket_(0)
+	recv_socket_(0),
+	max_buffer_attempts_(max_buffer_attempts)
 {
 	RECV_DEBUG(1) << "lbne::RceDataReceiver constructor";
 
@@ -318,7 +319,6 @@ void lbne::RceDataReceiver::do_read(void)
 
 		// Attempt to obtain a raw buffer to receive data into
 		unsigned int buffer_retries = 0;
-		const unsigned int max_retries = 10;
 		const unsigned int buffer_retry_report_interval = 10;
 		bool buffer_available;
 
@@ -333,7 +333,7 @@ void lbne::RceDataReceiver::do_read(void)
 				}
 				buffer_retries++;
 
-				if (buffer_retries > max_retries)
+				if (buffer_retries > max_buffer_attempts_)
 				{
 					if (!suspend_readout_.load())
 					{
