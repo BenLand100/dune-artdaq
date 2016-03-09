@@ -112,6 +112,8 @@ namespace SSPDAQ{
 
     std::string GetIdentifier();
 
+    bool exception() const { return exception_.load(); }
+
   private:
     
     //Internal device object used for hardware operations.
@@ -142,6 +144,14 @@ namespace SSPDAQ{
     //Build a millislice containing only a header and place in fQueue
     void BuildEmptyMillislice(unsigned long startTime,unsigned long endTime);
 
+    // JCF, Mar-8-2016
+
+    // Rather than throw an exception (crashing the enclosing artdaq
+    // process) signal that this object is in an exception state via an
+    // atomic boolean
+
+    void set_exception( bool exception ) { exception_.store( exception ); }
+
     SafeQueue<std::vector<unsigned int> > fQueue;
 
     std::unique_ptr<std::thread> fReadThread;
@@ -163,6 +173,8 @@ namespace SSPDAQ{
     bool fSlowControlOnly;
 
     bool fStartOnNOvASync;
+
+    std::atomic<bool> exception_;
 
   };
   

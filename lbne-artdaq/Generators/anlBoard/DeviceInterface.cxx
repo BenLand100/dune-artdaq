@@ -10,7 +10,7 @@ SSPDAQ::DeviceInterface::DeviceInterface(SSPDAQ::Comm_t commType, unsigned long 
   : fCommType(commType), fDeviceId(deviceId), fState(SSPDAQ::DeviceInterface::kUninitialized),
     fMillisliceLength(1E8), fMillisliceOverlap(1E7), fUseExternalTimestamp(false),
     fHardwareClockRateInMHz(128), fEmptyWriteDelayInus(100000000), fSlowControlOnly(false),
-    fStartOnNOvASync(true){
+    fStartOnNOvASync(true), exception_(false){
   fReadThread=0;
 }
 
@@ -299,11 +299,12 @@ void SSPDAQ::DeviceInterface::ReadEvents(unsigned long runStartTime){
 	  events_prevSlice.back().DumpEvent();
 	}
 	try {
-	  lbne::DAQLogger::LogError("SSP_DeviceInterface")<<this->GetIdentifier()<<"Error: Event seen with timestamp less than start of first available slice ("
+	  lbne::DAQLogger::LogError("SSP_DeviceInterface")<<this->GetIdentifier()<<"Error: Bad timestamp: Event seen with timestamp less than start of first available slice ("
 			    <<eventTime<<" vs "<<millisliceStartTime-millisliceLengthInTicks<<")!"<<std::endl;
 	} catch (...) {}
 	event.DumpEvent();
-	throw(EEventReadError("Bad timestamp"));
+	//	throw(EEventReadError("Bad timestamp"));
+	set_exception(true);
       }
       //Event is in previous slice (due to events arriving out of order from hardware)
       else if(eventTime<millisliceStartTime){

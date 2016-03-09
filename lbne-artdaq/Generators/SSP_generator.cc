@@ -316,7 +316,17 @@ bool lbne::SSP::getNext_(artdaq::FragmentPtrs & frags) {
 
     std::vector<unsigned int> millislice;
 
+    // JCF, Mar-8-2016
+
+    // Could I just wrap this in a try-catch block?
+
     device_interface_->GetMillislice(millislice);
+
+    if (device_interface_->exception())
+      {
+	set_exception(true);
+	DAQLogger::LogError("SSP") << "lbne::SSP::getNext_ : found device interface thread in exception state";
+      }
 
     if(millislice.size()==0){
       if(!hasSeenSlice){
