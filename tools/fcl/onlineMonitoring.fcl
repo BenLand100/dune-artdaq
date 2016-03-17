@@ -36,7 +36,7 @@ physics:
       ImageType:                  ".png"
       MonitoringRefreshRate:      500
       InitialMonitoringUpdate:    30
-      EventDisplayRefreshRate:    30 #8
+      EventDisplayRefreshRate:    60
       LessFrequentFillRate:       20
       DriftVelocity:              0.9 #mm/us
       CollectionPedestal:         550

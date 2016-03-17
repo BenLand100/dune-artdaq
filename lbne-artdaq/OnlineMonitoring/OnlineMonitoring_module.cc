@@ -83,7 +83,8 @@ private:
   int fEventDisplayRefreshRate;
   int fLessFrequentFillRate;
   int fLastSaveTime;
-  int fNEVDsMade;
+  int fLastEVDTime;
+  bool fMadeFirstEVD;
   bool fSavedFirstMonitoring;
 
   // EVD creation
@@ -135,8 +136,9 @@ void OnlineMonitoring::OnlineMonitoring::beginSubRun(art::SubRun const& sr) {
 
   // Monitoring data write out
   fLastSaveTime = std::time(0);
+  fLastEVDTime = std::time(0);
   fSavedFirstMonitoring = false;
-  fNEVDsMade = 0;
+  fMadeFirstEVD = false;
 
 }
 
@@ -201,14 +203,17 @@ void OnlineMonitoring::OnlineMonitoring::analyze(art::Event const& evt) {
   // is interesting enough to make an event display for!
   // if (ptbformatter.MakeEventDisplay())
   // std::cout << "First microslice is " << rceformatter.FirstMicroslice << std::endl;
-  if (fNEVDsMade == 0 and rceformatter.FirstMicroslice >= 2 and rceformatter.FirstMicroslice <= 9) {
-    ++fNEVDsMade;
+  if ( (!fMadeFirstEVD or ((std::time(0) - fLastEVDTime) > fEventDisplayRefreshRate)) and
+       rceformatter.FirstMicroslice >= 2 and
+       rceformatter.FirstMicroslice <= 9 ) {
+
+    if (!fMadeFirstEVD) fMadeFirstEVD = true;
 
     // JCF, Feb-9-2106
 
     // Time how long it takes to make and save the event display, and print the result
 
-    auto evd_begin_time = std::chrono::high_resolution_clock::now();    
+    auto evd_begin_time = std::chrono::high_resolution_clock::now();
 
     rceformatter.AnalyseADCs(rawRCE, rceformatter.FirstMicroslice+fMicroslicePreBuffer, rceformatter.FirstMicroslice+fMicroslicePreBuffer+fMicrosliceTriggerLength);
     fEventDisplay.MakeEventDisplay(rceformatter, fChannelMap, fCollectionPedestal, fDriftVelocity);
