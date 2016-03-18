@@ -203,7 +203,8 @@ void OnlineMonitoring::OnlineMonitoring::analyze(art::Event const& evt) {
   // is interesting enough to make an event display for!
   // if (ptbformatter.MakeEventDisplay())
   // std::cout << "First microslice is " << rceformatter.FirstMicroslice << std::endl;
-  if ( (!fMadeFirstEVD or ((std::time(0) - fLastEVDTime) > fEventDisplayRefreshRate)) and
+  //if ( (!fMadeFirstEVD or ((std::time(0) - fLastEVDTime) > fEventDisplayRefreshRate)) and
+  if ( !fMadeFirstEVD and
        rceformatter.FirstMicroslice >= 2 and
        rceformatter.FirstMicroslice <= 9 ) {
 
