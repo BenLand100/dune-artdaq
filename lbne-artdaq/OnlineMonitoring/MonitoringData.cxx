@@ -420,9 +420,13 @@ void OnlineMonitoring::MonitoringData::RCELessFrequentMonitoring(RCEFormatter co
     for (unsigned int tick = 0; tick < ADCs.at(channel).size(); ++tick)
       hData->SetBinContent(tick+1,ADCs.at(channel).at(tick));
     hData->FFT(hFFTData,"MAG");
-    for (int bin = 1; bin < hFFTData->GetNbinsX(); ++bin){
+    for (int bin = 1; bin < hFFTData->GetNbinsX(); ++bin) {
       double frequency = 2. * bin / (double) hFFTData->GetNbinsX();
       hFFTChannelRCE00->Fill(channel,frequency,hFFTData->GetBinContent(bin+1));
+      hFFTChannelRCE04->Fill(channel,frequency,hFFTData->GetBinContent(bin+1));
+      hFFTChannelRCE11->Fill(channel,frequency,hFFTData->GetBinContent(bin+1));
+      hFFTChannelRCE13->Fill(channel,frequency,hFFTData->GetBinContent(bin+1));
+      hFFTChannelRCE15->Fill(channel,frequency,hFFTData->GetBinContent(bin+1));
     }
   }
 
@@ -932,6 +936,14 @@ void OnlineMonitoring::MonitoringData::MakeHistograms() {
   fFigureCaptions["RCE_APA3_ADC_DNoise_Channel_All"] = "DNoise (RMS(ADC[channel_i][tick_i]-ADC[channel_i+1][tick_i])/sqrt(2)) (green) plotted over RMS (blue) for APA3 (profiled over all events read)";
   hFFTChannelRCE00 = new TProfile2D("RCE_RCE00_ADC_FFT_Channel_FirstEvent","ADC FFT for RCE00_\"colz\"_logz;Channel;FFT (MHz)",128,0,128,100,0,1);
   fFigureCaptions["RCE_RCE00_ADC_FFT_Channel_FirstEvent"] = "FFT of ADC values in RCE00";
+  hFFTChannelRCE04 = new TProfile2D("RCE_RCE04_ADC_FFT_Channel_FirstEvent","ADC FFT for RCE04_\"colz\"_logz;Channel;FFT (MHz)",128,512,640,100,0,1);
+  fFigureCaptions["RCE_RCE04_ADC_FFT_Channel_FirstEvent"] = "FFT of ADC values in RCE04";
+  hFFTChannelRCE11 = new TProfile2D("RCE_RCE11_ADC_FFT_Channel_FirstEvent","ADC FFT for RCE11_\"colz\"_logz;Channel;FFT (MHz)",128,1408,1536,100,0,1);
+  fFigureCaptions["RCE_RCE11_ADC_FFT_Channel_FirstEvent"] = "FFT of ADC values in RCE11";
+  hFFTChannelRCE13 = new TProfile2D("RCE_RCE13_ADC_FFT_Channel_FirstEvent","ADC FFT for RCE13_\"colz\"_logz;Channel;FFT (MHz)",128,1664,1792,100,0,1);
+  fFigureCaptions["RCE_RCE13_ADC_FFT_Channel_FirstEvent"] = "FFT of ADC values in RCE13";
+  hFFTChannelRCE15 = new TProfile2D("RCE_RCE15_ADC_FFT_Channel_FirstEvent","ADC FFT for RCE15_\"colz\"_logz;Channel;FFT (MHz)",128,1920,2048,100,0,1);
+  fFigureCaptions["RCE_RCE15_ADC_FFT_Channel_FirstEvent"] = "FFT of ADC values in RCE15";
   hFFTChannelRCE00->GetZaxis()->SetRangeUser(0,5000);
   hADCChannel = new TH2D("RCE__ADC_Value_Channel_All","ADC vs Channel_\"colz\"_logz;Channel;ADC Value",NRCEChannels,0,NRCEChannels,5000,0,5000);
   fFigureCaptions["RCE__ADC_Value_Channel_All"] = "ADC value for each channel (one entry per tick)";
@@ -1124,7 +1136,10 @@ void OnlineMonitoring::MonitoringData::MakeHistograms() {
   fHistArray.Add(hADCRMSChannelAPA3); fHistArray.Add(hADCRMSChannelAPA4);
   fHistArray.Add(hADCDNoiseRMSChannelAPA1); fHistArray.Add(hADCDNoiseRMSChannelAPA2);
   fHistArray.Add(hADCDNoiseRMSChannelAPA3); fHistArray.Add(hADCDNoiseRMSChannelAPA4);
-  fHistArray.Add(hADCChannel); fHistArray.Add(hFFTChannelRCE00);
+  fHistArray.Add(hADCChannel);
+  fHistArray.Add(hFFTChannelRCE00); fHistArray.Add(hFFTChannelRCE04);
+  fHistArray.Add(hFFTChannelRCE11); fHistArray.Add(hFFTChannelRCE13);
+  fHistArray.Add(hFFTChannelRCE15);
   fHistArray.Add(hTickRatioChannel);
   fHistArray.Add(hAvADCChannelEvent); fHistArray.Add(hTotalRCEHitsChannel);
   fHistArray.Add(hTotalADCEvent); fHistArray.Add(hTotalRCEHitsEvent);

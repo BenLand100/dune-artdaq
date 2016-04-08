@@ -106,7 +106,7 @@ private:
   TProfile *hADCRMSChannelAPA1, *hADCRMSChannelAPA2, *hADCRMSChannelAPA3, *hADCRMSChannelAPA4;
   TProfile *hADCDNoiseRMSChannelAPA1, *hADCDNoiseRMSChannelAPA2, *hADCDNoiseRMSChannelAPA3, *hADCDNoiseRMSChannelAPA4;
   TProfile *hAsymmetry, *hLastSixBitsCheckOff, *hLastSixBitsCheckOn;
-  TProfile2D *hFFTChannelRCE00;
+  TProfile2D *hFFTChannelRCE00, *hFFTChannelRCE04, *hFFTChannelRCE11, *hFFTChannelRCE13, *hFFTChannelRCE15;
   std::map<int,TProfile*> hADCChannelMap;
   std::map<int,TH1D*> hAvADCMillislice;
   std::map<int,TH1D*> hAvADCMillisliceChannel;
