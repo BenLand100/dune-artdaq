@@ -8,6 +8,12 @@
 # For now, we'll just hardwire in the needed packages; something more
 # sophisticated may be used in the future as package dependencies change
 
+# JCF, May-10-2016
+
+# Be aware that in a couple of parts of this document, the art version
+# is hardwired in, including the s<version> build qualifiers and the
+# artVersion variable
+
 
 productdir=${1}
 basequal=${2}
@@ -28,14 +34,14 @@ xmlrpc_c v1_33_16b -f Linux64bit+2.6-2.12 -z ${productdir} -q ${basequal2}:${bui
 
 prods2="\
 smc_compiler/v6_1_0/smc_compiler-6.1.0-noarch.tar.bz2
-TRACE/v3_05_00a/TRACE-3.05.00a-slf6-x86_64-${basequal2}.tar.bz2
-cetbuildtools/v4_14_02/cetbuildtools-4.14.02-noarch.tar.bz2
+TRACE/v3_06_06/TRACE-3.06.06-slf6-x86_64-${basequal2}-${build_type}.tar.bz2
 cetbuildtools/v4_17_01/cetbuildtools-4.17.01-noarch.tar.bz2
+cetbuildtools/v5_01_03/cetbuildtools-5.01.03-noarch.tar.bz2
 cmake/v3_2_1/cmake-3.2.1-slf6-x86_64.tar.bz2
 cmake/v3_3_2/cmake-3.3.2-slf6-x86_64.tar.bz2
 cetpkgsupport/v1_08_05/cetpkgsupport-1.08.05-noarch.tar.bz2
-artdaq_ganglia_plugin/v1_0_10/artdaq_ganglia_plugin-1.0.10-slf6-x86_64-e7-g371-s15-prof.tar.bz2
-artdaq_utilities/v1_00_04/artdaq_utilities-1.00.04-slf6-x86_64-e7-s15-prof.tar.bz2
+artdaq_ganglia_plugin/v1_0_12/artdaq_ganglia_plugin-1.0.12-slf6-x86_64-${basequal2}-g371-s15-${build_type}.tar.bz2
+artdaq_utilities/v1_00_06/artdaq_utilities-1.00.06-slf6-x86_64-${basequal2}-s15-${build_type}.tar.bz2
 ganglia/v3_7_1/ganglia-3.7.1-slf6-x86_64.tar.bz2
 "
 
