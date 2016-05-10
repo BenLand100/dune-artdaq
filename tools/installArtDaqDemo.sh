@@ -109,7 +109,7 @@ setup_qualifier="e7"
 if [[ "$HOSTNAME" != "lbne35t-gateway01.fnal.gov" ]] ; then
     setup_cmd="source $products_dir/setup"
 else
-    setup_cmd="source $products_dir/setup; source /data/lbnedaq/products/setup "
+    setup_cmd="source /data/lbnedaq/products/setup; source $products_dir/setup"
 fi
 
 cd $demo_dir >/dev/null
