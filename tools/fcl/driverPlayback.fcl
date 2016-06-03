@@ -1,0 +1,82 @@
+# FHiCL document used to run the "driver" executable. To learn more
+#  about the FHiCL language, please look at
+#  cdcvs.fnal.gov/redmine/documents/327 , the "FHiCL Quick Start Guide"
+
+events_to_generate: 10
+run_number: 101
+
+fragment_receiver: {
+
+   # Parameters defining and configuring the fragment generator to be used
+   		    
+   generator: Playback
+   fragment_type: TPC        # Make sure downstream modules know about this fragment_type!
+
+   # Parameters configuring the fragment generator's parent class
+   # artdaq::CommandableFragmentGenerator
+
+   fragment_id: 100
+   board_id: 0
+}  		  
+
+event_builder: {
+
+  expected_fragments_per_event: 1
+  use_art: true
+  print_event_store_stats: false
+  verbose: false
+  events_expected_in_SimpleQueueReader: @local::events_to_generate
+}
+
+######################################################################
+# The ART code
+######################################################################
+
+physics:
+{
+  analyzers:
+  {
+    toyDump:
+    {
+      module_type: ToyDump
+      raw_data_label: daq
+      frag_type: @local::fragment_receiver.fragment_type
+      num_adcs_to_show: 10   # Obviously this should be no more than ADC counts per fragment
+    }
+  }
+
+#  a1: [ toyDump ]
+#  p1: [ artdaqDemoBuildInfo ]
+#  e1: [ out1, rootout ]
+#  end_paths: [ a1, e1 ]
+}
+
+outputs:
+{
+
+ rootout:
+  {
+    module_type: RootOutput
+    fileName: "driver_playback.root"
+    compressionLevel: 0
+  }
+
+  out1:
+  {
+    module_type: FileDumperOutput
+    wantProductFriendlyClassName: true
+  }
+}
+
+source:
+{
+module_type: RawInput
+waiting_time: 900
+resume_after_timeout: true
+fragment_type_map: [[3, "V1720"], [4, "V1724"], [6, "TOY1"], [7, "TOY2"] ]
+}
+
+process_name: DriverPlayback
+
+
+
