@@ -2,7 +2,7 @@
 #  about the FHiCL language, please look at
 #  cdcvs.fnal.gov/redmine/documents/327 , the "FHiCL Quick Start Guide"
 
-events_to_generate: 10
+events_to_generate: 1000000
 run_number: 101
 
 fragment_receiver: {
@@ -10,12 +10,15 @@ fragment_receiver: {
    # Parameters defining and configuring the fragment generator to be used
    		    
    generator: Playback
-   fragment_type: TPC        # Make sure downstream modules know about this fragment_type!
+
+   throttle_usecs: 100000   # Built-in pause between sending of fragments
+   driver_mode: true
+   input_file_list: "input_file_list.txt"
 
    # Parameters configuring the fragment generator's parent class
    # artdaq::CommandableFragmentGenerator
 
-   fragment_id: 100
+   fragment_id: 0
    board_id: 0
 }  		  
 
@@ -34,21 +37,43 @@ event_builder: {
 
 physics:
 {
+
+  producers: 
+  {
+
+    BuildInfo: {
+      module_type: LbneArtdaqBuildInfo
+      instance_name: LbneArtdaq
+    } 
+
+  }
+
   analyzers:
   {
+
+    printBuildInfo: {
+      module_type: PrintBuildInfo
+
+      buildinfo_module_label: BuildInfo
+      buildinfo_instance_label: LbneArtdaq
+    }
+
     toyDump:
     {
       module_type: ToyDump
       raw_data_label: daq
-      frag_type: @local::fragment_receiver.fragment_type
+
+      # You'll need to set frag_type to TOY1 or TOY2, depending on what you expect
+      #  frag_type: XXX   
       num_adcs_to_show: 10   # Obviously this should be no more than ADC counts per fragment
     }
   }
 
-#  a1: [ toyDump ]
-#  p1: [ artdaqDemoBuildInfo ]
-#  e1: [ out1, rootout ]
-#  end_paths: [ a1, e1 ]
+   p1: [ BuildInfo ]
+#  a1: [ printBuildInfo, toyDump ]
+   a1: [ printBuildInfo ]
+   e1: [ out1, rootout ]
+   end_paths: [ p1, a1, e1 ]
 }
 
 outputs:
@@ -73,7 +98,7 @@ source:
 module_type: RawInput
 waiting_time: 900
 resume_after_timeout: true
-fragment_type_map: [[3, "V1720"], [4, "V1724"], [6, "TOY1"], [7, "TOY2"] ]
+fragment_type_map: [[2, "TPC"], [3, "PHOTON"], [4, "TRIGGER"], [5, "TOY1"], [6, "TOY2"] ]
 }
 
 process_name: DriverPlayback
