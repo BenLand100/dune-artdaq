@@ -22,6 +22,7 @@ lbne::Playback::Playback(fhicl::ParameterSet const & ps) :
   throttle_usecs_(ps.get<std::size_t>("throttle_usecs",100000)),
   driver_mode_(ps.get<bool>("driver_mode")),
   input_file_list_(ps.get<std::string>("input_file_list")),
+  force_sequential_(ps.get<bool>("force_sequential")),
   input_file_(std::make_unique<std::ifstream>(input_file_list_)),
   input_file_iter_(*input_file_),
   root_file_(nullptr),
@@ -118,6 +119,10 @@ bool lbne::Playback::getNext_(artdaq::FragmentPtrs& outputFrags) {
 
       std::unique_ptr<artdaq::Fragment> fragmentCopy = 
 	std::make_unique<artdaq::Fragment>(fragment);
+
+      if (force_sequential_) {
+	fragmentCopy->setSequenceID(entry_number+1);
+      }
 
       if (driver_mode_) {
 	std::cout << "frag copy has sequence ID " << fragmentCopy->sequenceID() << std::endl;

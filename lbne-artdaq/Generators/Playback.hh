@@ -82,6 +82,8 @@ namespace lbne {
 
     const std::string input_file_list_; // Name of the file listing input root files
 
+    bool force_sequential_; // For out-of-order events in input files, reset their sequence IDs
+
     // Internal parameters
 
     std::unique_ptr<std::ifstream> input_file_;
