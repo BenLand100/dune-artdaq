@@ -83,9 +83,6 @@ bool lbne::Playback::getNext_(artdaq::FragmentPtrs& outputFrags) {
 
   bool turnover = first_overall_event || (branch_ && branch_->GetEntries() == entry_number);
 
-  DAQLogger::LogDebug("Playback") << "file_index == " << file_index << ", entry_number == " <<
-    entry_number << ", turnover == " << turnover << std::endl;
-
 #pragma GCC diagnostic pop
 
   if ( driver_mode_ && turnover && !first_overall_event) {
@@ -102,7 +99,7 @@ bool lbne::Playback::getNext_(artdaq::FragmentPtrs& outputFrags) {
 
     if (file_index == input_root_filenames_.size()) {
       DAQLogger::LogInfo("Playback") << "Finished processing all " << input_root_filenames_.size() << 
-	" files listed in " << input_file_list_ << std::endl;
+	" files listed in " << input_file_list_ << "; you can now issue the stop transition to the DAQ";
       return false;
     }
 
@@ -111,11 +108,15 @@ bool lbne::Playback::getNext_(artdaq::FragmentPtrs& outputFrags) {
 
   branch_->GetEntry(entry_number);
 
+  bool foundFragment = false;
+
   artdaq::Fragments* fragments = reinterpret_cast <artdaq::Fragments*>(branch_->GetAddress());
 
   for (auto& fragment : *fragments) {
 
     if (fragment.fragmentID() == fragment_id()) {
+
+      foundFragment = true;
 
       std::unique_ptr<artdaq::Fragment> fragmentCopy = 
 	std::make_unique<artdaq::Fragment>(fragment);
@@ -133,6 +134,12 @@ bool lbne::Playback::getNext_(artdaq::FragmentPtrs& outputFrags) {
 
       outputFrags.emplace_back( std::move( fragmentCopy ) );
     }
+  }
+
+  if (!foundFragment) {
+    DAQLogger::LogWarning("Playback") << "Unable to find fragment with fragment ID " << fragment_id() <<
+      " in entry " << entry_number << " of branch " << branch_->GetTitle() << " in file " <<
+      root_file_->GetTitle();
   }
 
   entry_number++;
