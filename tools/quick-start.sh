@@ -18,20 +18,6 @@ rev='$Revision: 1.20 $$Date: 2010/02/18 13:20:16 $'
 #  and 3.  start the lbne-artdaq system
 #
 
-# JCF, 1/23/15
-
-# Save all output from this script (stdout + stderr) in a file with a
-# name that looks like "quick-start.sh_Fri_Jan_16_13:58:27.script" as
-# well as all stderr in a file with a name that looks like
-# "quick-start.sh_Fri_Jan_16_13:58:27_stderr.script"
-
-alloutput_file=$( date | awk -v "SCRIPTNAME=$(basename $0)" '{print SCRIPTNAME"_"$1"_"$2"_"$3"_"$4".script"}' )
-
-stderr_file=$( date | awk -v "SCRIPTNAME=$(basename $0)" '{print SCRIPTNAME"_"$1"_"$2"_"$3"_"$4"_stderr.script"}' )
-
-exec  > >(tee $alloutput_file)
-exec 2> >(tee $stderr_file)
-
 
 # program (default) parameters
 root=
@@ -116,9 +102,26 @@ fi
 
 # Now that we've checked out the lbne-artdaq version we want, make
 # sure we know what qualifier is meant to be passed to the
-# downloadDeps.sh and installArtDaqDemo.sh scripts below
+# installArtDaqDemo.sh scripts below
 
-defaultqual=$( grep "^[^#]*defaultqual" $git_working_path/ups/product_deps | awk '{print $2}' )
+
+version=`grep -E "^\s*artdaq\s+" $git_working_path/ups/product_deps | awk '{print $2}'`
+equalifier="e999"
+squalifier="s999"
+
+if [[ "$version" == "v1_13_00" ]]; then
+    equalifier="e10"
+    squalifier="s35"
+else
+    echo "Unsupported artdaq version" >&2
+    exit 1
+fi 
+
+equalifier_xcheck=$( grep "^[^#]*defaultqual" $git_working_path/ups/product_deps | awk '{print $2}' )
+if [[ "${equalifier_xcheck}" != "$equalifier" ]]; then
+    echo "Mismatch between calculated e-qualifier ($equalifier) and default e-qualifier (${equalifier_xcheck})" >&2
+    exit 1
+fi
 
 
 vecho() { test $opt_v -gt 0 && echo "$@"; }
@@ -128,16 +131,31 @@ if [ -z "$root" ];then
     root=`dirname $git_working_path`
     echo the root is $root
 fi
+test -d "$root" || mkdir -p "$root"
+cd $root
+
+# JCF, 1/23/15
+
+# Save all output from this script (stdout + stderr) in a file with a
+# name that looks like "quick-start.sh_Fri_Jan_16_13:58:27.script" as
+# well as all stderr in a file with a name that looks like
+# "quick-start.sh_Fri_Jan_16_13:58:27_stderr.script"
+
+alloutput_file=$( date | awk -v "SCRIPTNAME=$(basename $0)" '{print SCRIPTNAME"_"$1"_"$2"_"$3"_"$4".script"}' )
+
+stderr_file=$( date | awk -v "SCRIPTNAME=$(basename $0)" '{print SCRIPTNAME"_"$1"_"$2"_"$3"_"$4"_stderr.script"}' )
+
+mkdir -p "$root/log"
+exec  > >(tee "$root/log/$alloutput_file")
+exec 2> >(tee "$root/log/$stderr_file")
+
 
 if [[ "$HOSTNAME" != "lbne35t-gateway01.fnal.gov" ]]; then
     echo
-    echo "Make sure you have C++ bindings for ZeroMQ installed on your system"
-    echo 'Try the command "locate zmq.hpp" or contact jcfree@fnal.gov to find this out'
+    echo "If you don't have C++ bindings for ZeroMQ installed on your system, see note at top of https://cdcvs.fnal.gov/redmine/projects/lbne-artdaq/wiki/Installing_and_building_the_lbne-artdaq_code for what to do"
+    echo 'To determine whether you have ZeroMQ, use the command "locate zmq.hpp" or contact jcfree@fnal.gov to find this out'
     echo
 fi
-
-test -d "$root" || mkdir -p "$root"
-cd $root
 
 free_disk_needed=0
 
@@ -154,10 +172,7 @@ if [ -z "${opt_skip_check-}" -a "$free_disk_G" -lt $free_disk_needed ];then
     exit 1
 fi
 
-if [ ! -x $git_working_path/tools/downloadDeps.sh ];then
-    echo error: missing tools/downloadDeps.sh
-    exit 1
-fi
+
 if [ ! -x $git_working_path/tools/installArtDaqDemo.sh ];then
     echo error: missing tools/installArtDaqDemo.sh
     exit 1
@@ -169,8 +184,9 @@ else
     build_type="prof"
 fi
 
-if [[ ! -d products || ! -d download ]] && [[ "$HOSTNAME" != "lbne35t-gateway01.fnal.gov" ]] ;then
-    echo "Are you sure you want to download and install the artdaq demo dependent products in `pwd`? [y/n]"
+#if [[ ! -d products || ! -d download || -n "${opt_force-}" ]] && [[ "$HOSTNAME" != "lbne35t-gateway01.fnal.gov" ]] ;then
+if [[ ! -d products || ! -d download || -n "${opt_force-}" ]] ;then
+    echo "Are you sure you want to download and install the lbne-artdaq dependent products in `pwd`? [y/n]"
     read response
     if [[ "$response" != "y" ]]; then
         echo "Aborting..."
@@ -180,16 +196,26 @@ if [[ ! -d products || ! -d download ]] && [[ "$HOSTNAME" != "lbne35t-gateway01.
     test -d download || mkdir download
 
     cd download
-    $git_working_path/tools/downloadDeps.sh  ../products $defaultqual $build_type
-    cd ..
-elif [ -n "${opt_force-}" ];then
 
-    test -d products || mkdir products
-    test -d download || mkdir download
+    wget http://scisoft.fnal.gov/scisoft/bundles/tools/pullProducts
+    chmod +x pullProducts
+    
+    echo "Cloning cetpkgsupport to determine current OS"
+    git clone http://cdcvs.fnal.gov/projects/cetpkgsupport
+    os=`./cetpkgsupport/bin/get-directory-name os`
 
-    cd download
-    $git_working_path/tools/downloadDeps.sh  ../products $defaultqual $build_type
+    qualifiers="${squalifier}-${equalifier}"
+    cmd="./pullProducts ../products ${os} artdaq-${version} $qualifiers $build_type"
+    echo "Running $cmd"
+    $cmd
+
+    if [ $? -ne 0 ]; then
+	echo "Error in pullProducts. Please go to http://scisoft.fnal.gov/scisoft/bundles/artdaq/${version}/manifest and make sure that a manifest for the specified qualifiers ($qualifiers) exists."
+	exit 1
+    fi
+
     cd ..
+
 else 
     echo "I see you're on $HOSTNAME ; skipping download of dependent products as"\
 	"they are expected to be located in $PRODUCTS"

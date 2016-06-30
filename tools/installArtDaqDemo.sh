@@ -63,7 +63,6 @@ fi
 
 
 REPO_PREFIX=http://cdcvs.fnal.gov/projects
-#REPO_PREFIX=ssh://p-artdaq@cdcvs.fnal.gov/cvs/projects # p-artdaq can be used to access artdaq-demo
 
 function install_package {
     local packagename=$1
@@ -97,13 +96,15 @@ function install_package {
 
 . $products_dir/setup
 
-install_package artdaq-core v1_04_23 e7 s15
+setup_qualifier="e10"
 
-install_package lbne-raw-data v1_03_22 e7 s15 online
+install_package artdaq-core v1_05_00 $setup_qualifier s35
 
-install_package artdaq feature/lbne35t e7 s15 eth
+install_package lbne-raw-data feature/artdaq_v1_13_00 $setup_qualifier s35 online
 
-setup_qualifier="e7"
+install_package artdaq v1_13_00 $setup_qualifier s35 eth
+
+
 
 
 if [[ "$HOSTNAME" != "lbne35t-gateway01.fnal.gov" ]] ; then
