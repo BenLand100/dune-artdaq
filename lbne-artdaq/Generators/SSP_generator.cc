@@ -2,7 +2,7 @@
 #include "lbne-artdaq/Generators/anlBoard/anlExceptions.h"
 #include "lbne-artdaq/DAQLogger/DAQLogger.hh"
 
-#include "art/Utilities/Exception.h"
+#include "canvas/Utilities/Exception.h"
 #include "artdaq/Application/GeneratorMacros.hh"
 #include "cetlib/exception.h"
 #include "lbne-raw-data/Overlays/SSPFragment.hh"
@@ -65,7 +65,7 @@ lbne::SSP::SSP(fhicl::ParameterSet const & ps)
 
 void lbne::SSP::ConfigureDevice(fhicl::ParameterSet const& ps){
   fhicl::ParameterSet hardwareConfig( ps.get<fhicl::ParameterSet>("HardwareConfig") );
-  std::vector<std::string> hcKeys=hardwareConfig.get_keys();
+  std::vector<std::string> hcKeys=hardwareConfig.get_names();
 
   //Special case for channel_control register - first we
   //will get the literal register values, and then look
@@ -83,7 +83,7 @@ void lbne::SSP::ConfigureDevice(fhicl::ParameterSet const& ps){
     //Expect to see a Literals section; parse these literal registers
     else if(!hcIter->compare("Literals")){
       fhicl::ParameterSet literalRegisters( hardwareConfig.get<fhicl::ParameterSet>("Literals") );
-      std::vector<std::string> lrKeys=literalRegisters.get_keys();
+      std::vector<std::string> lrKeys=literalRegisters.get_names();
 
       for(auto lrIter=lrKeys.begin();lrIter!=lrKeys.end();++lrIter){
 	std::vector<unsigned int> vals=literalRegisters.get<std::vector<unsigned int> >(*lrIter);
@@ -144,7 +144,7 @@ void lbne::SSP::ConfigureDevice(fhicl::ParameterSet const& ps){
 }
 
 void lbne::SSP::BuildChannelControlRegisters(fhicl::ParameterSet const& ps,std::vector<unsigned int>& reg){
-  std::vector<std::string> ccKeys=ps.get_keys();
+  std::vector<std::string> ccKeys=ps.get_names();
 
   for(auto ccIter=ccKeys.begin();ccIter!=ccKeys.end();++ccIter){
 

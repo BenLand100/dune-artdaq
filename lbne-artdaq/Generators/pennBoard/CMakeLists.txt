@@ -3,7 +3,7 @@
 
 art_make(
 	LIB_LIBRARIES
-	${ART_UTILITIES}
+	${CANVAS_UTILITIES}
 	${FHICLCPP}
 	${CETLIB}
 	$ENV{LIBXML2_FQ_DIR}/lib/libxml2.so

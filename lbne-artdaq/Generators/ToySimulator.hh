@@ -44,6 +44,10 @@ namespace lbne {
 
     bool getNext_(artdaq::FragmentPtrs & output) override;
 
+    void start() override {}
+    void stop() override {}
+    void stopNoMutex() override {}
+
 
     // FHiCL-configurable variables. Note that the C++ variable names
     // are the FHiCL variable names with a "_" appended

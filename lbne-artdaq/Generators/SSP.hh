@@ -50,9 +50,9 @@ namespace lbne {
 
     bool getNext_(artdaq::FragmentPtrs & output) override;
 
-    virtual void start();
-
-    virtual void stop();
+    virtual void start() override;
+    virtual void stop() override;
+    virtual void stopNoMutex() override {};
 
     void ConfigureDevice(fhicl::ParameterSet const & ps);
 

@@ -12,7 +12,7 @@
 #include "art/Framework/Principal/Event.h"
 #include "art/Framework/Principal/Handle.h"
 
-#include "art/Utilities/Exception.h"
+#include "canvas/Utilities/Exception.h"
 #include "artdaq-core/Data/Fragments.hh"
 #include "artdaq/DAQrate/MetricManager.hh"
 

@@ -5,7 +5,7 @@
 #include "lbne-raw-data/Overlays/PennMilliSliceFragment.hh"
 #include "lbne-raw-data/Overlays/FragmentType.hh"
 
-#include "art/Utilities/Exception.h"
+#include "canvas/Utilities/Exception.h"
 #include "artdaq/Application/GeneratorMacros.hh"
 #include "cetlib/exception.h"
 #include "fhiclcpp/ParameterSet.h"

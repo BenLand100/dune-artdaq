@@ -10,7 +10,7 @@
 #include "art/Framework/Principal/Event.h"
 #include "art/Framework/Principal/Handle.h"
 
-#include "art/Utilities/Exception.h"
+#include "canvas/Utilities/Exception.h"
 #include "lbne-raw-data/Overlays/ToyFragment.hh"
 #include "artdaq-core/Data/Fragments.hh"
 
