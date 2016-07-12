@@ -55,6 +55,7 @@ endif()
 cet_report_compiler_flags()
 
 # these are minimum required versions, not the actual product versions
+find_ups_product( gallery v1_03_02 )
 find_ups_product( cetbuildtools v3_03_00 )
 find_ups_product( artdaq v0_04_02 )
 find_ups_product( artdaq_core v1_00_00 )
@@ -88,6 +89,9 @@ add_subdirectory(test)
 
 # tools
 add_subdirectory(tools)
+
+# Standalone executables for manual testing + development
+add_subdirectory(proto)
 
 # ups - table and config files
 add_subdirectory(ups)
