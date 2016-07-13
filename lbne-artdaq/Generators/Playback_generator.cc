@@ -5,6 +5,14 @@
 #include "artdaq/Application/GeneratorMacros.hh"
 #include "artdaq-core/Utilities/SimpleLookupPolicy.h"
 
+#include "gallery/Handle.h"
+#include "canvas/Utilities/Exception.h"
+#include "canvas/Utilities/InputTag.h"
+#include "canvas/Persistency/Provenance/EventID.h"
+#include "canvas/Persistency/Provenance/RunID.h"
+#include "canvas/Persistency/Provenance/SubRunID.h"
+#include "canvas/Persistency/Common/FindMany.h"
+
 #include "cetlib/exception.h"
 #include "fhiclcpp/ParameterSet.h"
 #include "messagefacility/MessageLogger/MessageLogger.h"
@@ -20,15 +28,15 @@
 lbne::Playback::Playback(fhicl::ParameterSet const & ps) :
   CommandableFragmentGenerator(ps),
   throttle_usecs_(ps.get<std::size_t>("throttle_usecs",100000)),
-  driver_mode_(ps.get<bool>("driver_mode")),
+  driver_mode_(ps.get<bool>("driver_mode", false)),
   input_file_list_(ps.get<std::string>("input_file_list")),
   force_sequential_(ps.get<bool>("force_sequential")),
+  fragment_type_(ps.get<std::string>("fragment_type")),
   input_file_(std::make_unique<std::ifstream>(input_file_list_)),
-  input_file_iter_(*input_file_),
-  root_file_(nullptr),
-  tree_(nullptr),
-  branch_(nullptr)
+  input_file_iter_(*input_file_)
 {
+  assert(input_file_);
+
   if (!input_file_->is_open()) {
     throw cet::exception("Playback") << "Unable to open \"" << input_file_list_ << 
       "\", does it exist?";
@@ -47,72 +55,32 @@ lbne::Playback::Playback(fhicl::ParameterSet const & ps) :
     DAQLogger::LogInfo("Playback") << filename << std::endl;
   }
 
-  // JCF, Jun-4-2016
-
-  // In a nutshell, if running the full set of artdaq processes, I get
-  // a segfault if I call setBranchFromFile in the
-  // constructor. However, if running this fragment generator off of
-  // driver, setBranchFromFile ONLY works in the
-  // constructor. Phenomenon not yet understood.
-
-  // Note that in driver mode, we can't currently see messagefacility
-  // messages - thus the use of "cout" here
-
-  if (driver_mode_) {
-    std::cout << "In driver mode; will only look at first file listed in " << 
-      input_file_list_ << std::endl;
-    setBranchFromFile(input_root_filenames_.at(0));
-  }
-
+  events_ = std::make_unique<gallery::Event>( input_root_filenames_ );
 }
 
 
 bool lbne::Playback::getNext_(artdaq::FragmentPtrs& outputFrags) {
 
-  if (should_stop()) {
+  assert(events_);
+  
+  if (should_stop() ) {
     return false;
   }
 
-  static size_t file_index = 0;
-  static size_t entry_number = 0;
-
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wsign-compare"
-
-  bool first_overall_event = file_index == 0 && entry_number == 0;
-
-  bool turnover = first_overall_event || (branch_ && branch_->GetEntries() == entry_number);
-
-#pragma GCC diagnostic pop
-
-  if ( driver_mode_ && turnover && !first_overall_event) {
-    std::cout << "Finished processing first file in driver_mode; exiting" << std::endl;
+  if (events_->atEnd()) {
+    DAQLogger::LogInfo("Playback") << "Finished processing all " << input_root_filenames_.size() << 
+      " files listed in " << input_file_list_ << "; you can now issue the stop transition to the DAQ";
     return false;
   }
 
-  if (! driver_mode_ && turnover ) {
-    
-    if (!first_overall_event) {
-      file_index++;
-      entry_number = 0;
-    }
-
-    if (file_index == input_root_filenames_.size()) {
-      DAQLogger::LogInfo("Playback") << "Finished processing all " << input_root_filenames_.size() << 
-	" files listed in " << input_file_list_ << "; you can now issue the stop transition to the DAQ";
-      return false;
-    }
-
-    setBranchFromFile(input_root_filenames_.at(file_index));
-  } 
-
-  branch_->GetEntry(entry_number);
-
+  static artdaq::Fragment::sequence_id_t entry_number = 0;
   bool foundFragment = false;
 
-  artdaq::Fragments* fragments = reinterpret_cast <artdaq::Fragments*>(branch_->GetAddress());
+  std::string tag = "daq:" + fragment_type_ + ":DAQ";
 
-  for (auto& fragment : *fragments) {
+  const auto& fragments = *( events_->getValidHandle<artdaq::Fragments>(tag) );
+
+  for (auto& fragment : fragments) {
 
     if (fragment.fragmentID() == fragment_id()) {
 
@@ -137,9 +105,9 @@ bool lbne::Playback::getNext_(artdaq::FragmentPtrs& outputFrags) {
   }
 
   if (!foundFragment) {
-    DAQLogger::LogWarning("Playback") << "Unable to find fragment with fragment ID " << fragment_id() <<
-      " in entry " << entry_number << " of branch " << branch_->GetTitle() << " in file " <<
-      root_file_->GetTitle();
+    DAQLogger::LogWarning("Playback") << "Unable to find fragment of type " << 
+      fragment_type_ << " with fragment ID " << fragment_id() << 
+      " for the " << entry_number << "-th received event";
   }
 
   entry_number++;
@@ -153,63 +121,6 @@ bool lbne::Playback::getNext_(artdaq::FragmentPtrs& outputFrags) {
   usleep(throttle_usecs_);
 
   return true;
-}
-
-void lbne::Playback::setBranchFromFile(const std::string filename) {
-
-  root_file_ = TFile::Open(filename.c_str());
-
-  if (!root_file_ || !root_file_->IsOpen()) {
-    throw cet::exception("Playback") << "Unable to open TFile " << filename;
-  } 
-
-  tree_ = static_cast<TTree*>( root_file_->Get("Events") );
-  
-  if (!tree_) {
-    throw cet::exception("Playback") << "Unable to get tree from " << filename;
-  }
-
-  // Figure out which branch contains the fragment ID we want
-
-  bool foundFragmentType = false;
-
-  for (auto& fragtype : possible_fragment_types_) {
-
-    if (foundFragmentType) {
-      break;
-    }
-
-    const std::string tagargs = "daq:" + fragmentTypeToString(fragtype) + ":DAQ";
-    const art::InputTag tag( tagargs );
-
-    TBranch* branch = tree_->GetBranch(getBranchNameAsCStr<artdaq::Fragments>(tag));
-    
-    if (branch) {
-      
-      if (branch->GetEntries() > 0) {
-	branch->GetEntry(0);
-
-	artdaq::Fragments* fragments = reinterpret_cast <artdaq::Fragments *> (
-									       branch->GetAddress());
-
-	for (auto& frag : *fragments) {
-	  
-	  if ( frag.fragmentID() == fragment_id()) {
-	    foundFragmentType = true;
-	    branch_ = branch;
-	    break;
-	  }
-	}
-      }
-    } else {
-      throw cet::exception("Playback") << "Didn't find branch corresponding to tag \"" << tagargs << "\"";
-    }
-  }
-
-  if (!foundFragmentType) {
-    throw cet::exception("Playback") << "Unable to find branch in \"" << filename << "\" containing "
-				     << " fragment(s) with requested fragment ID #" << fragment_id();
-  }
 }
 
 // The following macro is defined in artdaq's GeneratorMacros.hh header

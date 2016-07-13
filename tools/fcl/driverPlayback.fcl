@@ -14,6 +14,8 @@ fragment_receiver: {
    throttle_usecs: 100000   # Built-in pause between sending of fragments
    driver_mode: true
    input_file_list: "input_file_list.txt"
+   force_sequential: true
+   fragment_type: TOY1
 
    # Parameters configuring the fragment generator's parent class
    # artdaq::CommandableFragmentGenerator
@@ -70,7 +72,6 @@ physics:
   }
 
    p1: [ BuildInfo ]
-#  a1: [ printBuildInfo, toyDump ]
    a1: [ printBuildInfo ]
    e1: [ out1, rootout ]
    end_paths: [ p1, a1, e1 ]
@@ -79,18 +80,18 @@ physics:
 outputs:
 {
 
- rootout:
-  {
-    module_type: RootOutput
-    fileName: "driver_playback.root"
-    compressionLevel: 0
-  }
+rootout:
+ {
+   module_type: RootOutput
+   fileName: "driver_playback.root"
+   compressionLevel: 0
+ }
 
-  out1:
-  {
-    module_type: FileDumperOutput
-    wantProductFriendlyClassName: true
-  }
+ out1:
+ {
+   module_type: FileDumperOutput
+   wantProductFriendlyClassName: true
+ }
 }
 
 source:
