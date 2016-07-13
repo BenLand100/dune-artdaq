@@ -230,6 +230,21 @@ else
     cp -rp /data/lbnedaq/products/.upsfiles products/
 fi
 
+# JCF, Jul-13-2016
+# The gallery package is not handled by pullProducts; hence the manual download
+# v1_03_02 is needed for the set of packages which include art v2_01_02 and canvas v1_04_02
+
+cd products
+gallery_url=http://scisoft.fnal.gov/scisoft/packages/gallery/v1_03_02/gallery-1.03.02-${os}-x86_64-${equalifier}-${build_type}.tar.bz2
+curl -O $gallery_url
+tar xjf $( basename $gallery_url )
+
+if [ $? -ne 0 ]; then
+    echo "Problem downloading and/or extracting archive file $gallery_url" >&2
+    exit 1
+fi
+
+cd ..
 
 $git_working_path/tools/installArtDaqDemo.sh products $git_working_path ${opt_run_demo-} ${opt_debug-} ${opt_http_download_lbne_raw_data-} ${opt_http_download_artdaq-}
 
