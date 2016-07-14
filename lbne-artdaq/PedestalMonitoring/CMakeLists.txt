@@ -5,6 +5,7 @@ art_make( LIBRARY_NAME  PedestalMonitoring
 			${ROOT_BASIC_LIB_LIST}
  			${MF_MESSAGELOGGER}
 			${MF_UTILITIES}
+        		${CANVAS_UTILITIES}
 	  MODULE_LIBRARIES PedestalMonitoring
 	                   ${ART_FRAMEWORK_CORE}
 			   ${ART_FRAMEWORK_PRINCIPAL}
@@ -14,7 +15,4 @@ art_make( LIBRARY_NAME  PedestalMonitoring
   			   ${ART_FRAMEWORK_SERVICES_OPTIONAL_RANDOMNUMBERGENERATOR_SERVICE}
   			   ${ART_PERSISTENCY_COMMON}
  			   ${ART_PERSISTENCY_PROVENANCE}
-			   ${ART_UTILITIES}
-  			   #  lbne-artdaq_RCConnection
-  			   #  lbne-artdaq_I3JSON
 )

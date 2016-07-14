@@ -3,7 +3,7 @@
 #include "lbne-raw-data/Overlays/TpcMilliSliceWriter.hh"
 #include "lbne-artdaq/DAQLogger/DAQLogger.hh"
 
-#include "art/Utilities/Exception.h"
+#include "canvas/Utilities/Exception.h"
 #include "artdaq/Application/GeneratorMacros.hh"
 #include "cetlib/exception.h"
 #include "lbne-raw-data/Overlays/MilliSliceFragment.hh"

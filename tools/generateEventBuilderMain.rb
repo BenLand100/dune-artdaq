@@ -17,6 +17,7 @@ def generateEventBuilderMain(ebIndex, totalFRs, totalEBs, totalAGs,
 
 services: {
   scheduler: {
+    errorOnFailureToPut: true
     fileMode: NOMERGE
   }
   user: {

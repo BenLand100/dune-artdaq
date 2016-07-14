@@ -115,38 +115,38 @@ int PedestalMonitoring::MonitoringPedestal::RCEMonitoring(RCEFormatter const& rc
   bool channels_ok = false;
 
   // reading log file to get run number
-  ifstream infile;
+  std::ifstream infile;
   infile.open(HistSavePath + "/dumb.txt",std::ios::in);
   std::string word;
   while (infile >> word)
     run = atoi(word.c_str());
   infile.close();
 
-  ifstream apa_file;
+  std::ifstream apa_file;
   apa_file.open(HistSavePath + "/apa.txt",std::ios::in);
   while(apa_file >> word){
     apachannels.push_back(atoi(word.c_str()));
   }
   apa_file.close();
-  ifstream planes_file;
+  std::ifstream planes_file;
   planes_file.open(HistSavePath + "/planes.txt",std::ios::in);
   while(planes_file >> word){
     planeschannels.push_back(atoi(word.c_str()));
   }
   planes_file.close();
-  ifstream ped_file;
+  std::ifstream ped_file;
   ped_file.open(HistSavePath + "/ped.txt",std::ios::in);
   while(ped_file >> word){
     pedchannels.push_back(atoi(word.c_str()));
   }
   ped_file.close();
-  ifstream noise_file;
+  std::ifstream noise_file;
   noise_file.open(HistSavePath + "/noise.txt",std::ios::in);
   while(noise_file >> word){
     noisechannels.push_back(atoi(word.c_str()));
   }
   noise_file.close();
-  ifstream bad_file;
+  std::ifstream bad_file;
   bad_file.open(HistSavePath + "/bad.txt",std::ios::in);
   while(bad_file >> word){
     badchannels.push_back(atoi(word.c_str()));
@@ -156,9 +156,9 @@ int PedestalMonitoring::MonitoringPedestal::RCEMonitoring(RCEFormatter const& rc
   std::ostringstream directory;
   directory << HistSavePath << "Run" << run << "/";
 
-  ofstream logfile;
+  std::ofstream logfile;
   logfile.open(directory.str() + "/log.txt",std::ios::app);
-  ofstream badlist;
+  std::ofstream badlist;
   badlist.open(directory.str() + "/badchannels.txt",std::ios::out);
 
   //check if at least one channel has data.

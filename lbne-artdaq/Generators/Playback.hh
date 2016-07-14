@@ -13,32 +13,8 @@
 #include "artdaq-core/Data/Fragments.hh" 
 #include "artdaq/Application/CommandableFragmentGenerator.hh"
 
-#include "art/Framework/Core/RootDictionaryManager.h"
-#include "art/Framework/Principal/Event.h"
-#include "art/Framework/Principal/Handle.h"
-#include "art/Utilities/Exception.h"
-#include "art/Framework/Core/FileBlock.h"
-#include "art/Framework/Core/InputSourceMacros.h"
-#include "art/Framework/Core/ProductRegistryHelper.h"
-#include "art/Framework/IO/Root/rootNames.h"
-#include "art/Framework/IO/Sources/Source.h"
-#include "art/Framework/IO/Sources/SourceHelper.h"
-#include "art/Framework/IO/Sources/SourceTraits.h"
-#include "art/Framework/IO/Sources/put_product_in_principal.h"
-#include "art/Framework/Principal/EventPrincipal.h"
-#include "art/Framework/Principal/RunPrincipal.h"
-#include "art/Framework/Principal/SubRunPrincipal.h"
-#include "art/Persistency/Provenance/EventID.h"
-#include "art/Persistency/Provenance/MasterProductRegistry.h"
-#include "art/Persistency/Provenance/RunID.h"
-#include "art/Persistency/Provenance/SubRunID.h"
-#include "art/Utilities/InputTag.h"
-
+#include "gallery/Event.h"
 #include "fhiclcpp/fwd.h"
-
-#include "TFile.h"
-#include "TTree.h"
-#include "TBranch.h"
 
 #include <vector>
 #include <string>
@@ -60,14 +36,6 @@ namespace lbne {
     void stop() override {}
     void stopNoMutex() override {}
 
-    // JCF, Jun-4-2016 Unless it throws an exception,
-    // setBranchFromFile updates the members file_, tree_, branch_
-
-    void setBranchFromFile(const std::string filename);
-
-    template <typename PROD>
-    const char * getBranchNameAsCStr(art::InputTag const& tag) const;
-
     // "possible_fragment_types_" not declared static as I'd prefer
     // this initialized in the *.hh file...
 
@@ -84,44 +52,15 @@ namespace lbne {
 
     bool force_sequential_; // For out-of-order events in input files, reset their sequence IDs
 
+    const std::string fragment_type_; // Type of the fragment corresponding to the fragment ID
+
     // Internal parameters
 
     std::unique_ptr<std::ifstream> input_file_;
     std::istream_iterator< std::string > input_file_iter_;
     std::vector<std::string> input_root_filenames_;
-
-    // JCF, Jun-3-2016
-
-    // Using raw pointers rather than smart pointers b/c (I believe)
-    // we won't have ownership of the objects pointed to
-
-    TFile* root_file_;
-    TTree* tree_;
-    TBranch* branch_;
-    std::vector<TBranch*> branches_;
-
-    // JCF, Jun-3-2016
-
-    // An instance of the RootDictionaryManager is necessary in order
-    // to read objects out of art's saved *.root files
-
-    art::RootDictionaryManager dictionary_loader_;
+    std::unique_ptr<gallery::Event> events_;
   };
-
-  template <typename PROD>
-  const char * Playback::getBranchNameAsCStr(art::InputTag const& tag) const
-  {
-    std::ostringstream oss;
-    oss << art::TypeID(typeid(PROD)).friendlyClassName()
-	<< '_'
-	<< tag.label()
-	<< '_'
-	<< tag.instance()
-	<< '_'
-	<< tag.process()
-	<< ".obj";
-    return oss.str().data();
-  }
 
 }
 

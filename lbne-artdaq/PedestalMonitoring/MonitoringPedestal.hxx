@@ -123,11 +123,11 @@ private:
   double pedestalerr;
   double noiseerr;
 
-  ofstream ondatabase_file;
-  ofstream offdatabase_file;
-  ofstream nosignal_file;
-  ofstream dumb_file;
-  ofstream log_file;
+  std::ofstream ondatabase_file;
+  std::ofstream offdatabase_file;
+  std::ofstream nosignal_file;
+  std::ofstream dumb_file;
+  std::ofstream log_file;
 
   // File
   TFile *fDataFile;

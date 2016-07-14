@@ -1,7 +1,7 @@
 # The parent line must be the first non-comment line in the file
 # This line defines the product name and version
-parent lbne_artdaq	v1_04_00
-defaultqual	e7
+parent lbne_artdaq	v1_05_00
+defaultqual	e10
 
 # These optional lines define the installed directories where
 # headers, libraries, and executables will be found
@@ -17,25 +17,21 @@ bindir      fq_dir      bin
 
 #
 product		version		optional
-artdaq		v1_12_14        
-lbne_raw_data 	v1_03_22
-cetbuildtools	v5_01_03	-	only_for_build
+artdaq		v1_13_00        
+lbne_raw_data 	v1_04_01
+gallery 	v1_03_02
+cetbuildtools	v5_04_01	-	only_for_build
 end_product_list
 
-# e6  - with gcc 4.9.1 and -std=c++1y
-# e7  - with gcc 4.9.2 and -std=c++1y
+# e10 - with gcc 4.9.3a and -std=c++14
 
-# s6  - with art v1_12_05
-# s7  - with art v1_13_01
-# s8  - with art v1_13_02
-# s11 - with art v1_14_02
-# s15 - with art v1_15_02
+# s35 - with art v2_01_02
 
 # -nq- here means there is no qualifier
 # a "-" here means the dependent product is not required by the parent and will not be setup
-qualifier    	       	artdaq                  	lbne_raw_data  
-e7:prof 		e7:s15:eth:prof   		online:e7:s15:prof     
-e7:debug 		e7:s15:eth:debug   		online:e7:s15:debug     
+qualifier    	       	artdaq                  	lbne_raw_data  	   	gallery
+e10:prof 		e10:s35:eth:prof   		online:e10:s35:prof	e10:prof
+e10:debug 		e10:s35:eth:debug   		online:e10:s35:debug    e10:debug
 end_qualifier_list
 
 # Preserve tabs and formatting in emacs and vi / vim:

@@ -138,7 +138,7 @@ void OnlineMonitoring::EventDisplay::SaveEventDisplay(int run, int subrun, int e
   evdCanvas->SaveAs(evdSavePath+TString("evd")+TString(".png"));//+ImageType);
 
   // Add event file
-  ofstream tmp((evdSavePath+TString("event")).Data());
+  std::ofstream tmp((evdSavePath+TString("event")).Data());
   tmp << run << " " << subrun << " " << event;
   tmp.flush();
   tmp.close();
