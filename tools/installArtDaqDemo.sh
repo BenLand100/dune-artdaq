@@ -100,9 +100,16 @@ setup_qualifier="e10"
 
 install_package artdaq-core v1_05_00 $setup_qualifier s35
 
-install_package lbne-raw-data feature/artdaq_v1_13_00 $setup_qualifier s35 online
+install_package lbne-raw-data v1_04_02 $setup_qualifier s35 online
 
-install_package artdaq v1_13_00 $setup_qualifier s35 eth
+# JCF, Aug-8-2016
+
+# Currently, artdaq's feature/lbne35t branch relies on the same
+# packages as artdaq v1_13_00
+
+install_package artdaq feature/lbne35t $setup_qualifier s35 eth
+
+
 
 
 

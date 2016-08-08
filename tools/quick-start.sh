@@ -184,6 +184,7 @@ else
     build_type="prof"
 fi
 
+os=""
 #if [[ ! -d products || ! -d download || -n "${opt_force-}" ]] && [[ "$HOSTNAME" != "lbne35t-gateway01.fnal.gov" ]] ;then
 if [[ ! -d products || ! -d download || -n "${opt_force-}" ]] ;then
     echo "Are you sure you want to download and install the lbne-artdaq dependent products in `pwd`? [y/n]"
@@ -234,15 +235,27 @@ fi
 # The gallery package is not handled by pullProducts; hence the manual download
 # v1_03_02 is needed for the set of packages which include art v2_01_02 and canvas v1_04_02
 
-cd products
 gallery_url=http://scisoft.fnal.gov/scisoft/packages/gallery/v1_03_02/gallery-1.03.02-${os}-x86_64-${equalifier}-${build_type}.tar.bz2
-curl -O $gallery_url
-tar xjf $( basename $gallery_url )
 
-if [ $? -ne 0 ]; then
-    echo "Problem downloading and/or extracting archive file $gallery_url" >&2
-    exit 1
-fi
+# JCF, Aug-8-2016
+# cetbuildtools v5_04_02 needed for lbne-raw-data v1_04_02
+
+cetbuildtools_url=http://scisoft.fnal.gov/scisoft/packages/cetbuildtools/v5_04_02/cetbuildtools-5.04.02-noarch.tar.bz2
+
+cd products
+
+for url in $gallery_url $cetbuildtools_url ; do 
+    curl -O $url
+    tar xjf $( basename $url )
+
+    if [ $? -ne 0 ]; then
+	echo "Problem downloading and/or extracting archive file $url" >&2
+	exit 1
+    fi
+
+done
+
+
 
 cd ..
 
