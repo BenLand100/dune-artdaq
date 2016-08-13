@@ -5,8 +5,7 @@
 // studied by new users of artdaq as an example of how to create such
 // a generator in the "best practices" manner. Derived from artdaq's
 // CommandableFragmentGenerator class, it can be used in a full DAQ
-// simulation, generating all ADC counts with equal probability via
-// the std::uniform_int_distribution class
+// simulation, obtaining data from the ToyHardwareInterface class
 
 // ToySimulator is designed to simulate values coming in from one of
 // two types of digitizer boards, one called "TOY1" and the other
@@ -20,11 +19,12 @@
 // -Append a "_" to every private member function and variable
 
 #include "fhiclcpp/fwd.h"
-#include "artdaq-core/Data/Fragment.hh" 
+#include "artdaq-core/Data/Fragments.hh" 
 #include "artdaq/Application/CommandableFragmentGenerator.hh"
 #include "lbne-raw-data/Overlays/ToyFragment.hh"
 #include "lbne-raw-data/Overlays/FragmentType.hh"
 
+#include "ToyHardwareInterface/ToyHardwareInterface.hh"
 
 #include <random>
 #include <vector>
@@ -35,6 +35,7 @@ namespace lbne {
   class ToySimulator : public artdaq::CommandableFragmentGenerator {
   public:
     explicit ToySimulator(fhicl::ParameterSet const & ps);
+    ~ToySimulator();
 
   private:
 
@@ -44,24 +45,27 @@ namespace lbne {
 
     bool getNext_(artdaq::FragmentPtrs & output) override;
 
-    void start() override {}
-    void stop() override {}
+    // The start, stop and stopNoMutex methods are declared pure
+    // virtual in CommandableFragmentGenerator and therefore MUST be
+    // overridden; note that stopNoMutex() doesn't do anything here
+
+    void start() override;
+    void stop() override;
     void stopNoMutex() override {}
 
+    std::unique_ptr<ToyHardwareInterface> hardware_interface_; 
 
-    // FHiCL-configurable variables. Note that the C++ variable names
-    // are the FHiCL variable names with a "_" appended
+    ToyFragment::Metadata metadata_;
 
-    std::size_t const nADCcounts_;     // ADC values per fragment per event
-    FragmentType const fragment_type_; // Type of fragment (see FragmentType.hh)
-    std::size_t const throttle_usecs_;
-    
+    // buffer_ points to the buffer which the hardware interface will
+    // fill. Notice that it's a raw pointer rather than a smart
+    // pointer as the API to ToyHardwareInterface was chosen to be a
+    // C++03-style API for greater realism
+
+    char* readout_buffer_;
+
+    FragmentType fragment_type_;
     bool throw_exception_;
-
-    // Members needed to generate the simulated data
-
-    std::mt19937 engine_;
-    std::unique_ptr<std::uniform_int_distribution<int>> uniform_distn_;
   };
 }
 

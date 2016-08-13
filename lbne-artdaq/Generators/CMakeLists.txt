@@ -23,15 +23,20 @@ simple_plugin(SSP "generator"
   )
 
 simple_plugin(ToySimulator "generator"
+  lbne-artdaq_Generators_ToyHardwareInterface
   lbne-raw-data_Overlays
-  ${ARTDAQ_APPLICATION}
-  ${ARTDAQ_DAQDATA}
-  ${ARTDAQ-CORE_UTILITIES}
-  ${CANVAS_UTILITIES}
-  ${FHICLCPP}
-  ${CETLIB}
   lbne-artdaq_DAQLogger
+  artdaq_Application
+  artdaq_DAQdata
+  artdaq-core_Utilities
+  artdaq-core_Data
+  canvas_Utilities
+  ${FHICLCPP}
+  ${MF_MESSAGELOGGER}
+  ${MF_UTILITIES}
+  ${CETLIB}
   )
+
 
 simple_plugin(Playback "generator"
   lbne-artdaq_DAQLogger
@@ -89,3 +94,4 @@ simple_plugin(PennReceiver "generator"
 
 
   add_subdirectory(pennBoard)
+  add_subdirectory(ToyHardwareInterface)

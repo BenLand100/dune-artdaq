@@ -1,15 +1,20 @@
+
+// For an explanation of this class, look at its header,
+// ToySimulator.hh, as well as
+// https://cdcvs.fnal.gov/redmine/projects/lbne-artdaq/wiki/Fragments_and_FragmentGenerators_w_Toy_Fragments_as_Examples
+
 #include "lbne-artdaq/Generators/ToySimulator.hh"
 #include "lbne-artdaq/DAQLogger/DAQLogger.hh"
 
-#include "canvas/Utilities/Exception.h"
-#include "artdaq/Application/GeneratorMacros.hh"
-#include "cetlib/exception.h"
 #include "lbne-raw-data/Overlays/ToyFragment.hh"
-#include "lbne-raw-data/Overlays/ToyFragmentWriter.hh"
 #include "lbne-raw-data/Overlays/FragmentType.hh"
-#include "fhiclcpp/ParameterSet.h"
+
+#include "artdaq/Application/GeneratorMacros.hh"
 #include "artdaq-core/Utilities/SimpleLookupPolicy.h"
-#include "messagefacility/MessageLogger/MessageLogger.h"
+
+#include "canvas/Utilities/Exception.h"
+#include "cetlib/exception.h"
+#include "fhiclcpp/ParameterSet.h"
 
 #include <fstream>
 #include <iomanip>
@@ -18,53 +23,35 @@
 
 #include <unistd.h>
 
-namespace {
-
-  size_t typeToADC(lbne::FragmentType type)
-  {
-    switch (type) {
-    case lbne::FragmentType::TOY1:
-      return 12;
-      break;
-    case lbne::FragmentType::TOY2:
-      return 14;
-      break;
-    default:
-      throw art::Exception(art::errors::Configuration)
-        << "Unknown board type "
-        << type
-        << " ("
-        << lbne::fragmentTypeToString(type)
-        << ").\n";
-    };
-  }
-
-}
-
-
 
 lbne::ToySimulator::ToySimulator(fhicl::ParameterSet const & ps)
   :
   CommandableFragmentGenerator(ps),
-  nADCcounts_(ps.get<size_t>("nADCcounts", 600000)),
-  fragment_type_(toFragmentType(ps.get<std::string>("fragment_type"))),
-  throttle_usecs_(ps.get<size_t>("throttle_usecs", 0)),
-  throw_exception_(ps.get<bool>("throw_exception", false)),
-  engine_(ps.get<int64_t>("random_seed", 314159)),
-  uniform_distn_(new std::uniform_int_distribution<int>(0, pow(2, typeToADC( fragment_type_ ) ) - 1 ))
+  hardware_interface_( new ToyHardwareInterface(ps) ),
+  readout_buffer_(nullptr),
+  fragment_type_(static_cast<decltype(fragment_type_)>( artdaq::Fragment::InvalidFragmentType )),
+  throw_exception_(ps.get<bool>("throw_exception",false))
 {
+  hardware_interface_->AllocateReadoutBuffer(&readout_buffer_);   
 
-  // Check and make sure that the fragment type will be one of the "toy" types
-  
-  std::vector<artdaq::Fragment::type_t> const ftypes = 
-    {FragmentType::TOY1, FragmentType::TOY2 };
+  metadata_.board_serial_number = hardware_interface_->SerialNumber();
+  metadata_.num_adc_bits = hardware_interface_->NumADCBits();
 
-  if (std::find( ftypes.begin(), ftypes.end(), fragment_type_) == ftypes.end() ) {
-    throw cet::exception("Error in ToySimulator: unexpected fragment type supplied to constructor");
+  switch (hardware_interface_->BoardType()) {
+  case 1005:
+    fragment_type_ = toFragmentType("TOY1");
+    break;
+  case 1006:
+    fragment_type_ = toFragmentType("TOY2");
+    break;
+  default:
+    throw cet::exception("ToySimulator") << "Unable to determine board type supplied by hardware";
   }
-    
 }
 
+lbne::ToySimulator::~ToySimulator() {
+  hardware_interface_->FreeReadoutBuffer(readout_buffer_);
+}
 
 bool lbne::ToySimulator::getNext_(artdaq::FragmentPtrs & frags) {
 
@@ -72,59 +59,44 @@ bool lbne::ToySimulator::getNext_(artdaq::FragmentPtrs & frags) {
     return false;
   }
 
-  usleep( throttle_usecs_ );
+  // ToyHardwareInterface (an instance to which "hardware_interface_"
+  // is a unique_ptr object) is just one example of the sort of
+  // interface a hardware library might offer. For example, other
+  // interfaces might require you to allocate and free the memory used
+  // to store hardware data in your generator using standard C++ tools
+  // (rather than via the "AllocateReadoutBuffer" and
+  // "FreeReadoutBuffer" functions provided here), or could have a
+  // function which directly returns a pointer to the data buffer
+  // rather than sticking the data in the location pointed to by your
+  // pointer (which is what happens here with readout_buffer_)
 
-  // Set fragment's metadata
+  std::size_t bytes_read = 0;
+  hardware_interface_->FillBuffer(readout_buffer_ , &bytes_read);
 
-  ToyFragment::Metadata metadata;
-  metadata.board_serial_number = 999;
-  metadata.num_adc_bits = typeToADC(fragment_type_);
-
-  // And use it, along with the artdaq::Fragment header information
-  // (fragment id, sequence id, and user type) to create a fragment
-  // with the factory function:
+  // We'll use the static factory function 
 
   // artdaq::Fragment::FragmentBytes(std::size_t payload_size_in_bytes, sequence_id_t sequence_id,
-  //  fragment_id_t fragment_id, type_t type, const T & metadata);
+  //  fragment_id_t fragment_id, type_t type, const T & metadata)
 
-  // ...where we'll start off setting the payload (data after the
-  // header and metadata) to empty; this will be resized below
+  // which will then return a unique_ptr to an artdaq::Fragment
+  // object. 
 
-  std::size_t payloadInBytes = 0;
+  std::unique_ptr<artdaq::Fragment> fragptr(
+   					    artdaq::Fragment::FragmentBytes(bytes_read,  
+   									    ev_counter(), fragment_id(),
+   									    fragment_type_, 
+   									    metadata_));
 
-  frags.emplace_back( artdaq::Fragment::FragmentBytes(payloadInBytes, 
-						      ev_counter(), 
-						      fragment_id() ,
-						      fragment_type_, 
-						      metadata)  );
+  memcpy(fragptr->dataBeginBytes(), readout_buffer_, bytes_read );
 
-  // Then any overlay-specific quantities next; will need the
-  // ToyFragmentWriter class's setter-functions for this
+  frags.emplace_back( std::move(fragptr ));
 
-  ToyFragmentWriter newfrag(*frags.back());
-
-  newfrag.set_hdr_run_number(999);
-
-  newfrag.resize(nADCcounts_);
-
-  // And generate nADCcounts ADC values ranging from 0 to max with an
-  // equal probability over the full range (a specific and perhaps
-  // not-too-physical example of how one could generate simulated
-  // data)
-
-  std::generate_n(newfrag.dataBegin(), nADCcounts_,
-  		  [&]() {
-  		    return static_cast<ToyFragment::adc_t>
-  		      ((*uniform_distn_)( engine_ ));
-  		  }
-  		  );
-
-  // Check and make sure that no ADC values in this fragment are
-  // larger than the max allowed
-
-  newfrag.fastVerify( metadata.num_adc_bits );
+  if(metricMan_ != nullptr) {
+    metricMan_->sendMetric("Fragments Sent",ev_counter(), "Events", 3);
+  }
 
   ev_counter_inc();
+
 
   if (ev_counter() % 100 == 0) {
 
@@ -144,6 +116,14 @@ bool lbne::ToySimulator::getNext_(artdaq::FragmentPtrs & frags) {
   }
 
   return true;
+}
+
+void lbne::ToySimulator::start() {
+  hardware_interface_->StartDatataking();
+}
+
+void lbne::ToySimulator::stop() {
+  hardware_interface_->StopDatataking();
 }
 
 // The following macro is defined in artdaq's GeneratorMacros.hh header
