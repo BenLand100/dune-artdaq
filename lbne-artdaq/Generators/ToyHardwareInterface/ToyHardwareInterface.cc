@@ -25,7 +25,7 @@ ToyHardwareInterface::ToyHardwareInterface(fhicl::ParameterSet const & ps) :
   change_after_N_seconds_(ps.get<size_t>("change_after_N_seconds", 
 					 std::numeric_limits<size_t>::max())),
   nADCcounts_after_N_seconds_(ps.get<int>("nADCcounts_after_N_seconds",
-					     nADCcounts_)),
+					  nADCcounts_)),
   fragment_type_(lbne::toFragmentType(ps.get<std::string>("fragment_type"))), 
   maxADCvalue_(pow(2, NumADCBits() ) - 1), // MUST be after "fragment_type"
   throttle_usecs_(ps.get<size_t>("throttle_usecs", 100000)),
@@ -39,8 +39,14 @@ ToyHardwareInterface::ToyHardwareInterface(fhicl::ParameterSet const & ps) :
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wsign-compare"
 
+  // JCF, Aug-14-2016 
+
+  // The logic of checking that nADCcounts_after_N_seconds_ >= 0,
+  // below, is because signed vs. unsigned comparison won't do what
+  // you want it to do if nADCcounts_after_N_seconds_ is negative
+
   if (nADCcounts_ > maxADCcounts_ ||
-      nADCcounts_after_N_seconds_ > maxADCcounts_) {
+      (nADCcounts_after_N_seconds_ >= 0 && nADCcounts_after_N_seconds_ > maxADCcounts_)) {
     throw cet::exception("HardwareInterface") << "Either (or both) of \"nADCcounts\" and \"nADCcounts_after_N_seconds\"" <<
       " is larger than the \"maxADCcounts\" setting (currently at " << maxADCcounts_ << ")";
   }
