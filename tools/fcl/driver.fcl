@@ -12,8 +12,8 @@ fragment_receiver: {
    generator: ToySimulator 
    fragment_type: TOY2        # Make sure downstream modules know about this fragment_type!
    nADCcounts: 100
-   throttle_usecs: 5000000  # Wait this many usecs before creating the next event
-
+   throttle_usecs: 100000  # Wait this many usecs before creating the next event
+   distribution_type: 1
 
    # Parameters configuring the fragment generator's parent class
    # artdaq::CommandableFragmentGenerator

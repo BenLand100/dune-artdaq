@@ -18,7 +18,8 @@
 // based in C++11 capable of taking advantage of smart pointers, etc.
 
 ToyHardwareInterface::ToyHardwareInterface(fhicl::ParameterSet const & ps) :
-  taking_data_(false),
+  //  taking_data_(false),
+  taking_data_(true), // See Aug-14-2016 comment, below
   nADCcounts_(ps.get<size_t>("nADCcounts", 40)), 
   maxADCcounts_(ps.get<size_t>("maxADCcounts", 50000000)),
   change_after_N_seconds_(ps.get<size_t>("change_after_N_seconds", 
@@ -60,12 +61,21 @@ ToyHardwareInterface::ToyHardwareInterface(fhicl::ParameterSet const & ps) :
 // values to registers, etc.
 
 void ToyHardwareInterface::StartDatataking() {
+
+  // JCF, Aug-14-2017
+
+  // Until we base lbne-artdaq off of a newer version of artdaq
+  // s.t. its artdaqDriver program can issue start / stop transitions,
+  // require that we ALWAYS be allowed to take data
+
+  assert(taking_data_);
+
   taking_data_ = true;
   start_time_ = std::chrono::high_resolution_clock::now();
 }
 
 void ToyHardwareInterface::StopDatataking() {
-  taking_data_ = false;
+  //  taking_data_ = false;
   start_time_ = std::numeric_limits<decltype(std::chrono::high_resolution_clock::now())>::max();
 }
 
