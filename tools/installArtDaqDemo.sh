@@ -107,7 +107,10 @@ install_package lbne-raw-data v1_04_02 $setup_qualifier s35 online
 # Currently, artdaq's feature/lbne35t branch relies on the same
 # packages as artdaq v1_13_00
 
-install_package artdaq feature/lbne35t $setup_qualifier s35 eth
+# JCF, Sep-7-2016
+
+# Reinstate v1_13_00 as feature/lbne35t appears to have been removed
+install_package artdaq v1_13_00 $setup_qualifier s35 eth
 
 
 
