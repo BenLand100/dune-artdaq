@@ -109,7 +109,7 @@ version=`grep -E "^\s*artdaq\s+" $git_working_path/ups/product_deps | awk '{prin
 equalifier="e999"
 squalifier="s999"
 
-if [[ "$version" == "v1_13_00" ]]; then
+if [[ "$version" == "v1_13_02" ]]; then
     equalifier="e10"
     squalifier="s35"
 else
@@ -233,14 +233,9 @@ fi
 
 # JCF, Jul-13-2016
 # The gallery package is not handled by pullProducts; hence the manual download
-# v1_03_02 is needed for the set of packages which include art v2_01_02 and canvas v1_04_02
+# v1_03_07 is needed for the set of packages which include art v2_04_00 and canvas v1_05_00
 
-gallery_url=http://scisoft.fnal.gov/scisoft/packages/gallery/v1_03_02/gallery-1.03.02-${os}-x86_64-${equalifier}-${build_type}.tar.bz2
-
-# JCF, Aug-8-2016
-# cetbuildtools v5_04_02 needed for lbne-raw-data v1_04_02
-
-cetbuildtools_url=http://scisoft.fnal.gov/scisoft/packages/cetbuildtools/v5_04_02/cetbuildtools-5.04.02-noarch.tar.bz2
+gallery_url=http://scisoft.fnal.gov/scisoft/packages/gallery/v1_03_07/gallery-1.03.07-${os}-x86_64-${equalifier}-${build_type}.tar.bz2
 
 cd products
 
