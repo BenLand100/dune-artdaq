@@ -149,21 +149,12 @@ mkdir -p "$root/log"
 exec  > >(tee "$root/log/$alloutput_file")
 exec 2> >(tee "$root/log/$stderr_file")
 
+echo
+echo "If you don't have C++ bindings for ZeroMQ installed on your system, see note at top of https://cdcvs.fnal.gov/redmine/projects/lbne-artdaq/wiki/Installing_and_building_the_lbne-artdaq_code for what to do"
+echo 'To determine whether you have ZeroMQ, use the command "locate zmq.hpp" or contact jcfree@fnal.gov to find this out'
+echo
 
-if [[ "$HOSTNAME" != "lbne35t-gateway01.fnal.gov" ]]; then
-    echo
-    echo "If you don't have C++ bindings for ZeroMQ installed on your system, see note at top of https://cdcvs.fnal.gov/redmine/projects/lbne-artdaq/wiki/Installing_and_building_the_lbne-artdaq_code for what to do"
-    echo 'To determine whether you have ZeroMQ, use the command "locate zmq.hpp" or contact jcfree@fnal.gov to find this out'
-    echo
-fi
-
-free_disk_needed=0
-
-if [[ "$HOSTNAME" == "lbne35t-gateway01.fnal.gov" ]]; then
-    free_disk_needed=1
-else
-    free_disk_needed=5
-fi
+free_disk_needed=5
 
 free_disk_G=`df -B1G . | awk '/[0-9]%/{print$(NF-2)}'`
 if [ -z "${opt_skip_check-}" -a "$free_disk_G" -lt $free_disk_needed ];then
@@ -185,61 +176,46 @@ else
 fi
 
 os=""
-#if [[ ! -d products || ! -d download || -n "${opt_force-}" ]] && [[ "$HOSTNAME" != "lbne35t-gateway01.fnal.gov" ]] ;then
-if [[ ! -d products || ! -d download || -n "${opt_force-}" ]] ;then
-    echo "Are you sure you want to download and install the lbne-artdaq dependent products in `pwd`? [y/n]"
-    read response
-    if [[ "$response" != "y" ]]; then
-        echo "Aborting..."
-        exit
-    fi
-    test -d products || mkdir products
-    test -d download || mkdir download
 
-    cd download
-
-    wget http://scisoft.fnal.gov/scisoft/bundles/tools/pullProducts
-    chmod +x pullProducts
-    
-    echo "Cloning cetpkgsupport to determine current OS"
-    git clone http://cdcvs.fnal.gov/projects/cetpkgsupport
-    os=`./cetpkgsupport/bin/get-directory-name os`
-
-    qualifiers="${squalifier}-${equalifier}"
-    cmd="./pullProducts ../products ${os} artdaq-${version} $qualifiers $build_type"
-    echo "Running $cmd"
-    $cmd
-
-    if [ $? -ne 0 ]; then
-	echo "Error in pullProducts. Please go to http://scisoft.fnal.gov/scisoft/bundles/artdaq/${version}/manifest and make sure that a manifest for the specified qualifiers ($qualifiers) exists."
-	exit 1
-    fi
-
-    cd ..
-
-else 
-    echo "I see you're on $HOSTNAME ; skipping download of dependent products as"\
-	"they are expected to be located in $PRODUCTS"
-
-    # JCF, 12/5/14
-
-    # Will still want local installs of lbne-raw-data, etc., so set up
-    # a local products directory
-
-    test -d products || mkdir products
-    cp -p /data/lbnedaq/products/setup products/
-    cp -rp /data/lbnedaq/products/.upsfiles products/
+echo "Are you sure you want to download and install the lbne-artdaq dependent products in `pwd`? [y/n]"
+read response
+if [[ "$response" != "y" ]]; then
+    echo "Aborting..."
+    exit
 fi
+test -d products || mkdir products
+test -d download || mkdir download
+
+cd download
+
+wget http://scisoft.fnal.gov/scisoft/bundles/tools/pullProducts
+chmod +x pullProducts
+    
+echo "Cloning cetpkgsupport to determine current OS"
+git clone http://cdcvs.fnal.gov/projects/cetpkgsupport
+os=`./cetpkgsupport/bin/get-directory-name os`
+
+qualifiers="${squalifier}-${equalifier}"
+cmd="./pullProducts ../products ${os} artdaq-${version} $qualifiers $build_type"
+echo "Running $cmd"
+$cmd
+
+if [ $? -ne 0 ]; then
+    echo "Error in pullProducts. Please go to http://scisoft.fnal.gov/scisoft/bundles/artdaq/${version}/manifest and make sure that a manifest for the specified qualifiers ($qualifiers) exists."
+    exit 1
+fi
+
+cd ..
 
 # JCF, Jul-13-2016
 # The gallery package is not handled by pullProducts; hence the manual download
-# v1_03_07 is needed for the set of packages which include art v2_04_00 and canvas v1_05_00
+# v1_03_02 is needed for the set of packages which include art v2_01_02 and canvas v1_04_02
 
-gallery_url=http://scisoft.fnal.gov/scisoft/packages/gallery/v1_03_07/gallery-1.03.07-${os}-x86_64-${equalifier}-${build_type}.tar.bz2
+gallery_url=http://scisoft.fnal.gov/scisoft/packages/gallery/v1_03_02/gallery-1.03.02-${os}-x86_64-${equalifier}-${build_type}.tar.bz2
 
 cd products
 
-for url in $gallery_url $cetbuildtools_url ; do 
+for url in $gallery_url ; do 
     curl -O $url
     tar xjf $( basename $url )
 
