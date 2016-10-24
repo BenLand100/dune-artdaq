@@ -102,7 +102,15 @@ install_package artdaq-core v1_05_07 $setup_qualifier s35
 
 install_package lbne-raw-data v1_04_05 $setup_qualifier s35 online
 
-install_package artdaq v1_13_02 $setup_qualifier s35 eth
+# JCF, Oct-24-2016
+
+# Commit 2faf58f98fe96880739b78e4eb81ba9b67f6b2bb, containing code
+# developed since artdaq release v1_13_02, contains tighter logic when
+# it comes to copying events from the data logger to the dispatcher-
+# in particular, it makes it less likely that an event from the end of
+# the previous run will "leak" just after the start of the next run
+
+install_package artdaq 2faf58f98fe96880739b78e4eb81ba9b67f6b2bb $setup_qualifier s35 eth
 
 
 
