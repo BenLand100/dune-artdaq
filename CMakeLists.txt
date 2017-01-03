@@ -10,16 +10,26 @@
 # use cmake 2.8 or later
 cmake_minimum_required (VERSION 2.8)
 
+project(lbne-artdaq)
+
 # cetbuildtools contains our cmake modules
 SET ( CETBUILDTOOLS_VERSION $ENV{CETBUILDTOOLS_VERSION} )
 IF (NOT CETBUILDTOOLS_VERSION)
     MESSAGE (FATAL_ERROR "ERROR: setup cetbuildtools to get the cmake modules")
 ENDIF()
 
-set(CMAKE_MODULE_PATH 
-        $ENV{ART_DIR}/Modules
+if( DEFINED ENV{CANVAS_DIR} )
+set(CMAKE_MODULE_PATH
+  $ENV{ART_DIR}/Modules
+  $ENV{CANVAS_DIR}/Modules
         $ENV{CETBUILDTOOLS_DIR}/Modules
         ${CMAKE_MODULE_PATH})
+else()
+set(CMAKE_MODULE_PATH
+  $ENV{ART_DIR}/Modules
+        $ENV{CETBUILDTOOLS_DIR}/Modules
+        ${CMAKE_MODULE_PATH})
+endif()
 
 
 include(CetCMakeEnv)
@@ -30,7 +40,11 @@ cet_cmake_env()
 # IS available); 0MQ is used so lbne-artdaq code can send information
 # up to RunControl
 
-set (ZEROMQ_IGNORED "FALSE")
+# JCF, Jan-3-2017
+
+# Since we're no longer using 35ton RunControl, disable 0MQ by default 
+
+set (ZEROMQ_IGNORED "TRUE")
 
 if (NOT ZEROMQ_IGNORED) 
 message(STATUS "Requiring 0MQ libraries be available for build" )
@@ -58,6 +72,7 @@ cet_report_compiler_flags()
 find_ups_product( gallery v1_03_02 )
 find_ups_product( cetbuildtools v3_03_00 )
 find_ups_product( artdaq v0_04_02 )
+find_ups_product( artdaq_utilities v1_00_00)
 find_ups_product( artdaq_core v1_00_00 )
 find_ups_product( lbne_raw_data v0_00_02 )
 find_ups_product( art v1_06_00 )

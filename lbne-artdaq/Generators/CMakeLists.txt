@@ -1,10 +1,10 @@
 simple_plugin(TPCMilliSliceSimulatorWithCopy "generator"
   lbne-raw-data_Overlays
-  ${ARTDAQ_APPLICATION}
-  ${ARTDAQ_DAQDATA}
-  ${ARTDAQ-CORE_DATA}
-  ${ARTDAQ-CORE_UTILITIES}
-  ${CANVAS_UTILITIES}
+  artdaq_Application
+  artdaq_DAQdata
+  artdaq-core_Data
+  artdaq-core_Utilities
+  canvas_Utilities
   ${FHICLCPP}
   ${MF_MESSAGELOGGER}
   ${CETLIB}
@@ -13,10 +13,10 @@ simple_plugin(TPCMilliSliceSimulatorWithCopy "generator"
 simple_plugin(SSP "generator"
   lbne-raw-data_Overlays
   lbne-artdaq_Generators_anlBoard
-  ${ARTDAQ_APPLICATION}
-  ${ARTDAQ_DAQDATA}
-  ${ARTDAQ-CORE_UTILITIES}
-  ${CANVAS_UTILITIES}
+  artdaq_Application
+  artdaq_DAQdata
+  artdaq-core_Utilities
+  canvas_Utilities
   ${FHICLCPP} 
   ${CETLIB} 
   lbne-artdaq_DAQLogger
@@ -46,10 +46,10 @@ simple_plugin(Playback "generator"
   canvas_Persistency_Common
   canvas_Persistency_Provenance
   art_Framework_IO_Sources
-  ${ARTDAQ_APPLICATION}
-  ${ARTDAQ_DAQDATA}
-  ${ARTDAQ-CORE_UTILITIES}
-  ${CANVAS_UTILITIES}
+  artdaq_Application
+  artdaq_DAQdata
+  artdaq-core_Utilities
+  canvas_Utilities
   ${GALLERY}
   ${FHICLCPP}
   ${CETLIB}
@@ -66,11 +66,11 @@ simple_plugin(Playback "generator"
 simple_plugin(TpcRceReceiver "generator"
   lbne-raw-data_Overlays
   lbne-artdaq_Generators_RceSupportLib
-  ${ARTDAQ-CORE_DATA}
-  ${ARTDAQ_APPLICATION}
-  ${ARTDAQ_DAQDATA}
-  ${ARTDAQ-CORE_UTILITIES}
-  ${CANVAS_UTILITIES}
+  artdaq-core_Data
+  artdaq_Application
+  artdaq_DAQdata
+  artdaq-core_Utilities
+  canvas_Utilities
   ${FHICLCPP}
   ${CETLIB}
   lbne-artdaq_DAQLogger
@@ -81,11 +81,11 @@ simple_plugin(TpcRceReceiver "generator"
 simple_plugin(PennReceiver "generator"
   lbne-raw-data_Overlays
   lbne-artdaq_Generators_pennBoard
-  ${ARTDAQ-CORE_DATA}
-  ${ARTDAQ_APPLICATION}
-  ${ARTDAQ_DAQDATA}
-  ${ARTDAQ-CORE_UTILITIES}
-  ${CANVAS_UTILITIES}
+  artdaq-core_Data
+  artdaq_Application
+  artdaq_DAQdata
+  artdaq-core_Utilities
+  canvas_Utilities
   ${FHICLCPP}
   ${MF_MESSAGELOGGER}
   ${CETLIB}
