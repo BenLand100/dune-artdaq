@@ -188,7 +188,7 @@ wget http://scisoft.fnal.gov/scisoft/bundles/tools/pullProducts
 chmod +x pullProducts
 ./pullProducts $Base/products ${os} artdaq-${artdaq_version} ${squalifier}-${equalifier} ${build_type}
    if [ $? -ne 0 ]; then
-	echo "Error in pullProducts. Please go to http://scisoft.fnal.gov/scisoft/bundles/artdaq/${artdaq_version}/manifest and make sure that a manifest for the specified qualifiers ($defaultqualWithS) exists."
+	echo "Error in pullProducts. Please go to http://scisoft.fnal.gov/scisoft/bundles/artdaq/${artdaq_version}/manifest and make sure that a manifest for the specified qualifiers (${squalifier}-${equalifier}) exists."
 	exit 1
    fi
 
@@ -231,7 +231,7 @@ fi
 
 if [[ "x${opt_viewer-}" != "x" ]]; then
     os=`$Base/download/cetpkgsupport/bin/get-directory-name os`
-    detectAndPull qt ${os}-x86_64 ${equalifier} v5_4_2b
+    detectAndPull qt ${os}-x86_64 ${equalifier} v5_6_1a
     cd $MRB_SOURCE
     mrb gitCheckout -d artdaq_mfextensions http://cdcvs.fnal.gov/projects/mf-extensions-git
 fi
