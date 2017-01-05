@@ -231,7 +231,9 @@ fi
 
 if [[ "x${opt_viewer-}" != "x" ]]; then
     cd $MRB_SOURCE
-    mrb gitCheckout -d artdaq_mfextensions http://cdcvs.fnal.gov/projects/mf-extensions-git
+
+    mfextensionsver=$( awk '/^[[:space:]]*artdaq_mfextensions/ { print $2 }' artdaq/ups/product_deps )
+    mrb gitCheckout -t ${mfextensionsver} -d artdaq_mfextensions http://cdcvs.fnal.gov/projects/mf-extensions-git
 
     qtver=$( awk '/^[[:space:]]*qt[[:space:]]*/ {print $2}' artdaq_mfextensions/ups/product_deps )
 
