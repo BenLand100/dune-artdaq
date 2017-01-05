@@ -230,10 +230,13 @@ fi
 
 
 if [[ "x${opt_viewer-}" != "x" ]]; then
-    os=`$Base/download/cetpkgsupport/bin/get-directory-name os`
-    detectAndPull qt ${os}-x86_64 ${equalifier} v5_6_1a
     cd $MRB_SOURCE
     mrb gitCheckout -d artdaq_mfextensions http://cdcvs.fnal.gov/projects/mf-extensions-git
+
+    qtver=$( awk '/^[[:space:]]*qt[[:space:]]*/ {print $2}' artdaq_mfextensions/ups/product_deps )
+
+    os=`$Base/download/cetpkgsupport/bin/get-directory-name os`
+    detectAndPull qt ${os}-x86_64 ${equalifier} ${qtver}
 fi
 
 ARTDAQ_DEMO_DIR=$Base/srcs/lbne_artdaq
