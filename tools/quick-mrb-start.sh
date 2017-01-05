@@ -31,7 +31,7 @@ prompted for this location.
 --run-demo    runs the demo
 --debug       perform a debug build
 --develop     Install the develop version of the software (may be unstable!)
---viewer      install and run the artdaq Message Viewer
+--noviewer    skip installion of artdaq Message Viewer (useful if there is no XWindows)
 --tag         Install a specific tag of lbne_artdaq
 -e, -s        Use specific qualifiers when building ARTDAQ
 -v            Be more verbose
@@ -62,7 +62,7 @@ while [ -n "${1-}" ];do
 	    -debug)     opt_debug=--debug;;
 			-develop) opt_develop=1;;
 			-tag)       eval $reqarg; tag=$1; shift;;
-	    -viewer)    opt_viewer=--viewer;;
+	    -noviewer)    opt_noviewer=--noviewer;;
             *)          echo "Unknown option -$op"; do_help=1;;
         esac
     else
@@ -229,7 +229,7 @@ fi
 fi
 
 
-if [[ "x${opt_viewer-}" != "x" ]]; then
+if ! [[ "x${opt_noviewer-}" != "x" ]]; then
     cd $MRB_SOURCE
 
     mfextensionsver=$( awk '/^[[:space:]]*artdaq_mfextensions/ { print $2 }' artdaq/ups/product_deps )
