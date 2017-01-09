@@ -25,9 +25,7 @@ USAGE="\
 examples: `basename $0` 
           `basename $0` --lbne-raw-data-developer --lbne-raw-data-develop-branch
           `basename $0` --debug --noviewer --lbne-raw-data-developer
-          `basename $0` --tag v1_06_00
 --debug       perform a debug build
---tag         Install a specific tag/branch of lbne_artdaq (default is \"develop\")
 --noviewer    skip installion of artdaq Message Viewer (use if there is no XWindows)
 --lbne-raw-data-develop-branch     Install the current \"develop\" version of lbne-raw-data (may be unstable!)
 --lbne-raw-data-developer    use if you have (and want to use) write access to the lbne-raw-data repository
@@ -48,7 +46,6 @@ while [ -n "${1-}" ];do
         case "$op" in
             \?*|h*)     eval $op1chr; do_help=1;;
 	    -debug)     opt_debug=--debug;;
-	    -tag)       eval $reqarg; tag=$1; shift;;
 	    -noviewer)    opt_noviewer=--noviewer;;
 	    -lbne-raw-data-develop-branch) opt_develop=1;;
 	    -lbne-raw-data-developer)  opt_w=1;;
