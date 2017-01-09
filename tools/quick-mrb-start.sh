@@ -21,22 +21,16 @@ test -d log || mkdir log
 
 env_opts_var=`basename $0 | sed 's/\.sh$//' | tr 'a-z-' 'A-Z_'`_OPTS
 USAGE="\
-   usage: `basename $0` [options] [demo_root]
-examples: `basename $0` .
-          `basename $0` --run-demo
-          `basename $0` --debug
-          `basename $0` --tag v2_08_04
-If the \"demo_root\" optional parameter is not supplied, the user will be
-prompted for this location.
---run-demo    runs the demo
+   usage: `basename $0` [options]
+examples: `basename $0` 
+          `basename $0` --lbne-raw-data-developer --lbne-raw-data-develop-branch
+          `basename $0` --debug --noviewer --lbne-raw-data-developer
+          `basename $0` --tag v1_06_00
 --debug       perform a debug build
---develop     Install the develop version of the software (may be unstable!)
---noviewer    skip installion of artdaq Message Viewer (useful if there is no XWindows)
---tag         Install a specific tag of lbne_artdaq
--e, -s        Use specific qualifiers when building ARTDAQ
--v            Be more verbose
--x            set -x this script
--w            Check out repositories read/write
+--tag         Install a specific tag/branch of lbne_artdaq (default is \"develop\")
+--noviewer    skip installion of artdaq Message Viewer (use if there is no XWindows)
+--lbne-raw-data-develop-branch     Install the current \"develop\" version of lbne-raw-data (may be unstable!)
+--lbne-raw-data-developer    use if you have (and want to use) write access to the lbne-raw-data repository
 "
 
 # Process script arguments and options
@@ -53,16 +47,11 @@ while [ -n "${1-}" ];do
         test -n "$leq"&&eval "set -- \"\$lev\" \"\$@\""&&op=`expr "x$op" : 'x\([^=]*\)'`
         case "$op" in
             \?*|h*)     eval $op1chr; do_help=1;;
-            v*)         eval $op1chr; opt_v=`expr $opt_v + 1`;;
-            x*)         eval $op1chr; set -x;;
-            s*)         eval $op1arg; squalifier=$1; shift;;
-            e*)         eval $op1arg; equalifier=$1; shift;;
-			w*)         eval $op1chr; opt_w=`expr $opt_w + 1`;;
-            -run-demo)  opt_run_demo=--run-demo;;
 	    -debug)     opt_debug=--debug;;
-			-develop) opt_develop=1;;
-			-tag)       eval $reqarg; tag=$1; shift;;
+	    -tag)       eval $reqarg; tag=$1; shift;;
 	    -noviewer)    opt_noviewer=--noviewer;;
+	    -lbne-raw-data-develop-branch) opt_develop=1;;
+	    -lbne-raw-data-developer)  opt_w=1;;
             *)          echo "Unknown option -$op"; do_help=1;;
         esac
     else
@@ -136,16 +125,13 @@ if [[ "$os" == "u14" ]]; then
 fi
 
 # Get all the information we'll need to decide which exact flavor of the software to install
-notag=0
 if [ -z "${tag:-}" ]; then 
   tag=develop;
-  notag=1;
 fi
+
 wget https://cdcvs.fnal.gov/redmine/projects/lbne-artdaq/repository/revisions/$tag/raw/ups/product_deps
 demo_version=`grep "parent lbne_artdaq" $Base/download/product_deps|awk '{print $3}'`
-if [ $notag -eq 1 ];then
-  tag=$demo_version
-fi
+
 artdaq_version=`grep -E "^artdaq\s+" $Base/download/product_deps | awk '{print $2}'`
 coredemo_version=`grep -E "^lbne_raw_data\s+" $Base/download/product_deps | awk '{print $2}'`
 gallery_version=`grep -E "^gallery\s+" $Base/download/product_deps | awk '{print $2}'`
@@ -206,28 +192,28 @@ source $Base/localProducts_lbne_artdaq_${demo_version}_${equalifier}_${build_typ
 set -u
 
 cd $MRB_SOURCE
+
 if [[ $opt_develop -eq 1 ]]; then
-if [ $opt_w -gt 0 ];then
-mrb gitCheckout -t ${artdaq_version} -d artdaq ssh://p-artdaq@cdcvs.fnal.gov/cvs/projects/artdaq
-mrb gitCheckout -d lbne_raw_data ssh://p-lbne-raw-data@cdcvs.fnal.gov/cvs/projects/lbne-raw-data
-mrb gitCheckout -d lbne_artdaq ssh://p-lbne-artdaq@cdcvs.fnal.gov/cvs/projects/lbne-artdaq
+    lbne_raw_data_checkout_arg="-d lbne_raw_data"
 else
-mrb gitCheckout -t ${artdaq_version} -d artdaq http://cdcvs.fnal.gov/projects/artdaq
-mrb gitCheckout -d lbne_raw_data http://cdcvs.fnal.gov/projects/lbne-raw-data
-mrb gitCheckout -d lbne_artdaq http://cdcvs.fnal.gov/projects/lbne-artdaq
-fi
-else
-if [ $opt_w -gt 0 ];then
-mrb gitCheckout -t ${artdaq_version} -d artdaq ssh://p-artdaq@cdcvs.fnal.gov/cvs/projects/artdaq
-mrb gitCheckout -t ${coredemo_version} -d lbne_raw_data ssh://p-lbne-raw-data@cdcvs.fnal.gov/cvs/projects/lbne-raw-data
-mrb gitCheckout -t ${demo_version} -d lbne_artdaq ssh://p-lbne-artdaq@cdcvs.fnal.gov/cvs/projects/lbne-artdaq
-else
-mrb gitCheckout -t ${artdaq_version} -d artdaq http://cdcvs.fnal.gov/projects/artdaq
-mrb gitCheckout -t ${coredemo_version} -d lbne_raw_data http://cdcvs.fnal.gov/projects/lbne-raw-data
-mrb gitCheckout -t ${demo_version} -d lbne_artdaq http://cdcvs.fnal.gov/projects/lbne-artdaq
-fi
+    lbne_raw_data_checkout_arg="-t ${coredemo_version} -d lbne_raw_data"
 fi
 
+if [[ $opt_w -eq 1 ]]; then
+    lbne_raw_data_repo="ssh://p-lbne-raw-data@cdcvs.fnal.gov/cvs/projects/lbne-raw-data"
+else
+    lbne_raw_data_repo="http://cdcvs.fnal.gov/projects/lbne-raw-data"
+fi
+
+if [[ $tag == "develop" ]]; then
+    lbne_artdaq_checkout_arg="-d lbne_artdaq"
+else
+    lbne_artdaq_checkout_arg="-t $tag -d lbne_artdaq"
+fi
+
+mrb gitCheckout -t ${artdaq_version} -d artdaq http://cdcvs.fnal.gov/projects/artdaq
+mrb gitCheckout $lbne_raw_data_checkout_arg $lbne_raw_data_repo
+mrb gitCheckout -d lbne_artdaq ssh://p-lbne-artdaq@cdcvs.fnal.gov/cvs/projects/lbne-artdaq
 
 if ! [[ "x${opt_noviewer-}" != "x" ]]; then
     cd $MRB_SOURCE
