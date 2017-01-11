@@ -27,6 +27,7 @@ examples: `basename $0`
           `basename $0` --debug --noviewer --lbne-raw-data-developer
 --debug       perform a debug build
 --noviewer    skip installion of artdaq Message Viewer (use if there is no XWindows)
+--not-lbne-artdaq-developer  use if you don't have write access to the lbne-artdaq repository
 --lbne-raw-data-develop-branch     Install the current \"develop\" version of lbne-raw-data (may be unstable!)
 --lbne-raw-data-developer    use if you have (and want to use) write access to the lbne-raw-data repository
 "
@@ -37,7 +38,7 @@ eval "set -- $env_opts \"\$@\""
 op1chr='rest=`expr "$op" : "[^-]\(.*\)"`   && set -- "-$rest" "$@"'
 op1arg='rest=`expr "$op" : "[^-]\(.*\)"`   && set --  "$rest" "$@"'
 reqarg="$op1arg;"'test -z "${1+1}" &&echo opt -$op requires arg. &&echo "$USAGE" &&exit'
-args= do_help= opt_v=0; opt_w=0; opt_develop=0;
+args= do_help= opt_v=0; opt_lrd_w=0; opt_lrd_develop=0; opt_la_nw=0;
 while [ -n "${1-}" ];do
     if expr "x${1-}" : 'x-' >/dev/null;then
         op=`expr "x$1" : 'x-\(.*\)'`; shift   # done with $1
@@ -47,8 +48,9 @@ while [ -n "${1-}" ];do
             \?*|h*)     eval $op1chr; do_help=1;;
 	    -debug)     opt_debug=--debug;;
 	    -noviewer)    opt_noviewer=--noviewer;;
-	    -lbne-raw-data-develop-branch) opt_develop=1;;
-	    -lbne-raw-data-developer)  opt_w=1;;
+	    -not-lbne-artdaq-developer) opt_la_nw=1;;
+	    -lbne-raw-data-develop-branch) opt_lrd_develop=1;;
+	    -lbne-raw-data-developer)  opt_lrd_w=1;;
             *)          echo "Unknown option -$op"; do_help=1;;
         esac
     else
@@ -190,16 +192,23 @@ set -u
 
 cd $MRB_SOURCE
 
-if [[ $opt_develop -eq 1 ]]; then
+if [[ $opt_lrd_develop -eq 1 ]]; then
     lbne_raw_data_checkout_arg="-d lbne_raw_data"
 else
     lbne_raw_data_checkout_arg="-t ${coredemo_version} -d lbne_raw_data"
 fi
 
-if [[ $opt_w -eq 1 ]]; then
+if [[ $opt_lrd_w -eq 1 ]]; then
     lbne_raw_data_repo="ssh://p-lbne-raw-data@cdcvs.fnal.gov/cvs/projects/lbne-raw-data"
 else
     lbne_raw_data_repo="http://cdcvs.fnal.gov/projects/lbne-raw-data"
+fi
+
+# Notice the default for write access to lbne-artdaq is the opposite of that for lbne-raw-data
+if [[ $opt_la_nw -eq 1 ]]; then
+    lbne_artdaq_repo="http://cdcvs.fnal.gov/projects/lbne-artdaq"
+else
+    lbne_artdaq_repo="ssh://p-lbne-artdaq@cdcvs.fnal.gov/cvs/projects/lbne-artdaq"
 fi
 
 if [[ $tag == "develop" ]]; then
@@ -209,8 +218,25 @@ else
 fi
 
 mrb gitCheckout -t ${artdaq_version} -d artdaq http://cdcvs.fnal.gov/projects/artdaq
+
+if [[ "$?" != "0" ]]; then
+    echo "Unable to perform checkout of http://cdcvs.fnal.gov/projects/artdaq"
+    exit 1
+fi
+
 mrb gitCheckout $lbne_raw_data_checkout_arg $lbne_raw_data_repo
-mrb gitCheckout -d lbne_artdaq ssh://p-lbne-artdaq@cdcvs.fnal.gov/cvs/projects/lbne-artdaq
+
+if [[ "$?" != "0" ]]; then
+    echo "Unable to perform checkout of $lbne_raw_data_repo"
+    exit 1
+fi
+
+mrb gitCheckout -d lbne_artdaq $lbne_artdaq_repo
+
+if [[ "$?" != "0" ]]; then
+    echo "Unable to perform checkout of $lbne_artdaq_repo"
+    exit 1
+fi
 
 if ! [[ "x${opt_noviewer-}" != "x" ]]; then
     cd $MRB_SOURCE
