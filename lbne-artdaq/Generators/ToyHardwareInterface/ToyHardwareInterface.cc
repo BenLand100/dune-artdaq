@@ -117,7 +117,7 @@ void ToyHardwareInterface::FillBuffer(char* buffer, size_t* bytes_read) {
     // Can't handle a fragment whose size isn't evenly divisible by
     // the lbne::ToyFragment::Header::data_t type size in bytes
 
-    assert( *bytes_read % sizeof(lbne::ToyFragment::Header::data_t) != 0 );
+    assert( *bytes_read % sizeof(lbne::ToyFragment::Header::data_t) == 0 );
 
     lbne::ToyFragment::Header* header = reinterpret_cast<lbne::ToyFragment::Header*>(buffer);
 
