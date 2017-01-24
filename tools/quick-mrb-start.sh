@@ -247,6 +247,11 @@ if ! [[ "x${opt_noviewer-}" != "x" ]]; then
     qtver=$( awk '/^[[:space:]]*qt[[:space:]]*/ {print $2}' artdaq_mfextensions/ups/product_deps )
 
     os=`$Base/download/cetpkgsupport/bin/get-directory-name os`
+
+    if [[ "$os" == "slf7" ]]; then
+	os="sl7"
+    fi
+
     detectAndPull qt ${os}-x86_64 ${equalifier} ${qtver}
 fi
 
