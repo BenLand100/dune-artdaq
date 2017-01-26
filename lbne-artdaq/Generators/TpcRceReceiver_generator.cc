@@ -141,12 +141,14 @@ lbne::TpcRceReceiver::TpcRceReceiver(fhicl::ParameterSet const & ps)
   {
     dtm_client_ = std::unique_ptr<lbne::RceClient>(new lbne::RceClient(instance_name_,
 	       dtm_client_host_addr_, dtm_client_host_port_, dtm_client_timeout_usecs_));
+    DAQLogger::LogInfo(instance_name_) << "Finished construction of DTM client";
   
-    //dtm_client_->send_command("HardReset");
-    //dtm_client_->send_command("ReadXmlFile", rce_xml_config_file_);
-    //std::ostringstream config_frag;
-    //config_frag << "<TimingDtm><TimingRtm><EmulationEnable>False</EmulationEnable></TimingRtm></TimingDtm>";
-    //dtm_client_->send_config(config_frag.str());
+    dtm_client_->send_command("HardReset");
+    dtm_client_->send_command("ReadXmlFile", rce_xml_config_file_);
+    dtm_client_->send_command("SoftReset");
+    std::ostringstream config_frag;
+    config_frag << "<TimingDtm><TimingRtm><EmulationEnable>True</EmulationEnable></TimingRtm></TimingDtm>";
+    dtm_client_->send_config(config_frag.str());
   }
 
   // Create a client connection to the DPM
@@ -182,6 +184,19 @@ lbne::TpcRceReceiver::TpcRceReceiver(fhicl::ParameterSet const & ps)
   std::ostringstream trigsize_frag;
   trigsize_frag << "<DataDpm><DataBuffer><TriggerSize>" << number_of_microslices_per_trigger_ << "</TriggerSize></DataBuffer></DataDpm>";
   dpm_client_->send_config(trigsize_frag.str());
+
+  if (rce_feb_emulation_) {
+    DAQLogger::LogDebug(instance_name_) << "Enabling FEB emulation in RCE";
+    dpm_client_->send_command("StartDebugFebEmu");
+  }
+
+  if (dtm_client_enable_) 
+    {
+      usleep(100000);
+      //dtm_client_->send_command("<TimingDtm(0)>","SendEmulationSync");
+      //dtm_client_->send_xml("<command><TimingDtm(0)><SendEmulationSync/></TimingDtm(0)></command>");
+      //    dtm_client_->send_xml("<command><SendEmulationSync/></command>");
+    }
 
 #endif
 
@@ -275,6 +290,14 @@ void lbne::TpcRceReceiver::start(void)
 	// Set the run state to enabled
 	dpm_client_->send_command("SetRunState", "Enable");
 
+	if (dtm_client_enable_)
+	  {
+	    usleep(100000);
+	    //dtm_client_->send_command("<TimingDtm(0)>","SendEmulationSync");
+     
+	    //dtm_client_->send_xml("<command><TimingDtm(0)><SendEmulationSync/></TimingDtm(0)></command>");
+	    dtm_client_->send_xml("<command><SendEmulationSync/></command>");
+	  }
 #endif
 
 }

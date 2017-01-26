@@ -133,6 +133,7 @@ void lbne::RceClient::send_command(std::string const & command, std::string cons
 	xml_frag << param;
 	xml_frag << "</" << command << "></command>";
 
+	DAQLogger::LogDebug(instance_name_) << "Sending this XML string " << xml_frag.str();
 	// Send it
 	this->send_xml(xml_frag.str());
 }
@@ -145,6 +146,7 @@ void lbne::RceClient::send_command(std::string const & command)
 	std::ostringstream xml_frag;
 	xml_frag << "<command><" << command << "/></command>";
 
+	DAQLogger::LogDebug(instance_name_) << "Sending this XML string " << xml_frag.str();
 	// Send it
 	this->send_xml(xml_frag.str());
 }
@@ -167,6 +169,7 @@ void lbne::RceClient::send_xml(std::string const & xml_frag)
 	xml_cmd << xml_frag ;
 	xml_cmd << "</system>\n\f";
 
+	DAQLogger::LogDebug(instance_name_) << "send_xml:  sending " << xml_cmd.str();
 	// Send the XML request to the RCEcomman
 	this->send(xml_cmd.str());
 
