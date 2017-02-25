@@ -34,6 +34,10 @@ outputs: {
   %{root_output}normalOutput: {
   %{root_output}  module_type: RootOutput
   %{root_output}  fileName: \"%{output_file}\"
+  %{root_output}    fileSwitch: {
+  %{root_output}      boundary: Run
+  %{root_output}      force: true
+  %{root_output}    }
   %{root_output}}
 }
 physics: {
@@ -65,15 +69,17 @@ process_name: DAQAG"
     end
     queueDepth = 20
     queueTimeout = 5
+    aggDescriptionString = "is_data_logger: true"
   else
     diskWritingEnable = 0
     queueDepth = 2
     queueTimeout = 1
+    aggDescriptionString = "is_dispatcher: true"
   end
 
   aggregator_code = generateAggregator( totalFRs, totalEBs, bunchSize, fragSizeWords,
                                         xmlrpcClientList, fileSizeThreshold, fileDuration,
-                                        fileEventCount, queueDepth, queueTimeout, onmonEventPrescale )
+                                        fileEventCount, queueDepth, queueTimeout, onmonEventPrescale, aggDescriptionString )
   agConfig.gsub!(/\%\{aggregator_code\}/, aggregator_code)
 
   puts "Initial aggregator " + String(agIndex) + " disk writing setting = " +
