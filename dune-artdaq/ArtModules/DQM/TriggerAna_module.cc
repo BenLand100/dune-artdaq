@@ -232,7 +232,7 @@ void TriggerAna::analyze(art::Event const & evt)
       _nFragments++;
       _number_of_trggers_per_fragment=0;
       const auto& fragment((*ssp_fragments)[idx]);      
-      dune::SSPFragment ssp_fragment(fragment);
+      lbne::SSPFragment ssp_fragment(fragment);
       
       if (_verbose){
         std::cout << "        SSP fragment "  << fragment.fragmentID() 
@@ -245,7 +245,7 @@ void TriggerAna::analyze(art::Event const & evt)
       const SSPDAQ::MillisliceHeader* ssp_header=0;
 
       if(fragment.hasMetadata()) {
-        ssp_header = &(fragment.metadata<dune::SSPFragment::Metadata>()->sliceHeader);
+        ssp_header = &(fragment.metadata<lbne::SSPFragment::Metadata>()->sliceHeader);
         
         _number_of_triggers+=ssp_header->nTriggers;
         _number_of_trggers_per_fragment+=ssp_header->nTriggers;

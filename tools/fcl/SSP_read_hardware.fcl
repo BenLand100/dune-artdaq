@@ -137,7 +137,7 @@ physics:
   {
     duneArtdaqBuildInfo:
     {
-     module_type: LbneArtdaqBuildInfo
+     module_type: DuneArtdaqBuildInfo
     }
   }   
 

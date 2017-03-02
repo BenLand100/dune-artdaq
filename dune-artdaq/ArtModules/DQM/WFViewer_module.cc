@@ -33,6 +33,8 @@ using std::cout;
 using std::cerr;
 using std::endl;
 
+using namespace lbne;
+
 namespace dune {
 
   class WFViewer : public art::EDAnalyzer {

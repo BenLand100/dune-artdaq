@@ -19,7 +19,7 @@ analyzers:
     module_type: PrintBuildInfo
 
     buildinfo_module_label: BuildInfo
-    buildinfo_instance_label: LbneArtdaq
+    buildinfo_instance_label: DuneArtdaq
   }
 }
 

@@ -109,7 +109,7 @@ bool trig::SSPTrigger::filter(art::Event & evt)
     for (size_t idx = 0; idx < ssp_fragments->size(); ++idx) {
       _nFragments++;
       const auto& fragment((*ssp_fragments)[idx]);      
-      dune::SSPFragment ssp_fragment(fragment);
+      lbne::SSPFragment ssp_fragment(fragment);
       
       if (_verbose){
         std::cout << "        SSP fragment "  << fragment.fragmentID() 
@@ -122,7 +122,7 @@ bool trig::SSPTrigger::filter(art::Event & evt)
       const SSPDAQ::MillisliceHeader* ssp_header=0;
 
       if(fragment.hasMetadata()) {
-        ssp_header = &(fragment.metadata<dune::SSPFragment::Metadata>()->sliceHeader);
+        ssp_header = &(fragment.metadata<lbne::SSPFragment::Metadata>()->sliceHeader);
         
         if (_verbose){
           std::cout << "        SSP metadata: "

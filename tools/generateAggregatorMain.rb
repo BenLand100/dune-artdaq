@@ -48,7 +48,7 @@ physics: {
   producers: {
 
     duneArtdaqBuildInfo: {
-    module_type: LbneArtdaqBuildInfo
+    module_type: DuneArtdaqBuildInfo
     }
   }
 

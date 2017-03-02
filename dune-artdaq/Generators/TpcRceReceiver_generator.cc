@@ -26,6 +26,8 @@
 
 //#define NO_RCE_CLIENT 1
 
+using namespace lbne;
+
 dune::TpcRceReceiver::TpcRceReceiver(fhicl::ParameterSet const & ps)
   :
   CommandableFragmentGenerator(ps),
@@ -465,7 +467,7 @@ bool dune::TpcRceReceiver::getNext_(artdaq::FragmentPtrs & frags) {
 		// Set fragment fields appropriately
 		frag->setSequenceID(ev_counter());
 		frag->setFragmentID(fragmentIDs()[0]);
-		frag->setUserType(dune::detail::TPC);
+		frag->setUserType(lbne::detail::TPC);
 
 		// JCF, Dec-22-2015
 
@@ -724,7 +726,7 @@ bool dune::TpcRceReceiver::getNext_(artdaq::FragmentPtrs & frags) {
   // Set fragment fields appropriately
   frag->setSequenceID(ev_counter());
   frag->setFragmentID(fragmentIDs()[0]);
-  frag->setUserType(dune::detail::TPC);
+  frag->setUserType(lbne::detail::TPC);
 
   // Resize fragment to final millislice size
   frag->resizeBytes(millislice_size);
@@ -760,14 +762,14 @@ uint32_t dune::TpcRceReceiver::format_millislice_from_raw_buffer(uint16_t* src_a
   const uint32_t MICROSLICE_BUFFER_SIZE = 512;
   const uint32_t NANOSLICE_BUFFER_SIZE = 128;
 
-  std::shared_ptr<dune::MicroSliceWriter> microslice_writer_ptr;
-  std::shared_ptr<dune::NanoSliceWriter> nanoslice_writer_ptr;
+  std::shared_ptr<lbne::MicroSliceWriter> microslice_writer_ptr;
+  std::shared_ptr<lbne::NanoSliceWriter> nanoslice_writer_ptr;
 
   uint16_t channel_number = CHANNEL_NUMBER;
 
   uint16_t* sample_addr = src_addr;
 
-  dune::MilliSliceWriter millislice_writer(dest_addr, dest_size);
+  lbne::MilliSliceWriter millislice_writer(dest_addr, dest_size);
   for (uint32_t udx = 0; udx < number_of_microslices_to_generate_; ++udx) {
     microslice_writer_ptr = millislice_writer.reserveMicroSlice(MICROSLICE_BUFFER_SIZE);
     if (microslice_writer_ptr.get() == 0) {
@@ -806,7 +808,7 @@ uint32_t dune::TpcRceReceiver::format_millislice_from_raw_buffer(uint16_t* src_a
 uint32_t dune::TpcRceReceiver::validate_millislice_from_fragment_buffer(uint8_t* data_addr, size_t data_size, uint32_t count)
 {
 
-	dune::TpcMilliSliceWriter millislice_writer(data_addr, data_size+sizeof(TpcMilliSlice::Header));
+	lbne::TpcMilliSliceWriter millislice_writer(data_addr, data_size+sizeof(TpcMilliSlice::Header));
 
 	millislice_writer.finalize(data_size, count);
 	return millislice_writer.size();

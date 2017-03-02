@@ -19,10 +19,12 @@
 
 #include <unistd.h>
 
+using namespace lbne;
+
 dune::SSP::SSP(fhicl::ParameterSet const & ps)
   :
   CommandableFragmentGenerator(ps),
-  fragment_type_(dune::detail::PHOTON),
+  fragment_type_(lbne::detail::PHOTON),
   board_id_(ps.get<unsigned int>("board_id",0))
 {
   instance_name_for_metrics_ = "SSP " + boost::lexical_cast<std::string>(board_id_);

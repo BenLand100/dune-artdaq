@@ -152,7 +152,7 @@ private:
   uint32_t         payloads_recvd_timestamp_;
   uint32_t         payloads_recvd_warning_;
   uint32_t         payloads_recvd_checksum_;
-  dune::PennMicroSlice::Header::block_size_t microslice_size_;
+  lbne::PennMicroSlice::Header::block_size_t microslice_size_;
   size_t           microslice_size_recvd_;
   uint32_t         millislices_recvd_;
   
@@ -162,9 +162,9 @@ private:
   bool last_microslice_was_fragment_;
 
   bool                                           microslice_version_initialised_;
-  dune::PennMicroSlice::Header::format_version_t microslice_version_;
+  lbne::PennMicroSlice::Header::format_version_t microslice_version_;
   bool                                           sequence_id_initialised_;
-  dune::PennMicroSlice::Header::sequence_id_t    last_sequence_id_;
+  lbne::PennMicroSlice::Header::sequence_id_t    last_sequence_id_;
   
   std::chrono::high_resolution_clock::time_point start_time_;
   
@@ -175,12 +175,12 @@ private:
   uint8_t          overlap_ptr_[dune::PennDataReceiver::overlap_buffer_size_];
   uint16_t         millislice_overlap_size_;
 
-  dune::PennMicroSlice::sample_count_t overlap_payloads_recvd_;
-  dune::PennMicroSlice::sample_count_t overlap_payloads_recvd_counter_;
-  dune::PennMicroSlice::sample_count_t overlap_payloads_recvd_trigger_;
-  dune::PennMicroSlice::sample_count_t overlap_payloads_recvd_timestamp_;
-  dune::PennMicroSlice::sample_count_t overlap_payloads_recvd_warning_;
-  dune::PennMicroSlice::sample_count_t overlap_payloads_recvd_checksum_;
+  lbne::PennMicroSlice::sample_count_t overlap_payloads_recvd_;
+  lbne::PennMicroSlice::sample_count_t overlap_payloads_recvd_counter_;
+  lbne::PennMicroSlice::sample_count_t overlap_payloads_recvd_trigger_;
+  lbne::PennMicroSlice::sample_count_t overlap_payloads_recvd_timestamp_;
+  lbne::PennMicroSlice::sample_count_t overlap_payloads_recvd_warning_;
+  lbne::PennMicroSlice::sample_count_t overlap_payloads_recvd_checksum_;
 
   size_t           current_microslice_;
   static const int current_microslice_buffer_size_ = 65536;
@@ -190,12 +190,12 @@ private:
   static const int remaining_buffer_size = 65536;
   uint8_t          remaining_ptr_[dune::PennDataReceiver::remaining_buffer_size];
 
-  dune::PennMicroSlice::sample_count_t remaining_payloads_recvd_;
-  dune::PennMicroSlice::sample_count_t remaining_payloads_recvd_counter_;
-  dune::PennMicroSlice::sample_count_t remaining_payloads_recvd_trigger_;
-  dune::PennMicroSlice::sample_count_t remaining_payloads_recvd_timestamp_;
-  dune::PennMicroSlice::sample_count_t remaining_payloads_recvd_warning_;
-  dune::PennMicroSlice::sample_count_t remaining_payloads_recvd_checksum_;
+  lbne::PennMicroSlice::sample_count_t remaining_payloads_recvd_;
+  lbne::PennMicroSlice::sample_count_t remaining_payloads_recvd_counter_;
+  lbne::PennMicroSlice::sample_count_t remaining_payloads_recvd_trigger_;
+  lbne::PennMicroSlice::sample_count_t remaining_payloads_recvd_timestamp_;
+  lbne::PennMicroSlice::sample_count_t remaining_payloads_recvd_warning_;
+  lbne::PennMicroSlice::sample_count_t remaining_payloads_recvd_checksum_;
 
   uint64_t boundary_time_;    //unit is 64MHz NOvA clock ticks
   uint64_t run_start_time_;   //unit is 64MHz NOvA clock ticks

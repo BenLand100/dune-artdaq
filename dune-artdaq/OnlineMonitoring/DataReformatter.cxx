@@ -66,7 +66,7 @@ void OnlineMonitoring::RCEFormatter::AnalyseADCs(art::Handle<artdaq::Fragments> 
 
       // Get the millislice fragment
       const artdaq::Fragment &frag = ((*rawRCE)[fragIndex]);
-      dune::TpcMilliSliceFragment millisliceFragment(frag);
+      lbne::TpcMilliSliceFragment millisliceFragment(frag);
 
       // Number of microslices in millislice fragments
       auto nMicroSlices = millisliceFragment.microSliceCount();
@@ -75,7 +75,7 @@ void OnlineMonitoring::RCEFormatter::AnalyseADCs(art::Handle<artdaq::Fragments> 
       for (unsigned int microIt = 0; microIt < nMicroSlices; ++microIt) {
 
 	// Get the microslice
-	std::unique_ptr<const dune::TpcMicroSlice> microslice = millisliceFragment.microSlice(microIt);
+	std::unique_ptr<const lbne::TpcMicroSlice> microslice = millisliceFragment.microSlice(microIt);
 	auto nNanoSlices = microslice->nanoSliceCount();
 
 	// See if this is the first microslice with a payload
@@ -84,7 +84,7 @@ void OnlineMonitoring::RCEFormatter::AnalyseADCs(art::Handle<artdaq::Fragments> 
 	nLastNanoSlices = nNanoSlices;
 
 	// Get the channel for scope mode
-	dune::TpcMicroSlice::Header::softmsg_t us_software_message = microslice->software_message();
+	lbne::TpcMicroSlice::Header::softmsg_t us_software_message = microslice->software_message();
 	fScopeChannel = uint32_t((us_software_message)& 0xFFFFFFFF);
 
 	for (unsigned int nanoIt = 0; nanoIt < nNanoSlices; ++nanoIt) {
@@ -146,7 +146,7 @@ void OnlineMonitoring::RCEFormatter::AnalyseADCs(art::Handle<artdaq::Fragments> 
 
       // Get the millislice fragment
       const artdaq::Fragment &frag = ((*rawRCE)[fragIndex]);
-      dune::TpcMilliSliceFragment millisliceFragment(frag);
+      lbne::TpcMilliSliceFragment millisliceFragment(frag);
 
       // Number of microslices in millislice fragments
       auto nMicroSlices = millisliceFragment.microSliceCount();
@@ -157,7 +157,7 @@ void OnlineMonitoring::RCEFormatter::AnalyseADCs(art::Handle<artdaq::Fragments> 
 	  continue;
 
 	// Get the microslice
-	std::unique_ptr<const dune::TpcMicroSlice> microslice = millisliceFragment.microSlice(microIt);
+	std::unique_ptr<const lbne::TpcMicroSlice> microslice = millisliceFragment.microSlice(microIt);
 	auto nNanoSlices = microslice->nanoSliceCount();
 
 	for (unsigned int nanoIt = 0; nanoIt < nNanoSlices; ++nanoIt) {
@@ -271,7 +271,7 @@ OnlineMonitoring::SSPFormatter::SSPFormatter(art::Handle<artdaq::Fragments> cons
 
     // Get the raw fragment
     const artdaq::Fragment fragment = rawSSP->at(fragmentNum);
-    dune::SSPFragment sspfrag(fragment);
+    lbne::SSPFragment sspfrag(fragment);
 
     // Note this SSP has data (and format name as DAQ would)
     std::stringstream stream; stream << std::setfill('0') << std::setw(2) << fragment.fragmentID()+1;
@@ -280,7 +280,7 @@ OnlineMonitoring::SSPFormatter::SSPFormatter(art::Handle<artdaq::Fragments> cons
     // Get the metadata
     const SSPDAQ::MillisliceHeader* meta = 0;
     if (fragment.hasMetadata())
-      meta = &(fragment.metadata<dune::SSPFragment::Metadata>()->sliceHeader);
+      meta = &(fragment.metadata<lbne::SSPFragment::Metadata>()->sliceHeader);
     
     const unsigned int* dataPointer = sspfrag.dataBegin();
 
@@ -365,10 +365,10 @@ OnlineMonitoring::PTBFormatter::PTBFormatter(art::Handle<artdaq::Fragments> cons
     const auto& frag((*rawPTB)[idx]);
 
     //Get the PennMilliSliceFragment from the artdaq fragment
-    dune::PennMilliSliceFragment msf(frag);
+    lbne::PennMilliSliceFragment msf(frag);
 
     //Get the number of each payload type in the millislice
-    dune::PennMilliSlice::Header::payload_count_t n_frames, n_frames_counter, n_frames_trigger, n_frames_timestamp;
+    lbne::PennMilliSlice::Header::payload_count_t n_frames, n_frames_counter, n_frames_trigger, n_frames_timestamp;
     n_frames = msf.payloadCount(n_frames_counter, n_frames_trigger, n_frames_timestamp);
 
     //Add on the total number of ticks in this millislice
@@ -376,8 +376,8 @@ OnlineMonitoring::PTBFormatter::PTBFormatter(art::Handle<artdaq::Fragments> cons
     fNTotalTicks += msf.widthTicks();
 
     //Now we need to grab the payload information in the millislice
-    dune::PennMicroSlice::Payload_Header::data_packet_type_t type;
-    dune::PennMicroSlice::Payload_Header::short_nova_timestamp_t timestamp;
+    lbne::PennMicroSlice::Payload_Header::data_packet_type_t type;
+    lbne::PennMicroSlice::Payload_Header::short_nova_timestamp_t timestamp;
 
     uint8_t* payload_data;
     size_t payload_size;
@@ -556,7 +556,7 @@ void OnlineMonitoring::PTBFormatter::CollectCounterBits(uint8_t* payload, size_t
   return;
 }
 
-void OnlineMonitoring::PTBFormatter::CollectMuonTrigger(uint8_t* payload, size_t payload_size, dune::PennMicroSlice::Payload_Header::short_nova_timestamp_t timestamp) {
+void OnlineMonitoring::PTBFormatter::CollectMuonTrigger(uint8_t* payload, size_t payload_size, lbne::PennMicroSlice::Payload_Header::short_nova_timestamp_t timestamp) {
   std::bitset<TypeSizes::TriggerWordSize> bits;
   for (size_t ib = 0; ib < payload_size; ib++){
     std::bitset<TypeSizes::TriggerWordSize> byte = payload[ib];
@@ -617,16 +617,16 @@ void OnlineMonitoring::PTBFormatter::CollectMuonTrigger(uint8_t* payload, size_t
 
 ////////////// Nuno's code ////////////////
 // NFB: Init of static consts
-const std::vector<dune::PennMicroSlice::Payload_Trigger::trigger_type_t> OnlineMonitoring::PTBFormatter::fMuonTriggerTypes = {
-    dune::PennMicroSlice::Payload_Trigger::TD,
-    dune::PennMicroSlice::Payload_Trigger::TC,
-    dune::PennMicroSlice::Payload_Trigger::TB,
-    dune::PennMicroSlice::Payload_Trigger::TA };
-const std::vector<dune::PennMicroSlice::Payload_Trigger::trigger_type_t > OnlineMonitoring::PTBFormatter::fCalibrationTypes = {
-    dune::PennMicroSlice::Payload_Trigger::C4,
-    dune::PennMicroSlice::Payload_Trigger::C3,
-    dune::PennMicroSlice::Payload_Trigger::C2,
-    dune::PennMicroSlice::Payload_Trigger::C1 };
+const std::vector<lbne::PennMicroSlice::Payload_Trigger::trigger_type_t> OnlineMonitoring::PTBFormatter::fMuonTriggerTypes = {
+    lbne::PennMicroSlice::Payload_Trigger::TD,
+    lbne::PennMicroSlice::Payload_Trigger::TC,
+    lbne::PennMicroSlice::Payload_Trigger::TB,
+    lbne::PennMicroSlice::Payload_Trigger::TA };
+const std::vector<lbne::PennMicroSlice::Payload_Trigger::trigger_type_t > OnlineMonitoring::PTBFormatter::fCalibrationTypes = {
+    lbne::PennMicroSlice::Payload_Trigger::C4,
+    lbne::PennMicroSlice::Payload_Trigger::C3,
+    lbne::PennMicroSlice::Payload_Trigger::C2,
+    lbne::PennMicroSlice::Payload_Trigger::C1 };
 
 
 
@@ -660,12 +660,12 @@ OnlineMonitoring::PTBFormatter::PTBFormatter(art::Handle<artdaq::Fragments> cons
     //std::cout << "Processing fragment " << idx << std::endl;
 
 
-    dune::PennMilliSliceFragment msf(frag);
+    lbne::PennMilliSliceFragment msf(frag);
 
     // Count the types of each payload in the millislice
     // Actually, why are these needed?
     // Use the get_next_payload()
-    dune::PennMilliSlice::Header::payload_count_t n_frames, n_frames_counter, n_frames_trigger, n_frames_timestamp;
+    lbne::PennMilliSlice::Header::payload_count_t n_frames, n_frames_counter, n_frames_trigger, n_frames_timestamp;
     n_frames = msf.payloadCount(n_frames_counter, n_frames_trigger, n_frames_timestamp);
     
     // std::cout << "Reporting " << n_frames << " frames (C,T,TS) = (" << n_frames_counter << ", " 
@@ -679,12 +679,12 @@ OnlineMonitoring::PTBFormatter::PTBFormatter(art::Handle<artdaq::Fragments> cons
     //std::cout << "Fragment has " << NTotalTicks << " ticks (" <<  fNTotalTicks << " total)"<< std::endl;
     
 
-    dune::PennMicroSlice::Payload_Header*    word_header = nullptr;
-    dune::PennMicroSlice::Payload_Counter*   word_p_counter = nullptr;
-    dune::PennMicroSlice::Payload_Timestamp* previous_timestamp = nullptr;
-    dune::PennMicroSlice::Payload_Header*    future_timestamp_header = nullptr;
-    dune::PennMicroSlice::Payload_Timestamp* future_timestamp = nullptr;
-    dune::PennMicroSlice::Payload_Trigger*   word_p_trigger = nullptr;
+    lbne::PennMicroSlice::Payload_Header*    word_header = nullptr;
+    lbne::PennMicroSlice::Payload_Counter*   word_p_counter = nullptr;
+    lbne::PennMicroSlice::Payload_Timestamp* previous_timestamp = nullptr;
+    lbne::PennMicroSlice::Payload_Header*    future_timestamp_header = nullptr;
+    lbne::PennMicroSlice::Payload_Timestamp* future_timestamp = nullptr;
+    lbne::PennMicroSlice::Payload_Trigger*   word_p_trigger = nullptr;
     uint8_t* payload_data = nullptr;
     uint32_t payload_index = 0;
 
@@ -709,13 +709,13 @@ OnlineMonitoring::PTBFormatter::PTBFormatter(art::Handle<artdaq::Fragments> cons
       switch (word_header->data_packet_type) {
 
       // Counter
-      case dune::PennMicroSlice::DataTypeCounter:
+      case lbne::PennMicroSlice::DataTypeCounter:
 	//std::cout << "It's a counter!" << std::endl;
 	// cast the returned payload into a counter structure and parse it
 	// Why are the counter bits necessary? Not going to collect them for now
 	// Need to be careful with the times...should collect full timestamps
 	// but those should always be calculated from a timestamp word
-	word_p_counter = reinterpret_cast<dune::PennMicroSlice::Payload_Counter*>(payload_data);
+	word_p_counter = reinterpret_cast<lbne::PennMicroSlice::Payload_Counter*>(payload_data);
 	// data = reinterpret_cast<uint32_t*>(payload_data);
 	// std::cout << std::bitset<32>(data[3]) << " " 
 	// 	  << std::bitset<32>(data[2]) << " " 
@@ -735,7 +735,7 @@ OnlineMonitoring::PTBFormatter::PTBFormatter(art::Handle<artdaq::Fragments> cons
 	  fCounterTimes.push_back(word_header->get_full_timestamp_pre(future_timestamp->nova_timestamp));
 	else {
 	  // Find the closest timestamp in the future
-	  future_timestamp = reinterpret_cast<dune::PennMicroSlice::Payload_Timestamp*>(msf.get_next_timestamp(future_timestamp_header));
+	  future_timestamp = reinterpret_cast<lbne::PennMicroSlice::Payload_Timestamp*>(msf.get_next_timestamp(future_timestamp_header));
 	  if (future_timestamp == nullptr) {
 	    // This should never happen, but if it does the fragment is useless.
 	    //std::cout  << "Can't find PTB timestamp words in millislice fragment! Logic will fail" << std::endl;
@@ -748,17 +748,17 @@ OnlineMonitoring::PTBFormatter::PTBFormatter(art::Handle<artdaq::Fragments> cons
 	break;
 
       // Trigger
-      case dune::PennMicroSlice::DataTypeTrigger:
+      case lbne::PennMicroSlice::DataTypeTrigger:
 	//std::cout << "It's a trigger!" << std::endl;
 	//std::cout << std::bitset<32>(*reinterpret_cast<uint32_t*>(payload_data));
-	word_p_trigger = reinterpret_cast<dune::PennMicroSlice::Payload_Trigger*>(payload_data);
+	word_p_trigger = reinterpret_cast<lbne::PennMicroSlice::Payload_Trigger*>(payload_data);
 	CollectTrigger(word_p_trigger);
 	break;
 
       // Timestamp
-      case dune::PennMicroSlice::DataTypeTimestamp:
+      case lbne::PennMicroSlice::DataTypeTimestamp:
 	//std::cout << "It's a timestamp!" << std::endl;
-	previous_timestamp = reinterpret_cast<dune::PennMicroSlice::Payload_Timestamp*>(payload_data);
+	previous_timestamp = reinterpret_cast<lbne::PennMicroSlice::Payload_Timestamp*>(payload_data);
 	//std::cout << "It's a timestamp!  (" <<  previous_timestamp->nova_timestamp << ")"<< std::endl;
 	break;
 
@@ -782,7 +782,7 @@ OnlineMonitoring::PTBFormatter::PTBFormatter(art::Handle<artdaq::Fragments> cons
 
 }
 
-void OnlineMonitoring::PTBFormatter::AnalyzeCounter(uint32_t counter_index, dune::PennMicroSlice::Payload_Timestamp::timestamp_t& activation_time, double& hit_rate) const {
+void OnlineMonitoring::PTBFormatter::AnalyzeCounter(uint32_t counter_index, lbne::PennMicroSlice::Payload_Timestamp::timestamp_t& activation_time, double& hit_rate) const {
 
   // This should not be done on a global level.
   // Better to do for all the counters at once, no?
@@ -810,7 +810,7 @@ void OnlineMonitoring::PTBFormatter::AnalyzeCounter(uint32_t counter_index, dune
       // Counter has switched on!
       counter_previously_on = true;
       // Get the time that the counter switched on
-      dune::PennMicroSlice::Payload_Timestamp::timestamp_t current_counter_time = fCounterTimes.at(pos);
+      lbne::PennMicroSlice::Payload_Timestamp::timestamp_t current_counter_time = fCounterTimes.at(pos);
       ++hit_rate;
       if (hit_rate==1)
         activation_time = current_counter_time;
@@ -825,7 +825,7 @@ void OnlineMonitoring::PTBFormatter::AnalyzeCounter(uint32_t counter_index, dune
 
 }
 
-double OnlineMonitoring::PTBFormatter::AnalyzeMuonTrigger(dune::PennMicroSlice::Payload_Trigger::trigger_type_t trigger_number) const {
+double OnlineMonitoring::PTBFormatter::AnalyzeMuonTrigger(lbne::PennMicroSlice::Payload_Trigger::trigger_type_t trigger_number) const {
 
   /// Returns the trigger rate for the requested muon trigger
 
@@ -836,7 +836,7 @@ double OnlineMonitoring::PTBFormatter::AnalyzeMuonTrigger(dune::PennMicroSlice::
 
 }
 
-double OnlineMonitoring::PTBFormatter::AnalyzeCalibrationTrigger(dune::PennMicroSlice::Payload_Trigger::trigger_type_t trigger_number) const {
+double OnlineMonitoring::PTBFormatter::AnalyzeCalibrationTrigger(lbne::PennMicroSlice::Payload_Trigger::trigger_type_t trigger_number) const {
 
   /// Returns the trigger rate for the requested calibration trigger
 
@@ -856,7 +856,7 @@ double OnlineMonitoring::PTBFormatter::AnalyzeSSPTrigger() const {
 
 }
 
-void OnlineMonitoring::PTBFormatter::CollectTrigger(dune::PennMicroSlice::Payload_Trigger *trigger) {
+void OnlineMonitoring::PTBFormatter::CollectTrigger(lbne::PennMicroSlice::Payload_Trigger *trigger) {
 
   /// Takes the trigger payload and analyses it, counting each specific trigger
 

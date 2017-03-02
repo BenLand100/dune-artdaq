@@ -30,6 +30,8 @@
 #include <vector>
 #include <atomic>
 
+using namespace lbne;
+
 namespace dune {    
 
   class ToySimulator : public artdaq::CommandableFragmentGenerator {

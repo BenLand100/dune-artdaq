@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////
-// Class:       LbneArtdaqPrintVersionInfo
+// Class:       DuneArtdaqPrintVersionInfo
 // Module Type: analyzer
-// File:        LbneArtdaqPrintVersionInfo_module.cc
+// File:        DuneArtdaqPrintVersionInfo_module.cc
 //
 // Generated at Fri Aug 15 21:05:07 2014 by dunedaq using artmod
 // from cetpkgsupport v1_05_02.
@@ -14,7 +14,7 @@
 
 // void analyze(art::Event const & e) 
 
-// in LbneArtdaqPrintVersionInfo's base class, art::EDAnalyzer, needs
+// in DuneArtdaqPrintVersionInfo's base class, art::EDAnalyzer, needs
 // to be overridden, but this module only analyzes run-by-run info
 // rather than event-by-event info, there's no point in adding an
 // implementation body to the function. Thus, for this module we
@@ -39,13 +39,13 @@
 #include <iostream>
 
 namespace dune {
-  class LbneArtdaqPrintVersionInfo;
+  class DuneArtdaqPrintVersionInfo;
 }
 
-class dune::LbneArtdaqPrintVersionInfo : public art::EDAnalyzer {
+class dune::DuneArtdaqPrintVersionInfo : public art::EDAnalyzer {
 public:
-  explicit LbneArtdaqPrintVersionInfo(fhicl::ParameterSet const & p);
-  virtual ~LbneArtdaqPrintVersionInfo();
+  explicit DuneArtdaqPrintVersionInfo(fhicl::ParameterSet const & p);
+  virtual ~DuneArtdaqPrintVersionInfo();
 
   void analyze(art::Event const & e) override { 
   }
@@ -64,7 +64,7 @@ private:
 };
 
 
-dune::LbneArtdaqPrintVersionInfo::LbneArtdaqPrintVersionInfo(fhicl::ParameterSet const & pset)
+dune::DuneArtdaqPrintVersionInfo::DuneArtdaqPrintVersionInfo(fhicl::ParameterSet const & pset)
   :
   EDAnalyzer(pset),
   dune_artdaq_module_label_(pset.get<std::string>("dune_artdaq_module_label")),
@@ -73,13 +73,13 @@ dune::LbneArtdaqPrintVersionInfo::LbneArtdaqPrintVersionInfo(fhicl::ParameterSet
   lbne_raw_data_instance_label_(pset.get<std::string>("lbne_raw_data_instance_label"))
 {}
 
-dune::LbneArtdaqPrintVersionInfo::~LbneArtdaqPrintVersionInfo()
+dune::DuneArtdaqPrintVersionInfo::~DuneArtdaqPrintVersionInfo()
 {
   // Clean up dynamic memory and other resources here.
 }
 
 
-void dune::LbneArtdaqPrintVersionInfo::beginRun(art::Run const& run)
+void dune::DuneArtdaqPrintVersionInfo::beginRun(art::Run const& run)
 {
 
   art::Handle<artdaq::PackageBuildInfo> raw;
@@ -94,7 +94,7 @@ void dune::LbneArtdaqPrintVersionInfo::beginRun(art::Run const& run)
     std::cout << std::endl;
   } else {
     std::cerr << std::endl;
-    std::cerr << "Warning in LbneArtdaqPrintVersionInfo module: Run " << run.run() << " appears to have no info on lbne-raw-data build time / version number" << std::endl;
+    std::cerr << "Warning in DuneArtdaqPrintVersionInfo module: Run " << run.run() << " appears to have no info on lbne-raw-data build time / version number" << std::endl;
     std::cerr << std::endl;
   }
 
@@ -108,7 +108,7 @@ void dune::LbneArtdaqPrintVersionInfo::beginRun(art::Run const& run)
     std::cout << std::endl;
   } else {
     std::cerr << std::endl;
-    std::cerr << "Warning in LbneArtdaqPrintVersionInfo module: Run " << run.run() << " appears to have no info on dune-artdaq build time / version number" << std::endl;
+    std::cerr << "Warning in DuneArtdaqPrintVersionInfo module: Run " << run.run() << " appears to have no info on dune-artdaq build time / version number" << std::endl;
     std::cerr << std::endl;
   }
 
@@ -116,4 +116,4 @@ void dune::LbneArtdaqPrintVersionInfo::beginRun(art::Run const& run)
 
 #pragma GCC diagnostic pop
 
-DEFINE_ART_MODULE(dune::LbneArtdaqPrintVersionInfo)
+DEFINE_ART_MODULE(dune::DuneArtdaqPrintVersionInfo)

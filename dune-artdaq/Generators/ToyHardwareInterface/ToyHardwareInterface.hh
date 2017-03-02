@@ -51,7 +51,7 @@ private:
   std::size_t maxADCcounts_;
   std::size_t change_after_N_seconds_;
   int nADCcounts_after_N_seconds_; 
-  dune::FragmentType fragment_type_;
+  lbne::FragmentType fragment_type_;
   std::size_t maxADCvalue_;
   std::size_t throttle_usecs_;
   DistributionType distribution_type_;

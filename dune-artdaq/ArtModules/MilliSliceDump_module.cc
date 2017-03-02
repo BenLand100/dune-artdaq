@@ -23,6 +23,8 @@
 #include <iostream>
 #include <limits>
 
+using namespace lbne;
+
 namespace dune {
   class MilliSliceDump;
 }

@@ -22,6 +22,8 @@
 #include <vector>
 #include <iostream>
 
+using namespace lbne;
+
 namespace dune {
   class ToyDump;
 }

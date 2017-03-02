@@ -36,7 +36,7 @@ public:
 private:
 
   TH2D* fEVD;
-  art::ServiceHandle<dune::ChannelMapService> fChannelMap;
+  art::ServiceHandle<lbne::ChannelMapService> fChannelMap;
 
 };
 

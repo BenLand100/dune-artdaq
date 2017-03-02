@@ -31,6 +31,8 @@ namespace dune {
   class SSPDump;
 }
 
+using namespace lbne;
+
 class dune::SSPDump : public art::EDAnalyzer {
 public:
   explicit SSPDump(fhicl::ParameterSet const & pset);
@@ -142,14 +144,14 @@ void dune::SSPDump::analyze(art::Event const & evt)
       ///> Create a SSPFragment from the generic artdaq fragment
       SSPFragment sspf(frag);
       
-      ///> get the size of the event in units of dune::SSPFragment::Header::data_t
-      dune::SSPFragment::Header::event_size_t event_size = sspf.hdr_event_size();
+      ///> get the size of the event in units of lbne::SSPFragment::Header::data_t
+      lbne::SSPFragment::Header::event_size_t event_size = sspf.hdr_event_size();
 
-      ///> get the size of the header in units of dune::SSPFragment::Header::data_t
+      ///> get the size of the header in units of lbne::SSPFragment::Header::data_t
       std::size_t header_size = sspf.hdr_run_number();
 
       ///> get the event run number
-      dune::SSPFragment::Header::run_number_t run_number = sspf.hdr_run_number();
+      lbne::SSPFragment::Header::run_number_t run_number = sspf.hdr_run_number();
       
       ///> get the number of ADC values describing data beyond the header
       std::size_t n_adc_values = sspf.total_adc_values();

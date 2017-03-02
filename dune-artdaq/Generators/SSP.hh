@@ -68,7 +68,7 @@ namespace dune {
     // are the FHiCL variable names with a "_" appended
 
     //FHiCL parameters
-    dune::detail::FragmentType const fragment_type_; // Type of fragment (see FragmentType.hh)
+    lbne::detail::FragmentType const fragment_type_; // Type of fragment (see FragmentType.hh)
     unsigned int board_id_;
     SSPDAQ::Comm_t  interface_type_;
 

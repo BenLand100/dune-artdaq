@@ -20,7 +20,7 @@ physics:
        module_type: PrintBuildInfo
 
        buildinfo_module_label: duneArtdaqBuildInfo
-       buildinfo_instance_label: LbneArtdaqBuildInfo
+       buildinfo_instance_label: DuneArtdaqBuildInfo
     }
 
   

@@ -9,8 +9,8 @@
 
 namespace dune {
 
-  static std::string instanceName = "LbneArtdaqBuildInfo";
-  typedef artdaq::BuildInfo< &instanceName, artdaqcore::GetPackageBuildInfo, artdaq::GetPackageBuildInfo, dunerawdata::GetPackageBuildInfo, dune::GetPackageBuildInfo> LbneArtdaqBuildInfo;
+  static std::string instanceName = "DuneArtdaqBuildInfo";
+  typedef artdaq::BuildInfo< &instanceName, artdaqcore::GetPackageBuildInfo, artdaq::GetPackageBuildInfo, lbnerawdata::GetPackageBuildInfo, dune::GetPackageBuildInfo> DuneArtdaqBuildInfo;
 
-  DEFINE_ART_MODULE(LbneArtdaqBuildInfo)
+  DEFINE_ART_MODULE(DuneArtdaqBuildInfo)
 }

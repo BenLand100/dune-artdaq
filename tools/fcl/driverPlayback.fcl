@@ -44,8 +44,8 @@ physics:
   {
 
     BuildInfo: {
-      module_type: LbneArtdaqBuildInfo
-      instance_name: LbneArtdaq
+      module_type: DuneArtdaqBuildInfo
+      instance_name: DuneArtdaq
     } 
 
   }
@@ -57,7 +57,7 @@ physics:
       module_type: PrintBuildInfo
 
       buildinfo_module_label: BuildInfo
-      buildinfo_instance_label: LbneArtdaq
+      buildinfo_instance_label: DuneArtdaq
     }
 
     toyDump:

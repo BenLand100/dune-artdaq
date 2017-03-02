@@ -26,7 +26,7 @@ ToyHardwareInterface::ToyHardwareInterface(fhicl::ParameterSet const & ps) :
 					 std::numeric_limits<size_t>::max())),
   nADCcounts_after_N_seconds_(ps.get<int>("nADCcounts_after_N_seconds",
 					  nADCcounts_)),
-  fragment_type_(dune::toFragmentType(ps.get<std::string>("fragment_type"))), 
+  fragment_type_(lbne::toFragmentType(ps.get<std::string>("fragment_type"))), 
   maxADCvalue_(pow(2, NumADCBits() ) - 1), // MUST be after "fragment_type"
   throttle_usecs_(ps.get<size_t>("throttle_usecs", 100000)),
   distribution_type_(static_cast<DistributionType>(ps.get<int>("distribution_type"))),
@@ -101,10 +101,10 @@ void ToyHardwareInterface::FillBuffer(char* buffer, size_t* bytes_read) {
     if (elapsed_secs_since_datataking_start < change_after_N_seconds_) {
 #pragma GCC diagnostic pop
 
-      *bytes_read = sizeof(dune::ToyFragment::Header) + nADCcounts_ * sizeof(data_t);
+      *bytes_read = sizeof(lbne::ToyFragment::Header) + nADCcounts_ * sizeof(data_t);
     } else {
       if (nADCcounts_after_N_seconds_ >= 0) {
-	*bytes_read = sizeof(dune::ToyFragment::Header) + nADCcounts_after_N_seconds_ * sizeof(data_t);
+	*bytes_read = sizeof(lbne::ToyFragment::Header) + nADCcounts_after_N_seconds_ * sizeof(data_t);
       } else {
 	// Pretend the hardware hangs
 	while (true) {
@@ -115,13 +115,13 @@ void ToyHardwareInterface::FillBuffer(char* buffer, size_t* bytes_read) {
     // Make the fake data, starting with the header
 
     // Can't handle a fragment whose size isn't evenly divisible by
-    // the dune::ToyFragment::Header::data_t type size in bytes
+    // the lbne::ToyFragment::Header::data_t type size in bytes
 
-    assert( *bytes_read % sizeof(dune::ToyFragment::Header::data_t) == 0 );
+    assert( *bytes_read % sizeof(lbne::ToyFragment::Header::data_t) == 0 );
 
-    dune::ToyFragment::Header* header = reinterpret_cast<dune::ToyFragment::Header*>(buffer);
+    lbne::ToyFragment::Header* header = reinterpret_cast<lbne::ToyFragment::Header*>(buffer);
 
-    header->event_size = *bytes_read / sizeof(dune::ToyFragment::Header::data_t) ;
+    header->event_size = *bytes_read / sizeof(lbne::ToyFragment::Header::data_t) ;
     header->run_number = 99;
 
     // Generate nADCcounts ADC values ranging from 0 to max based on
@@ -164,7 +164,7 @@ void ToyHardwareInterface::FillBuffer(char* buffer, size_t* bytes_read) {
 	"Unknown distribution type specified";
     }
 
-    std::generate_n(reinterpret_cast<data_t*>( reinterpret_cast<dune::ToyFragment::Header*>(buffer) + 1 ), 
+    std::generate_n(reinterpret_cast<data_t*>( reinterpret_cast<lbne::ToyFragment::Header*>(buffer) + 1 ), 
 		    nADCcounts_,
 		    generator
 		    );
@@ -177,7 +177,7 @@ void ToyHardwareInterface::FillBuffer(char* buffer, size_t* bytes_read) {
 
 void ToyHardwareInterface::AllocateReadoutBuffer(char** buffer) {
   
-  *buffer = reinterpret_cast<char*>( new uint8_t[ sizeof(dune::ToyFragment::Header) + maxADCcounts_*sizeof(data_t) ] );
+  *buffer = reinterpret_cast<char*>( new uint8_t[ sizeof(lbne::ToyFragment::Header) + maxADCcounts_*sizeof(data_t) ] );
 }
 
 void ToyHardwareInterface::FreeReadoutBuffer(char* buffer) {
@@ -195,10 +195,10 @@ int ToyHardwareInterface::BoardType() const {
 int ToyHardwareInterface::NumADCBits() const {
 
   switch (fragment_type_) {
-  case dune::FragmentType::TOY1:
+  case lbne::FragmentType::TOY1:
     return 12;
     break;
-  case dune::FragmentType::TOY2:
+  case lbne::FragmentType::TOY2:
     return 14;
     break;
   default:
@@ -206,7 +206,7 @@ int ToyHardwareInterface::NumADCBits() const {
       << "Unknown board type "
       << fragment_type_
       << " ("
-      << dune::fragmentTypeToString(fragment_type_)
+      << lbne::fragmentTypeToString(fragment_type_)
       << ").\n";
   };
 

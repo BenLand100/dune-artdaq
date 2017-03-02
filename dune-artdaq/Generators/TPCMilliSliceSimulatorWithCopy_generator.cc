@@ -44,7 +44,7 @@ bool dune::TPCMilliSliceSimulatorWithCopy::getNext_(artdaq::FragmentPtrs & frags
   std::unique_ptr<artdaq::Fragment> frag = artdaq::Fragment::FragmentBytes(data_size);
   frag->setSequenceID(ev_counter());
   frag->setFragmentID(fragmentIDs()[0]);
-  frag->setUserType(dune::detail::TPC);
+  frag->setUserType(lbne::detail::TPC);
 
   // copy the data into the fragment
   memcpy(frag->dataBeginBytes(), data_ptr, data_size);
@@ -67,12 +67,12 @@ pretend_to_read_a_millislice_from_the_hardware()
   const uint16_t SAMPLE1 = 0x7800;
   const uint32_t MICROSLICE_BUFFER_SIZE = 512;
   const uint32_t NANOSLICE_BUFFER_SIZE = 128;
-  std::shared_ptr<dune::MicroSliceWriter> microslice_writer_ptr;
-  std::shared_ptr<dune::NanoSliceWriter> nanoslice_writer_ptr;
+  std::shared_ptr<lbne::MicroSliceWriter> microslice_writer_ptr;
+  std::shared_ptr<lbne::NanoSliceWriter> nanoslice_writer_ptr;
 
   uint16_t channel_number = CHANNEL_NUMBER;
   uint16_t sample_value = SAMPLE1;
-  dune::MilliSliceWriter millislice_writer(&work_buffer_[0], THIRD_PARTY_BUFFER_SIZE_);
+  lbne::MilliSliceWriter millislice_writer(&work_buffer_[0], THIRD_PARTY_BUFFER_SIZE_);
   for (uint32_t udx = 0; udx < number_of_microslices_to_generate_; ++udx) {
     microslice_writer_ptr = millislice_writer.reserveMicroSlice(MICROSLICE_BUFFER_SIZE);
     if (microslice_writer_ptr.get() == 0) {

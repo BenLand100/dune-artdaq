@@ -55,7 +55,7 @@ simple_plugin(ToyDump "module")
 add_subdirectory(DQM)
 
 
-simple_plugin(LbneArtdaqBuildInfo "module"
+simple_plugin(DuneArtdaqBuildInfo "module"
   artdaq_DAQdata
   artdaq_BuildInfo
   artdaq-core_BuildInfo

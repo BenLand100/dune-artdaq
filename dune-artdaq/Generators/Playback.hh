@@ -19,6 +19,8 @@
 #include <vector>
 #include <string>
 
+using namespace lbne;
+
 namespace dune {    
 
   class Playback : public artdaq::CommandableFragmentGenerator {

@@ -50,7 +50,7 @@ void PedestalMonitoring::RCEFormatter::AnalyseADCs(art::Handle<artdaq::Fragments
 
       // Get the millislice fragment
       const artdaq::Fragment &frag = ((*rawRCE)[fragIndex]);
-      dune::TpcMilliSliceFragment millisliceFragment(frag);
+      lbne::TpcMilliSliceFragment millisliceFragment(frag);
 
       // Number of microslices in millislice fragments
       auto nMicroSlices = millisliceFragment.microSliceCount();
@@ -60,7 +60,7 @@ void PedestalMonitoring::RCEFormatter::AnalyseADCs(art::Handle<artdaq::Fragments
       for (unsigned int microIt = 0; microIt < nMicroSlices; ++microIt) {
 
 	// Get the microslice
-	std::unique_ptr <const dune::TpcMicroSlice> microslice = millisliceFragment.microSlice(microIt);
+	std::unique_ptr <const lbne::TpcMicroSlice> microslice = millisliceFragment.microSlice(microIt);
 	auto nNanoSlices = microslice->nanoSliceCount();
 
 	for (unsigned int nanoIt = 0; nanoIt < nNanoSlices; ++nanoIt) {

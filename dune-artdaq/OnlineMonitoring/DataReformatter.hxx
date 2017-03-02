@@ -123,12 +123,12 @@ public:
   PTBFormatter() :
     fNTotalTicks(0) {}
   PTBFormatter(art::Handle<artdaq::Fragments> const& rawPTB);
-  void AnalyzeCounter(uint32_t counter_index, dune::PennMicroSlice::Payload_Timestamp::timestamp_t &activation_time, double &hit_rate) const;
-  double AnalyzeMuonTrigger(dune::PennMicroSlice::Payload_Trigger::trigger_type_t trigger_number) const;
-  double AnalyzeCalibrationTrigger(dune::PennMicroSlice::Payload_Trigger::trigger_type_t trigger_number) const;
+  void AnalyzeCounter(uint32_t counter_index, lbne::PennMicroSlice::Payload_Timestamp::timestamp_t &activation_time, double &hit_rate) const;
+  double AnalyzeMuonTrigger(lbne::PennMicroSlice::Payload_Trigger::trigger_type_t trigger_number) const;
+  double AnalyzeCalibrationTrigger(lbne::PennMicroSlice::Payload_Trigger::trigger_type_t trigger_number) const;
   double AnalyzeSSPTrigger() const;
   uint32_t NumPayloads() const { return fPayloadTypes.size(); }
-  std::vector<dune::PennMicroSlice::Payload_Header::data_packet_type_t> Payloads() const { return fPayloadTypes; }
+  std::vector<lbne::PennMicroSlice::Payload_Header::data_packet_type_t> Payloads() const { return fPayloadTypes; }
   long double GetTotalSeconds() { return fNTotalTicks * NNanoSecondsPerNovaTick/(1000*1000*1000); };
 #ifdef OLD_CODE
   PTBFormatter(art::Handle<artdaq::Fragments> const& rawPTB, PTBTrigger const& previousTrigger);
@@ -148,11 +148,11 @@ private:
 
 #ifdef OLD_CODE
   void CollectCounterBits(uint8_t* payload, size_t payload_size);
-  void CollectMuonTrigger(uint8_t* payload, size_t payload_size, dune::PennMicroSlice::Payload_Header::short_nova_timestamp_t timestamp);
+  void CollectMuonTrigger(uint8_t* payload, size_t payload_size, lbne::PennMicroSlice::Payload_Header::short_nova_timestamp_t timestamp);
 
 #else
-  void CollectCounterBits(dune::PennMicroSlice::Payload_Header *header,dune::PennMicroSlice::Payload_Counter *trigger);
-  void CollectTrigger(dune::PennMicroSlice::Payload_Trigger *trigger);
+  void CollectCounterBits(lbne::PennMicroSlice::Payload_Header *header,lbne::PennMicroSlice::Payload_Counter *trigger);
+  void CollectTrigger(lbne::PennMicroSlice::Payload_Trigger *trigger);
 #endif
 #ifdef OLD_CODE
 
@@ -179,27 +179,27 @@ private:
   // Counters
   // NFB: I don't think that it is necessary to keep track of the individual words
   //std::vector<std::bitset<TypeSizes::CounterWordSize> > fCounterBits;
-  std::vector<dune::PennMicroSlice::Payload_Timestamp::timestamp_t> fCounterTimes;
+  std::vector<lbne::PennMicroSlice::Payload_Timestamp::timestamp_t> fCounterTimes;
 
-  std::vector<dune::PennMicroSlice::Payload_Counter> fCounterWords;
+  std::vector<lbne::PennMicroSlice::Payload_Counter> fCounterWords;
 
   // Triggers and calibrations
-  std::vector<dune::PennMicroSlice::Payload_Timestamp::timestamp_t> fMuonTriggerTimes;
+  std::vector<lbne::PennMicroSlice::Payload_Timestamp::timestamp_t> fMuonTriggerTimes;
   //std::vector<std::bitset<TypeSizes::TriggerWordSize> > fMuonTriggerBits;
-  std::map<dune::PennMicroSlice::Payload_Trigger::trigger_type_t,int> fMuonTriggerRates;
+  std::map<lbne::PennMicroSlice::Payload_Trigger::trigger_type_t,int> fMuonTriggerRates;
 
   //std::vector<std::bitset<TypeSizes::TriggerWordSize> > fCalibrationTriggerBits;
-  std::map<dune::PennMicroSlice::Payload_Trigger::trigger_type_t,int> fCalibrationTriggerRates;
-  std::vector<dune::PennMicroSlice::Payload_Timestamp::timestamp_t> fCalibrationTriggerTimes;
+  std::map<lbne::PennMicroSlice::Payload_Trigger::trigger_type_t,int> fCalibrationTriggerRates;
+  std::vector<lbne::PennMicroSlice::Payload_Timestamp::timestamp_t> fCalibrationTriggerTimes;
 
   int fSSPTriggerRates;
-  std::vector<dune::PennMicroSlice::Payload_Header::data_packet_type_t> fPayloadTypes;
+  std::vector<lbne::PennMicroSlice::Payload_Header::data_packet_type_t> fPayloadTypes;
   long double fTimeSliceSize;
   unsigned long fNTotalTicks;
 
   // NFB: Two vectors that contain all trigger types
-  static const std::vector<dune::PennMicroSlice::Payload_Trigger::trigger_type_t> fMuonTriggerTypes;
-  static const std::vector<dune::PennMicroSlice::Payload_Trigger::trigger_type_t> fCalibrationTypes;
+  static const std::vector<lbne::PennMicroSlice::Payload_Trigger::trigger_type_t> fMuonTriggerTypes;
+  static const std::vector<lbne::PennMicroSlice::Payload_Trigger::trigger_type_t> fCalibrationTypes;
 
 #endif /*OLD_CODE*/
 

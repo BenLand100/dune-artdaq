@@ -637,19 +637,19 @@ void OnlineMonitoring::MonitoringData::PTBMonitoring(PTBFormatter const& ptb_for
     return;
 
   // Fill the payload hists
-  const std::vector<dune::PennMicroSlice::Payload_Header::data_packet_type_t> payloads = ptb_formatter.Payloads();
+  const std::vector<lbne::PennMicroSlice::Payload_Header::data_packet_type_t> payloads = ptb_formatter.Payloads();
   hPTBBlockLength->Fill(payloads.size());
-  for (std::vector<dune::PennMicroSlice::Payload_Header::data_packet_type_t>::const_iterator payloadIt = payloads.begin(); payloadIt != payloads.end(); ++payloadIt) {
-    if (*payloadIt == dune::PennMicroSlice::DataTypeCounter) hPTBPayloadType->Fill("Counter",1);
-    else if (*payloadIt == dune::PennMicroSlice::DataTypeTrigger) hPTBPayloadType->Fill("Trigger",1);
-    else if (*payloadIt == dune::PennMicroSlice::DataTypeTimestamp) hPTBPayloadType->Fill("Timestamp",1);
-    else if (*payloadIt == dune::PennMicroSlice::DataTypeWarning)   hPTBPayloadType->Fill("Warning",1);
-    else if (*payloadIt == dune::PennMicroSlice::DataTypeChecksum) hPTBPayloadType->Fill("Checksum",1);
+  for (std::vector<lbne::PennMicroSlice::Payload_Header::data_packet_type_t>::const_iterator payloadIt = payloads.begin(); payloadIt != payloads.end(); ++payloadIt) {
+    if (*payloadIt == lbne::PennMicroSlice::DataTypeCounter) hPTBPayloadType->Fill("Counter",1);
+    else if (*payloadIt == lbne::PennMicroSlice::DataTypeTrigger) hPTBPayloadType->Fill("Trigger",1);
+    else if (*payloadIt == lbne::PennMicroSlice::DataTypeTimestamp) hPTBPayloadType->Fill("Timestamp",1);
+    else if (*payloadIt == lbne::PennMicroSlice::DataTypeWarning)   hPTBPayloadType->Fill("Warning",1);
+    else if (*payloadIt == lbne::PennMicroSlice::DataTypeChecksum) hPTBPayloadType->Fill("Checksum",1);
     else hPTBPayloadType->Fill("Other",1);
   }
 
   // Fill the counter hists
-  dune::PennMicroSlice::Payload_Timestamp::timestamp_t activation_time = 0;
+  lbne::PennMicroSlice::Payload_Timestamp::timestamp_t activation_time = 0;
   double hit_rate = 0;
   uint32_t counterNumber = 0;
 
@@ -660,51 +660,51 @@ void OnlineMonitoring::MonitoringData::PTBMonitoring(PTBFormatter const& ptb_for
 
     // Now the structures are filled according to the group they belong to
     // This call is independent of the counter type; always returns the index inside its own type
-    counterNumber = dune::PennMicroSlice::Payload_Counter::get_counter_type_pos(i);
+    counterNumber = lbne::PennMicroSlice::Payload_Counter::get_counter_type_pos(i);
 
-    switch (dune::PennMicroSlice::Payload_Counter::get_counter_type(i)) {
+    switch (lbne::PennMicroSlice::Payload_Counter::get_counter_type(i)) {
 
-    case dune::PennMicroSlice::Payload_Counter::counter_type_tsu_wu:
+    case lbne::PennMicroSlice::Payload_Counter::counter_type_tsu_wu:
       hPTBTSUCounterHitRateWU->Fill(counterNumber+1,hit_rate);
       hPTBTSUCounterActivationTimeWU->Fill(counterNumber+1,activation_time);
       break;
-    case dune::PennMicroSlice::Payload_Counter::counter_type_tsu_el:
+    case lbne::PennMicroSlice::Payload_Counter::counter_type_tsu_el:
       hPTBTSUCounterHitRateEL->Fill(counterNumber+1,hit_rate);
       hPTBTSUCounterActivationTimeEL->Fill(counterNumber+1,activation_time);
       break;
-    case dune::PennMicroSlice::Payload_Counter::counter_type_tsu_extra:
+    case lbne::PennMicroSlice::Payload_Counter::counter_type_tsu_extra:
       hPTBTSUCounterHitRateExtra->Fill(counterNumber+1,hit_rate);
       hPTBTSUCounterActivationTimeExtra->Fill(counterNumber+1,activation_time);
       break;
-    case dune::PennMicroSlice::Payload_Counter::counter_type_tsu_nu:
+    case lbne::PennMicroSlice::Payload_Counter::counter_type_tsu_nu:
       hPTBTSUCounterHitRateNU->Fill(counterNumber+1,hit_rate);
       hPTBTSUCounterActivationTimeNU->Fill(counterNumber+1,activation_time);
       break;
-    case dune::PennMicroSlice::Payload_Counter::counter_type_tsu_sl:
+    case lbne::PennMicroSlice::Payload_Counter::counter_type_tsu_sl:
       hPTBTSUCounterHitRateSL->Fill(counterNumber+1,hit_rate);
       hPTBTSUCounterActivationTimeSL->Fill(counterNumber+1,activation_time);
       break;
-    case dune::PennMicroSlice::Payload_Counter::counter_type_tsu_nl:
+    case lbne::PennMicroSlice::Payload_Counter::counter_type_tsu_nl:
       hPTBTSUCounterHitRateNL->Fill(counterNumber+1,hit_rate);
       hPTBTSUCounterActivationTimeNL->Fill(counterNumber+1,activation_time);
       break;
-    case dune::PennMicroSlice::Payload_Counter::counter_type_tsu_su:
+    case lbne::PennMicroSlice::Payload_Counter::counter_type_tsu_su:
       hPTBTSUCounterHitRateSU->Fill(counterNumber+1,hit_rate);
       hPTBTSUCounterActivationTimeSU->Fill(counterNumber+1,activation_time);
       break;
-    case dune::PennMicroSlice::Payload_Counter::counter_type_bsu_rm:
+    case lbne::PennMicroSlice::Payload_Counter::counter_type_bsu_rm:
       hPTBBSUCounterHitRateRM->Fill(counterNumber+1,hit_rate);
       hPTBBSUCounterActivationTimeRM->Fill(counterNumber+1,activation_time);
       break;
-    case dune::PennMicroSlice::Payload_Counter::counter_type_bsu_cu:
+    case lbne::PennMicroSlice::Payload_Counter::counter_type_bsu_cu:
       hPTBBSUCounterHitRateCU->Fill(counterNumber+1,hit_rate);
       hPTBBSUCounterActivationTimeCU->Fill(counterNumber+1,activation_time);
       break;
-    case dune::PennMicroSlice::Payload_Counter::counter_type_bsu_cl:
+    case lbne::PennMicroSlice::Payload_Counter::counter_type_bsu_cl:
       hPTBBSUCounterHitRateCL->Fill(counterNumber+1,hit_rate);
       hPTBBSUCounterActivationTimeCL->Fill(counterNumber+1,activation_time);
       break;
-    case dune::PennMicroSlice::Payload_Counter::counter_type_bsu_rl:
+    case lbne::PennMicroSlice::Payload_Counter::counter_type_bsu_rl:
       hPTBBSUCounterHitRateRL->Fill(counterNumber+1,hit_rate);
       hPTBBSUCounterActivationTimeRL->Fill(counterNumber+1,activation_time);
       break;
