@@ -1,6 +1,6 @@
 
 art_make( LIBRARY_NAME  PedestalMonitoring
-	  LIB_LIBRARIES dune-raw-data_Overlays
+	  LIB_LIBRARIES lbne-raw-data_Overlays
 			${CETLIB}
 			${ROOT_BASIC_LIB_LIST}
  			${MF_MESSAGELOGGER}

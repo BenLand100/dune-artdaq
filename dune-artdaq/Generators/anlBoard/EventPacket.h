@@ -1,7 +1,7 @@
 #ifndef EVENTPACKET_H__
 #define EVENTPACKET_H__
 
-#include "dune-raw-data/Overlays/anlTypes.hh"
+#include "lbne-raw-data/Overlays/anlTypes.hh"
 #include <vector>
 
 namespace SSPDAQ{

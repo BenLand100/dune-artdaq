@@ -17,7 +17,7 @@
 #include "art/Framework/Principal/Handle.h"
 #include "art/Framework/Services/Optional/TFileService.h"
 
-#include "dune-raw-data/Overlays/TpcMilliSliceFragment.hh"
+#include "lbne-raw-data/Overlays/TpcMilliSliceFragment.hh"
 #include "artdaq-core/Data/Fragments.hh"
 #include "messagefacility/MessageLogger/MessageLogger.h"
 

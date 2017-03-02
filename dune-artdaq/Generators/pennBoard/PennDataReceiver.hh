@@ -24,7 +24,7 @@
 
 #include "dune-artdaq/Generators/RceSupportLib/SafeQueue.hh"
 #include "dune-artdaq/Generators/pennBoard/PennRawBuffer.hh"
-#include "dune-raw-data/Overlays/PennMicroSlice.hh"
+#include "lbne-raw-data/Overlays/PennMicroSlice.hh"
 #include "dune-artdaq/Generators/pennBoard/PennCompileOptions.hh"
 #include "messagefacility/MessageLogger/MessageLogger.h"
 

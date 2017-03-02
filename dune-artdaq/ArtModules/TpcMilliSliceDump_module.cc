@@ -12,7 +12,7 @@
 #include "art/Framework/Services/Optional/TFileService.h"
 
 #include "canvas/Utilities/Exception.h"
-#include "dune-raw-data/Overlays/TpcMilliSliceFragment.hh"
+#include "lbne-raw-data/Overlays/TpcMilliSliceFragment.hh"
 #include "artdaq-core/Data/Fragments.hh"
 
 #include "TH1.h"

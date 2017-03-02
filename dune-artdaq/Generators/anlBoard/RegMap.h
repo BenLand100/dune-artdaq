@@ -1,7 +1,7 @@
 #ifndef __REGMAP_H__
 #define __REGMAP_H__
 
-#include "dune-raw-data/Overlays/anlTypes.hh"
+#include "lbne-raw-data/Overlays/anlTypes.hh"
 #include <iostream>
 #include "dune-artdaq/DAQLogger/DAQLogger.hh"
 #include <map>

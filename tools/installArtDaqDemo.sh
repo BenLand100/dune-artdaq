@@ -8,12 +8,12 @@ example: `basename $0` products dune-artdaq --run-demo
 <dune-artdaq_root> directory where dune-artdaq was cloned into.
 --run-demo                       runs the demo
 --debug                          perform debug builds
---not-dune-raw-data-developer    checkout dune-raw-data using read-only http
+--not-lbne-raw-data-developer    checkout lbne-raw-data using read-only http
 --not-artdaq-developer           checkout artdaq using read-only http
 Currently this script will clone (if not already cloned) artdaq
 along side of the dune-artdaq dir.
 Also it will create, if not already created, build directories
-for artdaq, dune-artdaq, and dune-raw-data.
+for artdaq, dune-artdaq, and lbne-raw-data.
 "
 # Process script arguments and options
 eval env_opts=\${$env_opts_var-} # can be args too
@@ -33,7 +33,7 @@ while [ -n "${1-}" ];do
         x*)        eval $op1chr; set -x;;
         -run-demo) opt_run_demo=--run-demo;;
 	-debug)    opt_debug=--debug;;
-        -not-dune-raw-data-developer)  opt_http_download_dune_raw_data=--not-dune-raw-data-developer;;
+        -not-lbne-raw-data-developer)  opt_http_download_lbne_raw_data=--not-lbne-raw-data-developer;;
         -not-artdaq-developer)         opt_http_download_artdaq=--not-artdaq-developer;;
         *)         echo "Unknown option -$op"; do_help=1;;
         esac
@@ -100,7 +100,7 @@ setup_qualifier="e10"
 
 install_package artdaq-core v1_05_07 $setup_qualifier s35
 
-install_package dune-raw-data v1_04_05 $setup_qualifier s35 online
+install_package lbne-raw-data v1_04_05 $setup_qualifier s35 online
 
 # JCF, Oct-24-2016
 

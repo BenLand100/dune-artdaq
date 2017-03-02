@@ -8,7 +8,7 @@
 #ifndef OnlineMonitoringNamespace
 #define OnlineMonitoringNamespace
 
-#include "dune-raw-data/Overlays/PennMicroSlice.hh"
+#include "lbne-raw-data/Overlays/PennMicroSlice.hh"
 #include "TString.h"
 
 namespace OnlineMonitoring {

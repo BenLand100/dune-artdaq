@@ -11,7 +11,7 @@
 #include "art/Framework/Principal/Handle.h"
 
 #include "canvas/Utilities/Exception.h"
-#include "dune-raw-data/Overlays/PennMilliSliceFragment.hh"
+#include "lbne-raw-data/Overlays/PennMilliSliceFragment.hh"
 #include "artdaq-core/Data/Fragments.hh"
 #include "dune-artdaq/Generators/pennBoard/PennCompileOptions.hh"
 #include "dune-artdaq/DAQLogger/DAQLogger.hh"

@@ -14,10 +14,10 @@
 #include <bitset>
 #include <boost/crc.hpp>
 
-#include "dune-raw-data/Overlays/PennMicroSlice.hh"
-#include "dune-raw-data/Overlays/PennMilliSlice.hh"
+#include "lbne-raw-data/Overlays/PennMicroSlice.hh"
+#include "lbne-raw-data/Overlays/PennMilliSlice.hh"
 
-#include "dune-raw-data/Overlays/Utilities.hh"
+#include "lbne-raw-data/Overlays/Utilities.hh"
 
 //#define __PTB_BOARD_READER_DEVEL_MODE__
 

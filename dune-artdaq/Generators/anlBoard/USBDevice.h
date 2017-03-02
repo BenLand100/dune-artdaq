@@ -1,7 +1,7 @@
 #ifndef USBDEVICE_H__
 #define USBDEVICE_H__
 
-#include "dune-raw-data/Overlays/anlTypes.hh"
+#include "lbne-raw-data/Overlays/anlTypes.hh"
 #include "Device.h"
 #include "ftd2xx.h"
 

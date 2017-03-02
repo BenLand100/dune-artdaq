@@ -15,7 +15,7 @@
 // The data it returns are ADC counts distributed according to the
 // uniform distribution
 
-#include "dune-raw-data/Overlays/FragmentType.hh"
+#include "lbne-raw-data/Overlays/FragmentType.hh"
 
 #include "fhiclcpp/fwd.h"
 

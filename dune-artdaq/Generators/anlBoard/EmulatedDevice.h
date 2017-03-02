@@ -1,7 +1,7 @@
 #ifndef EMULATEDDEVICE_H__
 #define EMULATEDDEVICE_H__
 
-#include "dune-raw-data/Overlays/anlTypes.hh"
+#include "lbne-raw-data/Overlays/anlTypes.hh"
 #include "Device.h"
 
 #include <iostream>

@@ -2,7 +2,7 @@
 #include "ftd2xx.h"
 #include "dune-artdaq/DAQLogger/DAQLogger.hh"
 #include "anlExceptions.h"
-#include "dune-raw-data/Overlays/anlTypes.hh"
+#include "lbne-raw-data/Overlays/anlTypes.hh"
 #include "boost/asio.hpp"
 
 #include <iostream>

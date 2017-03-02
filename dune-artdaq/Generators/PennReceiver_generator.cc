@@ -1,9 +1,9 @@
 #include "dune-artdaq/Generators/PennReceiver.hh"
 #include "dune-artdaq/DAQLogger/DAQLogger.hh"
 
-#include "dune-raw-data/Overlays/PennMilliSliceWriter.hh"
-#include "dune-raw-data/Overlays/PennMilliSliceFragment.hh"
-#include "dune-raw-data/Overlays/FragmentType.hh"
+#include "lbne-raw-data/Overlays/PennMilliSliceWriter.hh"
+#include "lbne-raw-data/Overlays/PennMilliSliceFragment.hh"
+#include "lbne-raw-data/Overlays/FragmentType.hh"
 
 #include "canvas/Utilities/Exception.h"
 #include "artdaq/Application/GeneratorMacros.hh"

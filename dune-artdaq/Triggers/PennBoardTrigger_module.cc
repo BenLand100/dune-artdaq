@@ -24,8 +24,8 @@
 #include <sstream>
 
 #include "artdaq-core/Data/Fragments.hh"
-#include "dune-raw-data/Overlays/PennMilliSliceFragment.hh"
-#include "dune-raw-data/Overlays/Utilities.hh"
+#include "lbne-raw-data/Overlays/PennMilliSliceFragment.hh"
+#include "lbne-raw-data/Overlays/Utilities.hh"
 
 namespace trig {
   class PennBoardTrigger;

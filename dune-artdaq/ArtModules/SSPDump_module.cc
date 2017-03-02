@@ -12,8 +12,8 @@
 #include "art/Framework/Services/Optional/TFileService.h"
 
 #include "canvas/Utilities/Exception.h"
-#include "dune-raw-data/Overlays/SSPFragment.hh"
-#include "dune-raw-data/Overlays/anlTypes.hh"
+#include "lbne-raw-data/Overlays/SSPFragment.hh"
+#include "lbne-raw-data/Overlays/anlTypes.hh"
 #include "artdaq-core/Data/Fragments.hh"
 
 #include "TH1.h"

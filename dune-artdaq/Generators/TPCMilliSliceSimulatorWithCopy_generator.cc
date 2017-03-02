@@ -1,7 +1,7 @@
 #include "dune-artdaq/Generators/TPCMilliSliceSimulatorWithCopy.hh"
-#include "dune-raw-data/Overlays/MilliSliceWriter.hh"
+#include "lbne-raw-data/Overlays/MilliSliceWriter.hh"
 #include "artdaq/Application/GeneratorMacros.hh"
-#include "dune-raw-data/Overlays/FragmentType.hh"
+#include "lbne-raw-data/Overlays/FragmentType.hh"
 #include "messagefacility/MessageLogger/MessageLogger.h"
 
 dune::TPCMilliSliceSimulatorWithCopy::

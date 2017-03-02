@@ -22,8 +22,8 @@
 #include "fhiclcpp/fwd.h"
 #include "artdaq-core/Data/Fragment.hh" 
 #include "artdaq/Application/CommandableFragmentGenerator.hh"
-#include "dune-raw-data/Overlays/SSPFragment.hh"
-#include "dune-raw-data/Overlays/FragmentType.hh"
+#include "lbne-raw-data/Overlays/SSPFragment.hh"
+#include "lbne-raw-data/Overlays/FragmentType.hh"
 
 #include "dune-artdaq/Generators/anlBoard/DeviceInterface.h"
 

@@ -5,9 +5,9 @@
 #include "canvas/Utilities/Exception.h"
 #include "artdaq/Application/GeneratorMacros.hh"
 #include "cetlib/exception.h"
-#include "dune-raw-data/Overlays/SSPFragment.hh"
-#include "dune-raw-data/Overlays/SSPFragmentWriter.hh"
-#include "dune-raw-data/Overlays/FragmentType.hh"
+#include "lbne-raw-data/Overlays/SSPFragment.hh"
+#include "lbne-raw-data/Overlays/SSPFragmentWriter.hh"
+#include "lbne-raw-data/Overlays/FragmentType.hh"
 #include "fhiclcpp/ParameterSet.h"
 #include "artdaq-core/Utilities/SimpleLookupPolicy.h"
 #include <boost/lexical_cast.hpp>

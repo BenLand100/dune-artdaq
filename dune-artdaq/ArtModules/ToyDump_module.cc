@@ -11,7 +11,7 @@
 #include "art/Framework/Principal/Handle.h"
 
 #include "canvas/Utilities/Exception.h"
-#include "dune-raw-data/Overlays/ToyFragment.hh"
+#include "lbne-raw-data/Overlays/ToyFragment.hh"
 #include "artdaq-core/Data/Fragments.hh"
 
 #include <algorithm>

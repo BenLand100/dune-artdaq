@@ -1,7 +1,7 @@
 
 #include "dune-artdaq/Generators/ToyHardwareInterface/ToyHardwareInterface.hh"
-#include "dune-raw-data/Overlays/ToyFragment.hh"
-#include "dune-raw-data/Overlays/FragmentType.hh"
+#include "lbne-raw-data/Overlays/ToyFragment.hh"
+#include "lbne-raw-data/Overlays/FragmentType.hh"
 
 #include "fhiclcpp/ParameterSet.h"
 #include "cetlib/exception.h"

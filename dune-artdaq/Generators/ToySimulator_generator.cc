@@ -6,8 +6,8 @@
 #include "dune-artdaq/Generators/ToySimulator.hh"
 #include "dune-artdaq/DAQLogger/DAQLogger.hh"
 
-#include "dune-raw-data/Overlays/ToyFragment.hh"
-#include "dune-raw-data/Overlays/FragmentType.hh"
+#include "lbne-raw-data/Overlays/ToyFragment.hh"
+#include "lbne-raw-data/Overlays/FragmentType.hh"
 
 #include "artdaq/Application/GeneratorMacros.hh"
 #include "artdaq-core/Utilities/SimpleLookupPolicy.h"

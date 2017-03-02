@@ -23,7 +23,7 @@
 // framework
 #include "messagefacility/MessageLogger/MessageLogger.h"
 #include "art/Framework/Services/Registry/ServiceHandle.h"
-#include "dune-raw-data/Services/ChannelMap/ChannelMapService.h"
+#include "lbne-raw-data/Services/ChannelMap/ChannelMapService.h"
 
 class OnlineMonitoring::EventDisplay {
 public:

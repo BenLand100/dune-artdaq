@@ -1,7 +1,7 @@
 #ifndef ETHERNETDEVICE_H__
 #define ETHERNETDEVICE_H__
 
-#include "dune-raw-data/Overlays/anlTypes.hh"
+#include "lbne-raw-data/Overlays/anlTypes.hh"
 #include "Device.h"
 #include "boost/asio.hpp"
 

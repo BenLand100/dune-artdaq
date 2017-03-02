@@ -13,7 +13,7 @@
 // called "TOY2"; the only difference between the two boards is the #
 // of bits in the ADC values they send. These values are declared as
 // FragmentType enum's in dune-artdaq's
-// dune-raw-data/Overlays/FragmentType.hh header.
+// lbne-raw-data/Overlays/FragmentType.hh header.
 
 // Some C++ conventions used:
 
@@ -23,8 +23,8 @@
 #include "artdaq-core/Data/Fragments.hh" 
 #include "artdaq/Application/CommandableFragmentGenerator.hh"
 
-#include "dune-raw-data/Overlays/MilliSliceFragment.hh"
-#include "dune-raw-data/Overlays/FragmentType.hh"
+#include "lbne-raw-data/Overlays/MilliSliceFragment.hh"
+#include "lbne-raw-data/Overlays/FragmentType.hh"
 #include "dune-artdaq/Generators/RceSupportLib/RceClient.hh"
 #include "dune-artdaq/Generators/RceSupportLib/RceDataReceiver.hh"
 

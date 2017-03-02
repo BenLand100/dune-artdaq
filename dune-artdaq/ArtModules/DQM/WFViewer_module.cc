@@ -8,8 +8,8 @@
 
 #include "artdaq-core/Data/Fragments.hh"
 
-#include "dune-raw-data/Overlays/FragmentType.hh"
-#include "dune-raw-data/Overlays/ToyFragment.hh"
+#include "lbne-raw-data/Overlays/FragmentType.hh"
+#include "lbne-raw-data/Overlays/ToyFragment.hh"
 
 #include "cetlib/exception.h"
 

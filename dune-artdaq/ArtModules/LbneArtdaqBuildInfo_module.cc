@@ -2,7 +2,7 @@
 
 #include "artdaq/BuildInfo/GetPackageBuildInfo.hh" 
 #include "artdaq-core/BuildInfo/GetPackageBuildInfo.hh" 
-#include "dune-raw-data/BuildInfo/GetPackageBuildInfo.hh" 
+#include "lbne-raw-data/BuildInfo/GetPackageBuildInfo.hh" 
 #include "dune-artdaq/BuildInfo/GetPackageBuildInfo.hh" 
 
 #include <string>
