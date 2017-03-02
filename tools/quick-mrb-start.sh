@@ -3,7 +3,7 @@
 # Downloads, installs, and runs the artdaq_demo as an MRB-controlled repository
 
 # JCF, Jan-1-2017
-# Modified this script to work with the lbne-artdaq package
+# Modified this script to work with the dune-artdaq package
 
 git_status=`git status 2>/dev/null`
 git_sts=$?
@@ -23,13 +23,13 @@ env_opts_var=`basename $0 | sed 's/\.sh$//' | tr 'a-z-' 'A-Z_'`_OPTS
 USAGE="\
    usage: `basename $0` [options]
 examples: `basename $0` 
-          `basename $0` --lbne-raw-data-developer --lbne-raw-data-develop-branch
-          `basename $0` --debug --noviewer --lbne-raw-data-developer
+          `basename $0` --dune-raw-data-developer --dune-raw-data-develop-branch
+          `basename $0` --debug --noviewer --dune-raw-data-developer
 --debug       perform a debug build
 --noviewer    skip installion of artdaq Message Viewer (use if there is no XWindows)
---not-lbne-artdaq-developer  use if you don't have write access to the lbne-artdaq repository
---lbne-raw-data-develop-branch     Install the current \"develop\" version of lbne-raw-data (may be unstable!)
---lbne-raw-data-developer    use if you have (and want to use) write access to the lbne-raw-data repository
+--not-dune-artdaq-developer  use if you don't have write access to the dune-artdaq repository
+--dune-raw-data-develop-branch     Install the current \"develop\" version of dune-raw-data (may be unstable!)
+--dune-raw-data-developer    use if you have (and want to use) write access to the dune-raw-data repository
 "
 
 # Process script arguments and options
@@ -48,9 +48,9 @@ while [ -n "${1-}" ];do
             \?*|h*)     eval $op1chr; do_help=1;;
 	    -debug)     opt_debug=--debug;;
 	    -noviewer)    opt_noviewer=--noviewer;;
-	    -not-lbne-artdaq-developer) opt_la_nw=1;;
-	    -lbne-raw-data-develop-branch) opt_lrd_develop=1;;
-	    -lbne-raw-data-developer)  opt_lrd_w=1;;
+	    -not-dune-artdaq-developer) opt_la_nw=1;;
+	    -dune-raw-data-develop-branch) opt_lrd_develop=1;;
+	    -dune-raw-data-developer)  opt_lrd_w=1;;
             *)          echo "Unknown option -$op"; do_help=1;;
         esac
     else
@@ -128,11 +128,11 @@ if [ -z "${tag:-}" ]; then
   tag=develop;
 fi
 
-wget https://cdcvs.fnal.gov/redmine/projects/lbne-artdaq/repository/revisions/$tag/raw/ups/product_deps
-demo_version=`grep "parent lbne_artdaq" $Base/download/product_deps|awk '{print $3}'`
+wget https://cdcvs.fnal.gov/redmine/projects/dune-artdaq/repository/revisions/$tag/raw/ups/product_deps
+demo_version=`grep "parent dune_artdaq" $Base/download/product_deps|awk '{print $3}'`
 
 artdaq_version=`grep -E "^artdaq\s+" $Base/download/product_deps | awk '{print $2}'`
-coredemo_version=`grep -E "^lbne_raw_data\s+" $Base/download/product_deps | awk '{print $2}'`
+coredemo_version=`grep -E "^dune_raw_data\s+" $Base/download/product_deps | awk '{print $2}'`
 gallery_version=`grep -E "^gallery\s+" $Base/download/product_deps | awk '{print $2}'`
 
 default_quals_cmd="sed -r -n 's/.*(e[0-9]+):(s[0-9]+).*/\1 \2/p' $Base/download/product_deps | uniq"
@@ -163,7 +163,7 @@ fi
 
 # JCF, Jan-1-2016
 
-# The gallery package is currently something only lbne-artdaq depends
+# The gallery package is currently something only dune-artdaq depends
 # on, hence we can't rely on pullProducts to get it for us
 
 os=`$Base/download/cetpkgsupport/bin/get-directory-name os`
@@ -183,38 +183,38 @@ setup mrb
 setup git
 setup gitflow
 
-export MRB_PROJECT=lbne_artdaq
+export MRB_PROJECT=dune_artdaq
 cd $Base
 mrb newDev -f -v $demo_version -q ${equalifier}:${build_type}
 set +u
-source $Base/localProducts_lbne_artdaq_${demo_version}_${equalifier}_${build_type}/setup
+source $Base/localProducts_dune_artdaq_${demo_version}_${equalifier}_${build_type}/setup
 set -u
 
 cd $MRB_SOURCE
 
 if [[ $opt_lrd_develop -eq 1 ]]; then
-    lbne_raw_data_checkout_arg="-d lbne_raw_data"
+    dune_raw_data_checkout_arg="-d dune_raw_data"
 else
-    lbne_raw_data_checkout_arg="-t ${coredemo_version} -d lbne_raw_data"
+    dune_raw_data_checkout_arg="-t ${coredemo_version} -d dune_raw_data"
 fi
 
 if [[ $opt_lrd_w -eq 1 ]]; then
-    lbne_raw_data_repo="ssh://p-lbne-raw-data@cdcvs.fnal.gov/cvs/projects/lbne-raw-data"
+    dune_raw_data_repo="ssh://p-dune-raw-data@cdcvs.fnal.gov/cvs/projects/dune-raw-data"
 else
-    lbne_raw_data_repo="http://cdcvs.fnal.gov/projects/lbne-raw-data"
+    dune_raw_data_repo="http://cdcvs.fnal.gov/projects/dune-raw-data"
 fi
 
-# Notice the default for write access to lbne-artdaq is the opposite of that for lbne-raw-data
+# Notice the default for write access to dune-artdaq is the opposite of that for dune-raw-data
 if [[ $opt_la_nw -eq 1 ]]; then
-    lbne_artdaq_repo="http://cdcvs.fnal.gov/projects/lbne-artdaq"
+    dune_artdaq_repo="http://cdcvs.fnal.gov/projects/dune-artdaq"
 else
-    lbne_artdaq_repo="ssh://p-lbne-artdaq@cdcvs.fnal.gov/cvs/projects/lbne-artdaq"
+    dune_artdaq_repo="ssh://p-dune-artdaq@cdcvs.fnal.gov/cvs/projects/dune-artdaq"
 fi
 
 if [[ $tag == "develop" ]]; then
-    lbne_artdaq_checkout_arg="-d lbne_artdaq"
+    dune_artdaq_checkout_arg="-d dune_artdaq"
 else
-    lbne_artdaq_checkout_arg="-t $tag -d lbne_artdaq"
+    dune_artdaq_checkout_arg="-t $tag -d dune_artdaq"
 fi
 
 mrb gitCheckout -t ${artdaq_version} -d artdaq http://cdcvs.fnal.gov/projects/artdaq
@@ -224,17 +224,17 @@ if [[ "$?" != "0" ]]; then
     exit 1
 fi
 
-mrb gitCheckout $lbne_raw_data_checkout_arg $lbne_raw_data_repo
+mrb gitCheckout $dune_raw_data_checkout_arg $dune_raw_data_repo
 
 if [[ "$?" != "0" ]]; then
-    echo "Unable to perform checkout of $lbne_raw_data_repo"
+    echo "Unable to perform checkout of $dune_raw_data_repo"
     exit 1
 fi
 
-mrb gitCheckout -d lbne_artdaq $lbne_artdaq_repo
+mrb gitCheckout -d dune_artdaq $dune_artdaq_repo
 
 if [[ "$?" != "0" ]]; then
-    echo "Unable to perform checkout of $lbne_artdaq_repo"
+    echo "Unable to perform checkout of $dune_artdaq_repo"
     exit 1
 fi
 
@@ -255,28 +255,28 @@ if ! [[ "x${opt_noviewer-}" != "x" ]]; then
     detectAndPull qt ${os}-x86_64 ${equalifier} ${qtver}
 fi
 
-ARTDAQ_DEMO_DIR=$Base/srcs/lbne_artdaq
+ARTDAQ_DEMO_DIR=$Base/srcs/dune_artdaq
 cd $Base
-    cat >setupLBNEARTDAQ <<-EOF
+    cat >setupDUNEARTDAQ <<-EOF
        echo # This script is intended to be sourced.                                                                    
                                                                                                                          
-        sh -c "[ \`ps \$\$ | grep bash | wc -l\` -gt 0 ] || { echo 'Please switch to the bash shell before running lbne-artdaq.'; exit; }" || exit                                                                                           
+        sh -c "[ \`ps \$\$ | grep bash | wc -l\` -gt 0 ] || { echo 'Please switch to the bash shell before running dune-artdaq.'; exit; }" || exit                                                                                           
                                       
         source $Base/products/setup                                                                                   
         setup mrb
-        source $Base/localProducts_lbne_artdaq_${demo_version}_${equalifier}_${build_type}/setup
+        source $Base/localProducts_dune_artdaq_${demo_version}_${equalifier}_${build_type}/setup
         source mrbSetEnv       
                                                                                                                   
         export DAQ_INDATA_PATH=$ARTDAQ_DEMO_DIR/test/Generators:$ARTDAQ_DEMO_DIR/inputData                               
                                                                                                                          
-        export LBNEARTDAQ_BUILD=$MRB_BUILDDIR/lbne_artdaq                                                            
-        export LBNEARTDAQ_REPO="$ARTDAQ_DEMO_DIR"                                                                        
-        export FHICL_FILE_PATH=.:\$LBNEARTDAQ_REPO/tools/fcl:\$FHICL_FILE_PATH                                           
+        export DUNEARTDAQ_BUILD=$MRB_BUILDDIR/dune_artdaq                                                            
+        export DUNEARTDAQ_REPO="$ARTDAQ_DEMO_DIR"                                                                        
+        export FHICL_FILE_PATH=.:\$DUNEARTDAQ_REPO/tools/fcl:\$FHICL_FILE_PATH                                           
                                                                                                                          
 # JCF, 11/25/14                                                                                                          
 # Make it easy for users to take a quick look at their output file via "rawEventDump"                                    
                                                                                                                          
-alias rawEventDump="art -c \$LBNEARTDAQ_REPO/tools/fcl/rawEventDump.fcl "                                                                                        
+alias rawEventDump="art -c \$DUNEARTDAQ_REPO/tools/fcl/rawEventDump.fcl "                                                                                        
 
 	EOF
     #
@@ -293,12 +293,12 @@ installStatus=$?
 if [ $installStatus -eq 0 ] && [ "x${opt_run_demo-}" != "x" ]; then
     echo doing the demo
 
-    toolsdir=${LBNE_ARTDAQ_DIR}/tools
+    toolsdir=${DUNE_ARTDAQ_DIR}/tools
 
     . $toolsdir/run_demo.sh $Base $toolsdir
 
 elif [ $installStatus -eq 0 ]; then
-    echo "lbne-artdaq has been installed correctly."
+    echo "dune-artdaq has been installed correctly."
     echo
 else
     echo "Build error. If all else fails, try (A) logging into a new terminal and (B) creating a new directory out of which to run this script."

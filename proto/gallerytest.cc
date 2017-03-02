@@ -3,7 +3,7 @@
 
 // This is a very simple standalone executable designed to test the
 // gallery package, needed for artdaq v1_13_00 (and higher)-based
-// versions of lbne-artdaq upgrade due to the use of the Playback
+// versions of dune-artdaq upgrade due to the use of the Playback
 // generator. It's heavily influenced by Marc Paterno's example
 // program presented in the June 17 Art Users meeting at Fermilab. If
 // you wish to use this yourself, you'll want to manually set the
@@ -23,7 +23,7 @@
 int main() {
   
   std::vector<std::string> filenames = { 
-    "/data/lbnedaq/scratch/jcfree/input_datafiles_for_playback/lbne_r000101_sr01_20160603T161541.root" 
+    "/data/dunedaq/scratch/jcfree/input_datafiles_for_playback/dune_r000101_sr01_20160603T161541.root" 
   };
 
   const std::string tag = "daq:TOY1:DAQ";

@@ -5,10 +5,10 @@ source `which setupDemoEnvironment.sh`
 # create the configuration file for PMT
 tempFile="/tmp/pmtConfig.$$"
 
-echo "BoardReaderMain `hostname` ${LBNEARTDAQ_BR_PORT[0]}" >> $tempFile
-echo "EventBuilderMain `hostname` ${LBNEARTDAQ_EB_PORT[0]}" >> $tempFile
-echo "AggregatorMain `hostname` ${LBNEARTDAQ_AG_PORT[0]}" >> $tempFile
-echo "AggregatorMain `hostname` ${LBNEARTDAQ_AG_PORT[1]}" >> $tempFile
+echo "BoardReaderMain `hostname` ${DUNEARTDAQ_BR_PORT[0]}" >> $tempFile
+echo "EventBuilderMain `hostname` ${DUNEARTDAQ_EB_PORT[0]}" >> $tempFile
+echo "AggregatorMain `hostname` ${DUNEARTDAQ_AG_PORT[0]}" >> $tempFile
+echo "AggregatorMain `hostname` ${DUNEARTDAQ_AG_PORT[1]}" >> $tempFile
 
 echo $tempFile
 
@@ -20,8 +20,8 @@ mkdir -p -m 0777 ${logroot}/boardreader
 mkdir -p -m 0777 ${logroot}/eventbuilder
 mkdir -p -m 0777 ${logroot}/aggregator
 
-logfhicl=${LBNEARTDAQ_REPO}/tools/fcl/messagefacility.fcl
+logfhicl=${DUNEARTDAQ_REPO}/tools/fcl/messagefacility.fcl
 
 # start PMT
-pmt.rb -p ${LBNEARTDAQ_PMT_PORT} -d $tempFile --logpath ${logroot} --logfhicl ${logfhicl} --display ${DISPLAY}
+pmt.rb -p ${DUNEARTDAQ_PMT_PORT} -d $tempFile --logpath ${logroot} --logfhicl ${logfhicl} --display ${DISPLAY}
 rm $tempFile

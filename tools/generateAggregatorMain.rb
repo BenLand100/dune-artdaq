@@ -47,12 +47,12 @@ physics: {
 
   producers: {
 
-    lbneArtdaqBuildInfo: {
+    duneArtdaqBuildInfo: {
     module_type: LbneArtdaqBuildInfo
     }
   }
 
-  p: [ lbneArtdaqBuildInfo ]
+  p: [ duneArtdaqBuildInfo ]
 
   %{enable_onmon}a1: %{onmon_modules}
 
@@ -88,7 +88,7 @@ process_name: DAQAG"
   # that were passed in from the command line.  Assure that files written out
   # by each AG are unique by including a timestamp in the file name.
   currentTime = Time.now
-  fileName = "lbne_"
+  fileName = "dune_"
   fileName += "r%06r_sr%02s_%to"
   fileName += ".root"
   outputFile = File.join(dataDir, fileName)

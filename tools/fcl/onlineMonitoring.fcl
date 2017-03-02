@@ -10,7 +10,7 @@ services:
 source:
 {
   module_type: RootInput
-  fileNames:  [ "/lbne/data2/users/wallbank/DAQToOffline.root" ]
+  fileNames:  [ "/dune/data2/users/wallbank/DAQToOffline.root" ]
   firstEvent: 1
   maxEvents:  -1
 }
@@ -29,10 +29,10 @@ physics:
       TriggerModuleLabel:         "daq"
       DetailedMonitoring:         false
       ScopeMonitoring:            false
-      DataDirPath:                "/data/lbnedaq/data/"
-      MonitorSavePath:            "/home/lbnedaq/wallbank/monitoring/"
-      EVDSavePath:                "/home/lbnedaq/wallbank/monitoring/"
-      PedestalFile:               "/home/lbnedaq/wallbank/online_database.csv"
+      DataDirPath:                "/data/dunedaq/data/"
+      MonitorSavePath:            "/home/dunedaq/wallbank/monitoring/"
+      EVDSavePath:                "/home/dunedaq/wallbank/monitoring/"
+      PedestalFile:               "/home/dunedaq/wallbank/online_database.csv"
       ImageType:                  ".png"
       MonitoringRefreshRate:      500
       InitialMonitoringUpdate:    30

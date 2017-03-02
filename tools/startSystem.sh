@@ -15,15 +15,15 @@ source `which setupDemoEnvironment.sh`
 tempFile="/tmp/pmtConfig.$$"
 
 for ((i=0; i<$nBoardReaders; i++)) ; do
-    echo "BoardReaderMain `hostname` ${LBNEARTDAQ_BR_PORT[$i]}" >> $tempFile    
+    echo "BoardReaderMain `hostname` ${DUNEARTDAQ_BR_PORT[$i]}" >> $tempFile    
 done
 
 for ((i=0; i<$nEventBuilders; i++)) ; do
-    echo "EventBuilderMain `hostname` ${LBNEARTDAQ_EB_PORT[$i]}" >> $tempFile    
+    echo "EventBuilderMain `hostname` ${DUNEARTDAQ_EB_PORT[$i]}" >> $tempFile    
 done
 
 for ((i=0; i<$nAggregators; i++)) ; do
-    echo "AggregatorMain `hostname` ${LBNEARTDAQ_AG_PORT[$i]}" >> $tempFile
+    echo "AggregatorMain `hostname` ${DUNEARTDAQ_AG_PORT[$i]}" >> $tempFile
 done
 
 # create the logfile directories, if needed
@@ -34,5 +34,5 @@ for logdir in pmt masterControl boardreader eventbuilder aggregator ; do
 done
 
 # start PMT
-pmt.rb -p ${LBNEARTDAQ_PMT_PORT} -d $tempFile --logpath ${logroot} --display ${DISPLAY}
+pmt.rb -p ${DUNEARTDAQ_PMT_PORT} -d $tempFile --logpath ${logroot} --display ${DISPLAY}
 rm $tempFile

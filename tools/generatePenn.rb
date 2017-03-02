@@ -1,5 +1,5 @@
 
-# Generate the FHiCL document which configures the lbne::PennReceiver class
+# Generate the FHiCL document which configures the dune::PennReceiver class
 
 
 require File.join( File.dirname(__FILE__), 'demo_utilities' )

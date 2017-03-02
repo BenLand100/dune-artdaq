@@ -135,14 +135,14 @@ physics:
 
   producers:
   {
-    lbneArtdaqBuildInfo:
+    duneArtdaqBuildInfo:
     {
      module_type: LbneArtdaqBuildInfo
     }
   }   
 
 
-  # p: [ lbneArtdaqBuildInfo ] 
+  # p: [ duneArtdaqBuildInfo ] 
 
   # a1: [ toyDump ]
   # a2: [ app, wf ]

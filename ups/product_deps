@@ -1,6 +1,6 @@
 # The parent line must be the first non-comment line in the file
 # This line defines the product name and version
-parent lbne_artdaq	v1_06_00
+parent dune_artdaq	v1_06_00
 defaultqual	e10
 
 # These optional lines define the installed directories where
@@ -18,7 +18,7 @@ bindir      fq_dir      bin
 #
 product		version		optional
 artdaq		v1_13_02        
-lbne_raw_data 	v1_04_05
+dune_raw_data 	v1_04_05
 gallery 	v1_03_02
 cetbuildtools	v5_04_03	-	only_for_build
 end_product_list
@@ -29,7 +29,7 @@ end_product_list
 
 # -nq- here means there is no qualifier
 # a "-" here means the dependent product is not required by the parent and will not be setup
-qualifier    	       	artdaq                  	lbne_raw_data  	   	gallery
+qualifier    	       	artdaq                  	dune_raw_data  	   	gallery
 e10:prof 		e10:s35:eth:prof   		online:e10:s35:prof	e10:prof
 e10:debug 		e10:s35:eth:debug   		online:e10:s35:debug    e10:debug
 end_qualifier_list

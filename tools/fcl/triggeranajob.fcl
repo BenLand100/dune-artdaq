@@ -38,7 +38,7 @@ physics:
 source:
 {
   module_type: RootInput
-  fileNames: ["/tmp/lbne_r000106_sr01_20141217T160625.root"]
+  fileNames: ["/tmp/dune_r000106_sr01_20141217T160625.root"]
 }
 
 services : {

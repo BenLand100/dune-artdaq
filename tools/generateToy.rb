@@ -1,5 +1,5 @@
 
-# Generate the FHiCL document which configures the lbne::ToySimulator class
+# Generate the FHiCL document which configures the dune::ToySimulator class
 
 # Note that if "nADCcounts" is set to nil, its FHiCL
 # setting is defined in a separate file called ToySimulator.fcl,

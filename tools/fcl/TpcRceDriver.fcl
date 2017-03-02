@@ -21,7 +21,7 @@ fragment_receiver: {
 
    number_of_microslices_per_millislice: @local::number_of_microslices_per_millislice
    
-   rce_client_host_addr: lbnedaq2 
+   rce_client_host_addr: dunedaq2 
    rce_client_host_port: 9999
    rce_client_timeout_usecs: 500000
    

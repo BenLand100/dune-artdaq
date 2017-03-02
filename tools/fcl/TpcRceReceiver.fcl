@@ -4,7 +4,7 @@
  number_of_microslices_per_millislice: 100
    
  # RCE client connection parameters
- rce_client_host_addr: lbnedaq3 
+ rce_client_host_addr: dunedaq3 
  rce_client_host_port: 9999
  rce_client_timeout_usecs: 500000
    

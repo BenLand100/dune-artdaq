@@ -26,11 +26,11 @@ function launch() {
   fi
 
   DemoControl.rb ${enableSerial} -s -c $1 \
-    --penn `hostname`,${LBNEARTDAQ_BR_PORT[0]},0 \
-    --eb `hostname`,${LBNEARTDAQ_EB_PORT[0]} \
-    --eb `hostname`,${LBNEARTDAQ_EB_PORT[1]} \
-    --ag `hostname`,${LBNEARTDAQ_AG_PORT[0]},1 \
-    --ag `hostname`,${LBNEARTDAQ_AG_PORT[1]},1 \
+    --penn `hostname`,${DUNEARTDAQ_BR_PORT[0]},0 \
+    --eb `hostname`,${DUNEARTDAQ_EB_PORT[0]} \
+    --eb `hostname`,${DUNEARTDAQ_EB_PORT[1]} \
+    --ag `hostname`,${DUNEARTDAQ_AG_PORT[0]},1 \
+    --ag `hostname`,${DUNEARTDAQ_AG_PORT[1]},1 \
     --data-dir ${4} --online-monitoring $3 \
     --write-data ${6} --run-event-count ${7} \
     --run-duration ${8} --file-size ${9} \
@@ -99,7 +99,7 @@ Examples: ${scriptName} -p 32768 init
 originalCommand="$0 $*"
 onmonEnable=off
 diskWriting=1
-dataDir="/data/lbnedaq/data"
+dataDir="/data/dunedaq/data"
 runNumber=""
 runEventCount=0
 runDuration=0
@@ -230,12 +230,12 @@ fi
 
 # build the logfile name
 TIMESTAMP=`date '+%Y%m%d%H%M%S'`
-logFile="/data/lbnedaq/daqlogs/masterControl/dsMC-${TIMESTAMP}-${command}.log"
+logFile="/data/dunedaq/daqlogs/masterControl/dsMC-${TIMESTAMP}-${command}.log"
 echo "${originalCommand}" > $logFile
 echo ">>> ${originalCommand} (Disk writing is ${diskWriting})"
 
 # calculate the shmkey that should be checked
-let shmKey=1078394880+${LBNEARTDAQ_PMT_PORT}
+let shmKey=1078394880+${DUNEARTDAQ_PMT_PORT}
 shmKeyString=`printf "0x%x" ${shmKey}`
 
 # invoke the requested command
@@ -249,12 +249,12 @@ if [[ "$command" == "shutdown" ]]; then
         $logFile $diskWriting $runEventCount $runDuration $fileSize \
         $fileEventCount $fileDuration $verbose
     # stop the MPI program
-    xmlrpc ${THIS_NODE}:${LBNEARTDAQ_PMT_PORT}/RPC2 pmt.stopSystem
+    xmlrpc ${THIS_NODE}:${DUNEARTDAQ_PMT_PORT}/RPC2 pmt.stopSystem
     # clean up any stale shared memory segment
     ssh ${AGGREGATOR_NODE} "ipcs | grep ${shmKeyString} | awk '{print \$2}' | xargs ipcrm -m 2>/dev/null"
 elif [[ "$command" == "start-system" ]]; then
     ssh ${AGGREGATOR_NODE} "ipcs | grep ${shmKeyString} | awk '{print \$2}' | xargs ipcrm -m 2>/dev/null"
-    xmlrpc ${THIS_NODE}:${LBNEARTDAQ_PMT_PORT}/RPC2 pmt.startSystem
+    xmlrpc ${THIS_NODE}:${DUNEARTDAQ_PMT_PORT}/RPC2 pmt.startSystem
 elif [[ "$command" == "restart" ]]; then
     # first send a stop command to end the run (in case it is needed)
     launch "stop" $runNumber $onmonEnable $dataDir \
@@ -265,11 +265,11 @@ elif [[ "$command" == "restart" ]]; then
         $logFile $diskWriting $runEventCount $runDuration $fileSize \
         $fileEventCount $fileDuration $verbose
     # stop the MPI program
-    xmlrpc ${THIS_NODE}:${LBNEARTDAQ_PMT_PORT}/RPC2 pmt.stopSystem
+    xmlrpc ${THIS_NODE}:${DUNEARTDAQ_PMT_PORT}/RPC2 pmt.stopSystem
     # clean up any stale shared memory segment
     ssh ${AGGREGATOR_NODE} "ipcs | grep ${shmKeyString} | awk '{print \$2}' | xargs ipcrm -m 2>/dev/null"
     # start the MPI program
-    xmlrpc ${THIS_NODE}:${LBNEARTDAQ_PMT_PORT}/RPC2 pmt.startSystem
+    xmlrpc ${THIS_NODE}:${DUNEARTDAQ_PMT_PORT}/RPC2 pmt.startSystem
 elif [[ "$command" == "reinit" ]]; then
     # first send a stop command to end the run (in case it is needed)
     launch "stop" $runNumber $onmonEnable $dataDir \
@@ -280,11 +280,11 @@ elif [[ "$command" == "reinit" ]]; then
         $logFile $diskWriting $runEventCount $runDuration $fileSize \
         $fileEventCount $fileDuration $verbose
     # stop the MPI program
-    xmlrpc ${THIS_NODE}:${LBNEARTDAQ_PMT_PORT}/RPC2 pmt.stopSystem
+    xmlrpc ${THIS_NODE}:${DUNEARTDAQ_PMT_PORT}/RPC2 pmt.stopSystem
     # clean up any stale shared memory segment
     ssh ${AGGREGATOR_NODE} "ipcs | grep ${shmKeyString} | awk '{print \$2}' | xargs ipcrm -m 2>/dev/null"
     # start the MPI program
-    xmlrpc ${THIS_NODE}:${LBNEARTDAQ_PMT_PORT}/RPC2 pmt.startSystem
+    xmlrpc ${THIS_NODE}:${DUNEARTDAQ_PMT_PORT}/RPC2 pmt.startSystem
     # send the init command to re-initialize the system
     sleep 5
     launch "init" $runNumber $onmonEnable $dataDir \
@@ -294,28 +294,28 @@ elif [[ "$command" == "exit" ]]; then
     launch "shutdown" $runNumber $onmonEnable $dataDir \
         $logFile $diskWriting $runEventCount $runDuration $fileSize \
         $fileEventCount $fileDuration $verbose
-    xmlrpc ${THIS_NODE}:${LBNEARTDAQ_PMT_PORT}/RPC2 pmt.stopSystem
-    xmlrpc ${THIS_NODE}:${LBNEARTDAQ_PMT_PORT}/RPC2 pmt.exit
+    xmlrpc ${THIS_NODE}:${DUNEARTDAQ_PMT_PORT}/RPC2 pmt.stopSystem
+    xmlrpc ${THIS_NODE}:${DUNEARTDAQ_PMT_PORT}/RPC2 pmt.exit
     ssh ${AGGREGATOR_NODE} "ipcs | grep ${shmKeyString} | awk '{print \$2}' | xargs ipcrm -m 2>/dev/null"
 
 elif [[ "$command" == "fast-shutdown" ]]; then
-    xmlrpc ${THIS_NODE}:${LBNEARTDAQ_PMT_PORT}/RPC2 pmt.stopSystem
+    xmlrpc ${THIS_NODE}:${DUNEARTDAQ_PMT_PORT}/RPC2 pmt.stopSystem
     ssh ${AGGREGATOR_NODE} "ipcs | grep ${shmKeyString} | awk '{print \$2}' | xargs ipcrm -m 2>/dev/null"
 elif [[ "$command" == "fast-restart" ]]; then
-    xmlrpc ${THIS_NODE}:${LBNEARTDAQ_PMT_PORT}/RPC2 pmt.stopSystem
+    xmlrpc ${THIS_NODE}:${DUNEARTDAQ_PMT_PORT}/RPC2 pmt.stopSystem
     ssh ${AGGREGATOR_NODE} "ipcs | grep ${shmKeyString} | awk '{print \$2}' | xargs ipcrm -m 2>/dev/null"
-    xmlrpc ${THIS_NODE}:${LBNEARTDAQ_PMT_PORT}/RPC2 pmt.startSystem
+    xmlrpc ${THIS_NODE}:${DUNEARTDAQ_PMT_PORT}/RPC2 pmt.startSystem
 elif [[ "$command" == "fast-reinit" ]]; then
-    xmlrpc ${THIS_NODE}:${LBNEARTDAQ_PMT_PORT}/RPC2 pmt.stopSystem
+    xmlrpc ${THIS_NODE}:${DUNEARTDAQ_PMT_PORT}/RPC2 pmt.stopSystem
     ssh ${AGGREGATOR_NODE} "ipcs | grep ${shmKeyString} | awk '{print \$2}' | xargs ipcrm -m 2>/dev/null"
-    xmlrpc ${THIS_NODE}:${LBNEARTDAQ_PMT_PORT}/RPC2 pmt.startSystem
+    xmlrpc ${THIS_NODE}:${DUNEARTDAQ_PMT_PORT}/RPC2 pmt.startSystem
     sleep 5
     launch "init" $runNumber $onmonEnable $dataDir \
         $logFile $diskWriting $runEventCount $runDuration $fileSize \
         $fileEventCount $fileDuration $verbose
 elif [[ "$command" == "fast-exit" ]]; then
-    xmlrpc ${THIS_NODE}:${LBNEARTDAQ_PMT_PORT}/RPC2 pmt.stopSystem
-    xmlrpc ${THIS_NODE}:${LBNEARTDAQ_PMT_PORT}/RPC2 pmt.exit
+    xmlrpc ${THIS_NODE}:${DUNEARTDAQ_PMT_PORT}/RPC2 pmt.stopSystem
+    xmlrpc ${THIS_NODE}:${DUNEARTDAQ_PMT_PORT}/RPC2 pmt.exit
     ssh ${AGGREGATOR_NODE} "ipcs | grep ${shmKeyString} | awk '{print \$2}' | xargs ipcrm -m 2>/dev/null"
 
 else

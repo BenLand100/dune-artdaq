@@ -1,1 +1,1 @@
-This is the Git repository for LBNE-specific artdaq components.
+This is the Git repository for DUNE-specific artdaq components.

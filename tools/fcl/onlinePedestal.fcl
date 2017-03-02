@@ -5,7 +5,7 @@ services:{}
 source:
 {
   module_type: RootInput
-  fileNames:  [ "/lbne/data2/users/wallbank/DAQToOffline.root" ]
+  fileNames:  [ "/dune/data2/users/wallbank/DAQToOffline.root" ]
   firstEvent: 1
   maxEvents:  -1
 }

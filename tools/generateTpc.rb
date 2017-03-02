@@ -1,5 +1,5 @@
 
-# Generate the FHiCL document which configures the lbne::TpcRceReceiver class
+# Generate the FHiCL document which configures the dune::TpcRceReceiver class
 
 
 require File.join( File.dirname(__FILE__), 'demo_utilities' )
