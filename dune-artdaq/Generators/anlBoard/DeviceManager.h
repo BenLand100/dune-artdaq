@@ -2,7 +2,7 @@
 #define DEVICEMANAGER_H
 
 #include "ftd2xx.h"
-#include "lbne-raw-data/Overlays/anlTypes.hh"
+#include "dune-raw-data/Overlays/anlTypes.hh"
 #include "USBDevice.h"
 #include "EmulatedDevice.h"
 #include "EthernetDevice.h"
@@ -17,7 +17,7 @@
 #include <cstring>
 #include <unistd.h>
 #include <memory>
-#include "lbne-raw-data/Overlays/anlTypes.hh"
+#include "dune-raw-data/Overlays/anlTypes.hh"
 
 namespace SSPDAQ{
 

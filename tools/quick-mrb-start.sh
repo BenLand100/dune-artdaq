@@ -3,7 +3,7 @@
 # Downloads, installs, and runs the artdaq_demo as an MRB-controlled repository
 
 # JCF, Jan-1-2017
-# Modified this script to work with the lbne-artdaq package
+# Modified this script to work with the dune-artdaq package
 
 # JCF, Mar-2-2017
 # Modified it again to work with the brand new dune-artdaq package
@@ -26,13 +26,13 @@ env_opts_var=`basename $0 | sed 's/\.sh$//' | tr 'a-z-' 'A-Z_'`_OPTS
 USAGE="\
    usage: `basename $0` [options]
 examples: `basename $0` 
-          `basename $0` --lbne-raw-data-developer --lbne-raw-data-develop-branch
-          `basename $0` --debug --noviewer --lbne-raw-data-developer
+          `basename $0` --dune-raw-data-developer --dune-raw-data-develop-branch
+          `basename $0` --debug --noviewer --dune-raw-data-developer
 --debug       perform a debug build
 --noviewer    skip installion of artdaq Message Viewer (use if there is no XWindows)
 --not-dune-artdaq-developer  use if you don't have write access to the dune-artdaq repository
---lbne-raw-data-develop-branch     Install the current \"develop\" version of lbne-raw-data (may be unstable!)
---lbne-raw-data-developer    use if you have (and want to use) write access to the lbne-raw-data repository
+--dune-raw-data-develop-branch     Install the current \"develop\" version of dune-raw-data (may be unstable!)
+--dune-raw-data-developer    use if you have (and want to use) write access to the dune-raw-data repository
 "
 
 # Process script arguments and options
@@ -52,8 +52,8 @@ while [ -n "${1-}" ];do
 	    -debug)     opt_debug=--debug;;
 	    -noviewer)    opt_noviewer=--noviewer;;
 	    -not-dune-artdaq-developer) opt_la_nw=1;;
-	    -lbne-raw-data-develop-branch) opt_lrd_develop=1;;
-	    -lbne-raw-data-developer)  opt_lrd_w=1;;
+	    -dune-raw-data-develop-branch) opt_lrd_develop=1;;
+	    -dune-raw-data-developer)  opt_lrd_w=1;;
             *)          echo "Unknown option -$op"; do_help=1;;
         esac
     else
@@ -135,7 +135,7 @@ wget https://cdcvs.fnal.gov/redmine/projects/dune-artdaq/repository/revisions/$t
 demo_version=`grep "parent dune_artdaq" $Base/download/product_deps|awk '{print $3}'`
 
 artdaq_version=`grep -E "^artdaq\s+" $Base/download/product_deps | awk '{print $2}'`
-coredemo_version=`grep -E "^lbne_raw_data\s+" $Base/download/product_deps | awk '{print $2}'`
+coredemo_version=`grep -E "^dune_raw_data\s+" $Base/download/product_deps | awk '{print $2}'`
 gallery_version=`grep -E "^gallery\s+" $Base/download/product_deps | awk '{print $2}'`
 
 default_quals_cmd="sed -r -n 's/.*(e[0-9]+):(s[0-9]+).*/\1 \2/p' $Base/download/product_deps | uniq"
@@ -196,18 +196,18 @@ set -u
 cd $MRB_SOURCE
 
 if [[ $opt_lrd_develop -eq 1 ]]; then
-    lbne_raw_data_checkout_arg="-d lbne_raw_data"
+    dune_raw_data_checkout_arg="-d dune_raw_data"
 else
-    lbne_raw_data_checkout_arg="-t ${coredemo_version} -d lbne_raw_data"
+    dune_raw_data_checkout_arg="-t ${coredemo_version} -d dune_raw_data"
 fi
 
 if [[ $opt_lrd_w -eq 1 ]]; then
-    lbne_raw_data_repo="ssh://p-lbne-raw-data@cdcvs.fnal.gov/cvs/projects/lbne-raw-data"
+    dune_raw_data_repo="ssh://p-dune-raw-data@cdcvs.fnal.gov/cvs/projects/dune-raw-data"
 else
-    lbne_raw_data_repo="http://cdcvs.fnal.gov/projects/lbne-raw-data"
+    dune_raw_data_repo="http://cdcvs.fnal.gov/projects/dune-raw-data"
 fi
 
-# Notice the default for write access to dune-artdaq is the opposite of that for lbne-raw-data
+# Notice the default for write access to dune-artdaq is the opposite of that for dune-raw-data
 if [[ $opt_la_nw -eq 1 ]]; then
     dune_artdaq_repo="http://cdcvs.fnal.gov/projects/dune-artdaq"
 else
@@ -227,10 +227,10 @@ if [[ "$?" != "0" ]]; then
     exit 1
 fi
 
-mrb gitCheckout $lbne_raw_data_checkout_arg $lbne_raw_data_repo
+mrb gitCheckout $dune_raw_data_checkout_arg $dune_raw_data_repo
 
 if [[ "$?" != "0" ]]; then
-    echo "Unable to perform checkout of $lbne_raw_data_repo"
+    echo "Unable to perform checkout of $dune_raw_data_repo"
     exit 1
 fi
 

@@ -11,7 +11,7 @@
 #include "art/Framework/Principal/Handle.h"
 
 #include "canvas/Utilities/Exception.h"
-#include "lbne-raw-data/Overlays/ToyFragment.hh"
+#include "dune-raw-data/Overlays/ToyFragment.hh"
 #include "artdaq-core/Data/Fragments.hh"
 
 #include <algorithm>
@@ -22,7 +22,7 @@
 #include <vector>
 #include <iostream>
 
-using namespace lbne;
+using namespace dune;
 
 namespace dune {
   class ToyDump;

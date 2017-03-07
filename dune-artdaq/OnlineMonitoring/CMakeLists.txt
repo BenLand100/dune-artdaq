@@ -1,7 +1,7 @@
 
 art_make( LIBRARY_NAME  OnlineMonitoring
-	  LIB_LIBRARIES lbne-raw-data_Overlays
-	  		lbne-raw-data_Services_ChannelMap_ChannelMapService_service
+	  LIB_LIBRARIES dune-raw-data_Overlays
+	  		dune-raw-data_Services_ChannelMap_ChannelMapService_service
 			${CETLIB}
 			${ROOT_BASIC_LIB_LIST}
  			${MF_MESSAGELOGGER}

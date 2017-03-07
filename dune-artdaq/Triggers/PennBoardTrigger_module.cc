@@ -24,10 +24,10 @@
 #include <sstream>
 
 #include "artdaq-core/Data/Fragments.hh"
-#include "lbne-raw-data/Overlays/PennMilliSliceFragment.hh"
-#include "lbne-raw-data/Overlays/Utilities.hh"
+#include "dune-raw-data/Overlays/PennMilliSliceFragment.hh"
+#include "dune-raw-data/Overlays/Utilities.hh"
 
-using namespace lbne;
+using namespace dune;
 
 namespace trig {
   class PennBoardTrigger;
@@ -65,37 +65,37 @@ private:
   bool fInvertTriggerDecision;     //Return the opposite of the trigger decision (over-riden bt fPassAllEvents)
 
   bool fFilterOnTriggerType;
-  lbne::PennMicroSlice::Payload_Trigger::trigger_type_t fTriggerType;
+  dune::PennMicroSlice::Payload_Trigger::trigger_type_t fTriggerType;
   std::string fTriggerTypeName;
 
   bool fFilterOnTriggerPattern;
-  lbne::PennMicroSlice::Payload_Trigger::trigger_type_t fTriggerPatternBit;
+  dune::PennMicroSlice::Payload_Trigger::trigger_type_t fTriggerPatternBit;
   std::string fTriggerPatternBitName;
 
   bool fFilterOnCounterPattern;
-  std::bitset<lbne::PennMicroSlice::Payload_Counter::num_bits_tsu_wu>    fCounter_Pattern_bitset_tsu_wu   ;//10
-  std::bitset<lbne::PennMicroSlice::Payload_Counter::num_bits_tsu_el>    fCounter_Pattern_bitset_tsu_el   ;//10
-  std::bitset<lbne::PennMicroSlice::Payload_Counter::num_bits_tsu_extra> fCounter_Pattern_bitset_tsu_extra;// 4
-  std::bitset<lbne::PennMicroSlice::Payload_Counter::num_bits_tsu_nu>    fCounter_Pattern_bitset_tsu_nu   ;// 6
-  std::bitset<lbne::PennMicroSlice::Payload_Counter::num_bits_tsu_sl>    fCounter_Pattern_bitset_tsu_sl   ;// 6
-  std::bitset<lbne::PennMicroSlice::Payload_Counter::num_bits_tsu_nl>    fCounter_Pattern_bitset_tsu_nl   ;// 6
-  std::bitset<lbne::PennMicroSlice::Payload_Counter::num_bits_tsu_su>    fCounter_Pattern_bitset_tsu_su   ;// 6
-  std::bitset<lbne::PennMicroSlice::Payload_Counter::num_bits_bsu_rm>    fCounter_Pattern_bitset_bsu_rm   ;//16
-  std::bitset<lbne::PennMicroSlice::Payload_Counter::num_bits_bsu_cu>    fCounter_Pattern_bitset_bsu_cu   ;//10
-  std::bitset<lbne::PennMicroSlice::Payload_Counter::num_bits_bsu_cl>    fCounter_Pattern_bitset_bsu_cl   ;//13
-  std::bitset<lbne::PennMicroSlice::Payload_Counter::num_bits_bsu_rl>    fCounter_Pattern_bitset_bsu_rl   ;//10
+  std::bitset<dune::PennMicroSlice::Payload_Counter::num_bits_tsu_wu>    fCounter_Pattern_bitset_tsu_wu   ;//10
+  std::bitset<dune::PennMicroSlice::Payload_Counter::num_bits_tsu_el>    fCounter_Pattern_bitset_tsu_el   ;//10
+  std::bitset<dune::PennMicroSlice::Payload_Counter::num_bits_tsu_extra> fCounter_Pattern_bitset_tsu_extra;// 4
+  std::bitset<dune::PennMicroSlice::Payload_Counter::num_bits_tsu_nu>    fCounter_Pattern_bitset_tsu_nu   ;// 6
+  std::bitset<dune::PennMicroSlice::Payload_Counter::num_bits_tsu_sl>    fCounter_Pattern_bitset_tsu_sl   ;// 6
+  std::bitset<dune::PennMicroSlice::Payload_Counter::num_bits_tsu_nl>    fCounter_Pattern_bitset_tsu_nl   ;// 6
+  std::bitset<dune::PennMicroSlice::Payload_Counter::num_bits_tsu_su>    fCounter_Pattern_bitset_tsu_su   ;// 6
+  std::bitset<dune::PennMicroSlice::Payload_Counter::num_bits_bsu_rm>    fCounter_Pattern_bitset_bsu_rm   ;//16
+  std::bitset<dune::PennMicroSlice::Payload_Counter::num_bits_bsu_cu>    fCounter_Pattern_bitset_bsu_cu   ;//10
+  std::bitset<dune::PennMicroSlice::Payload_Counter::num_bits_bsu_cl>    fCounter_Pattern_bitset_bsu_cl   ;//13
+  std::bitset<dune::PennMicroSlice::Payload_Counter::num_bits_bsu_rl>    fCounter_Pattern_bitset_bsu_rl   ;//10
 
-  lbne::PennMicroSlice::Payload_Counter::counter_set_t fCounter_Pattern_tsu_wu   ;
-  lbne::PennMicroSlice::Payload_Counter::counter_set_t fCounter_Pattern_tsu_el   ;
-  lbne::PennMicroSlice::Payload_Counter::counter_set_t fCounter_Pattern_tsu_extra;
-  lbne::PennMicroSlice::Payload_Counter::counter_set_t fCounter_Pattern_tsu_nu   ;
-  lbne::PennMicroSlice::Payload_Counter::counter_set_t fCounter_Pattern_tsu_sl   ;
-  lbne::PennMicroSlice::Payload_Counter::counter_set_t fCounter_Pattern_tsu_nl   ;
-  lbne::PennMicroSlice::Payload_Counter::counter_set_t fCounter_Pattern_tsu_su   ;
-  lbne::PennMicroSlice::Payload_Counter::counter_set_t fCounter_Pattern_bsu_rm   ;
-  lbne::PennMicroSlice::Payload_Counter::counter_set_t fCounter_Pattern_bsu_cu   ;
-  lbne::PennMicroSlice::Payload_Counter::counter_set_t fCounter_Pattern_bsu_cl   ;
-  lbne::PennMicroSlice::Payload_Counter::counter_set_t fCounter_Pattern_bsu_rl   ;
+  dune::PennMicroSlice::Payload_Counter::counter_set_t fCounter_Pattern_tsu_wu   ;
+  dune::PennMicroSlice::Payload_Counter::counter_set_t fCounter_Pattern_tsu_el   ;
+  dune::PennMicroSlice::Payload_Counter::counter_set_t fCounter_Pattern_tsu_extra;
+  dune::PennMicroSlice::Payload_Counter::counter_set_t fCounter_Pattern_tsu_nu   ;
+  dune::PennMicroSlice::Payload_Counter::counter_set_t fCounter_Pattern_tsu_sl   ;
+  dune::PennMicroSlice::Payload_Counter::counter_set_t fCounter_Pattern_tsu_nl   ;
+  dune::PennMicroSlice::Payload_Counter::counter_set_t fCounter_Pattern_tsu_su   ;
+  dune::PennMicroSlice::Payload_Counter::counter_set_t fCounter_Pattern_bsu_rm   ;
+  dune::PennMicroSlice::Payload_Counter::counter_set_t fCounter_Pattern_bsu_cu   ;
+  dune::PennMicroSlice::Payload_Counter::counter_set_t fCounter_Pattern_bsu_cl   ;
+  dune::PennMicroSlice::Payload_Counter::counter_set_t fCounter_Pattern_bsu_rl   ;
 };
 
 
@@ -115,12 +115,12 @@ trig::PennBoardTrigger::PennBoardTrigger(fhicl::ParameterSet const & p)
   fInvertTriggerDecision = p.get<bool>("InvertTriggerDecision", false);
 
   fFilterOnTriggerType = p.get<bool>("FilterOnTriggerType", false);
-  fTriggerType = p.get<lbne::PennMicroSlice::Payload_Trigger::trigger_type_t>("TriggerType", 0x00);
-  fTriggerTypeName = lbne::PennMicroSlice::Payload_Trigger::getTriggerTypeName(fTriggerType);
+  fTriggerType = p.get<dune::PennMicroSlice::Payload_Trigger::trigger_type_t>("TriggerType", 0x00);
+  fTriggerTypeName = dune::PennMicroSlice::Payload_Trigger::getTriggerTypeName(fTriggerType);
 
   fFilterOnTriggerPattern = p.get<bool>("FilterOnTriggerPattern", false);
-  fTriggerPatternBit = p.get<lbne::PennMicroSlice::Payload_Trigger::trigger_type_t>("TriggerPatternBit", 1);
-  fTriggerPatternBitName = lbne::PennMicroSlice::Payload_Trigger::getTriggerTypeName(fTriggerPatternBit);
+  fTriggerPatternBit = p.get<dune::PennMicroSlice::Payload_Trigger::trigger_type_t>("TriggerPatternBit", 1);
+  fTriggerPatternBitName = dune::PennMicroSlice::Payload_Trigger::getTriggerTypeName(fTriggerPatternBit);
 
   //setup TriggerPatternNames
 
@@ -130,17 +130,17 @@ trig::PennBoardTrigger::PennBoardTrigger(fhicl::ParameterSet const & p)
     This reads the bitmasks in as strings, converts them to bitsets (which are binary representations), the final values are stored in counter_set_t's
     The storage type (counter_set_t's) makes them relatively easy to compare to the CounterPayload's
    */
-  fCounter_Pattern_bitset_tsu_wu     = std::bitset<lbne::PennMicroSlice::Payload_Counter::num_bits_tsu_wu   > (p.get<std::string>("Counter_Pattern_tsu_wu"   ,"0"));
-  fCounter_Pattern_bitset_tsu_el     = std::bitset<lbne::PennMicroSlice::Payload_Counter::num_bits_tsu_el   > (p.get<std::string>("Counter_Pattern_tsu_el"   ,"0"));
-  fCounter_Pattern_bitset_tsu_extra  = std::bitset<lbne::PennMicroSlice::Payload_Counter::num_bits_tsu_extra> (p.get<std::string>("Counter_Pattern_tsu_extra","0"));
-  fCounter_Pattern_bitset_tsu_nu     = std::bitset<lbne::PennMicroSlice::Payload_Counter::num_bits_tsu_nu   > (p.get<std::string>("Counter_Pattern_tsu_nu"   ,"0"));
-  fCounter_Pattern_bitset_tsu_sl     = std::bitset<lbne::PennMicroSlice::Payload_Counter::num_bits_tsu_sl   > (p.get<std::string>("Counter_Pattern_tsu_sl"   ,"0"));
-  fCounter_Pattern_bitset_tsu_nl     = std::bitset<lbne::PennMicroSlice::Payload_Counter::num_bits_tsu_nl   > (p.get<std::string>("Counter_Pattern_tsu_nl"   ,"0"));
-  fCounter_Pattern_bitset_tsu_su     = std::bitset<lbne::PennMicroSlice::Payload_Counter::num_bits_tsu_su   > (p.get<std::string>("Counter_Pattern_tsu_su"   ,"0"));
-  fCounter_Pattern_bitset_bsu_rm     = std::bitset<lbne::PennMicroSlice::Payload_Counter::num_bits_bsu_rm   > (p.get<std::string>("Counter_Pattern_bsu_rm"   ,"0"));
-  fCounter_Pattern_bitset_bsu_cu     = std::bitset<lbne::PennMicroSlice::Payload_Counter::num_bits_bsu_cu   > (p.get<std::string>("Counter_Pattern_bsu_cu"   ,"0"));
-  fCounter_Pattern_bitset_bsu_cl     = std::bitset<lbne::PennMicroSlice::Payload_Counter::num_bits_bsu_cl   > (p.get<std::string>("Counter_Pattern_bsu_cl"   ,"0"));
-  fCounter_Pattern_bitset_bsu_rl     = std::bitset<lbne::PennMicroSlice::Payload_Counter::num_bits_bsu_rl   > (p.get<std::string>("Counter_Pattern_bsu_rl"   ,"0"));
+  fCounter_Pattern_bitset_tsu_wu     = std::bitset<dune::PennMicroSlice::Payload_Counter::num_bits_tsu_wu   > (p.get<std::string>("Counter_Pattern_tsu_wu"   ,"0"));
+  fCounter_Pattern_bitset_tsu_el     = std::bitset<dune::PennMicroSlice::Payload_Counter::num_bits_tsu_el   > (p.get<std::string>("Counter_Pattern_tsu_el"   ,"0"));
+  fCounter_Pattern_bitset_tsu_extra  = std::bitset<dune::PennMicroSlice::Payload_Counter::num_bits_tsu_extra> (p.get<std::string>("Counter_Pattern_tsu_extra","0"));
+  fCounter_Pattern_bitset_tsu_nu     = std::bitset<dune::PennMicroSlice::Payload_Counter::num_bits_tsu_nu   > (p.get<std::string>("Counter_Pattern_tsu_nu"   ,"0"));
+  fCounter_Pattern_bitset_tsu_sl     = std::bitset<dune::PennMicroSlice::Payload_Counter::num_bits_tsu_sl   > (p.get<std::string>("Counter_Pattern_tsu_sl"   ,"0"));
+  fCounter_Pattern_bitset_tsu_nl     = std::bitset<dune::PennMicroSlice::Payload_Counter::num_bits_tsu_nl   > (p.get<std::string>("Counter_Pattern_tsu_nl"   ,"0"));
+  fCounter_Pattern_bitset_tsu_su     = std::bitset<dune::PennMicroSlice::Payload_Counter::num_bits_tsu_su   > (p.get<std::string>("Counter_Pattern_tsu_su"   ,"0"));
+  fCounter_Pattern_bitset_bsu_rm     = std::bitset<dune::PennMicroSlice::Payload_Counter::num_bits_bsu_rm   > (p.get<std::string>("Counter_Pattern_bsu_rm"   ,"0"));
+  fCounter_Pattern_bitset_bsu_cu     = std::bitset<dune::PennMicroSlice::Payload_Counter::num_bits_bsu_cu   > (p.get<std::string>("Counter_Pattern_bsu_cu"   ,"0"));
+  fCounter_Pattern_bitset_bsu_cl     = std::bitset<dune::PennMicroSlice::Payload_Counter::num_bits_bsu_cl   > (p.get<std::string>("Counter_Pattern_bsu_cl"   ,"0"));
+  fCounter_Pattern_bitset_bsu_rl     = std::bitset<dune::PennMicroSlice::Payload_Counter::num_bits_bsu_rl   > (p.get<std::string>("Counter_Pattern_bsu_rl"   ,"0"));
 
   fCounter_Pattern_tsu_wu    = fCounter_Pattern_bitset_tsu_wu.to_ulong();   
   fCounter_Pattern_tsu_el    = fCounter_Pattern_bitset_tsu_el.to_ulong();      
@@ -254,12 +254,12 @@ bool trig::PennBoardTrigger::filterOnCounterPayload(art::Handle<artdaq::Fragment
 
     for (size_t frag_index=0; frag_index < rawPTB->size(); ++frag_index){
       const auto & frag((*rawPTB)[frag_index]); //Make a fragment from the frag_index element of rawPTB
-      lbne::PennMilliSliceFragment ms_frag(frag);
-      lbne::PennMilliSlice::Header::payload_count_t n_frames, n_frames_counter, n_frames_trigger, n_frames_timestamp;
+      dune::PennMilliSliceFragment ms_frag(frag);
+      dune::PennMilliSlice::Header::payload_count_t n_frames, n_frames_counter, n_frames_trigger, n_frames_timestamp;
       n_frames = ms_frag.payloadCount(n_frames_counter, n_frames_trigger, n_frames_timestamp);
       
-      lbne::PennMicroSlice::Payload_Header::data_packet_type_t payload_type;
-      lbne::PennMicroSlice::Payload_Header::short_nova_timestamp_t timestamp;
+      dune::PennMicroSlice::Payload_Header::data_packet_type_t payload_type;
+      dune::PennMicroSlice::Payload_Header::short_nova_timestamp_t timestamp;
       uint8_t* payload_data=0;
       size_t payload_size=0;    
       
@@ -269,8 +269,8 @@ bool trig::PennBoardTrigger::filterOnCounterPayload(art::Handle<artdaq::Fragment
         //The following should not happen, but just in case the get_next_payload runs off the end of the payload buffer
         if(payload_data==nullptr) continue;
     
-        if(payload_type == lbne::PennMicroSlice::DataTypeCounter){
-	  lbne::PennMicroSlice::Payload_Counter* myCounterPayload = reinterpret_cast_checked<lbne::PennMicroSlice::Payload_Counter*>(payload_data);
+        if(payload_type == dune::PennMicroSlice::DataTypeCounter){
+	  dune::PennMicroSlice::Payload_Counter* myCounterPayload = reinterpret_cast_checked<dune::PennMicroSlice::Payload_Counter*>(payload_data);
 	  
 	  bool triggerDecision=false;
 
@@ -288,11 +288,11 @@ bool trig::PennBoardTrigger::filterOnCounterPayload(art::Handle<artdaq::Fragment
           if( fCounter_Pattern_bsu_rl    & (myCounterPayload->bsu_rl    )) triggerDecision = true;
 
 	  // my_ostringstream << "tsu_wu                 : " 
-	  // 		   << std::bitset<lbne::PennMicroSlice::Payload_Counter::num_bits_tsu_wu> (fCounter_Pattern_tsu_wu)    << std::endl;
+	  // 		   << std::bitset<dune::PennMicroSlice::Payload_Counter::num_bits_tsu_wu> (fCounter_Pattern_tsu_wu)    << std::endl;
 	  // my_ostringstream << "CounterPayload->ts_wu  : " 
-	  // 		   << std::bitset<lbne::PennMicroSlice::Payload_Counter::num_bits_tsu_wu> (myCounterPayload->tsu_wu)    << std::endl;
+	  // 		   << std::bitset<dune::PennMicroSlice::Payload_Counter::num_bits_tsu_wu> (myCounterPayload->tsu_wu)    << std::endl;
 	  // my_ostringstream << "&                      : " 
-	  // 		   << std::bitset<lbne::PennMicroSlice::Payload_Counter::num_bits_tsu_wu> ((myCounterPayload->tsu_wu) & fCounter_Pattern_tsu_wu) 
+	  // 		   << std::bitset<dune::PennMicroSlice::Payload_Counter::num_bits_tsu_wu> ((myCounterPayload->tsu_wu) & fCounter_Pattern_tsu_wu) 
 	  // 		   << " - ";
 	  // if((myCounterPayload->tsu_wu) & fCounter_Pattern_tsu_wu) my_ostringstream << "TRUE";
 	  // my_ostringstream << std::endl;
@@ -340,12 +340,12 @@ bool trig::PennBoardTrigger::filterOnTriggerPayload(art::Handle<artdaq::Fragment
 
     for (size_t frag_index=0; frag_index < rawPTB->size(); ++frag_index){
       const auto & frag((*rawPTB)[frag_index]); //Make a fragment from the frag_index element of rawPTB
-      lbne::PennMilliSliceFragment ms_frag(frag);
-      lbne::PennMilliSlice::Header::payload_count_t n_frames, n_frames_counter, n_frames_trigger, n_frames_timestamp;
+      dune::PennMilliSliceFragment ms_frag(frag);
+      dune::PennMilliSlice::Header::payload_count_t n_frames, n_frames_counter, n_frames_trigger, n_frames_timestamp;
       n_frames = ms_frag.payloadCount(n_frames_counter, n_frames_trigger, n_frames_timestamp);
       
-      lbne::PennMicroSlice::Payload_Header::data_packet_type_t payload_type;
-      lbne::PennMicroSlice::Payload_Header::short_nova_timestamp_t timestamp;
+      dune::PennMicroSlice::Payload_Header::data_packet_type_t payload_type;
+      dune::PennMicroSlice::Payload_Header::short_nova_timestamp_t timestamp;
       uint8_t* payload_data=0;
       size_t payload_size=0;    
       
@@ -355,14 +355,14 @@ bool trig::PennBoardTrigger::filterOnTriggerPayload(art::Handle<artdaq::Fragment
         //The following should not happen, but just in case the get_next_payload runs off the end of the payload buffer
         if(payload_data==nullptr) continue;
     
-        if(payload_type == lbne::PennMicroSlice::DataTypeTrigger){
+        if(payload_type == dune::PennMicroSlice::DataTypeTrigger){
     
-          lbne::PennMicroSlice::Payload_Trigger *myTriggerPayload = reinterpret_cast_checked<lbne::PennMicroSlice::Payload_Trigger*>(payload_data);      
-          std::bitset<lbne::PennMicroSlice::Payload_Trigger::num_bits_trigger_type> this_trigger_type;
-          std::bitset<lbne::PennMicroSlice::Payload_Trigger::num_bits_trigger_id_muon> this_trigger_pattern;
+          dune::PennMicroSlice::Payload_Trigger *myTriggerPayload = reinterpret_cast_checked<dune::PennMicroSlice::Payload_Trigger*>(payload_data);      
+          std::bitset<dune::PennMicroSlice::Payload_Trigger::num_bits_trigger_type> this_trigger_type;
+          std::bitset<dune::PennMicroSlice::Payload_Trigger::num_bits_trigger_id_muon> this_trigger_pattern;
     
-          this_trigger_type = std::bitset<lbne::PennMicroSlice::Payload_Trigger::num_bits_trigger_type>(myTriggerPayload->trigger_type);
-          this_trigger_pattern = std::bitset<lbne::PennMicroSlice::Payload_Trigger::num_bits_trigger_id_muon> (myTriggerPayload->trigger_id_muon);
+          this_trigger_type = std::bitset<dune::PennMicroSlice::Payload_Trigger::num_bits_trigger_type>(myTriggerPayload->trigger_type);
+          this_trigger_pattern = std::bitset<dune::PennMicroSlice::Payload_Trigger::num_bits_trigger_id_muon> (myTriggerPayload->trigger_id_muon);
           
           if((myTriggerPayload->trigger_type) == fTriggerType){
             if(fFilterOnTriggerPattern){
@@ -455,35 +455,35 @@ void trig::PennBoardTrigger::printPayloadInfo(art::Handle<artdaq::Fragments> con
 
     for (size_t frag_index=0; frag_index < rawPTB->size(); ++frag_index){
       const auto & frag((*rawPTB)[frag_index]); //Make a fragment from the frag_index element of rawPTB
-      lbne::PennMilliSliceFragment ms_frag(frag);
-      lbne::PennMilliSlice::Header::payload_count_t n_frames, n_frames_counter, n_frames_trigger, n_frames_timestamp;
+      dune::PennMilliSliceFragment ms_frag(frag);
+      dune::PennMilliSlice::Header::payload_count_t n_frames, n_frames_counter, n_frames_trigger, n_frames_timestamp;
       n_frames = ms_frag.payloadCount(n_frames_counter, n_frames_trigger, n_frames_timestamp);
       
       //Information within the penn_payloads
-      lbne::PennMicroSlice::Payload_Header::data_packet_type_t payload_type;
-      lbne::PennMicroSlice::Payload_Header::short_nova_timestamp_t timestamp;
+      dune::PennMicroSlice::Payload_Header::data_packet_type_t payload_type;
+      dune::PennMicroSlice::Payload_Header::short_nova_timestamp_t timestamp;
       uint8_t* payload_data;
       size_t payload_size;
       
       //      PTBTrigger *myPTBTrigger;
       //      PTBCounter *myPTBCounter;
-      lbne::PennMicroSlice::Payload_Counter *myCounterPayload;
-      lbne::PennMicroSlice::Payload_Trigger *myTriggerPayload;
+      dune::PennMicroSlice::Payload_Counter *myCounterPayload;
+      dune::PennMicroSlice::Payload_Trigger *myTriggerPayload;
 
-      std::bitset<lbne::PennMicroSlice::Payload_Trigger::num_bits_trigger_type> trigger_type;
-      std::bitset<lbne::PennMicroSlice::Payload_Trigger::num_bits_trigger_id_muon> trigger_pattern;
+      std::bitset<dune::PennMicroSlice::Payload_Trigger::num_bits_trigger_type> trigger_type;
+      std::bitset<dune::PennMicroSlice::Payload_Trigger::num_bits_trigger_id_muon> trigger_pattern;
 
-      std::bitset<lbne::PennMicroSlice::Payload_Counter::num_bits_tsu_wu   > counter_bitset_tsu_wu       ;//tsu_wu     : 10
-      std::bitset<lbne::PennMicroSlice::Payload_Counter::num_bits_tsu_el   > counter_bitset_tsu_el       ;//tsu_el     : 10
-      std::bitset<lbne::PennMicroSlice::Payload_Counter::num_bits_tsu_extra> counter_bitset_tsu_extra    ;//tsu_extra  :  4
-      std::bitset<lbne::PennMicroSlice::Payload_Counter::num_bits_tsu_nu   > counter_bitset_tsu_nu       ;//tsu_nu     :  6
-      std::bitset<lbne::PennMicroSlice::Payload_Counter::num_bits_tsu_sl   > counter_bitset_tsu_sl       ;//tsu_sl     :  6
-      std::bitset<lbne::PennMicroSlice::Payload_Counter::num_bits_tsu_nl   > counter_bitset_tsu_nl       ;//tsu_nl     :  6
-      std::bitset<lbne::PennMicroSlice::Payload_Counter::num_bits_tsu_su   > counter_bitset_tsu_su       ;//tsu_su     :  6
-      std::bitset<lbne::PennMicroSlice::Payload_Counter::num_bits_bsu_rm   > counter_bitset_bsu_rm       ;//bsu_rm     : 16
-      std::bitset<lbne::PennMicroSlice::Payload_Counter::num_bits_bsu_cu   > counter_bitset_bsu_cu       ;//bsu_cu     : 10
-      std::bitset<lbne::PennMicroSlice::Payload_Counter::num_bits_bsu_cl   > counter_bitset_bsu_cl       ;//bsu_cl     : 13
-      std::bitset<lbne::PennMicroSlice::Payload_Counter::num_bits_bsu_rl   > counter_bitset_bsu_rl       ;//bsu_rl     : 10
+      std::bitset<dune::PennMicroSlice::Payload_Counter::num_bits_tsu_wu   > counter_bitset_tsu_wu       ;//tsu_wu     : 10
+      std::bitset<dune::PennMicroSlice::Payload_Counter::num_bits_tsu_el   > counter_bitset_tsu_el       ;//tsu_el     : 10
+      std::bitset<dune::PennMicroSlice::Payload_Counter::num_bits_tsu_extra> counter_bitset_tsu_extra    ;//tsu_extra  :  4
+      std::bitset<dune::PennMicroSlice::Payload_Counter::num_bits_tsu_nu   > counter_bitset_tsu_nu       ;//tsu_nu     :  6
+      std::bitset<dune::PennMicroSlice::Payload_Counter::num_bits_tsu_sl   > counter_bitset_tsu_sl       ;//tsu_sl     :  6
+      std::bitset<dune::PennMicroSlice::Payload_Counter::num_bits_tsu_nl   > counter_bitset_tsu_nl       ;//tsu_nl     :  6
+      std::bitset<dune::PennMicroSlice::Payload_Counter::num_bits_tsu_su   > counter_bitset_tsu_su       ;//tsu_su     :  6
+      std::bitset<dune::PennMicroSlice::Payload_Counter::num_bits_bsu_rm   > counter_bitset_bsu_rm       ;//bsu_rm     : 16
+      std::bitset<dune::PennMicroSlice::Payload_Counter::num_bits_bsu_cu   > counter_bitset_bsu_cu       ;//bsu_cu     : 10
+      std::bitset<dune::PennMicroSlice::Payload_Counter::num_bits_bsu_cl   > counter_bitset_bsu_cl       ;//bsu_cl     : 13
+      std::bitset<dune::PennMicroSlice::Payload_Counter::num_bits_bsu_rl   > counter_bitset_bsu_rl       ;//bsu_rl     : 10
                              
       //iterate through the frames             
       for (uint32_t payload_index = 0; payload_index < n_frames; payload_index++){
@@ -495,28 +495,28 @@ void trig::PennBoardTrigger::printPayloadInfo(art::Handle<artdaq::Fragments> con
     
     switch ( payload_type )
       {
-      case lbne::PennMicroSlice::DataTypeCounter:
+      case dune::PennMicroSlice::DataTypeCounter:
         std::cerr << "payload_type: Counter   "   << std::endl;
         std::cerr << "payload_size: " << payload_size << std::endl;
 
         //        myPTBCounter = reinterpret_cast_checked<PTBCounter*>(payload_data);
-        myCounterPayload = reinterpret_cast_checked<lbne::PennMicroSlice::Payload_Counter*>(payload_data);
+        myCounterPayload = reinterpret_cast_checked<dune::PennMicroSlice::Payload_Counter*>(payload_data);
 
         std::cerr << "myCounterPayload size: " << sizeof(*myCounterPayload) << std::endl;
         //        std::cerr << "myCounterPayload size: " << sizeof(PTBCounter) << std::endl;
-        std::cerr << "myCounterPayload size: " << sizeof(lbne::PennMicroSlice::Payload_Counter) << std::endl;
+        std::cerr << "myCounterPayload size: " << sizeof(dune::PennMicroSlice::Payload_Counter) << std::endl;
 
-        counter_bitset_tsu_wu       = std::bitset<lbne::PennMicroSlice::Payload_Counter::num_bits_tsu_wu   >(myCounterPayload->tsu_wu      );// tsu_wu     : 10
-        counter_bitset_tsu_el       = std::bitset<lbne::PennMicroSlice::Payload_Counter::num_bits_tsu_el   >(myCounterPayload->tsu_el      );// tsu_el     : 10
-        counter_bitset_tsu_extra    = std::bitset<lbne::PennMicroSlice::Payload_Counter::num_bits_tsu_extra>(myCounterPayload->tsu_extra   );// tsu_extra  :  4
-        counter_bitset_tsu_nu       = std::bitset<lbne::PennMicroSlice::Payload_Counter::num_bits_tsu_nu   >(myCounterPayload->tsu_nu      );// tsu_nu     :  6
-        counter_bitset_tsu_sl       = std::bitset<lbne::PennMicroSlice::Payload_Counter::num_bits_tsu_sl   >(myCounterPayload->tsu_sl      );// tsu_sl     :  6
-        counter_bitset_tsu_nl       = std::bitset<lbne::PennMicroSlice::Payload_Counter::num_bits_tsu_nl   >(myCounterPayload->tsu_nl      );// tsu_nl     :  6
-        counter_bitset_tsu_su       = std::bitset<lbne::PennMicroSlice::Payload_Counter::num_bits_tsu_su   >(myCounterPayload->tsu_su      );// tsu_su     :  6
-        counter_bitset_bsu_rm       = std::bitset<lbne::PennMicroSlice::Payload_Counter::num_bits_bsu_rm   >(myCounterPayload->bsu_rm      );// bsu_rm     : 16
-        counter_bitset_bsu_cu       = std::bitset<lbne::PennMicroSlice::Payload_Counter::num_bits_bsu_cu   >(myCounterPayload->bsu_cu      );// bsu_cu     : 10
-        counter_bitset_bsu_cl       = std::bitset<lbne::PennMicroSlice::Payload_Counter::num_bits_bsu_cl   >(myCounterPayload->get_bsu_cl()      );// bsu_cl     : 13
-        counter_bitset_bsu_rl       = std::bitset<lbne::PennMicroSlice::Payload_Counter::num_bits_bsu_rl   >(myCounterPayload->bsu_rl      );// bsu_rl     : 10
+        counter_bitset_tsu_wu       = std::bitset<dune::PennMicroSlice::Payload_Counter::num_bits_tsu_wu   >(myCounterPayload->tsu_wu      );// tsu_wu     : 10
+        counter_bitset_tsu_el       = std::bitset<dune::PennMicroSlice::Payload_Counter::num_bits_tsu_el   >(myCounterPayload->tsu_el      );// tsu_el     : 10
+        counter_bitset_tsu_extra    = std::bitset<dune::PennMicroSlice::Payload_Counter::num_bits_tsu_extra>(myCounterPayload->tsu_extra   );// tsu_extra  :  4
+        counter_bitset_tsu_nu       = std::bitset<dune::PennMicroSlice::Payload_Counter::num_bits_tsu_nu   >(myCounterPayload->tsu_nu      );// tsu_nu     :  6
+        counter_bitset_tsu_sl       = std::bitset<dune::PennMicroSlice::Payload_Counter::num_bits_tsu_sl   >(myCounterPayload->tsu_sl      );// tsu_sl     :  6
+        counter_bitset_tsu_nl       = std::bitset<dune::PennMicroSlice::Payload_Counter::num_bits_tsu_nl   >(myCounterPayload->tsu_nl      );// tsu_nl     :  6
+        counter_bitset_tsu_su       = std::bitset<dune::PennMicroSlice::Payload_Counter::num_bits_tsu_su   >(myCounterPayload->tsu_su      );// tsu_su     :  6
+        counter_bitset_bsu_rm       = std::bitset<dune::PennMicroSlice::Payload_Counter::num_bits_bsu_rm   >(myCounterPayload->bsu_rm      );// bsu_rm     : 16
+        counter_bitset_bsu_cu       = std::bitset<dune::PennMicroSlice::Payload_Counter::num_bits_bsu_cu   >(myCounterPayload->bsu_cu      );// bsu_cu     : 10
+        counter_bitset_bsu_cl       = std::bitset<dune::PennMicroSlice::Payload_Counter::num_bits_bsu_cl   >(myCounterPayload->get_bsu_cl()      );// bsu_cl     : 13
+        counter_bitset_bsu_rl       = std::bitset<dune::PennMicroSlice::Payload_Counter::num_bits_bsu_rl   >(myCounterPayload->bsu_rl      );// bsu_rl     : 10
 
         std::cerr << "tsu_wu      : " << counter_bitset_tsu_wu      << std::endl;
         std::cerr << "tsu_el      : " << counter_bitset_tsu_el      << std::endl;
@@ -532,53 +532,53 @@ void trig::PennBoardTrigger::printPayloadInfo(art::Handle<artdaq::Fragments> con
         std::cerr << std::endl;
 
         break;
-      case lbne::PennMicroSlice::DataTypeTrigger:
+      case dune::PennMicroSlice::DataTypeTrigger:
         std::cerr << "payload_type: Trigger   "   << std::endl;
         std::cerr << "payload_size: " << payload_size << std::endl;
 
         //        myPTBTrigger = reinterpret_cast_checked<PTBTrigger*>(payload_data);
-        myTriggerPayload = reinterpret_cast_checked<lbne::PennMicroSlice::Payload_Trigger*>(payload_data);
+        myTriggerPayload = reinterpret_cast_checked<dune::PennMicroSlice::Payload_Trigger*>(payload_data);
 
-        trigger_type = std::bitset<lbne::PennMicroSlice::Payload_Trigger::num_bits_trigger_type>(myTriggerPayload->trigger_type);
-        trigger_pattern = std::bitset<lbne::PennMicroSlice::Payload_Trigger::num_bits_trigger_id_muon> (myTriggerPayload->trigger_id_muon);
+        trigger_type = std::bitset<dune::PennMicroSlice::Payload_Trigger::num_bits_trigger_type>(myTriggerPayload->trigger_type);
+        trigger_pattern = std::bitset<dune::PennMicroSlice::Payload_Trigger::num_bits_trigger_id_muon> (myTriggerPayload->trigger_id_muon);
         std::cerr << "trigger_type:    " << trigger_type << std::endl;
         std::cerr << "trigger_pattern: " << trigger_pattern << std::endl;
 
 
         switch ( myTriggerPayload->trigger_type ){
-        case lbne::PennMicroSlice::Payload_Trigger::calibration:
-          std::cerr << "lbne::PennMicroSlice::Payload_Trigger::TriggerTypes::calibration" << std::endl;
+        case dune::PennMicroSlice::Payload_Trigger::calibration:
+          std::cerr << "dune::PennMicroSlice::Payload_Trigger::TriggerTypes::calibration" << std::endl;
           break;
-        case lbne::PennMicroSlice::Payload_Trigger::ssp:
-          std::cerr << "lbne::PennMicroSlice::Payload_Trigger::TriggerTypes::ssp" << std::endl;
+        case dune::PennMicroSlice::Payload_Trigger::ssp:
+          std::cerr << "dune::PennMicroSlice::Payload_Trigger::TriggerTypes::ssp" << std::endl;
           break;
-        case lbne::PennMicroSlice::Payload_Trigger::muon:
-          std::cerr << "lbne::PennMicroSlice::Payload_Trigger::TriggerTypes::muon" << std::endl;
+        case dune::PennMicroSlice::Payload_Trigger::muon:
+          std::cerr << "dune::PennMicroSlice::Payload_Trigger::TriggerTypes::muon" << std::endl;
 
-          if(trigger_pattern.test(lbne::PennMicroSlice::Payload_Trigger::TA)) 
-        std::cerr << "lbne::PennMicroSlice::Payload_Trigger::TriggerPatternBits::bsu_rm_cl" << std::endl;
-          if(trigger_pattern.test(lbne::PennMicroSlice::Payload_Trigger::TB)) 
-        std::cerr << "lbne::PennMicroSlice::Payload_Trigger::TriggerPatternBits::tsu_nu_sl" << std::endl;
-          if(trigger_pattern.test(lbne::PennMicroSlice::Payload_Trigger::TC)) 
-        std::cerr << "lbne::PennMicroSlice::Payload_Trigger::TriggerPatternBits::tsu_sl_nu" << std::endl;
-          if(trigger_pattern.test(lbne::PennMicroSlice::Payload_Trigger::TD)) 
-        std::cerr << "lbne::PennMicroSlice::Payload_Trigger::TriggerPatternBits::tsu_el_wu" << std::endl;
+          if(trigger_pattern.test(dune::PennMicroSlice::Payload_Trigger::TA)) 
+        std::cerr << "dune::PennMicroSlice::Payload_Trigger::TriggerPatternBits::bsu_rm_cl" << std::endl;
+          if(trigger_pattern.test(dune::PennMicroSlice::Payload_Trigger::TB)) 
+        std::cerr << "dune::PennMicroSlice::Payload_Trigger::TriggerPatternBits::tsu_nu_sl" << std::endl;
+          if(trigger_pattern.test(dune::PennMicroSlice::Payload_Trigger::TC)) 
+        std::cerr << "dune::PennMicroSlice::Payload_Trigger::TriggerPatternBits::tsu_sl_nu" << std::endl;
+          if(trigger_pattern.test(dune::PennMicroSlice::Payload_Trigger::TD)) 
+        std::cerr << "dune::PennMicroSlice::Payload_Trigger::TriggerPatternBits::tsu_el_wu" << std::endl;
           break;
         default:
-          std::cerr << "lbne::PennMicroSlice::Payload_Trigger::TriggerTypes::unkown" << std::endl;
+          std::cerr << "dune::PennMicroSlice::Payload_Trigger::TriggerTypes::unkown" << std::endl;
           break;
         }//switch( myTriggerPayload->trigger_type)
 
         break;
-      case lbne::PennMicroSlice::DataTypeTimestamp:
+      case dune::PennMicroSlice::DataTypeTimestamp:
         std::cerr << "payload_type: Timestamp " << std::endl;
         std::cerr << "payload_size: " << payload_size << std::endl;
         break;
-      case lbne::PennMicroSlice::DataTypeWarning:
+      case dune::PennMicroSlice::DataTypeWarning:
         std::cerr << "payload_type: Selftest  "  << std::endl;
         std::cerr << "payload_size: " << payload_size << std::endl;
         break;
-      case lbne::PennMicroSlice::DataTypeChecksum:
+      case dune::PennMicroSlice::DataTypeChecksum:
         std::cerr << "payload_type: Checksum  "  << std::endl;
         std::cerr << "payload_size: " << payload_size << std::endl;
         break;
@@ -599,17 +599,17 @@ void trig::PennBoardTrigger::printPayloadInfo(art::Handle<artdaq::Fragments> con
 void trig::PennBoardTrigger::checkGetNextPayload(art::Handle<artdaq::Fragments> const & rawPTB){
   for (size_t frag_index=0; frag_index < rawPTB->size(); ++frag_index){
     const auto & frag((*rawPTB)[frag_index]); //Make a fragment from the frag_index element of rawPTB
-    lbne::PennMilliSliceFragment ms_frag(frag);
-    lbne::PennMilliSlice::Header::payload_count_t n_frames, n_frames_counter, n_frames_trigger, n_frames_timestamp;
+    dune::PennMilliSliceFragment ms_frag(frag);
+    dune::PennMilliSlice::Header::payload_count_t n_frames, n_frames_counter, n_frames_trigger, n_frames_timestamp;
     n_frames = ms_frag.payloadCount(n_frames_counter, n_frames_trigger, n_frames_timestamp);
 
-    lbne::PennMicroSlice::Payload_Header::data_packet_type_t payload_type;
-    lbne::PennMicroSlice::Payload_Header::short_nova_timestamp_t timestamp;
+    dune::PennMicroSlice::Payload_Header::data_packet_type_t payload_type;
+    dune::PennMicroSlice::Payload_Header::short_nova_timestamp_t timestamp;
     uint8_t* payload_data;
     size_t payload_size;
 
-    lbne::PennMicroSlice::Payload_Header::data_packet_type_t payload_type_get_next;
-    lbne::PennMicroSlice::Payload_Header::short_nova_timestamp_t timestamp_get_next;
+    dune::PennMicroSlice::Payload_Header::data_packet_type_t payload_type_get_next;
+    dune::PennMicroSlice::Payload_Header::short_nova_timestamp_t timestamp_get_next;
     uint8_t* payload_data_get_next;
     size_t payload_size_get_next;
     

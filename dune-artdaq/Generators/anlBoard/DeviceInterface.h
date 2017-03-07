@@ -3,7 +3,7 @@
 
 #include "DeviceManager.h"
 #include "Device.h"
-#include "lbne-raw-data/Overlays/anlTypes.hh"
+#include "dune-raw-data/Overlays/anlTypes.hh"
 #include "SafeQueue.h"
 #include "EventPacket.h"
 #include <string>

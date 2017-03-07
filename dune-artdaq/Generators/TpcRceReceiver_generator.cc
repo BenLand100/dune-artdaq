@@ -1,15 +1,15 @@
 #include "dune-artdaq/Generators/TpcRceReceiver.hh"
-#include "lbne-raw-data/Overlays/MilliSliceWriter.hh"
-#include "lbne-raw-data/Overlays/TpcMilliSliceWriter.hh"
+#include "dune-raw-data/Overlays/MilliSliceWriter.hh"
+#include "dune-raw-data/Overlays/TpcMilliSliceWriter.hh"
 #include "dune-artdaq/DAQLogger/DAQLogger.hh"
 
 #include "canvas/Utilities/Exception.h"
 #include "artdaq/Application/GeneratorMacros.hh"
 #include "cetlib/exception.h"
-#include "lbne-raw-data/Overlays/MilliSliceFragment.hh"
-#include "lbne-raw-data/Overlays/TpcMilliSliceFragment.hh"
-#include "lbne-raw-data/Overlays/MilliSliceFragmentWriter.hh"
-#include "lbne-raw-data/Overlays/FragmentType.hh"
+#include "dune-raw-data/Overlays/MilliSliceFragment.hh"
+#include "dune-raw-data/Overlays/TpcMilliSliceFragment.hh"
+#include "dune-raw-data/Overlays/MilliSliceFragmentWriter.hh"
+#include "dune-raw-data/Overlays/FragmentType.hh"
 #include "fhiclcpp/ParameterSet.h"
 #include "artdaq-core/Utilities/SimpleLookupPolicy.h"
 #include "messagefacility/MessageLogger/MessageLogger.h"
@@ -26,7 +26,7 @@
 
 //#define NO_RCE_CLIENT 1
 
-using namespace lbne;
+using namespace dune;
 
 dune::TpcRceReceiver::TpcRceReceiver(fhicl::ParameterSet const & ps)
   :
@@ -467,7 +467,7 @@ bool dune::TpcRceReceiver::getNext_(artdaq::FragmentPtrs & frags) {
 		// Set fragment fields appropriately
 		frag->setSequenceID(ev_counter());
 		frag->setFragmentID(fragmentIDs()[0]);
-		frag->setUserType(lbne::detail::TPC);
+		frag->setUserType(dune::detail::TPC);
 
 		// JCF, Dec-22-2015
 
@@ -726,7 +726,7 @@ bool dune::TpcRceReceiver::getNext_(artdaq::FragmentPtrs & frags) {
   // Set fragment fields appropriately
   frag->setSequenceID(ev_counter());
   frag->setFragmentID(fragmentIDs()[0]);
-  frag->setUserType(lbne::detail::TPC);
+  frag->setUserType(dune::detail::TPC);
 
   // Resize fragment to final millislice size
   frag->resizeBytes(millislice_size);
@@ -762,14 +762,14 @@ uint32_t dune::TpcRceReceiver::format_millislice_from_raw_buffer(uint16_t* src_a
   const uint32_t MICROSLICE_BUFFER_SIZE = 512;
   const uint32_t NANOSLICE_BUFFER_SIZE = 128;
 
-  std::shared_ptr<lbne::MicroSliceWriter> microslice_writer_ptr;
-  std::shared_ptr<lbne::NanoSliceWriter> nanoslice_writer_ptr;
+  std::shared_ptr<dune::MicroSliceWriter> microslice_writer_ptr;
+  std::shared_ptr<dune::NanoSliceWriter> nanoslice_writer_ptr;
 
   uint16_t channel_number = CHANNEL_NUMBER;
 
   uint16_t* sample_addr = src_addr;
 
-  lbne::MilliSliceWriter millislice_writer(dest_addr, dest_size);
+  dune::MilliSliceWriter millislice_writer(dest_addr, dest_size);
   for (uint32_t udx = 0; udx < number_of_microslices_to_generate_; ++udx) {
     microslice_writer_ptr = millislice_writer.reserveMicroSlice(MICROSLICE_BUFFER_SIZE);
     if (microslice_writer_ptr.get() == 0) {
@@ -808,7 +808,7 @@ uint32_t dune::TpcRceReceiver::format_millislice_from_raw_buffer(uint16_t* src_a
 uint32_t dune::TpcRceReceiver::validate_millislice_from_fragment_buffer(uint8_t* data_addr, size_t data_size, uint32_t count)
 {
 
-	lbne::TpcMilliSliceWriter millislice_writer(data_addr, data_size+sizeof(TpcMilliSlice::Header));
+	dune::TpcMilliSliceWriter millislice_writer(data_addr, data_size+sizeof(TpcMilliSlice::Header));
 
 	millislice_writer.finalize(data_size, count);
 	return millislice_writer.size();

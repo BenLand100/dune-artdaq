@@ -11,7 +11,7 @@ art_make(
 	${MF_UTILITIES}
 	${Boost_SYSTEM_LIBRARY}
 	-lpthread
-	lbne-raw-data_Overlays
+	dune-raw-data_Overlays
 	dune-artdaq_DAQLogger
 	)
 	

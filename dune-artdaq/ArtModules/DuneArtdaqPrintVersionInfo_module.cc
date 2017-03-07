@@ -58,8 +58,8 @@ private:
   std::string dune_artdaq_module_label_;
   std::string dune_artdaq_instance_label_;
 
-  std::string lbne_raw_data_module_label_;
-  std::string lbne_raw_data_instance_label_;
+  std::string dune_raw_data_module_label_;
+  std::string dune_raw_data_instance_label_;
 
 };
 
@@ -69,8 +69,8 @@ dune::DuneArtdaqPrintVersionInfo::DuneArtdaqPrintVersionInfo(fhicl::ParameterSet
   EDAnalyzer(pset),
   dune_artdaq_module_label_(pset.get<std::string>("dune_artdaq_module_label")),
   dune_artdaq_instance_label_(pset.get<std::string>("dune_artdaq_instance_label")),
-  lbne_raw_data_module_label_(pset.get<std::string>("lbne_raw_data_module_label")),
-  lbne_raw_data_instance_label_(pset.get<std::string>("lbne_raw_data_instance_label"))
+  dune_raw_data_module_label_(pset.get<std::string>("dune_raw_data_module_label")),
+  dune_raw_data_instance_label_(pset.get<std::string>("dune_raw_data_instance_label"))
 {}
 
 dune::DuneArtdaqPrintVersionInfo::~DuneArtdaqPrintVersionInfo()
@@ -85,16 +85,16 @@ void dune::DuneArtdaqPrintVersionInfo::beginRun(art::Run const& run)
   art::Handle<artdaq::PackageBuildInfo> raw;
 
 
-  run.getByLabel(lbne_raw_data_module_label_, lbne_raw_data_instance_label_, raw);
+  run.getByLabel(dune_raw_data_module_label_, dune_raw_data_instance_label_, raw);
 
   if (raw.isValid()) {
     std::cout << std::endl;
-    std::cout << "lbne-raw-data package version: " << raw->getPackageVersion() << std::endl;
-    std::cout << "lbne-raw-data package build time: " << raw->getBuildTimestamp() << std::endl;
+    std::cout << "dune-raw-data package version: " << raw->getPackageVersion() << std::endl;
+    std::cout << "dune-raw-data package build time: " << raw->getBuildTimestamp() << std::endl;
     std::cout << std::endl;
   } else {
     std::cerr << std::endl;
-    std::cerr << "Warning in DuneArtdaqPrintVersionInfo module: Run " << run.run() << " appears to have no info on lbne-raw-data build time / version number" << std::endl;
+    std::cerr << "Warning in DuneArtdaqPrintVersionInfo module: Run " << run.run() << " appears to have no info on dune-raw-data build time / version number" << std::endl;
     std::cerr << std::endl;
   }
 

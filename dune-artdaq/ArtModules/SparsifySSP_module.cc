@@ -17,12 +17,12 @@
 #include "canvas/Utilities/Exception.h"
 
 //data type includes
-#include "lbne-raw-data/Overlays/SSPFragment.hh"
-#include "lbne-raw-data/Overlays/SSPFragmentWriter.hh"
-#include "lbne-raw-data/Overlays/PennMilliSliceFragment.hh"
-#include "lbne-raw-data/Overlays/TpcMilliSliceFragment.hh"
-#include "lbne-raw-data/Overlays/anlTypes.hh"
-#include "lbne-raw-data/Overlays/FragmentType.hh"
+#include "dune-raw-data/Overlays/SSPFragment.hh"
+#include "dune-raw-data/Overlays/SSPFragmentWriter.hh"
+#include "dune-raw-data/Overlays/PennMilliSliceFragment.hh"
+#include "dune-raw-data/Overlays/TpcMilliSliceFragment.hh"
+#include "dune-raw-data/Overlays/anlTypes.hh"
+#include "dune-raw-data/Overlays/FragmentType.hh"
 #include "artdaq-core/Data/Fragments.hh"
 
 //C++ and STL includes
@@ -33,7 +33,7 @@
 #include <vector>
 #include <iostream>
 
-using namespace lbne;
+using namespace dune;
 
 namespace dune {
   class SparsifySSP;
@@ -319,7 +319,7 @@ bool dune::SparsifySSP::EventHasRCEData(art::Event const & evt){
 	TpcMilliSliceFragment msf(frag);
 	
 	// get the number of MicroSlices in the MilliSlice
-	lbne::TpcMilliSlice::Header::microslice_count_t msf_us_count = msf.microSliceCount();
+	dune::TpcMilliSlice::Header::microslice_count_t msf_us_count = msf.microSliceCount();
 
 	///> loop over the microslices
 	for (uint32_t i_us = 0; i_us < msf_us_count; ++i_us)
@@ -332,7 +332,7 @@ bool dune::SparsifySSP::EventHasRCEData(art::Event const & evt){
 	    }
 	    	    
 	    ///> get the number of NanoSlices in this MicroSlice
-	    lbne::TpcMicroSlice::Header::nanoslice_count_t us_nanocount = microslice->nanoSliceCount();
+	    dune::TpcMicroSlice::Header::nanoslice_count_t us_nanocount = microslice->nanoSliceCount();
 
 	    //If there are any nanoslices in the microslice then there is RCE data present in the slice
 	    //so return true
@@ -363,7 +363,7 @@ bool dune::SparsifySSP::EventHasPennTrigger(art::Event const & evt){
 	PennMilliSliceFragment msf(frag);
 	
 	// Find the number of each type of payload word found in the millislice
-	lbne::PennMilliSlice::Header::payload_count_t n_words_counter, n_words_trigger, n_words_timestamp;
+	dune::PennMilliSlice::Header::payload_count_t n_words_counter, n_words_trigger, n_words_timestamp;
 	msf.payloadCount(n_words_counter, n_words_trigger, n_words_timestamp);
 	
 	//Only interested in if there are any triggers. Guessing this is how to do it?
@@ -420,7 +420,7 @@ void dune::SparsifySSP::WriteMillislices(art::Event & evt,
     
     frags->emplace_back(*artdaq::Fragment::FragmentBytes(0,
 							iFrag->first->sequenceID(), iFrag->first->fragmentID(),
-							 lbne::detail::PHOTON, metadata) );
+							 dune::detail::PHOTON, metadata) );
     
     //Create SSPFragmentWriter overlay to enable us to write data to new fragment
     SSPFragmentWriter newfrag(frags->back());

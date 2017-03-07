@@ -12,7 +12,7 @@
 #include "art/Framework/Services/Optional/TFileService.h"
 
 #include "canvas/Utilities/Exception.h"
-#include "lbne-raw-data/Overlays/TpcMilliSliceFragment.hh"
+#include "dune-raw-data/Overlays/TpcMilliSliceFragment.hh"
 #include "artdaq-core/Data/Fragments.hh"
 
 #include "TH1.h"
@@ -26,7 +26,7 @@
 #include <iostream>
 #include <limits>
 
-using namespace lbne;
+using namespace dune;
 
 namespace dune {
 class TpcMilliSliceDump;
@@ -102,17 +102,17 @@ void dune::TpcMilliSliceDump::analyze(art::Event const & evt)
 			TpcMilliSliceFragment msf(frag);
 
 			///> get the total size of the millislice (data+header, in bytes)
-			lbne::TpcMilliSlice::Header::millislice_size_t msf_size = msf.size();
+			dune::TpcMilliSlice::Header::millislice_size_t msf_size = msf.size();
 
 			///> get the number of MicroSlices in the MilliSlice
-			lbne::TpcMilliSlice::Header::microslice_count_t msf_us_count = msf.microSliceCount();
+			dune::TpcMilliSlice::Header::microslice_count_t msf_us_count = msf.microSliceCount();
 			
 			/* methods not yet implemented
 			///> get the millislice version
-			lbne::TpcMilliSlice::Header::version_t msf_version = msf.version();
+			dune::TpcMilliSlice::Header::version_t msf_version = msf.version();
 
 			///> get the millislice fixed pattern
-			lbne::TpcMilliSlice::Header::pattern_t msf_fixed_pattern = msf.fixed_pattern();
+			dune::TpcMilliSlice::Header::pattern_t msf_fixed_pattern = msf.fixed_pattern();
 			*/
 
 			std::cout << std::endl
@@ -134,24 +134,24 @@ void dune::TpcMilliSliceDump::analyze(art::Event const & evt)
 				}
 
 				///> get the microslice sequence ID
-				lbne::TpcMicroSlice::Header::sequence_id_t us_sequence_id = microslice->sequence_id();
+				dune::TpcMicroSlice::Header::sequence_id_t us_sequence_id = microslice->sequence_id();
 
 				///> get the microslice total size (header+data, in bytes)
-				lbne::TpcMicroSlice::Header::microslice_size_t us_size = microslice->size();
+				dune::TpcMicroSlice::Header::microslice_size_t us_size = microslice->size();
 
 				///> get the number of NanoSlices in this MicroSlice
-				lbne::TpcMicroSlice::Header::nanoslice_count_t us_nanocount = microslice->nanoSliceCount();
+				dune::TpcMicroSlice::Header::nanoslice_count_t us_nanocount = microslice->nanoSliceCount();
 
 				///> get the microslice type ID
-				lbne::TpcMicroSlice::Header::type_id_t us_type_id = microslice->type_id();
+				dune::TpcMicroSlice::Header::type_id_t us_type_id = microslice->type_id();
 
 				uint8_t us_run_mode = (us_type_id >> 16) & 0xF;
 
 				///> get the software message
-				lbne::TpcMicroSlice::Header::softmsg_t us_software_message = microslice->software_message();
+				dune::TpcMicroSlice::Header::softmsg_t us_software_message = microslice->software_message();
 
 				///> get the hardware (firmware) message
-				lbne::TpcMicroSlice::Header::firmmsg_t us_firmware_message = microslice->firmware_message();
+				dune::TpcMicroSlice::Header::firmmsg_t us_firmware_message = microslice->firmware_message();
 
 				if(verb_microslice) {
 					std::cout << "TpcMilliSlice fragment " << frag.fragmentID()
@@ -216,7 +216,7 @@ void dune::TpcMilliSliceDump::analyze(art::Event const & evt)
 					{
 
 					        ///> get the size of the nanoslice (header+data, in bytes)
-  					        lbne::TpcNanoSlice::nanoslice_size_t ns_size = nanoslice->size();
+  					        dune::TpcNanoSlice::nanoslice_size_t ns_size = nanoslice->size();
 
 						std::cout << "  NanoSlice " << *i_nano << " size " << ns_size << " bytes" << std::endl << std::endl;
 
@@ -229,10 +229,10 @@ void dune::TpcMilliSliceDump::analyze(art::Event const & evt)
 						std::cout << "    Raw Data Payload:" << std::endl << "    ";
 
 						///> get the number of nanoslice data words
-						uint16_t num_nanoslice_words = (nanoslice->size() - sizeof(lbne::TpcNanoSlice::Header))/sizeof(uint64_t);
+						uint16_t num_nanoslice_words = (nanoslice->size() - sizeof(dune::TpcNanoSlice::Header))/sizeof(uint64_t);
 
 						///> find out how many uint64_t's the header is
-						size_t word_offset = sizeof(lbne::TpcNanoSlice::Header)/sizeof(uint64_t);
+						size_t word_offset = sizeof(dune::TpcNanoSlice::Header)/sizeof(uint64_t);
 
 						///> loop over all 16-bit ADC values
 						for (int i_adc_word = 0; i_adc_word < num_nanoslice_words; i_adc_word++)
@@ -243,7 +243,7 @@ void dune::TpcMilliSliceDump::analyze(art::Event const & evt)
 						std::cout << std::endl;
 						
 						///> get the NOvA timestamp
-						lbne::TpcNanoSlice::Header::nova_timestamp_t ns_timestamp = nanoslice->nova_timestamp();
+						dune::TpcNanoSlice::Header::nova_timestamp_t ns_timestamp = nanoslice->nova_timestamp();
 
 						//std::cout << "    Decoded Header:" << std::endl;
 						std::cout << "    NOvA timestamp : 0x" << std::hex << std::setw(14) << std::setfill('0')
@@ -255,7 +255,7 @@ void dune::TpcMilliSliceDump::analyze(art::Event const & evt)
 						///> get the number of channels contained in the nanoslice
 						uint32_t ns_nchan = nanoslice->getNChannels();
 						///> an alternative way to get the number of samples in the nanoslice
-						//lbne::TpcNanoSlice::sample_count_t ns_chan_again = nanoslice->sampleCount();
+						//dune::TpcNanoSlice::sample_count_t ns_chan_again = nanoslice->sampleCount();
 
 						std::cout << "    Decoded ADC Values:" << std::endl << "    ";
 						///> loop over all 16-bit ADC values

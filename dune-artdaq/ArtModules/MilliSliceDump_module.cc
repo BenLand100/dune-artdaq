@@ -11,7 +11,7 @@
 #include "art/Framework/Principal/Handle.h"
 
 #include "canvas/Utilities/Exception.h"
-#include "lbne-raw-data/Overlays/MilliSliceFragment.hh"
+#include "dune-raw-data/Overlays/MilliSliceFragment.hh"
 #include "artdaq-core/Data/Fragments.hh"
 
 #include <algorithm>
@@ -23,7 +23,7 @@
 #include <iostream>
 #include <limits>
 
-using namespace lbne;
+using namespace dune;
 
 namespace dune {
   class MilliSliceDump;

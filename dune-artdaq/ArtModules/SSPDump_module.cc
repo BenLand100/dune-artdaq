@@ -12,8 +12,8 @@
 #include "art/Framework/Services/Optional/TFileService.h"
 
 #include "canvas/Utilities/Exception.h"
-#include "lbne-raw-data/Overlays/SSPFragment.hh"
-#include "lbne-raw-data/Overlays/anlTypes.hh"
+#include "dune-raw-data/Overlays/SSPFragment.hh"
+#include "dune-raw-data/Overlays/anlTypes.hh"
 #include "artdaq-core/Data/Fragments.hh"
 
 #include "TH1.h"
@@ -31,7 +31,7 @@ namespace dune {
   class SSPDump;
 }
 
-using namespace lbne;
+using namespace dune;
 
 class dune::SSPDump : public art::EDAnalyzer {
 public:
@@ -144,14 +144,14 @@ void dune::SSPDump::analyze(art::Event const & evt)
       ///> Create a SSPFragment from the generic artdaq fragment
       SSPFragment sspf(frag);
       
-      ///> get the size of the event in units of lbne::SSPFragment::Header::data_t
-      lbne::SSPFragment::Header::event_size_t event_size = sspf.hdr_event_size();
+      ///> get the size of the event in units of dune::SSPFragment::Header::data_t
+      dune::SSPFragment::Header::event_size_t event_size = sspf.hdr_event_size();
 
-      ///> get the size of the header in units of lbne::SSPFragment::Header::data_t
+      ///> get the size of the header in units of dune::SSPFragment::Header::data_t
       std::size_t header_size = sspf.hdr_run_number();
 
       ///> get the event run number
-      lbne::SSPFragment::Header::run_number_t run_number = sspf.hdr_run_number();
+      dune::SSPFragment::Header::run_number_t run_number = sspf.hdr_run_number();
       
       ///> get the number of ADC values describing data beyond the header
       std::size_t n_adc_values = sspf.total_adc_values();

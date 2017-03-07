@@ -14,10 +14,10 @@
 #include <bitset>
 #include <boost/crc.hpp>
 
-#include "lbne-raw-data/Overlays/PennMicroSlice.hh"
-#include "lbne-raw-data/Overlays/PennMilliSlice.hh"
+#include "dune-raw-data/Overlays/PennMicroSlice.hh"
+#include "dune-raw-data/Overlays/PennMilliSlice.hh"
 
-#include "lbne-raw-data/Overlays/Utilities.hh"
+#include "dune-raw-data/Overlays/Utilities.hh"
 
 //#define __PTB_BOARD_READER_DEVEL_MODE__
 
@@ -25,7 +25,7 @@
 // Lower level means more verbosity
 #define RECV_DEBUG(level) if (level <= debug_level_) DAQLogger::LogInfo("PennDataReceiver")
 
-using namespace lbne;
+using namespace dune;
 
 
 dune::PennDataReceiver::PennDataReceiver(int debug_level, uint32_t tick_period_usecs,
@@ -63,15 +63,15 @@ dune::PennDataReceiver::PennDataReceiver(int debug_level, uint32_t tick_period_u
   // intended, for now the "pow()" expression below is commented
   // out
 
-//  //	if((pow(millislice_size_, 2) - 1) > lbne::PennMicroSlice::ROLLOVER_LOW_VALUE) {
-//  if (millislice_size_ > lbne::PennMicroSlice::ROLLOVER_LOW_VALUE) {
+//  //	if((pow(millislice_size_, 2) - 1) > dune::PennMicroSlice::ROLLOVER_LOW_VALUE) {
+//  if (millislice_size_ > dune::PennMicroSlice::ROLLOVER_LOW_VALUE) {
 //
 //    // JCF, Jul-30-2015
 //
 //    // I've upgraded this from a warning to an error
 //
 //    DAQLogger::LogError("PennDataReceiver") << "dune::PennDataReceiver ERROR millislice_size_ " << millislice_size_
-//        << " is greater than lbne::PennMicroSlice::ROLLOVER_LOW_VALUE " << (uint32_t)lbne::PennMicroSlice::ROLLOVER_LOW_VALUE
+//        << " is greater than dune::PennMicroSlice::ROLLOVER_LOW_VALUE " << (uint32_t)dune::PennMicroSlice::ROLLOVER_LOW_VALUE
 //        << " 28-bit timestamp rollover will not be handled correctly";
 //    //TODO handle error cleanly
 //  }
@@ -182,7 +182,7 @@ void dune::PennDataReceiver::start(void)
 
   // Initialise receive state to read a microslice header first
   next_receive_state_ = ReceiveMicrosliceHeader;
-  next_receive_size_  = sizeof(lbne::PennMicroSlice::Header);
+  next_receive_size_  = sizeof(dune::PennMicroSlice::Header);
 
   RECV_DEBUG(2) << "::start: Next receive state : " << nextReceiveStateToString(ReceiveMicrosliceHeader);
 
@@ -794,7 +794,7 @@ void dune::PennDataReceiver::handle_received_data(std::size_t length)
     bytes_to_check = length;
   } else {
     // If the next state is the payload we want to discount the header from the size to be checked
-    bytes_to_check = length - sizeof(lbne::PennMicroSlice::Header);
+    bytes_to_check = length - sizeof(dune::PennMicroSlice::Header);
   }
 
   RECV_DEBUG(2) << "Calculating checksum with status " << nextReceiveStateToString(next_receive_state_)
@@ -824,9 +824,9 @@ void dune::PennDataReceiver::handle_received_data(std::size_t length)
 
       {
 	// Capture the microslice version, length and sequence ID from the header
-	lbne::PennMicroSlice::Header* header = reinterpret_cast_checked<lbne::PennMicroSlice::Header*>( receiver_state_start_ptr_ );
-	lbne::PennMicroSlice::Header::format_version_t local_microslice_version = header->format_version;
-	lbne::PennMicroSlice::Header::sequence_id_t    sequence_id = header->sequence_id;
+	dune::PennMicroSlice::Header* header = reinterpret_cast_checked<dune::PennMicroSlice::Header*>( receiver_state_start_ptr_ );
+	dune::PennMicroSlice::Header::format_version_t local_microslice_version = header->format_version;
+	dune::PennMicroSlice::Header::sequence_id_t    sequence_id = header->sequence_id;
 	
 	microslice_size_   = header->block_size;
 	
@@ -915,7 +915,7 @@ void dune::PennDataReceiver::handle_received_data(std::size_t length)
       millislice_state_ = MicrosliceIncomplete;
 
       next_receive_state_ = ReceiveMicroslicePayload;
-      next_receive_size_  = microslice_size_ - sizeof(lbne::PennMicroSlice::Header);
+      next_receive_size_  = microslice_size_ - sizeof(dune::PennMicroSlice::Header);
 
       // NFB: Do we actually need two variables?
       // If there is not timestamp then it is fragmented...
@@ -928,12 +928,12 @@ void dune::PennDataReceiver::handle_received_data(std::size_t length)
 
       // The code below overwrites the microslice header since it is of no use to the Millislice
       //and roll back the current_write_ptr_, as to overwrite the Header in the next recv
-      current_write_ptr_ = static_cast<void*>(reinterpret_cast_checked<uint8_t*>(current_write_ptr_) - sizeof(lbne::PennMicroSlice::Header));
-      millislice_size_recvd_ -= sizeof(lbne::PennMicroSlice::Header);
+      current_write_ptr_ = static_cast<void*>(reinterpret_cast_checked<uint8_t*>(current_write_ptr_) - sizeof(dune::PennMicroSlice::Header));
+      millislice_size_recvd_ -= sizeof(dune::PennMicroSlice::Header);
 
       // NFB Dec-06-2015 : This doesn't seem to be used anywhere else
       //copy the microslice header to some other place in memory, for checksum tests
-      //memcpy(current_microslice_ptr_, state_start_ptr_, sizeof(lbne::PennMicroSlice::Header));
+      //memcpy(current_microslice_ptr_, state_start_ptr_, sizeof(dune::PennMicroSlice::Header));
 
       break;
     } //case ReceiveMicrosliceHeader
@@ -972,13 +972,13 @@ void dune::PennDataReceiver::handle_received_data(std::size_t length)
         // is a timestamp. Just grab it
 
         // 1. -- Grab the first timestamp -- confirm it is indeed a timestamp
-        lbne::PennMicroSlice::Payload_Header *payload_header = static_cast<lbne::PennMicroSlice::Payload_Header *>(receiver_state_start_ptr_);
+        dune::PennMicroSlice::Payload_Header *payload_header = static_cast<dune::PennMicroSlice::Payload_Header *>(receiver_state_start_ptr_);
 
-        if (payload_header->data_packet_type != lbne::PennMicroSlice::DataTypeTimestamp) {
+        if (payload_header->data_packet_type != dune::PennMicroSlice::DataTypeTimestamp) {
           DAQLogger::LogWarning("PennDataReceiver") << "Expected the first word to be a timestamp.  ";
         }
-        current_data_ptr+= sizeof(lbne::PennMicroSlice::Payload_Header);
-        lbne::PennMicroSlice::Payload_Timestamp *ts_word = reinterpret_cast_checked<lbne::PennMicroSlice::Payload_Timestamp*>(current_data_ptr);
+        current_data_ptr+= sizeof(dune::PennMicroSlice::Payload_Header);
+        dune::PennMicroSlice::Payload_Timestamp *ts_word = reinterpret_cast_checked<dune::PennMicroSlice::Payload_Timestamp*>(current_data_ptr);
 	
         run_start_time_ = ts_word->nova_timestamp;
         boundary_time_  = (run_start_time_ + millislice_size_ - 1);
@@ -990,15 +990,15 @@ void dune::PennDataReceiver::handle_received_data(std::size_t length)
 
       //form a microslice
       // This microslice will only have the payload (including checksum)
-      lbne::PennMicroSlice uslice(((uint8_t*)receiver_state_start_ptr_));
+      dune::PennMicroSlice uslice(((uint8_t*)receiver_state_start_ptr_));
 
       //count the number of different types of payload word
-      lbne::PennMicroSlice::sample_count_t n_counter_words(0);
-      lbne::PennMicroSlice::sample_count_t n_trigger_words(0);
-      lbne::PennMicroSlice::sample_count_t n_timestamp_words(0);
-      lbne::PennMicroSlice::sample_count_t n_warning_words(0);
-      lbne::PennMicroSlice::sample_count_t n_checksum_words(0);
-      lbne::PennMicroSlice::sample_count_t n_words(0);
+      dune::PennMicroSlice::sample_count_t n_counter_words(0);
+      dune::PennMicroSlice::sample_count_t n_trigger_words(0);
+      dune::PennMicroSlice::sample_count_t n_timestamp_words(0);
+      dune::PennMicroSlice::sample_count_t n_warning_words(0);
+      dune::PennMicroSlice::sample_count_t n_checksum_words(0);
+      dune::PennMicroSlice::sample_count_t n_words(0);
 
       //also check to see if the millislice boundary is inside this microslice
 
@@ -1053,7 +1053,7 @@ void dune::PennDataReceiver::handle_received_data(std::size_t length)
       }
 #endif /*DO_CHECKSUM*/
 
-      size_t sizeof_checksum_frame = sizeof(lbne::PennMicroSlice::Payload_Header) + lbne::PennMicroSlice::payload_size_checksum;
+      size_t sizeof_checksum_frame = sizeof(dune::PennMicroSlice::Payload_Header) + dune::PennMicroSlice::payload_size_checksum;
       
       // NFB: Nov-18-2015
       // This should now be correct. If not then the offsets are still being calculated wrong.
@@ -1082,7 +1082,7 @@ void dune::PennDataReceiver::handle_received_data(std::size_t length)
         RECV_DEBUG(2) << "split_ptr is non-null with value " << static_cast<void*>(split_ptr);
         // Wasn't this already done before?
         if(remaining_payloads_recvd_checksum_) {
-          remaining_size_   -= sizeof(lbne::PennMicroSlice::Payload_Header) - lbne::PennMicroSlice::payload_size_checksum;
+          remaining_size_   -= sizeof(dune::PennMicroSlice::Payload_Header) - dune::PennMicroSlice::payload_size_checksum;
           remaining_payloads_recvd_ -= remaining_payloads_recvd_checksum_;
           remaining_payloads_recvd_checksum_ = 0;
         }
@@ -1095,7 +1095,7 @@ void dune::PennDataReceiver::handle_received_data(std::size_t length)
         RECV_DEBUG(2) << "this_overlap_ptr is non-null with value " << static_cast<void*>(this_overlap_ptr);
 
         if(overlap_payloads_recvd_checksum_) {
-          this_overlap_size -= sizeof(lbne::PennMicroSlice::Payload_Header) - lbne::PennMicroSlice::payload_size_checksum;
+          this_overlap_size -= sizeof(dune::PennMicroSlice::Payload_Header) - dune::PennMicroSlice::payload_size_checksum;
           overlap_payloads_recvd_ -= overlap_payloads_recvd_checksum_;
           overlap_payloads_recvd_checksum_ = 0;
         }
@@ -1165,7 +1165,7 @@ void dune::PennDataReceiver::handle_received_data(std::size_t length)
       microslice_size_recvd_ = 0;
       millislice_state_ = MillisliceIncomplete;
       next_receive_state_ = ReceiveMicrosliceHeader;
-      next_receive_size_ = sizeof(lbne::PennMicroSlice::Header);
+      next_receive_size_ = sizeof(dune::PennMicroSlice::Header);
 
       RECV_DEBUG(2) << "JCF: at end of \"case ReceiveMicroslicePayload\"";
       break;
@@ -1334,10 +1334,10 @@ std::size_t dune::PennDataReceiver::nextReceiveStateToExpectedBytes(NextReceiveS
   switch(val)
   {
     case ReceiveMicrosliceHeader:
-      return sizeof(lbne::PennMicroSlice::Header);
+      return sizeof(dune::PennMicroSlice::Header);
       break;
     case ReceiveMicroslicePayload:
-      return microslice_size_ - sizeof(lbne::PennMicroSlice::Header);
+      return microslice_size_ - sizeof(dune::PennMicroSlice::Header);
       break;
     default:
       return 0;
@@ -1347,9 +1347,9 @@ std::size_t dune::PennDataReceiver::nextReceiveStateToExpectedBytes(NextReceiveS
 
 void dune::PennDataReceiver::validate_microslice_header(void) {
   // Capture the microslice version, length and sequence ID from the header
-  lbne::PennMicroSlice::Header* header = reinterpret_cast_checked<lbne::PennMicroSlice::Header*>( receiver_state_start_ptr_ );
-  lbne::PennMicroSlice::Header::format_version_t local_microslice_version = header->format_version;
-  lbne::PennMicroSlice::Header::sequence_id_t    sequence_id = header->sequence_id;
+  dune::PennMicroSlice::Header* header = reinterpret_cast_checked<dune::PennMicroSlice::Header*>( receiver_state_start_ptr_ );
+  dune::PennMicroSlice::Header::format_version_t local_microslice_version = header->format_version;
+  dune::PennMicroSlice::Header::sequence_id_t    sequence_id = header->sequence_id;
 
   microslice_size_   = header->block_size;
 
@@ -1425,11 +1425,11 @@ void dune::PennDataReceiver::validate_microslice_payload(void) {
   // Check that the last word is a checksum
   //uint8_t* current_ptr = reinterpret_cast_checked<uint8_t*>(current_write_ptr_);
   uint8_t* current_ptr = static_cast<uint8_t*>(current_write_ptr_);
-  static const size_t sizeof_checksum_frame = sizeof(lbne::PennMicroSlice::Payload_Header) + lbne::PennMicroSlice::payload_size_checksum;
+  static const size_t sizeof_checksum_frame = sizeof(dune::PennMicroSlice::Payload_Header) + dune::PennMicroSlice::payload_size_checksum;
 
   current_ptr -= sizeof_checksum_frame;
-  lbne::PennMicroSlice::Payload_Header *payload_header = reinterpret_cast_checked<lbne::PennMicroSlice::Payload_Header *>(current_ptr);
-  if (payload_header->data_packet_type != lbne::PennMicroSlice::DataTypeChecksum) {
+  dune::PennMicroSlice::Payload_Header *payload_header = reinterpret_cast_checked<dune::PennMicroSlice::Payload_Header *>(current_ptr);
+  if (payload_header->data_packet_type != dune::PennMicroSlice::DataTypeChecksum) {
     
     // display_bits(current_ptr,4);
     try {
@@ -1439,11 +1439,11 @@ void dune::PennDataReceiver::validate_microslice_payload(void) {
     }
   }
   // Check that there is a timestamp word
-  static const size_t sizeof_timestamp_frame = sizeof(lbne::PennMicroSlice::Payload_Header) + lbne::PennMicroSlice::payload_size_timestamp;
+  static const size_t sizeof_timestamp_frame = sizeof(dune::PennMicroSlice::Payload_Header) + dune::PennMicroSlice::payload_size_timestamp;
   current_ptr -= sizeof_timestamp_frame;
-  payload_header = reinterpret_cast_checked<lbne::PennMicroSlice::Payload_Header *>(current_ptr);
+  payload_header = reinterpret_cast_checked<dune::PennMicroSlice::Payload_Header *>(current_ptr);
   // The second to last packet should be a timestamp
-  if (payload_header->data_packet_type != lbne::PennMicroSlice::DataTypeTimestamp) {
+  if (payload_header->data_packet_type != dune::PennMicroSlice::DataTypeTimestamp) {
     display_bits(current_ptr,4);
    try { 
        DAQLogger::LogError("PennDataReceiver") << "Microslice received as no timestamp word. Fragmented packets are no yet supported. Second to last packet has header " << std::bitset<3>(payload_header->data_packet_type);

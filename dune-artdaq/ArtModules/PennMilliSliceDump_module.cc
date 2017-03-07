@@ -11,7 +11,7 @@
 #include "art/Framework/Principal/Handle.h"
 
 #include "canvas/Utilities/Exception.h"
-#include "lbne-raw-data/Overlays/PennMilliSliceFragment.hh"
+#include "dune-raw-data/Overlays/PennMilliSliceFragment.hh"
 #include "artdaq-core/Data/Fragments.hh"
 #include "dune-artdaq/Generators/pennBoard/PennCompileOptions.hh"
 #include "dune-artdaq/DAQLogger/DAQLogger.hh"
@@ -25,7 +25,7 @@
 #include <limits>
 #include <bitset>
 
-using namespace lbne;
+using namespace dune;
 
 namespace dune {
 class PennMilliSliceDump;
@@ -93,29 +93,29 @@ void dune::PennMilliSliceDump::analyze(art::Event const & evt)
 	PennMilliSliceFragment msf(frag);
 
 	///> Find the number of each type of payload frame found in the millislice
-	lbne::PennMilliSlice::Header::payload_count_t n_frames, n_frames_counter, n_frames_trigger, n_frames_timestamp;
+	dune::PennMilliSlice::Header::payload_count_t n_frames, n_frames_counter, n_frames_trigger, n_frames_timestamp;
 	n_frames = msf.payloadCount(n_frames_counter, n_frames_trigger, n_frames_timestamp);
 
 	///> Another way to find only the total number of payload frames in the millislice
-	//lbne::PennMilliSlice::Header::payload_count_t n_frames_again = msf.payloadCount();
+	//dune::PennMilliSlice::Header::payload_count_t n_frames_again = msf.payloadCount();
 
 	///> Find the total number of bytes in the millislice
-	lbne::PennMilliSlice::Header::millislice_size_t ms_size = msf.size();
+	dune::PennMilliSlice::Header::millislice_size_t ms_size = msf.size();
 
 	///> Find the millislice version number
-	lbne::PennMilliSlice::Header::version_t ms_version = msf.version();
+	dune::PennMilliSlice::Header::version_t ms_version = msf.version();
 
 	///> Find the millislice sequence ID
-	lbne::PennMilliSlice::Header::sequence_id_t ms_sequence_id = msf.sequenceID();
+	dune::PennMilliSlice::Header::sequence_id_t ms_sequence_id = msf.sequenceID();
 
 	///> Find the timestamp signifying the end of the millislice
-	lbne::PennMilliSlice::Header::timestamp_t ms_end_timestamp = msf.endTimestamp();
+	dune::PennMilliSlice::Header::timestamp_t ms_end_timestamp = msf.endTimestamp();
 
 	///> Find the width of the millislice in NOvA clock ticks (excluding the overlap)
-	lbne::PennMilliSlice::Header::ticks_t ms_width_in_ticks = msf.widthTicks();
+	dune::PennMilliSlice::Header::ticks_t ms_width_in_ticks = msf.widthTicks();
 
 	///> Find the width of the millislice overlap period in NOvA clock ticks
-	lbne::PennMilliSlice::Header::ticks_t ms_overlap_in_ticks = msf.overlapTicks();
+	dune::PennMilliSlice::Header::ticks_t ms_overlap_in_ticks = msf.overlapTicks();
 
 	DAQLogger::LogInfo("PennMilliSliceDump") << std::endl
 		  << "PennMilliSlice fragment ID " << frag.fragmentID()
@@ -134,8 +134,8 @@ void dune::PennMilliSliceDump::analyze(art::Event const & evt)
 		  << std::endl << std::endl;
 
 	///> Create variables to store the payload information
-	lbne::PennMicroSlice::Payload_Header::data_packet_type_t type;
-	lbne::PennMicroSlice::Payload_Header::short_nova_timestamp_t timestamp;
+	dune::PennMicroSlice::Payload_Header::data_packet_type_t type;
+	dune::PennMicroSlice::Payload_Header::short_nova_timestamp_t timestamp;
 	uint8_t* payload_data;
 	size_t payload_size;
 

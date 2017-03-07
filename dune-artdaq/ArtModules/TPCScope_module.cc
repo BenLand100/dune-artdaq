@@ -12,8 +12,8 @@
 #include "art/Framework/Services/Optional/TFileService.h"
 
 #include "canvas/Utilities/Exception.h"
-#include "lbne-raw-data/Overlays/TpcMilliSliceFragment.hh"
-#include "lbne-raw-data/Overlays/TpcMicroSlice.hh"
+#include "dune-raw-data/Overlays/TpcMilliSliceFragment.hh"
+#include "dune-raw-data/Overlays/TpcMicroSlice.hh"
 #include "artdaq-core/Data/Fragments.hh"
 
 #include "TH1D.h"

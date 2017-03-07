@@ -1,5 +1,5 @@
 simple_plugin(TPCMilliSliceSimulatorWithCopy "generator"
-  lbne-raw-data_Overlays
+  dune-raw-data_Overlays
   artdaq_Application
   artdaq_DAQdata
   artdaq-core_Data
@@ -11,7 +11,7 @@ simple_plugin(TPCMilliSliceSimulatorWithCopy "generator"
   )
 
 simple_plugin(SSP "generator"
-  lbne-raw-data_Overlays
+  dune-raw-data_Overlays
   dune-artdaq_Generators_anlBoard
   artdaq_Application
   artdaq_DAQdata
@@ -24,7 +24,7 @@ simple_plugin(SSP "generator"
 
 simple_plugin(ToySimulator "generator"
   dune-artdaq_Generators_ToyHardwareInterface
-  lbne-raw-data_Overlays
+  dune-raw-data_Overlays
   dune-artdaq_DAQLogger
   artdaq_Application
   artdaq_DAQdata
@@ -40,7 +40,7 @@ simple_plugin(ToySimulator "generator"
 
 simple_plugin(Playback "generator"
   dune-artdaq_DAQLogger
-  lbne-raw-data_Overlays
+  dune-raw-data_Overlays
   artdaq-core_Data
   canvas_Utilities
   canvas_Persistency_Common
@@ -64,7 +64,7 @@ simple_plugin(Playback "generator"
   add_subdirectory(anlBoard)
   
 simple_plugin(TpcRceReceiver "generator"
-  lbne-raw-data_Overlays
+  dune-raw-data_Overlays
   dune-artdaq_Generators_RceSupportLib
   artdaq-core_Data
   artdaq_Application
@@ -79,7 +79,7 @@ simple_plugin(TpcRceReceiver "generator"
   add_subdirectory(RceSupportLib)
 
 simple_plugin(PennReceiver "generator"
-  lbne-raw-data_Overlays
+  dune-raw-data_Overlays
   dune-artdaq_Generators_pennBoard
   artdaq-core_Data
   artdaq_Application

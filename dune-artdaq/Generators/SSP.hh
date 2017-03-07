@@ -22,8 +22,8 @@
 #include "fhiclcpp/fwd.h"
 #include "artdaq-core/Data/Fragment.hh" 
 #include "artdaq/Application/CommandableFragmentGenerator.hh"
-#include "lbne-raw-data/Overlays/SSPFragment.hh"
-#include "lbne-raw-data/Overlays/FragmentType.hh"
+#include "dune-raw-data/Overlays/SSPFragment.hh"
+#include "dune-raw-data/Overlays/FragmentType.hh"
 
 #include "dune-artdaq/Generators/anlBoard/DeviceInterface.h"
 
@@ -68,7 +68,7 @@ namespace dune {
     // are the FHiCL variable names with a "_" appended
 
     //FHiCL parameters
-    lbne::detail::FragmentType const fragment_type_; // Type of fragment (see FragmentType.hh)
+    dune::detail::FragmentType const fragment_type_; // Type of fragment (see FragmentType.hh)
     unsigned int board_id_;
     SSPDAQ::Comm_t  interface_type_;
 

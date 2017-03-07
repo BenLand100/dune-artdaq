@@ -1,9 +1,9 @@
 #include "dune-artdaq/Generators/PennReceiver.hh"
 #include "dune-artdaq/DAQLogger/DAQLogger.hh"
 
-#include "lbne-raw-data/Overlays/PennMilliSliceWriter.hh"
-#include "lbne-raw-data/Overlays/PennMilliSliceFragment.hh"
-#include "lbne-raw-data/Overlays/FragmentType.hh"
+#include "dune-raw-data/Overlays/PennMilliSliceWriter.hh"
+#include "dune-raw-data/Overlays/PennMilliSliceFragment.hh"
+#include "dune-raw-data/Overlays/FragmentType.hh"
 
 #include "canvas/Utilities/Exception.h"
 #include "artdaq/Application/GeneratorMacros.hh"
@@ -20,7 +20,7 @@
 #include <thread>
 #include <unistd.h>
 
-using namespace lbne;
+using namespace dune;
 
 dune::PennReceiver::PennReceiver(fhicl::ParameterSet const & ps)
 :
@@ -573,7 +573,7 @@ bool dune::PennReceiver::getNext_(artdaq::FragmentPtrs & frags) {
 		// Set fragment fields appropriately
 		frag->setSequenceID(ev_counter());
 		frag->setFragmentID(fragmentIDs()[0]);
-		frag->setUserType(lbne::detail::TRIGGER);
+		frag->setUserType(dune::detail::TRIGGER);
 
 		// Resize fragment to final millislice size
 	        frag->resizeBytes(millislice_size);
@@ -811,7 +811,7 @@ bool dune::PennReceiver::getNext_(artdaq::FragmentPtrs & frags) {
   // Set fragment fields appropriately
   frag->setSequenceID(ev_counter());
   frag->setFragmentID(fragmentIDs()[0]);
-  frag->setUserType(lbne::detail::TRIGGER);
+  frag->setUserType(dune::detail::TRIGGER);
 
   // Resize fragment to final millislice size
   frag->resizeBytes(millislice_size);
@@ -850,11 +850,11 @@ uint32_t dune::PennReceiver::format_millislice_from_raw_buffer(uint16_t* src_add
 {
   const uint32_t MICROSLICE_BUFFER_SIZE = 512;
 
-  std::shared_ptr<lbne::PennMicroSliceWriter> microslice_writer_ptr;
+  std::shared_ptr<dune::PennMicroSliceWriter> microslice_writer_ptr;
 
   uint16_t* sample_addr = src_addr;
 
-  lbne::PennMilliSliceWriter millislice_writer(dest_addr, dest_size);
+  dune::PennMilliSliceWriter millislice_writer(dest_addr, dest_size);
   for (uint32_t udx = 0; udx < number_of_microslices_to_generate_; ++udx) {
     microslice_writer_ptr = millislice_writer.reserveMicroSlice(MICROSLICE_BUFFER_SIZE);
     if (microslice_writer_ptr.get() == 0) {
@@ -894,7 +894,7 @@ uint32_t dune::PennReceiver::validate_millislice_from_fragment_buffer(uint8_t* d
     uint16_t payload_count_trigger, uint16_t payload_count_timestamp,
     uint64_t end_timestamp, uint32_t width_in_ticks, uint32_t overlap_in_ticks)
 {
-  lbne::PennMilliSliceWriter millislice_writer(data_addr, data_size+sizeof(PennMilliSlice::Header));
+  dune::PennMilliSliceWriter millislice_writer(data_addr, data_size+sizeof(PennMilliSlice::Header));
 
   millislice_writer.finalize(true, data_size,
 #ifndef REBLOCK_PENN_USLICE

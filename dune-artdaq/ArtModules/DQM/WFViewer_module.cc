@@ -8,8 +8,8 @@
 
 #include "artdaq-core/Data/Fragments.hh"
 
-#include "lbne-raw-data/Overlays/FragmentType.hh"
-#include "lbne-raw-data/Overlays/ToyFragment.hh"
+#include "dune-raw-data/Overlays/FragmentType.hh"
+#include "dune-raw-data/Overlays/ToyFragment.hh"
 
 #include "cetlib/exception.h"
 
@@ -33,7 +33,7 @@ using std::cout;
 using std::cerr;
 using std::endl;
 
-using namespace lbne;
+using namespace dune;
 
 namespace dune {
 

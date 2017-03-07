@@ -5,9 +5,9 @@
 #include "canvas/Utilities/Exception.h"
 #include "artdaq/Application/GeneratorMacros.hh"
 #include "cetlib/exception.h"
-#include "lbne-raw-data/Overlays/SSPFragment.hh"
-#include "lbne-raw-data/Overlays/SSPFragmentWriter.hh"
-#include "lbne-raw-data/Overlays/FragmentType.hh"
+#include "dune-raw-data/Overlays/SSPFragment.hh"
+#include "dune-raw-data/Overlays/SSPFragmentWriter.hh"
+#include "dune-raw-data/Overlays/FragmentType.hh"
 #include "fhiclcpp/ParameterSet.h"
 #include "artdaq-core/Utilities/SimpleLookupPolicy.h"
 #include <boost/lexical_cast.hpp>
@@ -19,12 +19,12 @@
 
 #include <unistd.h>
 
-using namespace lbne;
+using namespace dune;
 
 dune::SSP::SSP(fhicl::ParameterSet const & ps)
   :
   CommandableFragmentGenerator(ps),
-  fragment_type_(lbne::detail::PHOTON),
+  fragment_type_(dune::detail::PHOTON),
   board_id_(ps.get<unsigned int>("board_id",0))
 {
   instance_name_for_metrics_ = "SSP " + boost::lexical_cast<std::string>(board_id_);

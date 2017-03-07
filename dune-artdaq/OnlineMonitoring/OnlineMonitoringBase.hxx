@@ -8,7 +8,7 @@
 #ifndef OnlineMonitoringNamespace
 #define OnlineMonitoringNamespace
 
-#include "lbne-raw-data/Overlays/PennMicroSlice.hh"
+#include "dune-raw-data/Overlays/PennMicroSlice.hh"
 #include "TString.h"
 
 namespace OnlineMonitoring {
@@ -50,15 +50,15 @@ namespace OnlineMonitoring {
 
   // PTB trigger types
   namespace PTBTrigger {
-    const std::vector<lbne::PennMicroSlice::Payload_Trigger::trigger_type_t> Muon = {lbne::PennMicroSlice::Payload_Trigger::TD,  // TSU EL-WU (bin 1)
-										     lbne::PennMicroSlice::Payload_Trigger::TC,  // TSU SU-NL
-										     lbne::PennMicroSlice::Payload_Trigger::TB,  // TSU NU-SL
-										     lbne::PennMicroSlice::Payload_Trigger::TA}; // BSU RM-CL (bin 4)
+    const std::vector<dune::PennMicroSlice::Payload_Trigger::trigger_type_t> Muon = {dune::PennMicroSlice::Payload_Trigger::TD,  // TSU EL-WU (bin 1)
+										     dune::PennMicroSlice::Payload_Trigger::TC,  // TSU SU-NL
+										     dune::PennMicroSlice::Payload_Trigger::TB,  // TSU NU-SL
+										     dune::PennMicroSlice::Payload_Trigger::TA}; // BSU RM-CL (bin 4)
 
-    const std::vector<lbne::PennMicroSlice::Payload_Trigger::trigger_type_t> Calibration = {lbne::PennMicroSlice::Payload_Trigger::C1,
-											    lbne::PennMicroSlice::Payload_Trigger::C2,
-											    lbne::PennMicroSlice::Payload_Trigger::C3,
-											    lbne::PennMicroSlice::Payload_Trigger::C4};
+    const std::vector<dune::PennMicroSlice::Payload_Trigger::trigger_type_t> Calibration = {dune::PennMicroSlice::Payload_Trigger::C1,
+											    dune::PennMicroSlice::Payload_Trigger::C2,
+											    dune::PennMicroSlice::Payload_Trigger::C3,
+											    dune::PennMicroSlice::Payload_Trigger::C4};
   }
 
   const double NNanoSecondsPerNovaTick = 15.625; //ns

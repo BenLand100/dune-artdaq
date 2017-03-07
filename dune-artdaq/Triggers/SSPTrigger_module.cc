@@ -19,8 +19,8 @@
 
 #include <memory>
 
-#include "lbne-raw-data/Overlays/SSPFragment.hh"
-#include "lbne-raw-data/Overlays/anlTypes.hh"
+#include "dune-raw-data/Overlays/SSPFragment.hh"
+#include "dune-raw-data/Overlays/anlTypes.hh"
 #include "artdaq-core/Data/Fragments.hh"
 #include <iostream>
 
@@ -109,7 +109,7 @@ bool trig::SSPTrigger::filter(art::Event & evt)
     for (size_t idx = 0; idx < ssp_fragments->size(); ++idx) {
       _nFragments++;
       const auto& fragment((*ssp_fragments)[idx]);      
-      lbne::SSPFragment ssp_fragment(fragment);
+      dune::SSPFragment ssp_fragment(fragment);
       
       if (_verbose){
         std::cout << "        SSP fragment "  << fragment.fragmentID() 
@@ -122,7 +122,7 @@ bool trig::SSPTrigger::filter(art::Event & evt)
       const SSPDAQ::MillisliceHeader* ssp_header=0;
 
       if(fragment.hasMetadata()) {
-        ssp_header = &(fragment.metadata<lbne::SSPFragment::Metadata>()->sliceHeader);
+        ssp_header = &(fragment.metadata<dune::SSPFragment::Metadata>()->sliceHeader);
         
         if (_verbose){
           std::cout << "        SSP metadata: "

@@ -12,8 +12,8 @@
 #include "art/Framework/Services/Optional/TFileService.h"
 
 #include "canvas/Utilities/Exception.h"
-#include "lbne-raw-data/Overlays/TpcMilliSliceFragment.hh"
-#include "lbne-raw-data/Overlays/TpcMicroSlice.hh"
+#include "dune-raw-data/Overlays/TpcMilliSliceFragment.hh"
+#include "dune-raw-data/Overlays/TpcMicroSlice.hh"
 #include "artdaq-core/Data/Fragments.hh"
 
 #include "TH1.h"
@@ -31,7 +31,7 @@
 
 using namespace std;
 
-using namespace lbne;
+using namespace dune;
 
 namespace dune {
 class RCEDiagnostic;
@@ -263,9 +263,9 @@ void dune::RCEDiagnostic::analyze(art::Event const & evt){
       ///> Create a TpcMilliSliceFragment from the generic artdaq fragment
       TpcMilliSliceFragment msf(frag);	
       ///> get the total size of the millislice (data+header, in bytes)
-      //lbne::TpcMilliSlice::Header::millislice_size_t msf_size = msf.size();
+      //dune::TpcMilliSlice::Header::millislice_size_t msf_size = msf.size();
       ///> get the number of MicroSlices in the MilliSlice
-      lbne::TpcMilliSlice::Header::microslice_count_t msf_us_count = msf.microSliceCount();     
+      dune::TpcMilliSlice::Header::microslice_count_t msf_us_count = msf.microSliceCount();     
       //      cout<<"Microslice count "<<msf_us_count<<endl;
       if(n_millislices[rceID]>n_millislices_to_chunk){
 	std::cout<<"Filling histograms with errors : "
@@ -313,7 +313,7 @@ void dune::RCEDiagnostic::analyze(art::Event const & evt){
 	  throw cet::exception("Error in RCEDiagnostic module: unable to find requested microslice");
 	
 	///> get the microslice type ID
-	//lbne::TpcMicroSlice::Header::type_id_t us_type_id = microslice->type_id();
+	//dune::TpcMicroSlice::Header::type_id_t us_type_id = microslice->type_id();
 	//	
 	//	if ( std::bitset<4>((us_type_id >> 27 ) & 0xF) == 1){
 	if (microslice->timeGap()){
@@ -339,7 +339,7 @@ void dune::RCEDiagnostic::analyze(art::Event const & evt){
 	  //	  std::cout<<"Trigger? "<<has_trig<<"   "<<microslice->size()<<endl;
 	}
 	///> get the software message
-	lbne::TpcMicroSlice::Header::softmsg_t us_software_message = microslice->software_message();
+	dune::TpcMicroSlice::Header::softmsg_t us_software_message = microslice->software_message();
 	//gTimeEvent->SetPoint(channelblock, channelblock, int( ((us_software_message >> 56) & 0xFF) ));
 	if(has_trig){
 	  event_has_trigger=true;
@@ -357,7 +357,7 @@ void dune::RCEDiagnostic::analyze(art::Event const & evt){
 	}
 		
 	///> get the firmware message 
-	lbne::TpcMicroSlice::Header::firmmsg_t us_firmware_message = microslice->firmware_message();
+	dune::TpcMicroSlice::Header::firmmsg_t us_firmware_message = microslice->firmware_message();
 	
 	//	std::cout<<" firmware message = "<<us_firmware_message<<std::endl;
 	  

@@ -4,5 +4,5 @@ art_make(
         ${FHICLCPP}
         ${CETLIB}
 	artdaq-core_Data
-	lbne-raw-data_Overlays
+	dune-raw-data_Overlays
         )
