@@ -322,7 +322,7 @@ bool dune::SSP::getNext_(artdaq::FragmentPtrs & frags) {
 
     // Could I just wrap this in a try-catch block?
 
-    device_interface_->GetMillislice(millislice);
+    device_interface_->ReadEvents(millislice);
 
     if (device_interface_->exception())
       {

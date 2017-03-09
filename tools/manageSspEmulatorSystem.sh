@@ -99,7 +99,7 @@ Examples: ${scriptName} -p 32768 init
 originalCommand="$0 $*"
 onmonEnable=off
 diskWriting=1
-dataDir="~/dune-artdaq/data"
+dataDir="/home/phsmaj/dune-artdaq/data"
 runNumber=""
 runEventCount=0
 runDuration=0
@@ -230,7 +230,7 @@ fi
 
 # build the logfile name
 TIMESTAMP=`date '+%Y%m%d%H%M%S'`
-logFile="~/dune-artdaq/data/dsMC-${TIMESTAMP}-${command}.log"
+logFile="/home/phsmaj/dune-artdaq/data/dsMC-${TIMESTAMP}-${command}.log"
 echo "${originalCommand}" > $logFile
 echo ">>> ${originalCommand} (Disk writing is ${diskWriting})"
 

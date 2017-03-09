@@ -10,6 +10,11 @@
 
 namespace SSPDAQ{
 
+  struct TriggerInfo{
+    unsigned long startTime;
+    unsigned long endTime;
+  };
+
   class DeviceInterface{
     
   public:
@@ -26,10 +31,7 @@ namespace SSPDAQ{
     void Initialize();
 
     //Start a run :-)
-    //If you want to read events manually using ReadEventFromDevice, disable
-    //the read thread and the DeviceInterface will not read events or build
-    //millislices.
-    void Start(bool startReadThread=true);
+    void Start();
 
     //Pop a millislice from fQueue and place into sliceData
     void GetMillislice(std::vector<unsigned int>& sliceData);
@@ -51,6 +53,8 @@ namespace SSPDAQ{
     //Get an event off the hardware buffer.
     //Timeout after some wait period
     void ReadEventFromDevice(EventPacket& event);
+
+    void ReadEvents(std::vector<unsigned int>& fragment);
 
     //Obtain current state of device
     inline State_t State(){return fState;}
@@ -115,7 +119,11 @@ namespace SSPDAQ{
     bool exception() const { return exception_.load(); }
 
   private:
-    
+
+    void BuildFragment(unsigned long startTime,unsigned long endTime,std::vector<unsigned int>& fragmentData);
+
+    bool GetTriggerInfo(const SSPDAQ::EventPacket& event,SSPDAQ::TriggerInfo& newTrigger);
+        
     //Internal device object used for hardware operations.
     //Owned by the device manager, not this object.
     Device* fDevice;
@@ -133,17 +141,6 @@ namespace SSPDAQ{
     //Flag telling read thread to stop
     std::atomic<bool> fShouldStop;
 
-    //Call at Start. Will read events from device and monitor for
-    //millislice boundaries
-    void ReadEvents(unsigned long runStartTime=0);
-
-    //Called by ReadEvents
-    //Build millislice from events in buffer and place in fQueue
-    void BuildMillislice(const std::vector<EventPacket>& events,unsigned long startTime,unsigned long endTime);
-
-    //Build a millislice containing only a header and place in fQueue
-    void BuildEmptyMillislice(unsigned long startTime,unsigned long endTime);
-
     // JCF, Mar-8-2016
 
     // Rather than throw an exception (crashing the enclosing artdaq
@@ -152,7 +149,7 @@ namespace SSPDAQ{
 
     void set_exception( bool exception ) { exception_.store( exception ); }
 
-    SafeQueue<std::vector<unsigned int> > fQueue;
+    std::deque<EventPacket> fPacketBuffer;
 
     std::unique_ptr<std::thread> fReadThread;
 
@@ -174,7 +171,13 @@ namespace SSPDAQ{
 
     bool fStartOnNOvASync;
 
+    unsigned long fTriggerWriteDelay;
+
+    unsigned int fMaxFragsPerRead;
+
     std::atomic<bool> exception_;
+
+    std::queue<TriggerInfo> fTriggers;
 
   };
   
