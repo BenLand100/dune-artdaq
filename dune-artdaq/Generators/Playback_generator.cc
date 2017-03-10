@@ -112,8 +112,8 @@ bool dune::Playback::getNext_(artdaq::FragmentPtrs& outputFrags) {
 
   entry_number++;
 
-  if(metricMan_ != nullptr) {
-    metricMan_->sendMetric("Fragments Sent",ev_counter(), "Events", 3);
+  if(artdaq::Globals::metricMan_ != nullptr) {
+    artdaq::Globals::metricMan_->sendMetric("Fragments Sent",ev_counter(), "Events", 3);
   }
 
   ev_counter_inc();

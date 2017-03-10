@@ -14,7 +14,7 @@
 
 #include "canvas/Utilities/Exception.h"
 #include "artdaq-core/Data/Fragments.hh"
-#include "artdaq/DAQrate/MetricManager.hh"
+#include "artdaq/DAQdata/Globals.hh"
 
 #include "messagefacility/MessageLogger/MessageLogger.h"
 
@@ -46,7 +46,6 @@ private:
 
   //  std::string process_label_;
 
-  artdaq::MetricManager metricMan_;
 };
 
 
@@ -58,14 +57,16 @@ dune::BasicMetrics::BasicMetrics(fhicl::ParameterSet const & pset)
       bytes_processed_(0)//,
       //      process_label_(pset.get<std::string>("process_label"))
 {
+  throw cet::exception("BasicMetrics") << "JCF, Mar-10-2017: the BasicMetrics module is deprecated for the time being";
+
   // pull out the relevant parts of the ParameterSet                                                       
 
   fhicl::ParameterSet metric_pset;
            
   try {
     metric_pset = pset.get<fhicl::ParameterSet>("metrics");
-    metricMan_.initialize(metric_pset, "BasicMetrics.");
-    metricMan_.do_start();
+    artdaq::Globals::metricMan_.initialize(metric_pset, "BasicMetrics.");
+    artdaq::Globals::metricMan_.do_start();
   } catch (...) {
     mf::LogInfo("BasicMetrics")
       << "Unable to find the metrics parameters in the metrics "
@@ -75,8 +76,8 @@ dune::BasicMetrics::BasicMetrics(fhicl::ParameterSet const & pset)
 
 dune::BasicMetrics::~BasicMetrics()
 {
-   metricMan_.do_stop();
-   metricMan_.shutdown();
+   artdaq::Globals::metricMan_.do_stop();
+   artdaq::Globals::metricMan_.shutdown();
 }
 
 void dune::BasicMetrics::analyze(art::Event const & evt)
@@ -109,10 +110,10 @@ void dune::BasicMetrics::analyze(art::Event const & evt)
     mf::LogInfo("BasicMetrics") << "Processed " << events_processed_ << " events; total size is " <<
       bytes_processed_/(1024.0*1024.0) << " megabytes";
 
-    //    metricMan_.sendMetric("Events processed",events_processed_, process_label_, 0);
-    //    metricMan_.sendMetric("MB processed",bytes_processed_/(1024.0*1024.0), process_label_, 0);
-    metricMan_.sendMetric("Events processed",events_processed_, "Aggregator", 0);
-    metricMan_.sendMetric("MB processed",bytes_processed_/(1024.0*1024.0), "Aggregator", 0);
+    //    artdaq::Globals::metricMan_.sendMetric("Events processed",events_processed_, process_label_, 0);
+    //    artdaq::Globals::metricMan_.sendMetric("MB processed",bytes_processed_/(1024.0*1024.0), process_label_, 0);
+    artdaq::Globals::metricMan_.sendMetric("Events processed",events_processed_, "Aggregator", 0);
+    artdaq::Globals::metricMan_.sendMetric("MB processed",bytes_processed_/(1024.0*1024.0), "Aggregator", 0);
   }
 
 }
