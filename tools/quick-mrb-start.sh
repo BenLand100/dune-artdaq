@@ -131,6 +131,8 @@ if [ -z "${tag:-}" ]; then
   tag=develop;
 fi
 
+wget https://cdcvs.fnal.gov/redmine/projects/dune-artdaq/repository/revisions/$tag/raw/ups/product_deps
+
 demo_version=`grep "parent dune_artdaq" $Base/download/product_deps|awk '{print $3}'`
 
 artdaq_version=`grep -E "^artdaq\s+" $Base/download/product_deps | awk '{print $2}'`
