@@ -1,6 +1,8 @@
+
 art_make(NO_PLUGINS # Want different link lists for modules
-  LIB_LIBRARIES dune-raw-data_Overlays dune-artdaq_Products
+  LIB_LIBRARIES dune-raw-data_Overlays 
 )
+
 
 simple_plugin(ExampleTrigger "module" dune-raw-data_Overlays 
   artdaq_DAQdata

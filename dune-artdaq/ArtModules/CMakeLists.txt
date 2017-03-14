@@ -1,6 +1,27 @@
 
-art_make(NO_PLUGINS # WAnt different link lists for modues
-  LIB_LIBRARIES dune-raw-data_Overlays dune-artdaq_Products
+
+
+art_make(NO_PLUGINS # Want different link lists for modules
+  SUBDIRS detail
+  DICT_DICTIONARIES
+  ${ART_PERSISTENCY_PROVENANCE}
+  ${CANVAS_PERSISTENCY_PROVENANCE}
+  LIB_LIBRARIES dune-raw-data_Overlays
+  artdaq_ArtModules
+  art_Framework_Core
+  art_Framework_IO_Sources
+  art_Framework_Principal
+  canvas_Persistency_Common
+  art_Persistency_Provenance
+  canvas_Persistency_Provenance
+  canvas_Utilities
+  MF_MessageLogger
+  ${ROOT_CINTEX}
+  ${ROOT_RIO}
+  ${ROOT_CORE}
+  ${ROOT_NET}
+  ${ROOT_REFLEX}
+  cetlib
 )
 
 simple_plugin(MilliSliceDump "module" dune-raw-data_Overlays )
@@ -41,6 +62,17 @@ simple_plugin(SparsifySSP "module" dune-raw-data_Overlays
 )
 
 simple_plugin(ToyDump "module")
+
+simple_plugin(DuneInput "source"
+  dune-artdaq_ArtModules
+  artdaq_ArtModules
+  art_Framework_Core
+  art_Framework_IO_Sources
+  art_Framework_Principal
+  art_Persistency_Provenance
+  art_Utilities
+  MF_MessageLogger
+)
 
 # simple_plugin(BasicMetrics "module"
 #   ${ART_FRAMEWORK_SERVICES_REGISTRY}

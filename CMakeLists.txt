@@ -36,9 +36,7 @@ include(CetCMakeEnv)
 cet_cmake_env()
 
 # Set ZEROMQ_IGNORED to either "TRUE" or "FALSE", depending on whether
-# 0MQ is available on your system (on dune35t-gateway01.fnal.gov, it
-# IS available); 0MQ is used so dune-artdaq code can send information
-# up to RunControl
+# 0MQ is available on your system 
 
 # JCF, Jan-3-2017
 
@@ -56,7 +54,7 @@ cet_set_compiler_flags(DIAGS VIGILANT
  EXTRA_CXX_FLAGS -D_GLIBCXX_USE_NANOSLEEP
  )
 else()
-message(STATUS "Not requiring 0MQ libraries be available for build; will be unable to communicate to RunControl" )
+message(STATUS "Not requiring 0MQ libraries be available for build" )
 
 cet_set_compiler_flags(DIAGS VIGILANT
  WERROR
@@ -69,13 +67,13 @@ endif()
 cet_report_compiler_flags()
 
 # these are minimum required versions, not the actual product versions
-find_ups_product( gallery v1_03_02 )
-find_ups_product( cetbuildtools v3_03_00 )
-find_ups_product( artdaq v0_04_02 )
+find_ups_product( gallery v1_03_06 )
+find_ups_product( cetbuildtools v5_06_06 )
+find_ups_product( artdaq v2_01_00 )
 find_ups_product( artdaq_utilities v1_00_00)
-find_ups_product( artdaq_core v1_00_00 )
+find_ups_product( artdaq_core v1_06_01 )
 find_ups_product( dune_raw_data v0_00_02 )
-find_ups_product( art v1_06_00 )
+find_ups_product( art v2_03_00 )
 find_ups_product( fhiclcpp v2_16_00 )
 find_ups_product( messagefacility v1_10_00 )
 find_ups_product( cetlib v1_03_00 )

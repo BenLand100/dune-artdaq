@@ -91,8 +91,8 @@ bool dune::ToySimulator::getNext_(artdaq::FragmentPtrs & frags) {
 
   frags.emplace_back( std::move(fragptr ));
 
-  if(metricMan_ != nullptr) {
-    metricMan_->sendMetric("Fragments Sent",ev_counter(), "Events", 3);
+  if(artdaq::Globals::metricMan_ != nullptr) {
+    artdaq::Globals::metricMan_->sendMetric("Fragments Sent",ev_counter(), "Events", 3);
   }
 
   ev_counter_inc();
@@ -100,8 +100,8 @@ bool dune::ToySimulator::getNext_(artdaq::FragmentPtrs & frags) {
 
   if (ev_counter() % 100 == 0) {
 
-    if(metricMan_ != nullptr) {
-      metricMan_->sendMetric("Fragments Sent",ev_counter(), "Fragments", 0);
+    if(artdaq::Globals::metricMan_ != nullptr) {
+      artdaq::Globals::metricMan_->sendMetric("Fragments Sent",ev_counter(), "Fragments", 0);
     }
 
     DAQLogger::LogWarning("ToySimulator") << "On fragment " << ev_counter() << ", this is a test of the DAQLogger's LogWarning function";

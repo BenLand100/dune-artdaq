@@ -17,21 +17,20 @@ bindir      fq_dir      bin
 
 #
 product		version		optional
-artdaq		v1_13_02        
-dune_raw_data 	v1_04_05
-gallery 	v1_03_02
-cetbuildtools	v5_04_03	-	only_for_build
+artdaq		v2_01_00        
+dune_raw_data 	v1_04_07
+gallery 	v1_03_06
+cetbuildtools	v5_06_06	-	only_for_build
 end_product_list
 
 # e10 - with gcc 4.9.3a and -std=c++14
-
-# s35 - with art v2_01_02
+# s41 - with art v2_03_00
 
 # -nq- here means there is no qualifier
 # a "-" here means the dependent product is not required by the parent and will not be setup
 qualifier    	       	artdaq                  	dune_raw_data  	   	gallery
-e10:prof 		e10:s35:eth:prof   		online:e10:s35:prof	e10:prof
-e10:debug 		e10:s35:eth:debug   		online:e10:s35:debug    e10:debug
+e10:prof 		e10:s41:eth:prof   		online:e10:s41:prof	e10:prof
+e10:debug 		e10:s41:eth:debug   		online:e10:s41:debug    e10:debug
 end_qualifier_list
 
 # Preserve tabs and formatting in emacs and vi / vim:

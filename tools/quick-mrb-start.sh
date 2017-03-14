@@ -3,7 +3,7 @@
 # Downloads, installs, and runs the artdaq_demo as an MRB-controlled repository
 
 # JCF, Jan-1-2017
-# Modified this script to work with the dune-artdaq package
+# Modified this script to work with the lbne-artdaq package
 
 # JCF, Mar-2-2017
 # Modified it again to work with the brand new dune-artdaq package
@@ -131,7 +131,19 @@ if [ -z "${tag:-}" ]; then
   tag=develop;
 fi
 
-wget https://cdcvs.fnal.gov/redmine/projects/dune-artdaq/repository/revisions/$tag/raw/ups/product_deps
+
+# JCF, Mar-10-2017
+# THe following lines of code are hacked to work only during development for the next couple of days...
+
+#wget https://cdcvs.fnal.gov/redmine/projects/dune-artdaq/repository/revisions/$tag/raw/ups/product_deps
+git clone http://cdcvs.fnal.gov/projects/dune-artdaq
+cd dune-artdaq
+git checkout feature/artdaq_v2
+cd ..
+mkdir -p $Base/download/
+cp -p dune-artdaq/ups/product_deps $Base/download/
+rm -rf dune-artdaq
+
 demo_version=`grep "parent dune_artdaq" $Base/download/product_deps|awk '{print $3}'`
 
 artdaq_version=`grep -E "^artdaq\s+" $Base/download/product_deps | awk '{print $2}'`
@@ -195,11 +207,13 @@ set -u
 
 cd $MRB_SOURCE
 
-if [[ $opt_lrd_develop -eq 1 ]]; then
-    dune_raw_data_checkout_arg="-d dune_raw_data"
-else
-    dune_raw_data_checkout_arg="-t ${coredemo_version} -d dune_raw_data"
-fi
+dune_raw_data_checkout_arg="-t feature/artdaq_v2 -d dune_raw_data"
+
+# if [[ $opt_lrd_develop -eq 1 ]]; then
+#     dune_raw_data_checkout_arg="-d dune_raw_data"
+# else
+#     dune_raw_data_checkout_arg="-t ${coredemo_version} -d dune_raw_data"
+# fi
 
 if [[ $opt_lrd_w -eq 1 ]]; then
     dune_raw_data_repo="ssh://p-dune-raw-data@cdcvs.fnal.gov/cvs/projects/dune-raw-data"
@@ -214,11 +228,12 @@ else
     dune_artdaq_repo="ssh://p-dune-artdaq@cdcvs.fnal.gov/cvs/projects/dune-artdaq"
 fi
 
-if [[ $tag == "develop" ]]; then
-    dune_artdaq_checkout_arg="-d dune_artdaq"
-else
-    dune_artdaq_checkout_arg="-t $tag -d dune_artdaq"
-fi
+dune_artdaq_checkout_arg="-t feature/artdaq_v2 -d dune_artdaq"
+# if [[ $tag == "develop" ]]; then
+#     dune_artdaq_checkout_arg="-d dune_artdaq"
+# else
+#     dune_artdaq_checkout_arg="-t $tag -d dune_artdaq"
+# fi
 
 mrb gitCheckout -t ${artdaq_version} -d artdaq http://cdcvs.fnal.gov/projects/artdaq
 
@@ -234,7 +249,7 @@ if [[ "$?" != "0" ]]; then
     exit 1
 fi
 
-mrb gitCheckout -d dune_artdaq $dune_artdaq_repo
+mrb gitCheckout $dune_artdaq_checkout_arg $dune_artdaq_repo
 
 if [[ "$?" != "0" ]]; then
     echo "Unable to perform checkout of $dune_artdaq_repo"
@@ -307,6 +322,8 @@ else
     echo "Build error. If all else fails, try (A) logging into a new terminal and (B) creating a new directory out of which to run this script."
     echo
 fi
+
+echo "JCF, Mar-10-2017: if you're not John Freeman, you shouldn't be seeing this - please contact him if you are, jcfree@fnal.gov"
 
 endtime=`date`
 
