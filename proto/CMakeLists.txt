@@ -6,6 +6,7 @@ art_make_exec(NAME gallerytest
   canvas_Utilities
   canvas_Persistency_Common
   canvas_Persistency_Provenance
+  ${ROOT_CORE}
   ${CETLIB}
   ${GALLERY}
 )
