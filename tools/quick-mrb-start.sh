@@ -131,6 +131,8 @@ function detectAndPull() {
 
 if $bad_network ; then
     os="slf7"    
+else 
+    os=
 fi
 
 cd $Base/download
