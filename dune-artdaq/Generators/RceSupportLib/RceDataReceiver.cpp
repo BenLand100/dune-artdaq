@@ -3,6 +3,8 @@
  *
  *  Created on: May 16, 2014
  *      Author: Tim Nicholls, STFC Application Engineering Group
+ *  Modified:  February 13, 2017
+ *      by Matt Graham for protoDUNE 
  */
 
 #include "RceDataReceiver.hh"
@@ -14,13 +16,18 @@
 struct RceMicrosliceHeader
 {
   uint32_t microslice_size;
-  uint32_t sequence_id;
+  uint32_t rx_sequence_id;
+  uint32_t tx_sequence_id;
+
   uint32_t type_id;
-  uint32_t sw_frame_status[2];
-  uint32_t fw_frame_status[2];
+};
+
+struct BlowOffData{
+    uint32_t bo;
 };
 
 #define RECV_DEBUG(level) if (level <= debug_level_) DAQLogger::LogDebug(instance_name_)
+const uint   safeWord=0x708b309e;
 
 dune::RceDataReceiver::RceDataReceiver(const std::string& instance_name, int debug_level, uint32_t tick_period_usecs,
 				       uint16_t receive_port, uint16_t number_of_microslices_per_millislice, std::size_t max_buffer_attempts) :
@@ -485,6 +492,7 @@ void dune::RceDataReceiver::handle_received_data(std::size_t length)
 	RceMicrosliceHeader* header;
 	uint32_t sequence_id;
 
+	uint32_t thisWord;
 	microslice_size_recvd_ += length;
 
 	switch (next_receive_state_)
@@ -497,7 +505,7 @@ void dune::RceDataReceiver::handle_received_data(std::size_t length)
 	    header = reinterpret_cast<RceMicrosliceHeader*>(current_header_ptr_);
 
 	    microslice_size_ = header->microslice_size;
-	    sequence_id = header->sequence_id;
+	    sequence_id = header->rx_sequence_id;
 
 	    RECV_DEBUG(2) << "Got header for microslice with size " << microslice_size_ << " sequence ID " << sequence_id;
 
@@ -508,14 +516,18 @@ void dune::RceDataReceiver::handle_received_data(std::size_t length)
 	      DAQLogger::LogWarning(instance_name_) << "Receive length at mismatch : " << length;
 	      DAQLogger::LogWarning(instance_name_) << "Microslice header at mismatch :"
 					     << " size : 0x"         << std::hex << header->microslice_size << std::dec
-					     << " sequence ID : 0x " << std::hex << header->sequence_id     << std::dec
-					     << " type ID : 0x"      << std::hex << header->type_id         << std::dec
-					     << " sw status: 0x"     << std::hex
-					     << ((uint64_t)(header->sw_frame_status[0]) << 32 | (header->sw_frame_status[1])) << std::dec
-					     << " fw status: 0x"     << std::hex
-					     << ((uint64_t)(header->fw_frame_status[0]) << 32 | (header->fw_frame_status[1])) << std::dec;
-
+						    << " rx_sequence ID : 0x" << std::hex << header->rx_sequence_id     << std::dec
+						    << " tx_sequence ID : 0x" << std::hex << header->tx_sequence_id     << std::dec
+						    << " type ID : 0x"      << std::hex << header->type_id         << std::dec;
 		//TODO handle error cleanly here
+	      //blow off data until we get to safeword
+	      millislice_state_=MicrosliceIncomplete;
+	      next_receive_state_ = BlowOff;
+	      next_receive_size_ = sizeof(uint32_t);
+	      last_sequence_id_++;
+	      sequence_id_initialised_ = true;
+	      break;
+
 	    }
 	    else
 	    {
@@ -563,12 +575,30 @@ void dune::RceDataReceiver::handle_received_data(std::size_t length)
 		}
 		break;
 
-	default:
+	case BlowOff:
+	  //something went wrong with the header...try to loop through the data until we get the safeword
+	  thisWord=*(uint32_t*)(current_write_ptr_);
+	  if(thisWord==safeWord) {
+	    DAQLogger::LogWarning(instance_name_) << "Found the safeword! after this many bytes " <<  microslice_size_recvd_;
+	    microslices_recvd_++;
+	    current_header_ptr_ = (void*)((char*)current_header_ptr_ + microslice_size_recvd_);
+	    microslice_size_recvd_ = 0;
+	    millislice_state_ = MillisliceIncomplete;
+	    next_receive_state_ = ReceiveMicrosliceHeader;
+	    next_receive_size_ = sizeof(RceMicrosliceHeader);
+	  } else {
+	    // DAQLogger::LogWarning(instance_name_) << "Blowing off! Word is this: 0x" << std::hex <<  thisWord<<std::dec<<"  after "<<microslice_size_recvd_<<" words...safeWord = "<<std::hex <<safeWord<<std::dec;
+	    millislice_state_=MicrosliceIncomplete;
+	    next_receive_state_ = BlowOff;
+	    next_receive_size_ = sizeof(uint32_t);
+	  }
+	  break;
 
-		// Should never happen - bug or data corruption
-		DAQLogger::LogError(instance_name_) << "Fatal error after async_recv - unrecognised next receive state: " << next_receive_state_;
-		return;
-		break;
+         default:
+	   // Should never happen - bug or data corruption
+           DAQLogger::LogError(instance_name_) << "Fatal error after async_recv - unrecognised next receive state: " << next_receive_state_;
+	   return;
+	   break;
 	}
 
 	// Update millislice size received and write offset

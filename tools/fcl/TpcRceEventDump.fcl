@@ -13,14 +13,15 @@
   }
 
   a1: [ tpcMilliSliceDump ]
-  e1: [ out1 ]
-  end_paths: [ a1, e1 ]
+  #e1: [ out1 ]
+  #end_paths: [ a1, e1 ]
+  end_paths: [ a1 ]
 }
 
 services : {
   TFileService:
   {
-      fileName: "tpcMilliSliceDumpOutput.root"
+      fileName: "/tmp/tpcMilliSliceDumpOutput.root"
   }
 }
 

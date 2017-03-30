@@ -93,7 +93,7 @@ private:
 	void*           current_write_ptr_;
         void*           current_header_ptr_;
 
-	enum NextReceiveState { ReceiveMicrosliceHeader, ReceiveMicroslicePayload };
+  enum NextReceiveState { ReceiveMicrosliceHeader, ReceiveMicroslicePayload, BlowOff };
 	NextReceiveState next_receive_state_;
 	size_t           next_receive_size_;
 

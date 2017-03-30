@@ -88,6 +88,14 @@ dune::TpcRceReceiver::TpcRceReceiver(fhicl::ParameterSet const & ps)
   rce_feb_emulation_ =
     ps.get<bool>("rce_feb_emulation_mode", false);
 
+  rce_trg_accept_cnt_ = 
+    ps.get<uint32_t>("rce_trg_accept_cnt", 20);
+  rce_trg_frame_cnt_ = 
+    ps.get<uint32_t>("rce_trg_frame_cnt", 2048);
+
+  rce_hls_blowoff_ = 
+    ps.get<uint32_t>("rce_hls_blowoff", 0);
+
   rce_data_dest_host_ =
 	ps.get<std::string>("rce_data_dest_host", "127.0.0.1");
   rce_data_dest_port_ =
@@ -137,36 +145,71 @@ dune::TpcRceReceiver::TpcRceReceiver(fhicl::ParameterSet const & ps)
 
 #ifndef NO_RCE_CLIENT
 
+  // Create a client connection to the DPM
+  dpm_client_ = std::unique_ptr<dune::RceClient>(new dune::RceClient(instance_name_,dpm_client_host_addr_, dpm_client_host_port_, dpm_client_
+								     timeout_usecs_));
+       
+
+
+#endif
+
+  // Create a RceDataReceiver instance
+  data_receiver_ = std::unique_ptr<dune::RceDataReceiver>(new dune::RceDataReceiver(instance_name_,
+										    receiver_debug_level, receiver_tick_period_usecs_, receive
+										    _port_, number_of_microslices_per_millislice_, max_buffer_attempts_));
+
+}
+
+void dune::TpcRceReceiver::start(void)
+{
+  DAQLogger::LogDebug(instance_name_) << "start() called";
+
+  // Tell the data receiver to drain any unused buffers from the empty queue
+  data_receiver_->release_empty_buffers();
+  
+  // Tell the data receiver to release any unused filled buffers
+  data_receiver_->release_filled_buffers();
+  
+  // Clear the fragment map of any pre-allocated fragments still present
+  raw_to_frag_map_.clear();
+  
+  // Pre-commit buffers to the data receiver object - creating either fragments or raw buffers depending on raw buffer mode
+  DAQLogger::LogDebug(instance_name_) << "Pre-committing " << raw_buffer_precommit_ << " buffers of size " << raw_buffer_size_ << " to receiver";
+  empty_buffer_low_mark_ = 0;
+  for (unsigned int i = 0; i < raw_buffer_precommit_; i++)
+    {
+      dune::RceRawBufferPtr raw_buffer;
+      if (use_fragments_as_raw_buffer_)
+	{
+	  raw_buffer = this->create_new_buffer_from_fragment();
+	}
+      else
+	{
+	  raw_buffer = dune::RceRawBufferPtr(new RceRawBuffer(raw_buffer_size_));
+	}
+      // DAQLogger::LogDebug(instance_name_) << "Pre-commiting raw buffer " << i << " at address " << (void*)(raw_buffer->dataPtr());
+      data_receiver_->commit_empty_buffer(raw_buffer);
+      empty_buffer_low_mark_++;
+    }
+  filled_buffer_high_mark_ = 0;
+  
+  // Initialise data statistics
+  millislices_received_ = 0;
+  total_bytes_received_ = 0;
+  start_time_ = std::chrono::high_resolution_clock::now();
+  report_time_ = start_time_;
+  
+  // Start the data receiver
+  data_receiver_->start();
+  
+#ifndef NO_RCE_CLIENT
+
   // If the DTM client is enabled (for standalone testing of the RCE), open
   // the connection, reset the DTM and enable timing emulation mode
   if (dtm_client_enable_) 
-  {
-    dtm_client_ = std::unique_ptr<dune::RceClient>(new dune::RceClient(instance_name_,
-	       dtm_client_host_addr_, dtm_client_host_port_, dtm_client_timeout_usecs_));
-    DAQLogger::LogInfo(instance_name_) << "Finished construction of DTM client";
-  
-    dtm_client_->send_command("HardReset");
-    dtm_client_->send_command("ReadXmlFile", rce_xml_config_file_);
-    dtm_client_->send_command("SoftReset");
-    std::ostringstream config_frag;
-    config_frag << "<TimingDtm><TimingRtm><EmulationEnable>True</EmulationEnable></TimingRtm></TimingDtm>";
-    dtm_client_->send_config(config_frag.str());
-  }
-
-  // Create a client connection to the DPM
-  dpm_client_ = std::unique_ptr<dune::RceClient>(new dune::RceClient(instance_name_,
-		  dpm_client_host_addr_, dpm_client_host_port_, dpm_client_timeout_usecs_));
-
-  // Set the DPM to FEB emulation mode if necessary
-  if (rce_feb_emulation_) {
-    DAQLogger::LogDebug(instance_name_) << "Enabling FEB emulation in RCE";
-    dpm_client_->send_command("StartDebugFebEmu");
-  }
-  // else
-  // {
-  //   DAQLogger::LogDebug(instance_name_) << "Disabling FEB emulation in RCE";
-  //   dpm_client_->send_command("StopDebugFebEmu");
-  // }
+    {
+      // don't do anything for now...may add something later
+    }  
 
   // Send a HardReset command to the DPM
   dpm_client_->send_command("HardReset");
@@ -175,7 +218,17 @@ dune::TpcRceReceiver::TpcRceReceiver(fhicl::ParameterSet const & ps)
   dpm_client_->send_command("ReadXmlFile", rce_xml_config_file_);
   dpm_client_->send_command("SoftReset");
 
-  dpm_client_->send_command("ConfigFebAsic");
+  // Set the DPM to FEB emulation mode if necessary
+
+  DAQLogger::LogDebug(instance_name_) << "Enable FEB emulation in RCE? [" 
+				      << rce_feb_emulation_ << "]";
+  if (rce_feb_emulation_) {
+    //DAQLogger::LogDebug(instance_name_) << "Enabling FEB emulation in RCE";
+    std::ostringstream config_frag;
+    config_frag << "<DataDpm><DataDpmEmu><Loopback>True</Loopback></DataDpmEmu></DataDpm>";
+    dpm_client_->send_config(config_frag.str());
+    DAQLogger::LogDebug(instance_name_) << "FEB emulation enabled";
+  }
 
   // Set the DPM run mode as specified
   std::ostringstream config_frag;
@@ -184,122 +237,22 @@ dune::TpcRceReceiver::TpcRceReceiver(fhicl::ParameterSet const & ps)
 
   //Set the number of microslices_per_trigger
   std::ostringstream trigsize_frag;
-  trigsize_frag << "<DataDpm><DataBuffer><TriggerSize>" << number_of_microslices_per_trigger_ << "</TriggerSize></DataBuffer></DataDpm>";
+  trigsize_frag << "<DataDpm><DataBuffer><TrgAcceptCnt>" << rce_trg_accept_cnt_ << "</TrgAcceptCnt></DataBuffer></DataDpm>";
   dpm_client_->send_config(trigsize_frag.str());
 
-  if (rce_feb_emulation_) {
-    DAQLogger::LogDebug(instance_name_) << "Enabling FEB emulation in RCE";
-    dpm_client_->send_command("StartDebugFebEmu");
-  }
+  //this sets  the software trigger frequency...needs to go away once we have real trigger
+  std::ostringstream frmcnt_frag;
+  frmcnt_frag << "<DataDpm><DataBuffer><TrgFrameCnt>" << rce_trg_frame_cnt_ << "</TrgFrameCnt></DataBuffer></DataDpm>";
+  dpm_client_->send_config(frmcnt_frag.str());
 
   if (dtm_client_enable_) 
     {
-      usleep(100000);
-      //dtm_client_->send_command("<TimingDtm(0)>","SendEmulationSync");
-      //dtm_client_->send_xml("<command><TimingDtm(0)><SendEmulationSync/></TimingDtm(0)></command>");
-      //    dtm_client_->send_xml("<command><SendEmulationSync/></command>");
+      //don't do anything!
     }
 
-#endif
-
-  // Create a RceDataReceiver instance
-  data_receiver_ = std::unique_ptr<dune::RceDataReceiver>(new dune::RceDataReceiver(instance_name_,
-										    receiver_debug_level, receiver_tick_period_usecs_, receive_port_, number_of_microslices_per_millislice_, max_buffer_attempts_));
-
-}
-
-void dune::TpcRceReceiver::start(void)
-{
-	DAQLogger::LogDebug(instance_name_) << "start() called";
-
-	// Tell the data receiver to drain any unused buffers from the empty queue
-	data_receiver_->release_empty_buffers();
-
-	// Tell the data receiver to release any unused filled buffers
-	data_receiver_->release_filled_buffers();
-
-	// Clear the fragment map of any pre-allocated fragments still present
-	raw_to_frag_map_.clear();
-
-	// Pre-commit buffers to the data receiver object - creating either fragments or raw buffers depending on raw buffer mode
-	DAQLogger::LogDebug(instance_name_) << "Pre-committing " << raw_buffer_precommit_ << " buffers of size " << raw_buffer_size_ << " to receiver";
-	empty_buffer_low_mark_ = 0;
-	for (unsigned int i = 0; i < raw_buffer_precommit_; i++)
-	{
-		dune::RceRawBufferPtr raw_buffer;
-		if (use_fragments_as_raw_buffer_)
-		{
-			raw_buffer = this->create_new_buffer_from_fragment();
-		}
-		else
-		{
-			raw_buffer = dune::RceRawBufferPtr(new RceRawBuffer(raw_buffer_size_));
-		}
-		// DAQLogger::LogDebug(instance_name_) << "Pre-commiting raw buffer " << i << " at address " << (void*)(raw_buffer->dataPtr());
-		data_receiver_->commit_empty_buffer(raw_buffer);
-		empty_buffer_low_mark_++;
-	}
-	filled_buffer_high_mark_ = 0;
-
-	// Initialise data statistics
-	millislices_received_ = 0;
-	total_bytes_received_ = 0;
-	start_time_ = std::chrono::high_resolution_clock::now();
-	report_time_ = start_time_;
-
-	// Start the data receiver
-	data_receiver_->start();
-
-#ifndef NO_RCE_CLIENT
-	// Set up parameters in RCE
-	// dpm_client_->set_param("host",  rce_data_dest_host_, "str");
-	// dpm_client_->set_param("port",  rce_data_dest_port_, "int");
-	// dpm_client_->set_param("millislices", rce_data_num_millislices_, "int");
-	// dpm_client_->set_param("microslices", rce_data_num_microslices_, "int");
-	// dpm_client_->set_param("rate",  rce_data_frag_rate_, "float");
-	// dpm_client_->set_param("adcmode", rce_data_adc_mode_, "int");
-	// dpm_client_->set_param("adcmean", rce_data_adc_mean_, "float");
-	// dpm_client_->set_param("adcsigma", rce_data_adc_sigma_, "float");
-
-	// // Send start command to RCE
-	// dpm_client_->send_command("START");
-
-	if (dtm_client_enable_) 
-        {
-	  //dtm_client_->send_command("SetRunState", "Enable");
-	  //dtm_client_->send_command("Start");
-	}
-
-	//
-	//do the same things at start as we do for init
-	//because we need to reset the RCEs and FEBs in order 
-	//to start everything syncronously. 
-	//
-	// Send a HardReset command to the DPM                                                                               
-	dpm_client_->send_command("HardReset");
-
-	// Tell the DPM to read its configuration file                                                                        
-	dpm_client_->send_command("ReadXmlFile", rce_xml_config_file_);
-	dpm_client_->send_command("SoftReset");
-
-	dpm_client_->send_command("ConfigFebAsic");
-
-	// Set the DPM run mode as specified                                                                                  
-	std::ostringstream config_frag;
-	config_frag << "<DataDpm><DataBuffer><RunMode>" << rce_daq_mode_ << "</RunMode></DataBuffer></DataDpm>";
-	dpm_client_->send_config(config_frag.str());
-
-	// Set the run state to enabled
-	dpm_client_->send_command("SetRunState", "Enable");
-
-	if (dtm_client_enable_)
-	  {
-	    usleep(100000);
-	    //dtm_client_->send_command("<TimingDtm(0)>","SendEmulationSync");
-     
-	    //dtm_client_->send_xml("<command><TimingDtm(0)><SendEmulationSync/></TimingDtm(0)></command>");
-	    dtm_client_->send_xml("<command><SendEmulationSync/></command>");
-	  }
+  // Set the run state to enabled
+  dpm_client_->send_command("SetRunState", "Enable");
+  
 #endif
 
 }
@@ -563,6 +516,17 @@ bool dune::TpcRceReceiver::getNext_(artdaq::FragmentPtrs & frags) {
 	    DAQLogger::LogError(instance_name_) << "dune::TpcRceReceiver::getNext_ : timeout due to no data appearing after " << time_since_last_buffer / 1000000.0 << " seconds";
 	  }
 	}
+	
+	// JCF, Mar-8-2017
+	
+	// The following sleep is in place due to studies conducted
+	// at the Oxford teststand yesterday by myself, Kurt and
+	// Giles, which indicate that the reason for 100% CPU usage by
+	// boardreaders was because this function (without the sleep)
+	// was being called many thousands of times a second, almost
+	// always returning no data.
+	
+	usleep(1000);
 
 	return is_active;
 }

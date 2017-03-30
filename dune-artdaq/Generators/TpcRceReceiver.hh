@@ -99,6 +99,10 @@ namespace dune {
     std::string rce_xml_config_file_;
     std::string rce_daq_mode_;
     bool        rce_feb_emulation_;
+    uint32_t    rce_trg_accept_cnt_;
+    uint32_t    rce_trg_frame_cnt_;
+    uint32_t    rce_hls_blowoff_;
+
 
     std::string rce_data_dest_host_;
     uint16_t    rce_data_dest_port_;
