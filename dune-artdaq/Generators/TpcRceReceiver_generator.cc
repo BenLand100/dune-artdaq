@@ -146,8 +146,7 @@ dune::TpcRceReceiver::TpcRceReceiver(fhicl::ParameterSet const & ps)
 #ifndef NO_RCE_CLIENT
 
   // Create a client connection to the DPM
-  dpm_client_ = std::unique_ptr<dune::RceClient>(new dune::RceClient(instance_name_,dpm_client_host_addr_, dpm_client_host_port_, dpm_client_
-								     timeout_usecs_));
+  dpm_client_ = std::unique_ptr<dune::RceClient>(new dune::RceClient(instance_name_,dpm_client_host_addr_, dpm_client_host_port_, dpm_client_timeout_usecs_));
        
 
 
@@ -155,8 +154,7 @@ dune::TpcRceReceiver::TpcRceReceiver(fhicl::ParameterSet const & ps)
 
   // Create a RceDataReceiver instance
   data_receiver_ = std::unique_ptr<dune::RceDataReceiver>(new dune::RceDataReceiver(instance_name_,
-										    receiver_debug_level, receiver_tick_period_usecs_, receive
-										    _port_, number_of_microslices_per_millislice_, max_buffer_attempts_));
+										    receiver_debug_level, receiver_tick_period_usecs_, receive_port_, number_of_microslices_per_millislice_, max_buffer_attempts_));
 
 }
 
