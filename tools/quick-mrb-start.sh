@@ -8,6 +8,8 @@
 # JCF, Mar-2-2017
 # Modified it again to work with the brand new dune-artdaq package
 
+bad_network=false
+
 git_status=`git status 2>/dev/null`
 git_sts=$?
 if [ $git_sts -eq 0 ];then
@@ -15,12 +17,23 @@ if [ $git_sts -eq 0 ];then
     exit 1
 fi
 
-
 starttime=`date`
 Base=$PWD
 test -d products || mkdir products
 test -d download || mkdir download
 test -d log || mkdir log
+
+if $bad_network ; then
+    echo "\"bad_network\" parameter is set; therefore quick-mrb-start.sh makes the following assumptions: "
+    echo "-All needed products are on the host, and the setup for those products has been sourced"
+    echo "-The git repos for artdaq, etc., are already in this directory"
+    echo "-There's a file already existing called $Base/download/product_deps which will tell this script what version of artdaq, etc., to expect"
+    echo "-Your host has the SLF7 operating system"
+    echo "-You've deleted the directories which look like localProducts_dune_artdaq_v1_06_00_e10_prof and build_slf7.x86_64 (though the versions may have changed since this instruction was written)"
+    sleep 5
+fi
+
+
 
 env_opts_var=`basename $0 | sed 's/\.sh$//' | tr 'a-z-' 'A-Z_'`_OPTS
 USAGE="\
@@ -116,11 +129,17 @@ function detectAndPull() {
     cd $startDir
 }
 
+if $bad_network ; then
+    os="slf7"    
+fi
+
 cd $Base/download
 
-echo "Cloning cetpkgsupport to determine current OS"
-git clone http://cdcvs.fnal.gov/projects/cetpkgsupport
-os=`./cetpkgsupport/bin/get-directory-name os`
+if [[ -z $os ]]; then
+    echo "Cloning cetpkgsupport to determine current OS"
+    git clone http://cdcvs.fnal.gov/projects/cetpkgsupport
+    os=`./cetpkgsupport/bin/get-directory-name os`
+fi
 
 if [[ "$os" == "u14" ]]; then
 	echo "-H Linux64bit+3.19-2.19" >../products/ups_OVERRIDE.`hostname`
@@ -131,7 +150,14 @@ if [ -z "${tag:-}" ]; then
   tag=develop;
 fi
 
-wget https://cdcvs.fnal.gov/redmine/projects/dune-artdaq/repository/revisions/$tag/raw/ups/product_deps
+if ! $bad_network; then
+    wget https://cdcvs.fnal.gov/redmine/projects/dune-artdaq/repository/revisions/$tag/raw/ups/product_deps
+fi
+
+if [[ ! -e $Base/download/product_deps ]]; then
+    echo "You need to have a product_deps file in $Base/download" >&2
+    exit 1
+fi
 
 demo_version=`grep "parent dune_artdaq" $Base/download/product_deps|awk '{print $3}'`
 
@@ -170,18 +196,28 @@ fi
 # The gallery package is currently something only dune-artdaq depends
 # on, hence we can't rely on pullProducts to get it for us
 
+if ! $bad_network; then
 os=`$Base/download/cetpkgsupport/bin/get-directory-name os`
 detectAndPull gallery ${os}-x86_64 "${equalifier}-${build_type}" $gallery_version
+fi
 
-wget http://scisoft.fnal.gov/scisoft/bundles/tools/pullProducts
-chmod +x pullProducts
-./pullProducts $Base/products ${os} artdaq-${artdaq_version} ${squalifier}-${equalifier} ${build_type}
-   if [ $? -ne 0 ]; then
+# If we aren't connected to the outside world, you'll need to have
+# previously scp'd or rsync'd the products to the host you're trying
+# to install dune-artdaq on
+
+if ! $bad_network; then
+    wget http://scisoft.fnal.gov/scisoft/bundles/tools/pullProducts
+    chmod +x pullProducts
+    ./pullProducts $Base/products ${os} artdaq-${artdaq_version} ${squalifier}-${equalifier} ${build_type}
+
+    if [ $? -ne 0 ]; then
 	echo "Error in pullProducts. Please go to http://scisoft.fnal.gov/scisoft/bundles/artdaq/${artdaq_version}/manifest and make sure that a manifest for the specified qualifiers (${squalifier}-${equalifier}) exists."
 	exit 1
-   fi
+    fi
 
-detectAndPull mrb noarch
+    detectAndPull mrb noarch
+fi
+
 source $Base/products/setup
 setup mrb
 setup git
@@ -221,28 +257,32 @@ else
     dune_artdaq_checkout_arg="-t $tag -d dune_artdaq"
 fi
 
-mrb gitCheckout -t ${artdaq_version} -d artdaq http://cdcvs.fnal.gov/projects/artdaq
+if ! $bad_network; then
 
-if [[ "$?" != "0" ]]; then
-    echo "Unable to perform checkout of http://cdcvs.fnal.gov/projects/artdaq"
-    exit 1
+    mrb gitCheckout -t ${artdaq_version} -d artdaq http://cdcvs.fnal.gov/projects/artdaq
+
+    if [[ "$?" != "0" ]]; then
+	echo "Unable to perform checkout of http://cdcvs.fnal.gov/projects/artdaq"
+	exit 1
+    fi
+
+    mrb gitCheckout $dune_raw_data_checkout_arg $dune_raw_data_repo
+
+    if [[ "$?" != "0" ]]; then
+	echo "Unable to perform checkout of $dune_raw_data_repo"
+	exit 1
+    fi
+
+    mrb gitCheckout $dune_artdaq_checkout_arg $dune_artdaq_repo
+
+    if [[ "$?" != "0" ]]; then
+	echo "Unable to perform checkout of $dune_artdaq_repo"
+	exit 1
+    fi
 fi
 
-mrb gitCheckout $dune_raw_data_checkout_arg $dune_raw_data_repo
+if ! $bad_network && [[ "x${opt_noviewer-}" == "x" ]] ; then 
 
-if [[ "$?" != "0" ]]; then
-    echo "Unable to perform checkout of $dune_raw_data_repo"
-    exit 1
-fi
-
-mrb gitCheckout $dune_artdaq_checkout_arg $dune_artdaq_repo
-
-if [[ "$?" != "0" ]]; then
-    echo "Unable to perform checkout of $dune_artdaq_repo"
-    exit 1
-fi
-
-if ! [[ "x${opt_noviewer-}" != "x" ]]; then
     cd $MRB_SOURCE
 
     mfextensionsver=$( awk '/^[[:space:]]*artdaq_mfextensions/ { print $2 }' artdaq/ups/product_deps )
