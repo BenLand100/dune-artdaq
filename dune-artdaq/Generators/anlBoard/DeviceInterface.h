@@ -13,6 +13,7 @@ namespace SSPDAQ{
   struct TriggerInfo{
     unsigned long startTime;
     unsigned long endTime;
+    unsigned short triggerType;
   };
 
   class DeviceInterface{
@@ -34,7 +35,7 @@ namespace SSPDAQ{
     void Start();
 
     //Pop a millislice from fQueue and place into sliceData
-    void GetMillislice(std::vector<unsigned int>& sliceData);
+    //    void GetMillislice(std::vector<unsigned int>& sliceData);
 
     //Stop a run. Also resets device state and purges buffers.
     //This is called automatically by Initialize().
@@ -49,12 +50,14 @@ namespace SSPDAQ{
     //in fhicl - this method is for convenience when running test code.
     void Configure();
 
+    //Will read events from device and monitor for
+    //millislice boundaries
+    void ReadEvents(std::vector<unsigned int>& fragment);
+
     //Called by ReadEvents
     //Get an event off the hardware buffer.
     //Timeout after some wait period
     void ReadEventFromDevice(EventPacket& event);
-
-    void ReadEvents(std::vector<unsigned int>& fragment);
 
     //Obtain current state of device
     inline State_t State(){return fState;}
@@ -102,28 +105,22 @@ namespace SSPDAQ{
     //Read all elements of an array into values vector
     void ReadRegisterArrayByName(std::string name, std::vector<unsigned int>& values);
 
-    void SetMillisliceLength(unsigned int length){fMillisliceLength=length;}
-
-    void SetMillisliceOverlap(unsigned int length){fMillisliceOverlap=length;}
-
-    void SetEmptyWriteDelayInus(unsigned int time){fEmptyWriteDelayInus=time;}
-
     void SetHardwareClockRateInMHz(unsigned int rate){fHardwareClockRateInMHz=rate;}
 
-    void SetUseExternalTimestamp(bool val){fUseExternalTimestamp=val;}
+    void SetPreTrigLength(unsigned int len){fPreTrigLength=len;}
 
-    void SetStartOnNOvASync(bool val){fStartOnNOvASync=val;}
+    void SetPostTrigLength(unsigned int len){fPostTrigLength=len;}
+
+    void SetTriggerWriteDelay(unsigned long delay){fTriggerWriteDelay=delay;}
+
+    void SetUseExternalTimestamp(bool val){fUseExternalTimestamp=val;}
 
     std::string GetIdentifier();
 
     bool exception() const { return exception_.load(); }
 
   private:
-
-    void BuildFragment(unsigned long startTime,unsigned long endTime,std::vector<unsigned int>& fragmentData);
-
-    bool GetTriggerInfo(const SSPDAQ::EventPacket& event,SSPDAQ::TriggerInfo& newTrigger);
-        
+    
     //Internal device object used for hardware operations.
     //Owned by the device manager, not this object.
     Device* fDevice;
@@ -138,8 +135,17 @@ namespace SSPDAQ{
     //hardware itself.
     State_t fState;
 
-    //Flag telling read thread to stop
-    std::atomic<bool> fShouldStop;
+    //Called by ReadEvents
+    //Build millislice from events in buffer and place in fQueue
+    void BuildFragment(unsigned long startTime,unsigned long endTime,std::vector<unsigned int>& fragmentData,
+		       unsigned int triggerType);
+
+    bool GetTriggerInfo(const SSPDAQ::EventPacket& event,SSPDAQ::TriggerInfo& newTrigger);
+
+    unsigned long GetTimestamp(const SSPDAQ::EventHeader& header);
+
+    //Build a millislice containing only a header and place in fQueue
+    //    void BuildEmptyMillislice(unsigned long startTime,unsigned long endTime);
 
     // JCF, Mar-8-2016
 
@@ -151,33 +157,27 @@ namespace SSPDAQ{
 
     std::deque<EventPacket> fPacketBuffer;
 
-    std::unique_ptr<std::thread> fReadThread;
-
     unsigned long fMillislicesSent;
 
     unsigned long fMillislicesBuilt;
-
-    unsigned int fMillisliceLength;
-
-    unsigned int fMillisliceOverlap;
 
     unsigned int fUseExternalTimestamp;
     
     unsigned int fHardwareClockRateInMHz;
 
-    unsigned int fEmptyWriteDelayInus;
+    unsigned int fPreTrigLength;
 
-    bool fSlowControlOnly;
-
-    bool fStartOnNOvASync;
+    unsigned int fPostTrigLength;
 
     unsigned long fTriggerWriteDelay;
 
+    bool fSlowControlOnly;
+
     unsigned int fMaxFragsPerRead;
 
-    std::atomic<bool> exception_;
-
     std::queue<TriggerInfo> fTriggers;
+
+    std::atomic<bool> exception_;
 
   };
   

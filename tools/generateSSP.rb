@@ -28,6 +28,13 @@ def generateSSP(startingFragmentId, boardId, interfaceType, fragmentType)
       #generation (and thus affecting physical millislice length) are at 64Hz.
       #Internal clock runs at 150MHz for both timestamping and ADC sampling.
 
+        TriggerWriteDelay:         1000
+
+        PreTrigLength:             1E5
+
+        PostTrigLength:            1E5
+
+
         MillisliceLength:          1E7       #Amount of time to assign to a single fragment in clock ticks
         MillisliceOverlap:         1E6       #Amount at start of next fragment to also put into current fragment
 

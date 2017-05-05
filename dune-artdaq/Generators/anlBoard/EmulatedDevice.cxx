@@ -176,7 +176,7 @@ void SSPDAQ::EmulatedDevice::EmulatorLoop(){
     }
 
     //Don't bother with any other fields for now
-    header.group1=0x0;
+    header.group1=0x01;
     header.triggerID=0x0;
     header.peakSumLow=0x0;
     header.group3=0x0;

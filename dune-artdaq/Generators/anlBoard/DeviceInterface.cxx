@@ -8,10 +8,9 @@
 
 SSPDAQ::DeviceInterface::DeviceInterface(SSPDAQ::Comm_t commType, unsigned long deviceId)
   : fCommType(commType), fDeviceId(deviceId), fState(SSPDAQ::DeviceInterface::kUninitialized),
-    fMillisliceLength(1E8), fMillisliceOverlap(1E7), fUseExternalTimestamp(false),
-    fHardwareClockRateInMHz(128), fEmptyWriteDelayInus(100000000), fSlowControlOnly(false),
-    fStartOnNOvASync(true), fTriggerWriteDelay(1000), exception_(false){
-  fReadThread=0;
+    fUseExternalTimestamp(false), fHardwareClockRateInMHz(128), fPreTrigLength(1E8), 
+    fPostTrigLength(1E7), fTriggerWriteDelay(1000), fSlowControlOnly(false),
+    exception_(false){
 }
 
 void SSPDAQ::DeviceInterface::OpenSlowControl(){
@@ -73,14 +72,6 @@ void SSPDAQ::DeviceInterface::Stop(){
 
   SSPDAQ::RegMap& duneReg=SSPDAQ::RegMap::Get();
       
-  fShouldStop=true;
-
-  if(fReadThread){
-    fReadThread->join();
-    fReadThread.reset();
-    dune::DAQLogger::LogInfo("SSP_DeviceInterface")<<"Read thread terminated"<<std::endl;
-  }  
-
   fDevice->DeviceWrite(duneReg.eventDataControl, 0x0013001F);
   fDevice->DeviceClear(duneReg.master_logic_control, 0x00000101);
   // Clear the FIFOs
@@ -113,7 +104,7 @@ void SSPDAQ::DeviceInterface::Start(){
     return;
   }
 
-  dune::DAQLogger::LogInfo("SSP_DeviceInterface")<<"Device interface starting run"<<std::endl;
+  dune::DAQLogger::LogInfo("SSP_DeviceInterface")<<"Device interface starting hardware run..."<<std::endl;
   SSPDAQ::RegMap& duneReg=SSPDAQ::RegMap::Get();
   // This script enables all logic and FIFOs and starts data acquisition in the device
   // Operations MUST be performed in this order
@@ -132,31 +123,11 @@ void SSPDAQ::DeviceInterface::Start(){
   // Registers in the Artix FPGA (DSP)
   // Release master logic reset & enable active channels
 
-  unsigned long runStartTime=0;
-  if(fStartOnNOvASync){
-    fDevice->DeviceWrite(duneReg.master_logic_control, 0x00000100);
-    dune::DAQLogger::LogInfo("SSP_DeviceInterface")<<GetIdentifier()<<"Hardware waiting for NOvA sync to start run"<<std::endl;
-
-    unsigned int masterLogicStatus=0;
-    while(!masterLogicStatus){
-      usleep(10000);//10ms
-      fDevice->DeviceRead(duneReg.master_logic_status,&masterLogicStatus);
-    }
-    unsigned int timestampBuf;
-    fDevice->DeviceRead(duneReg.sync_stamp_low,&timestampBuf);
-    runStartTime=timestampBuf;
-    fDevice->DeviceRead(duneReg.sync_stamp_high,&timestampBuf);
-    runStartTime+=(static_cast<unsigned long>(timestampBuf))<<32;
-    dune::DAQLogger::LogInfo("SSP_DeviceInterface")<<GetIdentifier()<<"Hardware synced at "<<runStartTime<<", starting run"<<std::endl;
-  }
-  else{
-    dune::DAQLogger::LogInfo("SSP_DeviceInterface")<<GetIdentifier()<<"Starting run without NOvA sync!"<<std::endl;
-    fDevice->DeviceWrite(duneReg.master_logic_control, 0x00000001);
-  }
-
+  fDevice->DeviceWrite(duneReg.master_logic_control, 0x00000001);
+  
   fState=SSPDAQ::DeviceInterface::kRunning;
 
-  dune::DAQLogger::LogInfo("SSP_DeviceInterface")<<"DAQ run started!"<<std::endl;
+  dune::DAQLogger::LogInfo("SSP_DeviceInterface")<<"Run started!"<<std::endl;
 }
 
 void SSPDAQ::DeviceInterface::ReadEvents(std::vector<unsigned int>& fragment){
@@ -165,12 +136,6 @@ void SSPDAQ::DeviceInterface::ReadEvents(std::vector<unsigned int>& fragment){
     dune::DAQLogger::LogWarning("SSP_DeviceInterface")<<"Attempt to get data from non-running device refused!"<<std::endl;
     return;
   }
-
-  bool useExternalTimestamp=fUseExternalTimestamp;
-
-  //Check whether other thread has set the stop flag
-  //Really need to know the timestamp at which to stop so we build the
-  //same total number of slices as the other generators
 
   while(true){
 
@@ -182,20 +147,7 @@ void SSPDAQ::DeviceInterface::ReadEvents(std::vector<unsigned int>& fragment){
     this->ReadEventFromDevice(newPacket);
     if(newPacket.header.header!=0xAAAAAAAA) break;
 
-    std::cout<<"Packet from device seen"<<std::endl;
-
-    unsigned long packetTime=0;
-    if(useExternalTimestamp){
-      for(unsigned int iWord=0;iWord<=3;++iWord){
-        packetTime+=((unsigned long)(newPacket.header.timestamp[iWord]))<<16*iWord;
-      }
-    }
-    else{
-      for(unsigned int iWord=1;iWord<=3;++iWord){
-        packetTime+=((unsigned long)(newPacket.header.intTimestamp[iWord]))<<16*(iWord-1);
-      }
-    }    
-
+    unsigned long packetTime=GetTimestamp(newPacket.header);
 
     /////////////////////////////////////////////////////////
     // Push event onto deque.                              //
@@ -214,11 +166,12 @@ void SSPDAQ::DeviceInterface::ReadEvents(std::vector<unsigned int>& fragment){
     
     if(this->GetTriggerInfo(fPacketBuffer.back(),newTrigger)){
       if(fTriggers.size()&&(newTrigger.startTime<fTriggers.back().endTime)){
-	set_exception(true);	
-	return;
+      dune::DAQLogger::LogError("SSP_DeviceInterface")<<"Seen trigger with start time overlapping with previous, falling over!"<<std::endl;	
+      throw(EEventReadError());
+      //	set_exception(true);	
+      return;
       }
       fTriggers.push(newTrigger);
-      std::cout<<"Seen new trigger"<<std::endl;
     }
 
     /////////////////////////////////////////////////////////////////////////
@@ -227,8 +180,7 @@ void SSPDAQ::DeviceInterface::ReadEvents(std::vector<unsigned int>& fragment){
     /////////////////////////////////////////////////////////////////////////
 
     if(fTriggers.size()&&(packetTime>fTriggers.front().endTime+fTriggerWriteDelay)){
-      std::cout<<"Building a fragment based on trigger"<<std::endl;
-      this->BuildFragment(fTriggers.front().startTime,fTriggers.front().endTime,fragment);
+      this->BuildFragment(fTriggers.front().startTime,fTriggers.front().endTime,fragment,fTriggers.front().triggerType);
       fTriggers.pop();
       break;
     }
@@ -240,28 +192,19 @@ bool SSPDAQ::DeviceInterface::GetTriggerInfo(const SSPDAQ::EventPacket& event,SS
   static unsigned int i=0;
   ++i;
   //Ok, have to figure out what the SSP people are going to use to flag the triggers.
-  if(!(i%10)){
-    unsigned long packetTime=0;
-    if(fUseExternalTimestamp){
-      for(unsigned int iWord=0;iWord<=3;++iWord){
-        packetTime+=((unsigned long)(event.header.timestamp[iWord]))<<16*iWord;
-      }
-    }
-    else{
-      for(unsigned int iWord=1;iWord<=3;++iWord){
-        packetTime+=((unsigned long)(event.header.intTimestamp[iWord]))<<16*(iWord-1);
-      }
-    }    
+  //if(!(i%10)){
+  if((event.header.group1&0x0F)!=0){
+    unsigned long packetTime=GetTimestamp(event.header);
 
-    newTrigger.startTime=packetTime-10000;
-    newTrigger.endTime=packetTime+10000;
-    std::cout<<"Trigger generated in range ("<<newTrigger.startTime<<","<<newTrigger.endTime<<")"<<std::endl;
+    newTrigger.startTime=packetTime-fPreTrigLength;
+    newTrigger.endTime=packetTime+fPostTrigLength;
+    newTrigger.triggerType=event.header.group1&0x0F;
     return true;
   }
   return false;
 }
   
-void SSPDAQ::DeviceInterface::BuildFragment(unsigned long startTime,unsigned long endTime,std::vector<unsigned int>& fragmentData){
+void SSPDAQ::DeviceInterface::BuildFragment(unsigned long startTime,unsigned long endTime,std::vector<unsigned int>& fragmentData, unsigned int triggerType){
 
   std::vector<SSPDAQ::EventPacket> eventsToPutBack;
   std::vector<SSPDAQ::EventPacket*> eventsToWrite;
@@ -270,17 +213,7 @@ void SSPDAQ::DeviceInterface::BuildFragment(unsigned long startTime,unsigned lon
 
   for(auto packetIter=fPacketBuffer.begin();packetIter!=fPacketBuffer.end();++packetIter){
 
-    unsigned long packetTime=0;
-    if(fUseExternalTimestamp){
-      for(unsigned int iWord=0;iWord<=3;++iWord){
-        packetTime+=((unsigned long)(packetIter->header.timestamp[iWord]))<<16*iWord;
-      }
-    }
-    else{
-      for(unsigned int iWord=1;iWord<=3;++iWord){
-        packetTime+=((unsigned long)(packetIter->header.intTimestamp[iWord]))<<16*(iWord-1);
-      }
-    }
+    unsigned long packetTime=GetTimestamp(packetIter->header);
 
     if(packetTime>=startTime&&packetTime<endTime){
       
@@ -289,17 +222,7 @@ void SSPDAQ::DeviceInterface::BuildFragment(unsigned long startTime,unsigned lon
   }
 
   for(auto packetIter=fPacketBuffer.begin();;++packetIter){
-    unsigned long packetTime=0;
-    if(fUseExternalTimestamp){
-      for(unsigned int iWord=0;iWord<=3;++iWord){
-        packetTime+=((unsigned long)(packetIter->header.timestamp[iWord]))<<16*iWord;
-      }
-    }
-    else{
-      for(unsigned int iWord=1;iWord<=3;++iWord){
-        packetTime+=((unsigned long)(packetIter->header.intTimestamp[iWord]))<<16*(iWord-1);
-      }
-    }
+    unsigned long packetTime=GetTimestamp(packetIter->header);
     
     if(packetTime>=startTime){
       if(packetTime>=endTime){
@@ -312,8 +235,6 @@ void SSPDAQ::DeviceInterface::BuildFragment(unsigned long startTime,unsigned lon
     if(packetIter==lastPacket) break;
   }
     
-  std::cout<<"Trigger will contain "<<eventsToWrite.size()<<" packets"<<std::endl;
-
   //=====================================//
   //Calculate required size of millislice//
   //=====================================//
@@ -334,12 +255,12 @@ void SSPDAQ::DeviceInterface::BuildFragment(unsigned long startTime,unsigned lon
   sliceHeader.nTriggers=eventsToWrite.size();
   sliceHeader.startTime=startTime;
   sliceHeader.endTime=endTime;
+  sliceHeader.triggerType=triggerType;
 
   //=================================================//
   //Allocate space for whole slice and fill with data//
   //=================================================//
 
-  std::cout<<"Fragment will contain "<<dataSizeInWords<<" words"<<std::endl;
   fragmentData.resize(dataSizeInWords);
 
   static unsigned int headerSizeInWords=
@@ -388,13 +309,27 @@ void SSPDAQ::DeviceInterface::BuildFragment(unsigned long startTime,unsigned lon
     ++nDropped;
   }
 
-  std::cout<<nDropped<<" packets popped from buffer"<<std::endl;
-  std::cout<<eventsToPutBack.size()<<" out-of-order packets will be returned to buffer"<<std::endl;
-
   for(auto packetIter=eventsToPutBack.rbegin();packetIter!=eventsToPutBack.rend();++packetIter){
     fPacketBuffer.push_front(std::move(*packetIter));
   }
 }
+
+//void SSPDAQ::DeviceInterface::BuildEmptyMillislice(unsigned long startTime, unsigned long endTime){
+//  std::vector<SSPDAQ::EventPacket> emptySlice;
+//  this->BuildMillislice(emptySlice,startTime,endTime);
+//}
+
+/*void SSPDAQ::DeviceInterface::GetMillislice(std::vector<unsigned int>& sliceData){
+  if(fQueue.try_pop(sliceData,std::chrono::microseconds(100000))){
+    ++fMillislicesSent;//Try to pop from queue for 100ms
+    if(!(fMillislicesSent%1000)){
+    dune::DAQLogger::LogDebug("SSP_DeviceInterface")<<this->GetIdentifier()
+		       <<"Interface sending slice "<<fMillislicesSent
+		       <<", total built slices "<<fMillislicesBuilt
+		       <<", current queue length "<<fQueue.size()<<std::endl;
+    }
+  }
+  }*/
 
 void SSPDAQ::DeviceInterface::ReadEventFromDevice(EventPacket& event){
   
@@ -811,3 +746,19 @@ std::string SSPDAQ::DeviceInterface::GetIdentifier(){
   }
   return ident;
 }
+
+unsigned long SSPDAQ::DeviceInterface::GetTimestamp(const SSPDAQ::EventHeader& header){
+  unsigned long packetTime=0;
+  if(fUseExternalTimestamp){
+    for(unsigned int iWord=0;iWord<=3;++iWord){
+      packetTime+=((unsigned long)(header.timestamp[iWord]))<<16*iWord;
+    }
+  }
+  else{
+    for(unsigned int iWord=1;iWord<=3;++iWord){
+      packetTime+=((unsigned long)(header.intTimestamp[iWord]))<<16*(iWord-1);
+    }
+  }    
+  return packetTime;
+}
+

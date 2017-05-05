@@ -19,8 +19,6 @@
 
 #include <unistd.h>
 
-using namespace dune;
-
 dune::SSP::SSP(fhicl::ParameterSet const & ps)
   :
   CommandableFragmentGenerator(ps),
@@ -224,25 +222,25 @@ void dune::SSP::BuildChannelControlRegisters(fhicl::ParameterSet const& ps,std::
 void dune::SSP::ConfigureDAQ(fhicl::ParameterSet const& ps){
   fhicl::ParameterSet daqConfig( ps.get<fhicl::ParameterSet>("DAQConfig") );
 
-  unsigned int millisliceLength=daqConfig.get<unsigned int>("MillisliceLength",0);
+  unsigned int preTrigLength=daqConfig.get<unsigned int>("PreTrigLength",0);
 
-  if(millisliceLength==0){
+  if(preTrigLength==0){
     
     try {
-      DAQLogger::LogError("SSP_SSP_generator")<<"Error: Millislice length not defined in SSP DAQ configuration!"<<std::endl;
+      DAQLogger::LogError("SSP_SSP_generator")<<"Error: Pretrigger sample length not defined in SSP DAQ configuration!"<<std::endl;
     } catch (...) {}
       throw SSPDAQ::EDAQConfigError("");
   }
 
-  unsigned int millisliceOverlap=daqConfig.get<unsigned int>("MillisliceOverlap",0);
-  /*
-  if(millisliceOverlap==0){
-  try {
-    DAQLogger::LogError("SSP_SSP_generator")<<"Error: Millislice overlap not defined in SSP DAQ configuration!"<<std::endl;
-} catch (...) {}
-    throw SSPDAQ::EDAQConfigError("");
+  unsigned int postTrigLength=daqConfig.get<unsigned int>("PostTrigLength",0);
+
+  if(postTrigLength==0){
+    
+    try {
+      DAQLogger::LogError("SSP_SSP_generator")<<"Error: Posttrigger sample length not defined in SSP DAQ configuration!"<<std::endl;
+    } catch (...) {}
+      throw SSPDAQ::EDAQConfigError("");
   }
-  */
 
   unsigned int useExternalTimestamp=daqConfig.get<unsigned int>("UseExternalTimestamp",2);
 
@@ -253,11 +251,11 @@ void dune::SSP::ConfigureDAQ(fhicl::ParameterSet const& ps){
       throw SSPDAQ::EDAQConfigError("");
   }
 
-  unsigned int emptyWriteDelay=daqConfig.get<unsigned int>("EmptyWriteDelay",0);
+  unsigned int triggerWriteDelay=daqConfig.get<unsigned int>("TriggerWriteDelay",0);
 
-  if(emptyWriteDelay==0){
+  if(triggerWriteDelay==0){
     try {
-      DAQLogger::LogError("SSP_SSP_generator")<<"EmptyWriteDelay not defined in SSP DAQ configuration!"<<std::endl;
+      DAQLogger::LogError("SSP_SSP_generator")<<"TriggerWriteDelay not defined in SSP DAQ configuration!"<<std::endl;
     } catch(...) {}
       throw SSPDAQ::EDAQConfigError("");
   }
@@ -271,22 +269,11 @@ void dune::SSP::ConfigureDAQ(fhicl::ParameterSet const& ps){
       throw SSPDAQ::EDAQConfigError("");
   }
 
-  unsigned int startOnNOvASync=daqConfig.get<unsigned int>("StartOnNOvASync",2);
-
-  if(startOnNOvASync>1){
-    try {
-      DAQLogger::LogError("SSP_SSP_generator")<<"Error: StartOnNOvASync not defined, or invalidly defined, in SSP DAQ configuration!"<<std::endl;
-    } catch (...) {}
-      throw SSPDAQ::EDAQConfigError("");
-  }
-
-
-  device_interface_->SetMillisliceLength(millisliceLength);
-  device_interface_->SetMillisliceOverlap(millisliceOverlap);
+  device_interface_->SetPreTrigLength(preTrigLength);
+  device_interface_->SetPostTrigLength(postTrigLength);
   device_interface_->SetUseExternalTimestamp(useExternalTimestamp);
-  device_interface_->SetEmptyWriteDelayInus(emptyWriteDelay);
+  device_interface_->SetTriggerWriteDelay(triggerWriteDelay);
   device_interface_->SetHardwareClockRateInMHz(hardwareClockRate);
-  device_interface_->SetStartOnNOvASync(startOnNOvASync);
 }
 
 
@@ -336,7 +323,7 @@ bool dune::SSP::getNext_(artdaq::FragmentPtrs & frags) {
       }
     break;
     }
-
+    std::cout<<"getNext_ building artdaq fragment..."<<std::endl;
     hasSeenSlice=true;
 
     ++fNFragmentsSent;
@@ -352,27 +339,12 @@ bool dune::SSP::getNext_(artdaq::FragmentPtrs & frags) {
     SSPFragment::Metadata metadata;
     metadata.sliceHeader=*((SSPDAQ::MillisliceHeader*)(void*)millislice.data());
 
-  // And use it, along with the artdaq::Fragment header information
-  // (fragment id, sequence id, and user type) to create a fragment
-
   // We'll use the static factory function 
-
   // artdaq::Fragment::FragmentBytes(std::size_t payload_size_in_bytes, sequence_id_t sequence_id,
   //  fragment_id_t fragment_id, type_t type, const T & metadata)
-
   // which will then return a unique_ptr to an artdaq::Fragment
-  // object. The advantage of this approach over using the
-  // artdaq::Fragment constructor is that, if we were to want to
-  // initialize the artdaq::Fragment with a nonzero-size payload (data
-  // after the artdaq::Fragment header and metadata), we could provide
-  // the size of the payload in bytes, rather than in units of the
-  // artdaq::Fragment's RawDataType (8 bytes, as of 3/26/14). The
-  // artdaq::Fragment constructor itself was not altered so as to
-  // maintain backward compatibility.
+  // object.
 
-    //Too verbose; get rid of this.
-    //DAQLogger::LogDebug("SSP_SSP_generator")<<"SSP generator appending event to fragment holder"<<std::endl;
-    
     std::size_t dataLength = millislice.size()-SSPDAQ::MillisliceHeader::sizeInUInts;
     
     frags.emplace_back( artdaq::Fragment::FragmentBytes(0,
