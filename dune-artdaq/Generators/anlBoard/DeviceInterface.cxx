@@ -189,17 +189,27 @@ void SSPDAQ::DeviceInterface::ReadEvents(std::vector<unsigned int>& fragment){
 }
 
 bool SSPDAQ::DeviceInterface::GetTriggerInfo(const SSPDAQ::EventPacket& event,SSPDAQ::TriggerInfo& newTrigger){
-  static unsigned int i=0;
-  ++i;
-  //Ok, have to figure out what the SSP people are going to use to flag the triggers.
-  //if(!(i%10)){
-  if((event.header.group1&0x0F)!=0){
-    unsigned long packetTime=GetTimestamp(event.header);
 
-    newTrigger.startTime=packetTime-fPreTrigLength;
-    newTrigger.endTime=packetTime+fPostTrigLength;
-    newTrigger.triggerType=event.header.group1&0x0F;
+  static unsigned long currentTriggerTime=0;
+  static bool channelsSeen[12]={false};
+
+  if((event.header.group1&0x0F)!=0){
+    char channel=event.header.group2&0x000F;
+    unsigned long packetTime=GetTimestamp(event.header);
+    if(!channelsSeen[channel]&&packetTime<currentTriggerTime+1000){
+      channelsSeen[channel]=true;
+    }
+    else{
+      currentTriggerTime=packetTime;
+      newTrigger.startTime=currentTriggerTime-fPreTrigLength;
+      newTrigger.endTime=currentTriggerTime+fPostTrigLength;
+      newTrigger.triggerType=event.header.group1&0x0F;
+      for(unsigned int i=0;i<12;++i){
+	channelsSeen[i]=false;
+      }
+      channelsSeen[channel]=true;
     return true;
+    }
   }
   return false;
 }
