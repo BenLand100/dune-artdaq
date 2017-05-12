@@ -1,6 +1,6 @@
 #!/bin/bash
 
-source `which setupDemoEnvironment.sh`
+source `which setupDemoEnvironment.sh` -p 6300
 THIS_NODE=`hostname -s`
 
 # create the configuration file for PMT
@@ -13,7 +13,7 @@ echo "AggregatorMain ${THIS_NODE} ${DUNEARTDAQ_AG_PORT[0]}" >> $tempFile
 echo "AggregatorMain ${THIS_NODE} ${DUNEARTDAQ_AG_PORT[1]}" >> $tempFile
 
 # create the logfile directories, if needed
-logroot="/home/phsmaj/dune-artdaq/data"
+logroot="daq/artdaq/data-test"
 mkdir -p -m 0777 ${logroot}/pmt
 mkdir -p -m 0777 ${logroot}/masterControl
 mkdir -p -m 0777 ${logroot}/boardreader

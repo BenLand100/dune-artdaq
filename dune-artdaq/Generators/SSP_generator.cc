@@ -260,6 +260,8 @@ void dune::SSP::ConfigureDAQ(fhicl::ParameterSet const& ps){
       throw SSPDAQ::EDAQConfigError("");
   }
 
+  int dummyPeriod=daqConfig.get<int>("DummyTriggerPeriod",-1);
+
   unsigned int hardwareClockRate=daqConfig.get<unsigned int>("HardwareClockRate",0);
 
   if(hardwareClockRate==1){
@@ -273,6 +275,7 @@ void dune::SSP::ConfigureDAQ(fhicl::ParameterSet const& ps){
   device_interface_->SetPostTrigLength(postTrigLength);
   device_interface_->SetUseExternalTimestamp(useExternalTimestamp);
   device_interface_->SetTriggerWriteDelay(triggerWriteDelay);
+  device_interface_->SetDummyPeriod(dummyPeriod);
   device_interface_->SetHardwareClockRateInMHz(hardwareClockRate);
 }
 
@@ -323,7 +326,6 @@ bool dune::SSP::getNext_(artdaq::FragmentPtrs & frags) {
       }
     break;
     }
-    std::cout<<"getNext_ building artdaq fragment..."<<std::endl;
     hasSeenSlice=true;
 
     ++fNFragmentsSent;
@@ -362,8 +364,7 @@ bool dune::SSP::getNext_(artdaq::FragmentPtrs & frags) {
     std::copy(millislice.begin()+SSPDAQ::MillisliceHeader::sizeInUInts,millislice.end(),newfrag.dataBegin());
     
     ev_counter_inc();
-  } 
-  
+  }
   return true;
 }
 
