@@ -9,7 +9,7 @@
 SSPDAQ::DeviceInterface::DeviceInterface(SSPDAQ::Comm_t commType, unsigned long deviceId)
   : fCommType(commType), fDeviceId(deviceId), fState(SSPDAQ::DeviceInterface::kUninitialized),
     fUseExternalTimestamp(false), fHardwareClockRateInMHz(128), fPreTrigLength(1E8), 
-    fPostTrigLength(1E7), fTriggerWriteDelay(1000), fSlowControlOnly(false),
+    fPostTrigLength(1E7), fTriggerWriteDelay(1000), fDummyPeriod(-1), fSlowControlOnly(false),
     exception_(false){
 }
 
@@ -109,11 +109,13 @@ void SSPDAQ::DeviceInterface::Start(){
   // This script enables all logic and FIFOs and starts data acquisition in the device
   // Operations MUST be performed in this order
   
-  //Load window settings and bias voltage into channels
+  //Load window settings, charge injection settings and bias voltage into channels
   fDevice->DeviceWrite(duneReg.channel_pulsed_control, 0x1);
   fDevice->DeviceWrite(duneReg.bias_control, 0x1);
   fDevice->DeviceWriteMask(duneReg.mon_control, 0x1, 0x1);
-
+  fDevice->DeviceWriteMask(duneReg.qi_dac_control, 0x1, 0x1);
+  fDevice->DeviceWriteMask(duneReg.qi_pulsed, 0x00030000, 0x00030000);
+  
   fDevice->DeviceWrite(duneReg.event_data_control, 0x00000000);
   // Release the FIFO reset						
   fDevice->DeviceWrite(duneReg.fifo_control, 0x00000000);
@@ -193,9 +195,28 @@ bool SSPDAQ::DeviceInterface::GetTriggerInfo(const SSPDAQ::EventPacket& event,SS
   static unsigned long currentTriggerTime=0;
   static bool channelsSeen[12]={false};
 
+  static unsigned long lastDummyTrigger=0;
+
+  int channel=event.header.group2&0x000F;
+  unsigned long packetTime=GetTimestamp(event.header);
+
+  if(fDummyPeriod>0&&(lastDummyTrigger!=packetTime/fDummyPeriod)){
+    dune::DAQLogger::LogInfo("SSP_DeviceInterface")<<"Generating dummy trigger for packet around "<<packetTime<<"!"<<std::endl;
+    lastDummyTrigger=packetTime/fDummyPeriod;
+    currentTriggerTime=packetTime;
+    newTrigger.startTime=currentTriggerTime-fPreTrigLength;
+    newTrigger.endTime=currentTriggerTime+fPostTrigLength;
+    newTrigger.triggerType=event.header.group1&0x0F;
+    
+    for(unsigned int i=0;i<12;++i){
+      channelsSeen[i]=false;
+    }
+    channelsSeen[channel]=true;
+    return true; 
+  }
+    
   if((event.header.group1&0x0F)!=0){
-    char channel=event.header.group2&0x000F;
-    unsigned long packetTime=GetTimestamp(event.header);
+    
     if(!channelsSeen[channel]&&packetTime<currentTriggerTime+1000){
       channelsSeen[channel]=true;
     }
@@ -467,7 +488,7 @@ void SSPDAQ::DeviceInterface::ReadEventFromDevice(EventPacket& event){
 
   //Copy event data into event packet
   event.data=std::move(data);
-
+  //event.DumpHeader();
   return;
 }
 

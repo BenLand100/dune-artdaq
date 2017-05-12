@@ -113,6 +113,8 @@ namespace SSPDAQ{
 
     void SetTriggerWriteDelay(unsigned long delay){fTriggerWriteDelay=delay;}
 
+    void SetDummyPeriod(int period){fDummyPeriod=period;}
+
     void SetUseExternalTimestamp(bool val){fUseExternalTimestamp=val;}
 
     std::string GetIdentifier();
@@ -170,6 +172,8 @@ namespace SSPDAQ{
     unsigned int fPostTrigLength;
 
     unsigned long fTriggerWriteDelay;
+
+    int fDummyPeriod;
 
     bool fSlowControlOnly;
 
