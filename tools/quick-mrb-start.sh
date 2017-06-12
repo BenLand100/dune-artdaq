@@ -76,10 +76,10 @@ done
 eval "set -- $args \"\$@\""; unset args aa
 set -u   # complain about uninitialed shell variables - helps development
 
-if [[ $opt_lrd_develop -eq 0 ]]; then
-    echo "JCF, May-12-2017: currently there isn't an official cut release of dune-raw-data; therefore you need to supply the --dune-raw-data-develop-branch argument to this script" >&2
-    exit 1
-fi
+#if [[ $opt_lrd_develop -eq 0 ]]; then
+#    echo "JCF, May-12-2017: currently there isn't an official cut release of dune-raw-data; therefore you need to supply the --dune-raw-data-develop-branch argument to this script" >&2
+#    exit 1
+#fi
 
 test -n "${do_help-}" -o $# -ge 2 && echo "$USAGE" && exit
 
@@ -245,6 +245,9 @@ else
     dune_raw_data_checkout_arg="-t ${coredemo_version} -d dune_raw_data"
 fi
 
+dune_raw_data_checkout_arg="-b feature/artdaq_v2_03_00 -d dune_raw_data"
+
+
 if [[ $opt_lrd_w -eq 1 ]]; then
     dune_raw_data_repo="ssh://p-dune-raw-data@cdcvs.fnal.gov/cvs/projects/dune-raw-data"
 else
@@ -263,6 +266,8 @@ if [[ $tag == "develop" ]]; then
 else
     dune_artdaq_checkout_arg="-t $tag -d dune_artdaq"
 fi
+
+dune_artdaq_checkout_arg="-b feature/artdaq_v2_03_00 -d dune_artdaq"
 
 if ! $bad_network; then
 
@@ -361,3 +366,4 @@ endtime=`date`
 echo "Build start time: $starttime"
 echo "Build end time:   $endtime"
 
+echo "JCF, Jun-12-2017: YOU SHOULD NOT BE ABLE TO SEE THIS: THIS IS A SPECIAL FEATURE BRANCH VERSION OF quick-mrb-start.sh"
