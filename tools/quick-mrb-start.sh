@@ -323,6 +323,15 @@ fi
 
 sed -i -r 's/^\s*defaultqual(\s+).*/defaultqual\1e14:s48/' artdaq/ups/product_deps
 
+# Do the same for artdaq-core now that I've added it...
+
+if [[ ! -e artdaq_core/ups/product_deps ]]; then
+    echo "Can't find artdaq_core/ups/product_deps; you need to be in the srcs/ directory"
+    exit 1
+fi
+
+sed -i -r 's/^\s*defaultqual(\s+).*/defaultqual\1e14:s48/' artdaq_core/ups/product_deps
+
 
 if ! $bad_network && [[ "x${opt_noviewer-}" == "x" ]] ; then 
 
