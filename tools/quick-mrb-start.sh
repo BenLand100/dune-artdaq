@@ -276,7 +276,7 @@ fi
 
 if ! $bad_network; then
 
-    mrb gitCheckout -t v1_07_06 -d artdaq http://cdcvs.fnal.gov/projects/artdaq-core
+    mrb gitCheckout -t v1_07_06 -d artdaq_core http://cdcvs.fnal.gov/projects/artdaq-core
 
     if [[ "$?" != "0" ]]; then
 	echo "Unable to perform checkout of http://cdcvs.fnal.gov/projects/artdaq-core"
