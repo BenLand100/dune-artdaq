@@ -14,7 +14,7 @@
 #include "canvas/Utilities/Exception.h"
 #include "dune-raw-data/Overlays/TpcMilliSliceFragment.hh"
 #include "dune-raw-data/Overlays/TpcMicroSlice.hh"
-#include "artdaq-core/Data/Fragments.hh"
+#include "artdaq-core/Data/Fragment.hh"
 
 #include "TH1.h"
 #include "TGraph.h"

@@ -23,7 +23,7 @@
 #include <bitset>
 #include <sstream>
 
-#include "artdaq-core/Data/Fragments.hh"
+#include "artdaq-core/Data/Fragment.hh"
 #include "dune-raw-data/Overlays/PennMilliSliceFragment.hh"
 #include "dune-raw-data/Overlays/Utilities.hh"
 

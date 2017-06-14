@@ -4,7 +4,7 @@ simple_plugin(TPCMilliSliceSimulatorWithCopy "generator"
   artdaq_DAQdata
   artdaq-core_Data
   artdaq-core_Utilities
-  canvas_Utilities
+  ${CANVAS}
   ${FHICLCPP}
   ${MF_MESSAGELOGGER}
   ${CETLIB}
@@ -16,7 +16,7 @@ simple_plugin(SSP "generator"
   artdaq_Application
   artdaq_DAQdata
   artdaq-core_Utilities
-  canvas_Utilities
+  ${CANVAS}
   ${FHICLCPP} 
   ${CETLIB} 
   dune-artdaq_DAQLogger
@@ -30,7 +30,7 @@ simple_plugin(ToySimulator "generator"
   artdaq_DAQdata
   artdaq-core_Utilities
   artdaq-core_Data
-  canvas_Utilities
+  ${CANVAS}
   ${FHICLCPP}
   ${MF_MESSAGELOGGER}
   ${MF_UTILITIES}
@@ -42,14 +42,11 @@ simple_plugin(Playback "generator"
   dune-artdaq_DAQLogger
   dune-raw-data_Overlays
   artdaq-core_Data
-  canvas_Utilities
-  canvas_Persistency_Common
-  canvas_Persistency_Provenance
   art_Framework_IO_Sources
   artdaq_Application
   artdaq_DAQdata
   artdaq-core_Utilities
-  canvas_Utilities
+  ${CANVAS}
   ${GALLERY}
   ${FHICLCPP}
   ${CETLIB}
@@ -70,7 +67,7 @@ simple_plugin(TpcRceReceiver "generator"
   artdaq_Application
   artdaq_DAQdata
   artdaq-core_Utilities
-  canvas_Utilities
+  ${CANVAS}
   ${FHICLCPP}
   ${CETLIB}
   dune-artdaq_DAQLogger
@@ -85,7 +82,7 @@ simple_plugin(PennReceiver "generator"
   artdaq_Application
   artdaq_DAQdata
   artdaq-core_Utilities
-  canvas_Utilities
+  ${CANVAS}
   ${FHICLCPP}
   ${MF_MESSAGELOGGER}
   ${CETLIB}

@@ -10,7 +10,7 @@
 #include "dune-raw-data/Overlays/FragmentType.hh"
 
 #include "artdaq/Application/GeneratorMacros.hh"
-#include "artdaq-core/Utilities/SimpleLookupPolicy.h"
+#include "artdaq-core/Utilities/SimpleLookupPolicy.hh"
 
 #include "canvas/Utilities/Exception.h"
 #include "cetlib/exception.h"

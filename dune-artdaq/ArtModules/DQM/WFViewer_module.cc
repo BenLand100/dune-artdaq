@@ -6,7 +6,7 @@
 #include "canvas/Utilities/InputTag.h"
 #include "art/Framework/Core/ModuleMacros.h"
 
-#include "artdaq-core/Data/Fragments.hh"
+#include "artdaq-core/Data/Fragment.hh"
 
 #include "dune-raw-data/Overlays/FragmentType.hh"
 #include "dune-raw-data/Overlays/ToyFragment.hh"

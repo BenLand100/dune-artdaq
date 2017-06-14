@@ -12,7 +12,7 @@
 
 #include "canvas/Utilities/Exception.h"
 #include "dune-raw-data/Overlays/MilliSliceFragment.hh"
-#include "artdaq-core/Data/Fragments.hh"
+#include "artdaq-core/Data/Fragment.hh"
 
 #include <algorithm>
 #include <cassert>

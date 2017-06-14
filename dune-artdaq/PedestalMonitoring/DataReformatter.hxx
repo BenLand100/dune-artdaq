@@ -13,7 +13,7 @@
 #include "dune-raw-data/Overlays/TpcMilliSliceFragment.hh"
 #include "dune-raw-data/Overlays/SSPFragment.hh"
 #include "dune-raw-data/Overlays/PennMilliSliceFragment.hh"
-#include "artdaq-core/Data/Fragments.hh"
+#include "artdaq-core/Data/Fragment.hh"
 
 #include <iostream>
 #include <vector>

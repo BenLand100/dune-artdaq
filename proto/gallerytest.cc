@@ -9,7 +9,7 @@
 // you wish to use this yourself, you'll want to manually set the
 // relevant filenames / input tags to reflect what your input is. 
 
-#include "artdaq-core/Data/Fragments.hh"
+#include "artdaq-core/Data/Fragment.hh"
 
 #include "canvas/Utilities/InputTag.h"
 #include "canvas/Persistency/Common/FindMany.h"

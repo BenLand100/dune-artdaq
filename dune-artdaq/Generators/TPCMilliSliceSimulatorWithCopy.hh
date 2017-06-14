@@ -10,7 +10,7 @@
 // of the library buffer into the artdaq::fragment.
 
 #include "fhiclcpp/ParameterSet.h"
-#include "artdaq-core/Data/Fragments.hh" 
+#include "artdaq-core/Data/Fragment.hh" 
 #include "artdaq/Application/CommandableFragmentGenerator.hh"
 #include <vector>
 #include <stdint.h>

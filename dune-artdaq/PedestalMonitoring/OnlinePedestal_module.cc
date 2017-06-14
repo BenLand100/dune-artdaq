@@ -18,7 +18,7 @@
 #include "art/Framework/Services/Optional/TFileService.h"
 
 #include "dune-raw-data/Overlays/TpcMilliSliceFragment.hh"
-#include "artdaq-core/Data/Fragments.hh"
+#include "artdaq-core/Data/Fragment.hh"
 #include "messagefacility/MessageLogger/MessageLogger.h"
 
 #include <vector>

@@ -12,7 +12,7 @@
 
 #include "canvas/Utilities/Exception.h"
 #include "dune-raw-data/Overlays/PennMilliSliceFragment.hh"
-#include "artdaq-core/Data/Fragments.hh"
+#include "artdaq-core/Data/Fragment.hh"
 #include "dune-artdaq/Generators/pennBoard/PennCompileOptions.hh"
 #include "dune-artdaq/DAQLogger/DAQLogger.hh"
 

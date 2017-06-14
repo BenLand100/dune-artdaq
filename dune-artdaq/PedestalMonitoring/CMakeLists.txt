@@ -1,11 +1,10 @@
 
 art_make( LIBRARY_NAME  PedestalMonitoring
 	  LIB_LIBRARIES dune-raw-data_Overlays
-			${CETLIB}
 			${ROOT_BASIC_LIB_LIST}
  			${MF_MESSAGELOGGER}
 			${MF_UTILITIES}
-        		${CANVAS_UTILITIES}
+        		${CANVAS}
 	  MODULE_LIBRARIES PedestalMonitoring
 	                   ${ART_FRAMEWORK_CORE}
 			   ${ART_FRAMEWORK_PRINCIPAL}
@@ -15,4 +14,6 @@ art_make( LIBRARY_NAME  PedestalMonitoring
   			   ${ART_FRAMEWORK_SERVICES_OPTIONAL_RANDOMNUMBERGENERATOR_SERVICE}
   			   ${ART_PERSISTENCY_COMMON}
  			   ${ART_PERSISTENCY_PROVENANCE}
+			${CETLIB}
+			${CETLIB_EXCEPT}
 )
