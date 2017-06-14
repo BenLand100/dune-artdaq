@@ -325,11 +325,15 @@ if ! $bad_network && [[ "x${opt_noviewer-}" == "x" ]] ; then
 
     os=`$Base/download/cetpkgsupport/bin/get-directory-name os`
 
+    # qt v5_7_1 uses the token "sl7", and artdaq_mfextensions uses the
+    # token "slf7", as I found out the hard way
+
+    detectAndPull artdaq_mfextensions ${os}-x86_64 ${equalifier}-${squalifier}-${build_type} $mfextensionsver
+
     if [[ "$os" == "slf7" ]]; then
      	os="sl7"
     fi
 
-    detectAndPull artdaq_mfextensions ${os}-x86_64 ${equalifier}-${squalifier}-${build_type} $mfextensionsver
     detectAndPull qt ${os}-x86_64 ${equalifier} ${qtver}
 fi
 
