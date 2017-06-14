@@ -12,12 +12,12 @@
 //
 
 #include "art/Framework/Art/artapp.h"
-#include "artdaq-core/Data/Fragments.hh"
+#include "artdaq-core/Data/Fragment.hh"
 #include "artdaq/Application/CommandableFragmentGenerator.hh"
 #include "artdaq/Application/makeCommandableFragmentGenerator.hh"
 #include "artdaq/DAQrate/EventStore.hh"
 #include "artdaq-core/Core/SimpleQueueReader.hh"
-#include "artdaq-core/Utilities/SimpleLookupPolicy.h"
+#include "artdaq-core/Utilities/SimpleLookupPolicy.hh"
 #include "cetlib/container_algorithms.h"
 #include "cetlib/filepath_maker.h"
 #include "fhiclcpp/ParameterSet.h"

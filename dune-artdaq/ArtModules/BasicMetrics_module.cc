@@ -13,7 +13,7 @@
 #include "art/Framework/Principal/Handle.h"
 
 #include "canvas/Utilities/Exception.h"
-#include "artdaq-core/Data/Fragments.hh"
+#include "artdaq-core/Data/Fragment.hh"
 #include "artdaq/DAQdata/Globals.hh"
 
 #include "messagefacility/MessageLogger/MessageLogger.h"

@@ -3,7 +3,7 @@
 #include "dune-artdaq/DAQLogger/DAQLogger.hh"
 
 #include "artdaq/Application/GeneratorMacros.hh"
-#include "artdaq-core/Utilities/SimpleLookupPolicy.h"
+#include "artdaq-core/Utilities/SimpleLookupPolicy.hh"
 
 #include "gallery/Handle.h"
 #include "canvas/Utilities/Exception.h"

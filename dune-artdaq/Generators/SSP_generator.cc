@@ -9,7 +9,7 @@
 #include "dune-raw-data/Overlays/SSPFragmentWriter.hh"
 #include "dune-raw-data/Overlays/FragmentType.hh"
 #include "fhiclcpp/ParameterSet.h"
-#include "artdaq-core/Utilities/SimpleLookupPolicy.h"
+#include "artdaq-core/Utilities/SimpleLookupPolicy.hh"
 #include <boost/lexical_cast.hpp>
 
 #include <fstream>

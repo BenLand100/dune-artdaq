@@ -83,6 +83,7 @@ find_ups_boost( v1_50_0 filesystem
                         unit_test_framework
  )
 find_ups_product( libxml2 v2_9_1a )
+find_ups_product( TRACE v3_07_00 )
  
 # have to make sure cmake doesn't select the system libraries
 # define libsigc

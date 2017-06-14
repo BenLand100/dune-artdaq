@@ -18,7 +18,7 @@
 #include "dune-raw-data/Overlays/TpcMilliSliceFragment.hh"
 #include "dune-raw-data/Overlays/SSPFragment.hh"
 #include "dune-raw-data/Services/ChannelMap/ChannelMapService.h"
-#include "artdaq-core/Data/Fragments.hh"
+#include "artdaq-core/Data/Fragment.hh"
 #include "messagefacility/MessageLogger/MessageLogger.h"
 
 #include <vector>

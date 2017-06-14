@@ -108,7 +108,7 @@ int PedestalMonitoring::MonitoringPedestal::RCEMonitoring(RCEFormatter const& rc
   int fifty_percent = 0;
   int num_channels = 0;
 
-  int issues[numissues]; for (int issue = 0; issue < numissues; ++issue) issues[issue] = 0;
+  std::vector<int> issues(numissues, 0);
 
   float average_stuck = 0.;
 

@@ -1,7 +1,7 @@
 art_make(
         LIB_LIBRARIES
 	${CMAKE_CURRENT_SOURCE_DIR}/lib/libftd2xx.so
-	${CANVAS_UTILITIES}
+	${CANVAS}
         ${FHICLCPP}
         ${CETLIB}
         ${Boost_SYSTEM_LIBRARY}

@@ -21,7 +21,7 @@
 
 #include "dune-raw-data/Overlays/SSPFragment.hh"
 #include "dune-raw-data/Overlays/anlTypes.hh"
-#include "artdaq-core/Data/Fragments.hh"
+#include "artdaq-core/Data/Fragment.hh"
 #include <iostream>
 
 namespace trig{

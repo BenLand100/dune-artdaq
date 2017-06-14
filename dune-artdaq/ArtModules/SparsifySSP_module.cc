@@ -23,7 +23,7 @@
 #include "dune-raw-data/Overlays/TpcMilliSliceFragment.hh"
 #include "dune-raw-data/Overlays/anlTypes.hh"
 #include "dune-raw-data/Overlays/FragmentType.hh"
-#include "artdaq-core/Data/Fragments.hh"
+#include "artdaq-core/Data/Fragment.hh"
 
 //C++ and STL includes
 #include <algorithm>
