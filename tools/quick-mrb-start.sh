@@ -312,18 +312,24 @@ sed -i -r 's/^\s*defaultqual(\s+).*/defaultqual\1'$equalifier':'$squalifier'/' a
 if ! $bad_network && [[ "x${opt_noviewer-}" == "x" ]] ; then 
 
     cd $MRB_SOURCE
-
     mfextensionsver=$( awk '/^[[:space:]]*artdaq_mfextensions/ { print $2 }' artdaq/ups/product_deps )
-    mrb gitCheckout -t ${mfextensionsver} -d artdaq_mfextensions http://cdcvs.fnal.gov/projects/mf-extensions-git
 
-    qtver=$( awk '/^[[:space:]]*qt[[:space:]]*/ {print $2}' artdaq_mfextensions/ups/product_deps )
+    git clone http://cdcvs.fnal.gov/projects/mf-extensions-git
+    cd mf-extensions-git
+    git checkout $mfextensionsver
+    cd ..
+
+    qtver=$( awk '/^[[:space:]]*qt[[:space:]]*/ {print $2}' mf-extensions-git/ups/product_deps )
+
+    rm -rf mf-extensions-git
 
     os=`$Base/download/cetpkgsupport/bin/get-directory-name os`
 
     if [[ "$os" == "slf7" ]]; then
-	os="sl7"
+     	os="sl7"
     fi
 
+    detectAndPull artdaq_mfextensions ${os}-x86_64 ${equalifier}-${squalifier}-${build_type} $mfextensionsver
     detectAndPull qt ${os}-x86_64 ${equalifier} ${qtver}
 fi
 
