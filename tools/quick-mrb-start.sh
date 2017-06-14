@@ -76,10 +76,10 @@ done
 eval "set -- $args \"\$@\""; unset args aa
 set -u   # complain about uninitialed shell variables - helps development
 
-#if [[ $opt_lrd_develop -eq 0 ]]; then
-#    echo "JCF, May-12-2017: currently there isn't an official cut release of dune-raw-data; therefore you need to supply the --dune-raw-data-develop-branch argument to this script" >&2
-#    exit 1
-#fi
+if [[ $opt_lrd_develop -eq 0 ]]; then
+    echo "JCF, May-12-2017: currently there isn't an official cut release of dune-raw-data; therefore you need to supply the --dune-raw-data-develop-branch argument to this script" >&2
+    exit 1
+fi
 
 test -n "${do_help-}" -o $# -ge 2 && echo "$USAGE" && exit
 
@@ -158,7 +158,7 @@ if [ -z "${tag:-}" ]; then
 fi
 
 if ! $bad_network; then
-    wget https://cdcvs.fnal.gov/redmine/projects/dune-artdaq/repository/revisions/6dbf9f2aa06a5be7696ca8c10f7ec8fdeee05a22/raw/ups/product_deps
+    wget https://cdcvs.fnal.gov/redmine/projects/dune-artdaq/repository/revisions/$tag/raw/ups/product_deps
 fi
 
 if [[ ! -e $Base/download/product_deps ]]; then
@@ -180,11 +180,8 @@ if [[ $(eval $default_quals_cmd | wc -l) -gt 1 ]]; then
     exit 1
 fi
 
-#defaultE=$( eval $default_quals_cmd | awk '{print $1}' )
-#defaultS=$( eval $default_quals_cmd | awk '{print $2}' )
-
-defaultE="e14"
-defaultS="s48"
+defaultE=$( eval $default_quals_cmd | awk '{print $1}' )
+defaultS=$( eval $default_quals_cmd | awk '{print $2}' )
 
 if [ -n "${equalifier-}" ]; then 
     equalifier="e${equalifier}";
@@ -249,8 +246,6 @@ else
     dune_raw_data_checkout_arg="-t ${coredemo_version} -d dune_raw_data"
 fi
 
-dune_raw_data_checkout_arg="-b feature/artdaq_v2_03_00 -d dune_raw_data"
-
 
 if [[ $opt_lrd_w -eq 1 ]]; then
     dune_raw_data_repo="ssh://p-dune-raw-data@cdcvs.fnal.gov/cvs/projects/dune-raw-data"
@@ -264,7 +259,6 @@ else
     dune_artdaq_checkout_arg="-t $tag -d dune_artdaq"
 fi
 
-dune_artdaq_checkout_arg="-b feature/artdaq_v2_03_00 -d dune_artdaq"
 
 # Notice the default for write access to dune-artdaq is the opposite of that for dune-raw-data
 if [[ $opt_la_nw -eq 1 ]]; then
@@ -275,14 +269,6 @@ fi
 
 
 if ! $bad_network; then
-
-    mrb gitCheckout -t v1_07_06 -d artdaq_core http://cdcvs.fnal.gov/projects/artdaq-core
-
-    if [[ "$?" != "0" ]]; then
-	echo "Unable to perform checkout of http://cdcvs.fnal.gov/projects/artdaq-core"
-	exit 1
-    fi
-
 
     mrb gitCheckout -t ${artdaq_version} -d artdaq http://cdcvs.fnal.gov/projects/artdaq
 
@@ -321,17 +307,7 @@ if [[ ! -e artdaq/ups/product_deps ]]; then
     exit 1
 fi
 
-sed -i -r 's/^\s*defaultqual(\s+).*/defaultqual\1e14:s48/' artdaq/ups/product_deps
-
-# Do the same for artdaq-core now that I've added it...
-
-if [[ ! -e artdaq_core/ups/product_deps ]]; then
-    echo "Can't find artdaq_core/ups/product_deps; you need to be in the srcs/ directory"
-    exit 1
-fi
-
-sed -i -r 's/^\s*defaultqual(\s+).*/defaultqual\1e14:s48/' artdaq_core/ups/product_deps
-
+sed -i -r 's/^\s*defaultqual(\s+).*/defaultqual\1'$equalifier':'$squalifier'/' artdaq/ups/product_deps
 
 if ! $bad_network && [[ "x${opt_noviewer-}" == "x" ]] ; then 
 
@@ -406,4 +382,3 @@ endtime=`date`
 echo "Build start time: $starttime"
 echo "Build end time:   $endtime"
 
-echo "JCF, Jun-12-2017: YOU SHOULD NOT BE ABLE TO SEE THIS: THIS IS A SPECIAL FEATURE BRANCH VERSION OF quick-mrb-start.sh"
