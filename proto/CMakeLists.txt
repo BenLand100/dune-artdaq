@@ -6,5 +6,6 @@ art_make_exec(NAME gallerytest
   ${CANVAS}
   ${ROOT_CORE}
   ${CETLIB}
+  ${CETLIB_EXCEPT}
   ${GALLERY}
 )
