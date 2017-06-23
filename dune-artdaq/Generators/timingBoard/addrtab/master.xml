@@ -1,0 +1,5 @@
+<node id="master" description="PDTS master block" fwinfo="endpoint">
+		<node id="global" address="0x0" module="file://global.xml"/>
+		<node id="scmd_gen" address="0x40" module="file://pdts_scmd_gen.xml"/>
+		<node id="partition" address="0x100" module="file://partition.xml"/>
+</node>

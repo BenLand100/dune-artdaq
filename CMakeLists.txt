@@ -84,10 +84,18 @@ find_ups_boost( v1_50_0 filesystem
  )
 find_ups_product( libxml2 v2_9_1a )
 find_ups_product( TRACE v3_07_00 )
- 
+
+# JM-A 2017/06/23 ###
+find_ups_product( uhal v2_4_2 ) 
+include_directories($ENV{UHAL_INC}/uhal)
+find_library( UHAL_UHAL NAMES cactus_uhal_uhal PATHS $ENV{UHAL_LIB})
+find_library( UHAL_LOG  NAMES cactus_uhal_log  PATHS $ENV{UHAL_LIB})
+#####################
+
 # have to make sure cmake doesn't select the system libraries
 # define libsigc
 cet_find_library( SIGC    NAMES sigc-2.0  PATHS ENV LIBSIGCPP_LIB NO_DEFAULT_PATH )
+
 
 # macros for art_dictionary and simple_plugin
 include(ArtDictionary)

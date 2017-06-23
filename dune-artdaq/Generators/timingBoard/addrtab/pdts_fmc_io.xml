@@ -1,0 +1,22 @@
+<node id="io" description="FMC IO" fwinfo="endpoint">
+		<node id="csr" address="0x0" description="ctrl/stat register" fwinfo="endpoint;width=1">
+				<node id="ctrl" address="0x0">
+					<node id="soft_rst" mask="0x1"/>
+					<node id="nuke" mask="0x2"/>
+					<node id="rst" mask="0x4"/>
+					<node id="sfp_tx_dis" mask="0x8"/>
+					<node id="pll_rst" mask="0x10"/>
+				</node>
+				<node id="stat" address="0x1">
+					<node id="sfp_los" mask="0x1"/>
+					<node id="sfp_flt" mask="0x2"/>        	
+					<node id="cdr_los" mask="0x4"/>
+					<node id="cdr_lol" mask="0x8"/>
+					<node id="locked" mask="0x10"/>
+				</node>
+		</node>
+		<node id="uid_i2c" address="0x08" module="file://opencores_i2c.xml"/>
+		<node id="sfp_i2c" address="0x10" module="file://opencores_i2c.xml"/>
+		<node id="pll_i2c" address="0x18" module="file://opencores_i2c.xml"/>
+		<node id="freq" address="0x20" module="file://freq_ctr.xml"/>
+</node>
