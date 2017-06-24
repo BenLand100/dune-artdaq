@@ -8,7 +8,6 @@
 //################################################################################
 
 #include "dune-artdaq/Generators/TimingReceiver.hh"
-#include "dune-raw-data/Overlays/TimingFragmentWriter.hh"
 #include "dune-artdaq/DAQLogger/DAQLogger.hh"
 
 //:#include "canvas/Utilities/Exception.h"
@@ -19,7 +18,6 @@
 #include "fhiclcpp/ParameterSet.h"
 //:#include "artdaq-core/Utilities/SimpleLookupPolicy.h"
 //:#include "messagefacility/MessageLogger/MessageLogger.h"
-
 
 #include <fstream>
 #include <iomanip>
@@ -129,7 +127,7 @@ void dune::TimingReceiver::stopNoMutex(void)
 #define D(a)
 #define E(a) a
 
-bool dune::TimingReceiver::getNext_(artdaq::FragmentPtrs & /*frags*/) 
+bool dune::TimingReceiver::getNext_(artdaq::FragmentPtrs &frags) 
 {
   // GetNext can return in three ways:
   //  (1) We have some events [return true with events in the frags vector]
@@ -177,22 +175,40 @@ bool dune::TimingReceiver::getNext_(artdaq::FragmentPtrs & /*frags*/)
     // are also being told to throttle, and may not notice that throttling request.
 
     if (havedata) {   // An event or many events have arrived
-      std::vector<uint32_t> event; // TODO: This is temporary code - we need to store partial events 
-                       // for the next iteration in this loop, or perhaps even the next call to geNext()
       while (havedata) {
-        ValVector<uint32_t> words = hw_.getNode("master.partition.buf.data").readBlock(6);  
+
+        // Make a fragment.  Follow the way it is done in the SSP boardreader
+        std::unique_ptr<artdaq::Fragment> f = artdaq::Fragment::FragmentBytes( TimingFragment::size()*sizeof(uint32_t));
+
+        // Read the data from the hardware
+        ValVector<uint32_t> uwords = hw_.getNode("master.partition.buf.data").readBlock(6);  
         hw_.dispatch();
-        E(printf("Data:");)
-        for (int i=0;i<6;i++) {
-          uint32_t word = words[i];  // Unpacks from uHALs ValVector<>
-          E(printf(" 0x%8.8x",word);)
-          event.push_back(word);   // For now this just stops the compiler complaining we don't use the data yet
-        }  // end for
-        E(printf("\n");)
+
+        // uint32_t word[6];  // Declare like this if we want a local variable instead of putting it straight in the fragmenti
+        uint32_t* word = reinterpret_cast<uint32_t *> (f->dataBeginBytes());    // dataBeginBytes returns a byte_t pointer
+        for (int i=0;i<6;i++) {  word[i] = uwords[i]; }   // Unpacks from uHALs ValVector<> into the fragment
+
+        dune::TimingFragment fo(*f);    // Overlay class - the internal bits of the class are
+                                        // accessible here with the same functions we use offline.
+
+        // Print out, can do it via the overlay class or with raw access
+        std::cout << fo;
+        // printf("Data: 0x%8.8x 0x%8.8x 0x%8.8x 0x%8.8x 0x%8.8x 0x%8.8x\n"
+        //                ,word[0],word[1],word[2],word[3],word[4],word[5]);
+
+        // Fill in the fragment header fields (not some other fragment generators may put these in the
+        // constructor for the fragment, but here we push them in one at a time.
+        f->setSequenceID( ev_counter() );  // ev_counter is in our base class  // or f->setSequenceID(fo.get_evtctr())
+        f->setFragmentID( fragment_id() ); // fragment_id is in our base class, fhicl sets it
+        f->setUserType( dune::detail::TIMING );
+        //  No metadata in this block
+        f->setTimestamp(fo.get_tstamp());  // 64-bit number
+
+        frags.emplace_back(std::move(f));
+        ev_counter_inc();
         havedata = false;    // Combined with the while above, we could make havedata an integer 
                              // and read multiple events at once (so use "havedata -= 6;")
       }  // end while
-      // TODO: frags.emplace_back(event)
     } else if (stopping_state_ > 0) { // We now know there is no more data at the stop
       stopping_state_ = 2;            // This causes return to be false (no more data)
       break;
