@@ -92,3 +92,22 @@ simple_plugin(PennReceiver "generator"
 
   add_subdirectory(pennBoard)
   add_subdirectory(ToyHardwareInterface)
+
+
+add_subdirectory(timingBoard)
+
+simple_plugin(TimingReceiver "generator"
+  dune-raw-data_Overlays
+  dune-artdaq_Generators_timingBoard
+  artdaq-core_Data
+  artdaq_Application
+  artdaq_DAQdata
+  artdaq-core_Utilities
+  ${CANVAS}
+  ${FHICLCPP}
+  ${MF_MESSAGELOGGER}
+  ${CETLIB}
+  dune-artdaq_DAQLogger
+  ${UHAL_UHAL}
+  ${UHAL_LOG}
+  )
