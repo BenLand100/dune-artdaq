@@ -136,6 +136,7 @@ namespace dune {
     // Items needed for uHAL
     dune::SetUHALLog logFiddle_;  // See explanation of this fiddle in 
              // TimingReceiver_generator.cc comments near the constructor.  
+    const std::string connectionsFile_;
     std::string bcmc_;  // This is a fiddle because Connection Manager wants it non-Const  
     uhal::ConnectionManager connectionManager_; 
     uhal::HwInterface hw_;

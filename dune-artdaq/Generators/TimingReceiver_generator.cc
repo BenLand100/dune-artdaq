@@ -52,8 +52,9 @@ dune::TimingReceiver::TimingReceiver(fhicl::ParameterSet const & ps):
   ,stopping_flag_(0)
   ,throttling_state_(0)
   ,stopping_state_(0)
-  ,logFiddle_(0)             // This is a fudge, see explanation above  
-  ,bcmc_( "file://connections.xml" )   // a string (non-const)
+  ,logFiddle_(0)             // logFiddle is a fudge, see explanation above  
+  ,connectionsFile_(ps.get<std::string>("connections_file", "/home/artdaq1/giles/a_vm_mbp/dune-artdaq/Generators/timingBoard/connections.xml"))
+  ,bcmc_( "file://" + connectionsFile_ )   // a string (non-const)
   ,connectionManager_(bcmc_)
   ,hw_(connectionManager_.getDevice("DUNE_FMC_RX"))
 {
