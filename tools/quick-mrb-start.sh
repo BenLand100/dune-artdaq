@@ -10,6 +10,15 @@
 
 bad_network=false
 
+uhal_setup_cmd="setup uhal v2_4_2 -q e14:prof:s48"
+$uhal_setup_cmd
+
+if [[ "$?" != "0" ]]; then
+    echo "Error: command \"${uhal_setup_cmd}\" failed. uhal needs to be set up in order for the timing fragment generator to build" >&2
+    exit 1
+fi
+
+
 git_status=`git status 2>/dev/null`
 git_sts=$?
 if [ $git_sts -eq 0 ];then
@@ -354,7 +363,7 @@ cd $Base
         export DUNEARTDAQ_BUILD=$MRB_BUILDDIR/dune_artdaq                                                            
         export DUNEARTDAQ_REPO="$ARTDAQ_DEMO_DIR"                                                                        
         export FHICL_FILE_PATH=.:\$DUNEARTDAQ_REPO/tools/fcl:\$FHICL_FILE_PATH                                           
-                                                                                                                         
+        ${uhal_setup_cmd}                                                                                                                          
 # JCF, 11/25/14                                                                                                          
 # Make it easy for users to take a quick look at their output file via "rawEventDump"                                    
                                                                                                                          
