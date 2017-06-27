@@ -10,14 +10,6 @@
 
 bad_network=false
 
-uhal_setup_cmd="setup uhal v2_4_2 -q e14:prof:s48"
-$uhal_setup_cmd
-
-if [[ "$?" != "0" ]]; then
-    echo "Error: command \"${uhal_setup_cmd}\" failed. uhal needs to be set up in order for the timing fragment generator to build" >&2
-    exit 1
-fi
-
 
 git_status=`git status 2>/dev/null`
 git_sts=$?
@@ -48,8 +40,9 @@ env_opts_var=`basename $0 | sed 's/\.sh$//' | tr 'a-z-' 'A-Z_'`_OPTS
 USAGE="\
    usage: `basename $0` [options]
 examples: `basename $0` 
-          `basename $0` --dune-raw-data-developer --dune-raw-data-develop-branch
+          `basename $0` --uhal-products-dir <dirname> --dune-raw-data-developer --dune-raw-data-develop-branch
           `basename $0` --debug --noviewer --dune-raw-data-developer
+--uhal-products-dir <dirname> provide location of products directory containing uhal (mandatory)
 --debug       perform a debug build
 --noviewer    skip installion of artdaq Message Viewer (use if there is no XWindows)
 --not-dune-artdaq-developer  use if you don't have write access to the dune-artdaq repository
@@ -71,6 +64,7 @@ while [ -n "${1-}" ];do
         test -n "$leq"&&eval "set -- \"\$lev\" \"\$@\""&&op=`expr "x$op" : 'x\([^=]*\)'`
         case "$op" in
             \?*|h*)     eval $op1chr; do_help=1;;
+	    -uhal-products-dir)   uhal_products_dir="$1";;
 	    -debug)     opt_debug=--debug;;
 	    -noviewer)    opt_noviewer=--noviewer;;
 	    -not-dune-artdaq-developer) opt_la_nw=1;;
@@ -83,6 +77,26 @@ while [ -n "${1-}" ];do
     fi
 done
 eval "set -- $args \"\$@\""; unset args aa
+
+if [[ -z $uhal_products_dir ]]; then
+    echo "Must supply the name of the products directory containing the uhal package needed for the timing fragment generator" >&2
+    exit 1
+fi
+
+if [[ ! -e $uhal_products_dir ]]; then
+    echo "Unable to find products directory ${uhal_products_dir}; exiting..." >&2
+    exit 1
+fi
+
+. $uhal_products_dir/setup
+uhal_setup_cmd="setup uhal v2_4_2 -q e14:prof:s48"
+$uhal_setup_cmd
+
+if [[ "$?" != "0" ]]; then
+    echo "Error: command \"${uhal_setup_cmd}\" failed. uhal needs to be set up in order for the timing fragment generator to build. Is the appropriate uhal version located in $uhal_products_dir ?" >&2
+    exit 1
+fi
+
 set -u   # complain about uninitialed shell variables - helps development
 
 if [[ $opt_lrd_develop -eq 0 ]]; then
@@ -352,7 +366,7 @@ cd $Base
        echo # This script is intended to be sourced.                                                                    
                                                                                                                          
         sh -c "[ \`ps \$\$ | grep bash | wc -l\` -gt 0 ] || { echo 'Please switch to the bash shell before running dune-artdaq.'; exit; }" || exit                                                                                           
-                                      
+        source ${uhal_products_dir}                                      
         source $Base/products/setup                                                                                   
         setup mrb
         source $Base/localProducts_dune_artdaq_${demo_version}_${equalifier}_${build_type}/setup
