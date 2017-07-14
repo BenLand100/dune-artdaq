@@ -366,7 +366,7 @@ cd $Base
        echo # This script is intended to be sourced.                                                                    
                                                                                                                          
         sh -c "[ \`ps \$\$ | grep bash | wc -l\` -gt 0 ] || { echo 'Please switch to the bash shell before running dune-artdaq.'; exit; }" || exit                                                                                           
-        source ${uhal_products_dir}                                      
+        source ${uhal_products_dir}/setup                                      
         source $Base/products/setup                                                                                   
         setup mrb
         source $Base/localProducts_dune_artdaq_${demo_version}_${equalifier}_${build_type}/setup
