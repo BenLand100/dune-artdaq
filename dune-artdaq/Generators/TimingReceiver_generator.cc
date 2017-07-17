@@ -31,6 +31,8 @@
 #include <unistd.h>
 #include "timingBoard/TimingSequence.hpp"  // Defs of the sequence functions of uhal commands for setup etc.
 
+#include "timingBoard/InhibitGet.h"
+
 using namespace dune;
 
 // SetUHALLog is an attempt at a fiddle.  It is a class that does nothing except that it's
@@ -48,13 +50,12 @@ dune::SetUHALLog::SetUHALLog(int) {
 dune::TimingReceiver::TimingReceiver(fhicl::ParameterSet const & ps):
   CommandableFragmentGenerator(ps)
   ,instance_name_("TimingReceiver")
-  ,throttling_flag_(0)
   ,stopping_flag_(0)
   ,throttling_state_(0)
   ,stopping_state_(0)
-  ,logFiddle_(0)             // logFiddle is a fudge, see explanation above  
-  ,connectionsFile_(ps.get<std::string>("connections_file", "/home/artdaq1/giles/a_vm_mbp/dune-artdaq/Generators/timingBoard/connections.xml"))
-  ,bcmc_( "file://" + connectionsFile_ )   // a string (non-const)
+  ,inhibitget_timer(3000000)    // 3 secs TODO: Should make this a ps.get()
+  ,logFiddle_(0)             // This is a fudge, see explanation above  
+  ,bcmc_( "file://connections.xml" )   // a string (non-const)
   ,connectionManager_(bcmc_)
   ,hw_(connectionManager_.getDevice("DUNE_FMC_RX"))
 {
@@ -70,6 +71,9 @@ dune::TimingReceiver::TimingReceiver(fhicl::ParameterSet const & ps):
     TimingSequence::hwstatus(hw_);
     TimingSequence::bufstatus(hw_);
 
+    // Set up connection to Inhibit Master
+    InhibitGet_init(inhibitget_timer);
+
     DAQLogger::LogInfo(instance_name_) << "Done configure (end of constructor)\n";
 }
 
@@ -81,14 +85,14 @@ void dune::TimingReceiver::start(void)
     // See header file for meanings of these variables
     stopping_flag_    = 0;
     stopping_state_   = 0;
-    throttling_flag_  = 0;  // Equiv to throttling_flag_.store(0,memory_order_seq_cst);
-    throttling_state_ = 0;
+    throttling_state_ = 1;    // 0 Causes it to start triggers immediately, 1 means wait for InhibitMaster to release
 
     hw_.getNode("master.partition.csr.ctrl.part_en").write(1);
 
     hw_.getNode("master.scmd_gen.ctrl.en").write(1);
     hw_.getNode("master.partition.csr.ctrl.cmd_mask").write(0x000f);
-    hw_.getNode("master.partition.csr.ctrl.trig_en").write(1);
+    uint32_t bit = (throttling_state_ == 0) ? 1 : 0;
+    hw_.getNode("master.partition.csr.ctrl.trig_en").write(bit);
     hw_.getNode("master.scmd_gen.chan_ctrl.type").write(3);
     hw_.getNode("master.scmd_gen.chan_ctrl.rate_div").write(0xb);
     hw_.getNode("master.scmd_gen.chan_ctrl.patt").write(1);
@@ -97,6 +101,8 @@ void dune::TimingReceiver::start(void)
     hw_.dispatch();
 
     TimingSequence::bufstatus(hw_);
+
+    InhibitGet_retime(inhibitget_timer);
 
     // TODO: This is the final enable.  It should not be done here 
     // because there could be a delay before GetNext() is called for 
@@ -144,7 +150,7 @@ bool dune::TimingReceiver::getNext_(artdaq::FragmentPtrs &frags)
   // We may need to check again after certain amount of time
   int counter = 0;
   int max_counter = 3; // this should be sensible N;
-  int max_timeout = 50;  // TODO: This should be in nsecs
+  int max_timeout = 50;  // millisecs
 
   // Technique: Use a generic loop (i.e. exit is from break or return statements, 
   // not from a while (condition).  This allows us to easily reorder the sequence 
@@ -154,9 +160,9 @@ bool dune::TimingReceiver::getNext_(artdaq::FragmentPtrs &frags)
 
     // Check for stop run
     if (stopping_state_ == 0 && stopping_flag_ != 0) {
-      //----hwx_.getNode("partition.csr.ctrl.part_en").write(0); // Disable the run first (stops)
-      //----hwx_.getNode("partition.csr.ctrl.trig_en").write(0); // Now unset the trigger_enable (XOFF)
-      //----hwx_.dispatch();
+      hw_.getNode("master.partition.csr.ctrl.part_en").write(0); // Disable the run first (stops)
+      hw_.getNode("master.partition.csr.ctrl.trig_en").write(0); // Now unset the trigger_enable (XOFF)
+      hw_.dispatch();
       throttling_state_ = 0;  // Note for now, we remove XOFF immediately at end
                               // of run, discuss with hw people if that is right.
       stopping_state_ = 1;    // HW has been told to stop, may have more data
@@ -168,7 +174,7 @@ bool dune::TimingReceiver::getNext_(artdaq::FragmentPtrs &frags)
     ValWord<uint32_t> valr = hw_.getNode("master.partition.buf.count").read();  // Can be max 65536 
           // TODO: Make "master.partition" a parameter so we can change partition, or use on an endpoint
     hw_.dispatch();
-    std::cout << "valr " << valr << std::endl;
+    // std::cout << "valr " << valr << std::endl;
     unsigned int havedata = (valr.value() > 5);   // Wait for a complete event - 6 words TODO: Not hardwired length
     if (havedata) timeout = 1;  // If we have data, we don't wait around in case there is more or a throttle
 
@@ -185,17 +191,24 @@ bool dune::TimingReceiver::getNext_(artdaq::FragmentPtrs &frags)
         ValVector<uint32_t> uwords = hw_.getNode("master.partition.buf.data").readBlock(6);  
         hw_.dispatch();
 
-        // uint32_t word[6];  // Declare like this if we want a local variable instead of putting it straight in the fragmenti
+#ifdef SEPARATE_DEBUG
+        uint32_t word[6];  // Declare like this if we want a local variable instead of putting it straight in the fragmenti
+#else
         uint32_t* word = reinterpret_cast<uint32_t *> (f->dataBeginBytes());    // dataBeginBytes returns a byte_t pointer
+#endif
         for (int i=0;i<6;i++) {  word[i] = uwords[i]; }   // Unpacks from uHALs ValVector<> into the fragment
 
         dune::TimingFragment fo(*f);    // Overlay class - the internal bits of the class are
                                         // accessible here with the same functions we use offline.
 
         // Print out, can do it via the overlay class or with raw access
+#ifdef SEPARATE_DEBUG
+        // This way of printing also works in non-SEPARATE_DEBUG
+        printf("Data: 0x%8.8x 0x%8.8x 0x%8.8x 0x%8.8x 0x%8.8x 0x%8.8x\n"
+                       ,word[0],word[1],word[2],word[3],word[4],word[5]);
+#else
         std::cout << fo;
-        // printf("Data: 0x%8.8x 0x%8.8x 0x%8.8x 0x%8.8x 0x%8.8x 0x%8.8x\n"
-        //                ,word[0],word[1],word[2],word[3],word[4],word[5]);
+#endif
 
         // Fill in the fragment header fields (not some other fragment generators may put these in the
         // constructor for the fragment, but here we push them in one at a time.
@@ -216,28 +229,31 @@ bool dune::TimingReceiver::getNext_(artdaq::FragmentPtrs &frags)
     } else {
        std::this_thread::sleep_for(std::chrono::milliseconds(timeout));
        //usleep(timeout);   
-       // TODO: If we use Tim's SafeQueue() trick we can incorporate this wait into the throttling_flag_ change
     }
 
-    // Check for throttling change over a small period of time (throttling_flag_ is set by separate thread)
+    // Check for throttling change
     // Do not allow a throttling change after the run has been requested to stop
-    // TODO: Replace this by code copied from Tim's SafeQueue() condition_variable approach. 
-    //    (1) It will wake up immediately if the other thread changes, 
-    //    (2) it is better than the atomic<int> approach for insuring the optimiser doesn't 
-    //        lift it out the loop and 
-    //    (3) better than the usleep() in the loop.
-
-    if (stopping_flag_ == 0) {       // throttling change not allowed after run stop request.
-      int tf = throttling_flag_;     // tf = throttling_flag_.load(memory_order_seq_cst); 
-      if (tf != throttling_state_) { // Is XOFF requested different to XOFF in hardware?
-	// Commented out to get it compiling 2017/06/23
-        //int bit = (tf==0) ? 0 : 1;   // This is probably unnecesary as tf should only be 0 or 1, in whcih case bit = tf.
-        //----hwx_.getNode("partition.csr.ctrl.trig_en").write(bit);  // Set XOFF or XON as requested
-        //----hwx_.dispatch();
-      }
-      throttling_state_ = throttling_flag_;  // TODO: Should we read back to check, and can hit again 
-                                             // next time round loop if bad. 
-    }
+    do {     // do {} while(false); allows pleasing use of break to get out without lots of nesting
+      if (stopping_flag_ != 0) break;      // throttling change not desired after run stop request.      
+      uint32_t tf = InhibitGet_get();      // Can give 0=No change, 1=OK, 2=Not OK)
+      uint32_t bit = 1;                    // If we change, this is the value to set. 1=running 
+      if (tf == 0) break;                  // No change, so no need to do anything
+      printf("Received value %d from InhibitGet_get()\n",tf);
+      if (tf == 1) {                       // Want to be running
+        if (throttling_state_ != 1) break; // No change needed
+        bit = 1;                           // To set running (line not needed, bit is set to 1 already)
+      } else if (tf == 2) {                // Want to be stopped
+        if (throttling_state_ == 1) break; // Already stopped, no change needed
+        bit = 0;                           // To set stopped
+      } else {                             // Should never happen, InhibitGet_get returned unknown value.
+        printf("TimingReceiver_generator.cc: Logic error should not happen\n");
+        break;                             // Treat as no change
+      } 
+      printf("Throttle change from %d (1=throttled) by writing %d to hardware (1=enabled)\n",throttling_state_,bit);
+      hw_.getNode("master.partition.csr.ctrl.trig_en").write(bit);  // Set XOFF or XON as requested
+      hw_.dispatch();
+      throttling_state_ = bit ^ 0x1;       // throttling_state is the opposite of bit
+    } while (false);                       // Do loop once only (mainly to have lots of 'break's above)
 
     // Limit the number of tests we do before returning 
     if (!(counter<max_counter)) break;

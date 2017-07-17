@@ -92,23 +92,7 @@ namespace dune {
     std::string instance_name_;
     std::string instance_name_for_metrics_;
 
-    // The following two variables allow inter-thread communication
-    // (1) throttling_flag_ : This is written only in the throttling 
-    //     thread to indicate a desire for XOFF or XON again
-    //     It is read in the getNext_() loop.  We should consider
-    //     declaing it either "int" or "atomic<int>".  The downside
-    //     with "int" is that I think it is possible for the read in
-    //     getNext_() to be optimised outside the while loop, which
-    //     would mean getNext_() would only see the change on it's
-    //     next call. (There could be a bigger problem, that the
-    //     next call also sees a cached copy).
-    std::atomic<int> throttling_flag_;
-    // ** STILL DON'T THINK atomic<> IS QUITE RIGHT, PROBABLY 
-    // WILL GO WITH A CONDITION VARIABLE APPROACH IN NEXT REWRITE
-    // ** atomic<> only guarantees the ordering of reads, but it can
-    // still sit in a cache for ages. volatile is also not the solution
-
-    // (2) stopping_flag_ : This is written in stopNoMutex() and
+    // stopping_flag_ : This is written in stopNoMutex() and
     //     again in stop().  It is read inside the getNext_() while
     //     loop, and so atomic<int> may help it see the change in
     //     value from stopNoMutex(), by telling the compiler not to
@@ -117,26 +101,23 @@ namespace dune {
     //     probably faster to just let that happen (i.e. doing anything
     //     fancy with this variable is likely at least as slow as just
     //     waiting for stop() instead of stopNoMutex()).
-    int stopping_flag_;
+    uint32_t stopping_flag_;
 
-    // Note, we use the 'standard form' of reading and assignment for
-    // throttling_flag_ so we can try switching between using an 'int'
-    // or an 'atomic<int>'. The atomic int reads and writes can also be
-    // done with x.save(value) and value=x.load() which makes them look
-    // more special :)
+    uint32_t throttling_state_;  // 0=XON, 1=XOFF state as set in the hardware.
+    uint32_t stopping_state_;    // 0=running, 1=told hardware to stop, but it 
+                                 // may have more data for me, 2=hardware has
+                                 // no more data, OK for getNext_() to return false
 
-    // The following two variables give what the getNext_() while loop
-    // was doing about each of the two actions.  They are only used in
-    // the main reader thread, so don't need to be special
-    int throttling_state_;  // XOFF/XON state as set in the hardware.
-    int stopping_state_;  // 0=running, 1=told hardware to stop, but it 
-                          // may have more data for me, 2=hardware has
-                          // no more data, OK for getNext_() to return false
+    // Items that are mostly FHICL parameters being poked down to the hardware
+    // or other software components
+    uint32_t inhibitget_timer;  // Time in us before we give up on the InhibitGet and
+                                // just start the run.  A value over 10000000 (10s) 
+                                // is treated as infinite time wait (which should
+                                // be used for production running)
     
     // Items needed for uHAL
     dune::SetUHALLog logFiddle_;  // See explanation of this fiddle in 
              // TimingReceiver_generator.cc comments near the constructor.  
-    const std::string connectionsFile_;
     std::string bcmc_;  // This is a fiddle because Connection Manager wants it non-Const  
     uhal::ConnectionManager connectionManager_; 
     uhal::HwInterface hw_;

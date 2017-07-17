@@ -105,7 +105,7 @@ std::vector<uint32_t> si5344::getDeviceVersion() {
 std::vector<std::pair<uint32_t,uint32_t>> si5344::parse_clk(std::string /*filename*/) {
   // Temporary code
   return { 
-#include "addrtab/PDTS0000.hh"
+#include "addrtab/PDTS0003.hh"
  };
 }
 #if 0
