@@ -55,7 +55,8 @@ dune::TimingReceiver::TimingReceiver(fhicl::ParameterSet const & ps):
   ,stopping_state_(0)
   ,inhibitget_timer(3000000)    // 3 secs TODO: Should make this a ps.get()
   ,logFiddle_(0)             // This is a fudge, see explanation above  
-  ,bcmc_( "file://connections.xml" )   // a string (non-const)
+  ,connectionsFile_(ps.get<std::string>("connections_file", "/home/artdaq1/giles/a_vm_mbp/dune-artdaq/Generators/timingBoard/connections.xml"))
+  ,bcmc_( "file://" + connectionsFile_ )   // a string (non-const)
   ,connectionManager_(bcmc_)
   ,hw_(connectionManager_.getDevice("DUNE_FMC_RX"))
 {
