@@ -15,11 +15,21 @@
 #include <unistd.h>
 
 struct RceMicrosliceHeader {
-  uint32_t microslice_size;
-  uint32_t rx_sequence_id;
-  uint32_t tx_sequence_id;
+  uint64_t raw_header;
+  uint64_t word0;
+  uint64_t word1;
 
-  uint32_t type_id;
+  uint32_t get_pattern_word() const {
+     return raw_header >> 40;
+  }
+
+  uint32_t get_data_size() const {
+     return (raw_header >> 8) & 0xffffff;
+  }
+
+  uint32_t get_seq_id() const {
+     return word0 >> 32;
+  }
 };
 
 struct BlowOffData {
@@ -28,7 +38,7 @@ struct BlowOffData {
 
 #define RECV_DEBUG(level) \
   if (level <= debug_level_) DAQLogger::LogDebug(instance_name_)
-const uint safeWord = 0x708b309e;
+const uint safeWord = 0x8b309e;
 
 dune::RceDataReceiver::RceDataReceiver(
     const std::string& instance_name, int debug_level,
@@ -478,8 +488,14 @@ void dune::RceDataReceiver::handle_received_data(std::size_t length) {
         // Capture the microslice length and sequence ID from the header
         header = reinterpret_cast<RceMicrosliceHeader*>(current_header_ptr_);
 
-        microslice_size_ = header->microslice_size;
-        sequence_id = header->rx_sequence_id;
+        microslice_size_ = header->get_data_size();
+        sequence_id = header->get_seq_id();
+	
+	DAQLogger::LogWarning(instance_name_)
+		<< "Header:" << std::hex << header->raw_header
+		<< " Identifier: " << std::hex << header->word0
+		<< " Timestamp: " << std::hex  << header->word1;
+	
 
         RECV_DEBUG(2) << "Got header for microslice with size "
                       << microslice_size_ << " sequence ID " << sequence_id;
@@ -492,13 +508,18 @@ void dune::RceDataReceiver::handle_received_data(std::size_t length) {
               << " expected " << last_sequence_id_ + 1;
           DAQLogger::LogWarning(instance_name_)
               << "Receive length at mismatch : " << length;
+
+	  /*
           DAQLogger::LogWarning(instance_name_)
               << "Microslice header at mismatch :"
-              << " size : 0x" << std::hex << header->microslice_size << std::dec
-              << " rx_sequence ID : 0x" << std::hex << header->rx_sequence_id
+              << " size : 0x" << std::hex << microslice_size_ 
+	      << std::dec << " rx_sequence ID : 0x" 
+              << std::hex << sequence_id
               << std::dec << " tx_sequence ID : 0x" << std::hex
               << header->tx_sequence_id << std::dec << " type ID : 0x"
               << std::hex << header->type_id << std::dec;
+          */
+
           // TODO handle error cleanly here
           // blow off data until we get to safeword
           millislice_state_ = MicrosliceIncomplete;

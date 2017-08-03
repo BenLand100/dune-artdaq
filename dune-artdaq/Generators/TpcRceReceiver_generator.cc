@@ -80,7 +80,7 @@ dune::TpcRceReceiver::TpcRceReceiver(fhicl::ParameterSet const& ps)
 
   rce_xml_config_file_ =
       ps.get<std::string>("rce_xml_config_file", "config.xml");
-  rce_daq_mode_ = ps.get<std::string>("rce_daq_mode", "Trigger");
+  rce_daq_mode_ = ps.get<std::string>("rce_daq_mode", "External");
   rce_feb_emulation_ = ps.get<bool>("rce_feb_emulation_mode", false);
 
   rce_trg_accept_cnt_ = ps.get<uint32_t>("rce_trg_accept_cnt", 20);
@@ -414,6 +414,13 @@ bool dune::TpcRceReceiver::getNext_(artdaq::FragmentPtrs& frags) {
     frag->setSequenceID(ev_counter());
     frag->setFragmentID(fragmentIDs()[0]);
     frag->setUserType(dune::detail::TPC);
+
+    uint64_t* rce_header = reinterpret_cast<uint64_t*>(data_ptr);
+    uint64_t rce_timestamp = *(rce_header + 2);
+    frag->setTimestamp(rce_timestamp);
+    DAQLogger::LogWarning(instance_name_) << std::hex
+					  << "RCE Fragment Timestamp: "
+					  << rce_timestamp;
 
     // JCF, Dec-22-2015
 
