@@ -1,6 +1,6 @@
 #!/bin/bash
 
-source `which setupDemoEnvironment.sh` ""
+source `which setupDemoEnvironment.sh` -p 6300
 
 THIS_NODE=`hostname -s`
 AGGREGATOR_NODE=${THIS_NODE}
@@ -99,7 +99,7 @@ Examples: ${scriptName} -p 32768 init
 originalCommand="$0 $*"
 onmonEnable=off
 diskWriting=1
-dataDir="~/dune-artdaq/data"
+dataDir="daq/artdaq/data-test"
 runNumber=""
 runEventCount=0
 runDuration=0
@@ -230,7 +230,7 @@ fi
 
 # build the logfile name
 TIMESTAMP=`date '+%Y%m%d%H%M%S'`
-logFile="~/dune-artdaq/data/dsMC-${TIMESTAMP}-${command}.log"
+logFile="/daq/artdaq/data-test/dsMC-${TIMESTAMP}-${command}.log"
 echo "${originalCommand}" > $logFile
 echo ">>> ${originalCommand} (Disk writing is ${diskWriting})"
 
