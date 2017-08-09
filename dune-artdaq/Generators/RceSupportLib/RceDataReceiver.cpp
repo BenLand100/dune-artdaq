@@ -491,10 +491,9 @@ void dune::RceDataReceiver::handle_received_data(std::size_t length) {
         microslice_size_ = header->get_data_size();
         sequence_id = header->get_seq_id();
 	
-	DAQLogger::LogWarning(instance_name_)
-		<< "Header:" << std::hex << header->raw_header
-		<< " Identifier: " << std::hex << header->word0
-		<< " Timestamp: " << std::hex  << header->word1;
+	RECV_DEBUG(0) << "Header:" << std::hex << header->raw_header 
+		      << " Identifier: " << std::hex << header->word0
+		      << " Timestamp: " << std::hex  << header->word1;
 	
 
         RECV_DEBUG(2) << "Got header for microslice with size "
@@ -522,12 +521,17 @@ void dune::RceDataReceiver::handle_received_data(std::size_t length) {
 
           // TODO handle error cleanly here
           // blow off data until we get to safeword
-          millislice_state_ = MicrosliceIncomplete;
-          next_receive_state_ = BlowOff;
-          next_receive_size_ = sizeof(uint32_t);
-          last_sequence_id_++;
-          sequence_id_initialised_ = true;
-          break;
+
+	  // 2017-08-08
+	  // PatrickTsang - trigger dropped?
+	  // By pass blow-off temporarily
+	  //
+          // millislice_state_ = MicrosliceIncomplete;
+          // next_receive_state_ = BlowOff;
+          // next_receive_size_ = sizeof(uint32_t);
+          // last_sequence_id_++;
+          // sequence_id_initialised_ = true;
+          // break;
 
         } else {
           sequence_id_initialised_ = true;

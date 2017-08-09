@@ -418,9 +418,9 @@ bool dune::TpcRceReceiver::getNext_(artdaq::FragmentPtrs& frags) {
     uint64_t* rce_header = reinterpret_cast<uint64_t*>(data_ptr);
     uint64_t rce_timestamp = *(rce_header + 2);
     frag->setTimestamp(rce_timestamp);
-    DAQLogger::LogWarning(instance_name_) << std::hex
-					  << "RCE Fragment Timestamp: "
-					  << rce_timestamp;
+    DAQLogger::LogDebug(instance_name_) << std::hex 
+					<< "RCE Fragment Timestamp: "
+					<< rce_timestamp;
 
     // JCF, Dec-22-2015
 
