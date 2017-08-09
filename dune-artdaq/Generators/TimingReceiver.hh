@@ -122,6 +122,14 @@ namespace dune {
     std::string bcmc_;  // This is a fiddle because Connection Manager wants it non-Const  
     uhal::ConnectionManager connectionManager_; 
     uhal::HwInterface hw_;
+
+    uint32_t poisson_;  // 0=Set fixed rate, 1= Poission distributed
+    uint32_t divider_;  // The divider to get the rate = 50MHz/2**(12+divider_)   [e.g. 0xb=5.9Hz]
+    uint32_t debugprint_;  // Controls the printing of stuff as info messages. 
+                           // 0=minimal, 
+                           // 1=Also reports throttling changes that go to hardware, 
+                           // 2=calls the bufstatus and hwstatus during init, 
+                           // 3=Debug message for each trigger and all throttling data
   };
 }
 

@@ -59,6 +59,9 @@ dune::TimingReceiver::TimingReceiver(fhicl::ParameterSet const & ps):
   ,bcmc_( "file://" + connectionsFile_ )   // a string (non-const)
   ,connectionManager_(bcmc_)
   ,hw_(connectionManager_.getDevice("DUNE_FMC_RX"))
+  ,poisson_(ps.get<uint32_t>("poisson",0))
+  ,divider_(ps.get<uint32_t>("divider",0xb))
+  ,debugprint_(ps.get<uint32_t>("debug_print",0))
 {
     int board_id = 0; //:GB  ps.get<int>("board_id", 0);
     std::stringstream instance_name_ss;
@@ -68,9 +71,11 @@ dune::TimingReceiver::TimingReceiver(fhicl::ParameterSet const & ps):
     instance_name_for_metrics_ = "";
 
     // Set up clock chip etc on board
-    TimingSequence::hwinit(hw_,"SI5344/PDTS0003.txt");
-    TimingSequence::hwstatus(hw_);
-    TimingSequence::bufstatus(hw_);
+    TimingSequence::hwinit(hw_,"unused parameter");
+    if (debugprint_ > 1) {
+      TimingSequence::hwstatus(hw_);
+      TimingSequence::bufstatus(hw_);
+    }
 
     // Set up connection to Inhibit Master
     InhibitGet_init(inhibitget_timer);
@@ -94,15 +99,18 @@ void dune::TimingReceiver::start(void)
     hw_.getNode("master.partition.csr.ctrl.cmd_mask").write(0x000f);
     uint32_t bit = (throttling_state_ == 0) ? 1 : 0;
     hw_.getNode("master.partition.csr.ctrl.trig_en").write(bit);
-    hw_.getNode("master.scmd_gen.chan_ctrl.type").write(3);
-    hw_.getNode("master.scmd_gen.chan_ctrl.rate_div").write(0xb);
-    hw_.getNode("master.scmd_gen.chan_ctrl.patt").write(1);
+    hw_.getNode("master.scmd_gen.chan_ctrl.type").write(3);         // 3 = triggers
+    uint32_t rate = (divider_ > 0xf) ? 0xf : divider_;              // Allow 0x0 -> 0xf
+    hw_.getNode("master.scmd_gen.chan_ctrl.rate_div").write(rate);  // 0xb = 5.9Hz.   Rate is 50MHz/2**(12+rate_div)
+    uint32_t pat = (poisson_ != 0) ? 1 : 0;
+    hw_.getNode("master.scmd_gen.chan_ctrl.patt").write(pat);       // 1 = poisson, 0=fixed interval
     hw_.getNode("master.partition.csr.ctrl.buf_en").write(1);
     // hw.getNode("endpoint.csr.ctrl.buf_en").write(1)
     hw_.dispatch();
 
-    TimingSequence::bufstatus(hw_);
-
+    if (debugprint_ > 1) {
+      TimingSequence::bufstatus(hw_);
+    }
     InhibitGet_retime(inhibitget_timer);
 
     // This is not the final enable.  That is done in getNext_() below. 
@@ -205,7 +213,9 @@ bool dune::TimingReceiver::getNext_(artdaq::FragmentPtrs &frags)
         printf("Data: 0x%8.8x 0x%8.8x 0x%8.8x 0x%8.8x 0x%8.8x 0x%8.8x\n"
                        ,word[0],word[1],word[2],word[3],word[4],word[5]);
 #else
-        std::cout << fo;
+        if (debugprint_ > 2) {
+          //xx  DAQLogger::LogDebug(instance_name_) << fo;
+        }
 #endif
 
         // Fill in the fragment header fields (not some other fragment generators may put these in the
@@ -236,7 +246,9 @@ bool dune::TimingReceiver::getNext_(artdaq::FragmentPtrs &frags)
       uint32_t tf = InhibitGet_get();      // Can give 0=No change, 1=OK, 2=Not OK)
       uint32_t bit = 1;                    // If we change, this is the value to set. 1=running 
       if (tf == 0) break;                  // No change, so no need to do anything
-      printf("Received value %d from InhibitGet_get()\n",tf);
+      if (debugprint_ > 2) {
+        //xx DAQLogger::LogDebug(instance_name_) << "Received value " << tf << " from InhibitGet_get()\n";
+      }
       if (tf == 1) {                       // Want to be running
         if (throttling_state_ != 1) break; // No change needed
         bit = 1;                           // To set running (line not needed, bit is set to 1 already)
@@ -246,8 +258,12 @@ bool dune::TimingReceiver::getNext_(artdaq::FragmentPtrs &frags)
       } else {                             // Should never happen, InhibitGet_get returned unknown value.
         printf("TimingReceiver_generator.cc: Logic error should not happen\n");
         break;                             // Treat as no change
-      } 
-      printf("Throttle change from %d (1=throttled) by writing %d to hardware (1=enabled)\n",throttling_state_,bit);
+      }
+      if (debugprint_ > 0) { 
+        //xx DAQLogger::LogInfo(instance_name_) << "Throttle state change: Writing " << bit 
+        //xx                                    << " to trig_en.  [Throttling state was " << throttling_state_
+        //xx                                    << "] (1 means enabled)\n";
+      }
       hw_.getNode("master.partition.csr.ctrl.trig_en").write(bit);  // Set XOFF or XON as requested
       hw_.dispatch();
       throttling_state_ = bit ^ 0x1;       // throttling_state is the opposite of bit
