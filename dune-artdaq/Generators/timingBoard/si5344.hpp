@@ -19,18 +19,23 @@ class si5344 {
 private:
     I2CCore& i2c_;
     uint32_t slaveaddr_;
-
+    std::string instancename_;   // For log messages
 
 public:
-    si5344(I2CCore& i2c, uint32_t slaveaddr=0x68) :     // Constructor
-       i2c_(i2c), slaveaddr_(slaveaddr) {}
+    si5344(I2CCore& i2c, uint32_t slaveaddr=0x68, std::string instance = "Timing:si5344") :     // Constructor
+       i2c_(i2c), slaveaddr_(slaveaddr), instancename_(instance) {}
 
     std::vector<uint32_t> readRegister(uint32_t myaddr, uint32_t nwords);
     void writeRegister(uint32_t myaddr, std::vector<uint32_t> data, uint32_t verbose = VERBOSE_DEFAULT);
     void setPage(uint32_t page, uint32_t verbose=false);
     std::vector<uint32_t> getPage(uint32_t verbose=false);
     std::vector<uint32_t> getDeviceVersion();
-    std::vector<std::pair<uint32_t,uint32_t>> parse_clk(std::string filename);
+    // std::vector<std::pair<uint32_t,uint32_t>> parse_clk(std::string filename);   // Old way
+    std::vector<std::pair<uint32_t,uint32_t>> parse_clk(uint64_t serialno);   // New way
     void writeConfiguration(std::vector<std::pair<uint32_t,uint32_t>>regSettingList);
+
+private:
+    std::vector<std::pair<uint32_t,uint32_t>> parse_clk3();
+    std::vector<std::pair<uint32_t,uint32_t>> parse_clk0();
 };
 #endif

@@ -105,10 +105,7 @@ void dune::TimingReceiver::start(void)
 
     InhibitGet_retime(inhibitget_timer);
 
-    // TODO: This is the final enable.  It should not be done here 
-    // because there could be a delay before GetNext() is called for 
-    // first time (is that true?)  So we need logic in GetNext to 
-    // find the first time it is called after a start().
+    // This is not the final enable.  That is done in getNext_() below. 
     hw_.getNode("master.scmd_gen.chan_ctrl.en").write(1);
     hw_.dispatch();
 }

@@ -61,7 +61,7 @@
                              << " 0x" << p_r[3] << " 0x" << p_r[4] << std::dec << std::endl;
 }
 
-  void TimingSequence::hwinit(uhal::HwInterface& hw, std::string pll_cfg) {
+  void TimingSequence::hwinit(uhal::HwInterface& hw, std::string /*pll_cfg*/) {  
 
     std::cout << "hw.id() = " << hw.id() << std::endl;
     uhal::ValWord<uint32_t> reg = hw.getNode("io.csr.stat").read();
@@ -88,8 +88,12 @@
       std::vector<uint32_t> v3 = { 0xfa };
       uid_I2C.write(0x53, v3, false );  // [0xfa], False)
       res = uid_I2C.read(0x53, 6);
+      uint64_t serial_no = 0;
       std::cout <<  "Unique ID PROM: ";
-      for (auto i : res) { std::cout << std::hex << " 0x" << i << std::dec; } // [hex(no) for no in res]
+      for (auto i : res) { 
+        std::cout << std::hex << " 0x" << i << std::dec;  // [hex(no) for no in res]
+        serial_no = (serial_no << 8) | (i & 0xff);   // Build up the serial_no by sticking 8 more bits on the low end
+      }
       std::cout << std::endl;
 
       //std::cout << "d2\n";
@@ -99,7 +103,7 @@
       std::vector<uint32_t> res2 = zeClock.getDeviceVersion();
       zeClock.setPage(0, true);
       zeClock.getPage();
-      std::vector<std::pair<uint32_t,uint32_t>> regCfgList = zeClock.parse_clk(pll_cfg);
+      std::vector<std::pair<uint32_t,uint32_t>> regCfgList = zeClock.parse_clk(serial_no);
       zeClock.writeConfiguration(regCfgList);
 
       //std::cout << "d3\n";

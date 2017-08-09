@@ -27,7 +27,11 @@ void InhibitGet_init(uint32_t timetoignore) {
   rc = zmq_setsockopt(gIGhandle.subscriber,ZMQ_RCVHWM,&hwm,sizeof(int));
 
   InhibitGet_retime(timetoignore);
+#ifdef DEBUGPRINT
   printf("Everything is set up...status=%d\n",rc);
+#else
+  if (rc) { }   // Avoid unused variable compiler warning
+#endif
 }
 
 void InhibitGet_retime(uint32_t timetoignore) {
@@ -50,7 +54,9 @@ uint32_t InhibitGet_get() {
           (recv_buf[13] == 'N' || recv_buf[13] == 'n')) return 1;  // OK
       return 2;  // Bad
     } else if (msg_size >= 0) {
+#ifdef DEBUGPRINT
       printf("InhibitGet_get(): error.  Short message received %d %s\n",msg_size,recv_buf);
+#endif
       return 0;   // Indicates no update, keep state as it was before
     }
 
@@ -61,7 +67,9 @@ uint32_t InhibitGet_get() {
       uint64_t tnow = (uint64_t) timenow.tv_sec*1000000 + (uint64_t) timenow.tv_usec;
       uint64_t tthen = (uint64_t) (gIGhandle.timestart).tv_sec*1000000 + 
                        (uint64_t) (gIGhandle.timestart).tv_usec;
+#ifdef DEBUGPRINT
       printf("tnow = 0x%lx tthen = 0x%lx diff = %ld\n",tnow,tthen,tnow-tthen);
+#endif
 
       if (tnow-tthen > gIGhandle.timetoignore) {
         gIGhandle.timetoignore = 0;
