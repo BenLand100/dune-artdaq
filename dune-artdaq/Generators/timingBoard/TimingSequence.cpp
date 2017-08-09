@@ -27,7 +27,6 @@
 #define N_SCHAN 1
 #define N_TYPE 5
 
-//namespace TimingSequences {
   void TimingSequence::bufstatus(uhal::HwInterface& hw) {
     uhal::ValVector<uint32_t> m_t = hw.getNode("master.global.tstamp").readBlock(2);
     uhal::ValWord<uint32_t> m_e = hw.getNode("master.partition.evtctr").read();
@@ -61,7 +60,7 @@
                              << " 0x" << p_r[3] << " 0x" << p_r[4] << std::dec << std::endl;
 }
 
-  void TimingSequence::hwinit(uhal::HwInterface& hw, std::string pll_cfg) {
+  void TimingSequence::hwinit(uhal::HwInterface& hw, std::string /*pll_cfg*/) {  
 
     std::cout << "hw.id() = " << hw.id() << std::endl;
     uhal::ValWord<uint32_t> reg = hw.getNode("io.csr.stat").read();
@@ -76,8 +75,6 @@
       hw.getNode("io.csr.ctrl.pll_rst").write(0);
       hw.dispatch();
 
-      //std::cout << "d1\n";
-
       I2CCore uid_I2C = I2CCore(hw, 10, 5, "io.uid_i2c", 10);
       std::vector<uint32_t> v1 = { 0x01, 0x7f };
       uid_I2C.write(0x21, v1, true);    // [0x01, 0x7f], True)  
@@ -88,21 +85,21 @@
       std::vector<uint32_t> v3 = { 0xfa };
       uid_I2C.write(0x53, v3, false );  // [0xfa], False)
       res = uid_I2C.read(0x53, 6);
+      uint64_t serial_no = 0;
       std::cout <<  "Unique ID PROM: ";
-      for (auto i : res) { std::cout << std::hex << " 0x" << i << std::dec; } // [hex(no) for no in res]
+      for (auto i : res) { 
+        std::cout << std::hex << " 0x" << i << std::dec;  // [hex(no) for no in res]
+        serial_no = (serial_no << 8) | (i & 0xff);   // Build up the serial_no by sticking 8 more bits on the low end
+      }
       std::cout << std::endl;
-
-      //std::cout << "d2\n";
 
       I2CCore clock_I2C = I2CCore(hw, 10, 5, "io.pll_i2c", 0);
       si5344 zeClock = si5344(clock_I2C);
       std::vector<uint32_t> res2 = zeClock.getDeviceVersion();
       zeClock.setPage(0, true);
       zeClock.getPage();
-      std::vector<std::pair<uint32_t,uint32_t>> regCfgList = zeClock.parse_clk(pll_cfg);
+      std::vector<std::pair<uint32_t,uint32_t>> regCfgList = zeClock.parse_clk(serial_no);
       zeClock.writeConfiguration(regCfgList);
-
-      //std::cout << "d3\n";
 
       for (int i=0;i<2;i++) {
         hw.getNode("io.freq.ctrl.chan_sel").write(i);
@@ -113,8 +110,6 @@
         uhal::ValWord<uint32_t> fv = hw.getNode("io.freq.freq.valid").read();
         hw.dispatch();
         std::cout << "Freq: " << i << " " << int(fv) << " " << int(fq) * 119.20928 / 1000000 << std::endl;
-
-        //std::cout << "d4\n";
       }
         
       hw.getNode("io.csr.ctrl.sfp_tx_dis").write(0);
@@ -124,8 +119,6 @@
       hw.dispatch();
       hw.getNode("io.csr.ctrl.rst").write(0);
       hw.dispatch();
-
-    //std::cout << "d5\n";
   }
 
   void TimingSequence::hwstatus(uhal::HwInterface& hw) {
@@ -134,6 +127,5 @@
     hw.dispatch();
     std::cout << "reg = 0x" << std::hex << reg << std::dec << std::endl;
   }
-//};   // End of namespace TimingSequence
 
 
