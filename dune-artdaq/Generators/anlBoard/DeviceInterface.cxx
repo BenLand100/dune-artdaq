@@ -58,6 +58,11 @@ void SSPDAQ::DeviceInterface::Initialize(){
 
   //Put device into sensible state
   this->Stop();
+
+  //Reset timing endpoint
+  SSPDAQ::RegMap& duneReg=SSPDAQ::RegMap::Get();
+  fDevice->DeviceWrite(duneReg.pdts_control, 0x80000000);
+  fDevice->DeviceWrite(duneReg.pdts_control, 0x00000000);
 }
 
 void SSPDAQ::DeviceInterface::Stop(){
@@ -82,11 +87,13 @@ void SSPDAQ::DeviceInterface::Stop(){
   // Flush RX buffer
   fDevice->DevicePurgeData();
   dune::DAQLogger::LogInfo("SSP_DeviceInterface")<<"Hardware set to stopped state"<<std::endl;
-  fState=SSPDAQ::DeviceInterface::kStopped;
 
   if(fState==SSPDAQ::DeviceInterface::kRunning){
     dune::DAQLogger::LogInfo("SSP_DeviceInterface")<<"DeviceInterface stop transition complete!"<<std::endl;
   }
+
+  fState=SSPDAQ::DeviceInterface::kStopped;
+
 }
 
 
@@ -112,7 +119,8 @@ void SSPDAQ::DeviceInterface::Start(){
   //Load window settings, charge injection settings and bias voltage into channels
   fDevice->DeviceWrite(duneReg.channel_pulsed_control, 0x1);
   fDevice->DeviceWrite(duneReg.bias_control, 0x1);
-  fDevice->DeviceWriteMask(duneReg.mon_control, 0x1, 0x1);
+  fDevice->DeviceWriteMask(duneReg.vmon_control, 0x1, 0x1);
+  fDevice->DeviceWriteMask(duneReg.imon_control, 0x1, 0x1);
   fDevice->DeviceWriteMask(duneReg.qi_dac_control, 0x1, 0x1);
   fDevice->DeviceWriteMask(duneReg.qi_pulsed, 0x00030000, 0x00030000);
   
@@ -141,6 +149,8 @@ void SSPDAQ::DeviceInterface::ReadEvents(std::vector<unsigned int>& fragment){
 
   while(true){
 
+    //    PrintHardwareState();
+
     /////////////////////////////////////////////////////////
     // Read an event from SSP. If there is no data, break. //
     /////////////////////////////////////////////////////////
@@ -148,7 +158,7 @@ void SSPDAQ::DeviceInterface::ReadEvents(std::vector<unsigned int>& fragment){
     SSPDAQ::EventPacket newPacket;
     this->ReadEventFromDevice(newPacket);
     if(newPacket.header.header!=0xAAAAAAAA) break;
-
+    newPacket.DumpHeader();
     unsigned long packetTime=GetTimestamp(newPacket.header);
 
     /////////////////////////////////////////////////////////
@@ -182,7 +192,7 @@ void SSPDAQ::DeviceInterface::ReadEvents(std::vector<unsigned int>& fragment){
     /////////////////////////////////////////////////////////////////////////
 
     if(fTriggers.size()&&(packetTime>fTriggers.front().endTime+fTriggerWriteDelay)){
-      this->BuildFragment(fTriggers.front().startTime,fTriggers.front().endTime,fragment,fTriggers.front().triggerType);
+      this->BuildFragment(fTriggers.front(),fragment);
       fTriggers.pop();
       break;
     }
@@ -206,7 +216,7 @@ bool SSPDAQ::DeviceInterface::GetTriggerInfo(const SSPDAQ::EventPacket& event,SS
     currentTriggerTime=packetTime;
     newTrigger.startTime=currentTriggerTime-fPreTrigLength;
     newTrigger.endTime=currentTriggerTime+fPostTrigLength;
-    newTrigger.triggerType=event.header.group1&0x0F;
+    newTrigger.triggerType=event.header.group1&0xFFFF;
     
     for(unsigned int i=0;i<12;++i){
       channelsSeen[i]=false;
@@ -215,16 +225,19 @@ bool SSPDAQ::DeviceInterface::GetTriggerInfo(const SSPDAQ::EventPacket& event,SS
     return true; 
   }
     
-  if((event.header.group1&0x0F)!=0){
+  if((event.header.group1&0xFFFF)!=0){
     
     if(!channelsSeen[channel]&&packetTime<currentTriggerTime+1000){
       channelsSeen[channel]=true;
+      dune::DAQLogger::LogInfo("SSP_DeviceInterface")<<"Packet contains trigger word but this trigger was already generated from another channel"<<std::endl;
     }
     else{
       currentTriggerTime=packetTime;
+      newTrigger.triggerTime=currentTriggerTime;
       newTrigger.startTime=currentTriggerTime-fPreTrigLength;
       newTrigger.endTime=currentTriggerTime+fPostTrigLength;
-      newTrigger.triggerType=event.header.group1&0x0F;
+      newTrigger.triggerType=event.header.group1&0xFFFF;
+      dune::DAQLogger::LogInfo("SSP_DeviceInterface")<<"Packet has non-trivial trigger word - generating a trigger from this packet!"<<std::endl;
       for(unsigned int i=0;i<12;++i){
 	channelsSeen[i]=false;
       }
@@ -232,10 +245,11 @@ bool SSPDAQ::DeviceInterface::GetTriggerInfo(const SSPDAQ::EventPacket& event,SS
     return true;
     }
   }
+  dune::DAQLogger::LogInfo("SSP_DeviceInterface")<<"Packet contains no trigger... trigger logic will ignore it."<<std::endl;
   return false;
 }
   
-void SSPDAQ::DeviceInterface::BuildFragment(unsigned long startTime,unsigned long endTime,std::vector<unsigned int>& fragmentData, unsigned int triggerType){
+void SSPDAQ::DeviceInterface::BuildFragment(const SSPDAQ::TriggerInfo& theTrigger,std::vector<unsigned int>& fragmentData){
 
   std::vector<SSPDAQ::EventPacket> eventsToPutBack;
   std::vector<SSPDAQ::EventPacket*> eventsToWrite;
@@ -246,7 +260,7 @@ void SSPDAQ::DeviceInterface::BuildFragment(unsigned long startTime,unsigned lon
 
     unsigned long packetTime=GetTimestamp(packetIter->header);
 
-    if(packetTime>=startTime&&packetTime<endTime){
+    if(packetTime>=theTrigger.startTime&&packetTime<theTrigger.endTime){
       
       lastPacket=packetIter;
     }
@@ -255,8 +269,8 @@ void SSPDAQ::DeviceInterface::BuildFragment(unsigned long startTime,unsigned lon
   for(auto packetIter=fPacketBuffer.begin();;++packetIter){
     unsigned long packetTime=GetTimestamp(packetIter->header);
     
-    if(packetTime>=startTime){
-      if(packetTime>=endTime){
+    if(packetTime>=theTrigger.startTime){
+      if(packetTime>=theTrigger.endTime){
 	eventsToPutBack.push_back(std::move(*packetIter));
       }
       else{
@@ -284,9 +298,10 @@ void SSPDAQ::DeviceInterface::BuildFragment(unsigned long startTime,unsigned lon
   SSPDAQ::MillisliceHeader sliceHeader;
   sliceHeader.length=dataSizeInWords;
   sliceHeader.nTriggers=eventsToWrite.size();
-  sliceHeader.startTime=startTime;
-  sliceHeader.endTime=endTime;
-  sliceHeader.triggerType=triggerType;
+  sliceHeader.startTime=theTrigger.startTime;
+  sliceHeader.endTime=theTrigger.endTime;
+  sliceHeader.triggerTime=theTrigger.triggerTime;
+  sliceHeader.triggerType=theTrigger.triggerType;
 
   //=================================================//
   //Allocate space for whole slice and fill with data//
@@ -689,10 +704,14 @@ void SSPDAQ::DeviceInterface::Configure(){
 	fDevice->DeviceWrite(duneReg.bias_config[11],0x00000000);
 	fDevice->DeviceWrite(duneReg.bias_control,0x00000001);
 
-	fDevice->DeviceWrite(duneReg.mon_config,0x0012F000);
-	fDevice->DeviceWrite(duneReg.mon_select,0x00FFFF00);
-	fDevice->DeviceWrite(duneReg.mon_gpio,0x00000000);
-	fDevice->DeviceWrite(duneReg.mon_control,0x00010001);
+	fDevice->DeviceWrite(duneReg.vmon_config,0x0012F000);
+	fDevice->DeviceWrite(duneReg.vmon_select,0x00FFFF00);
+	fDevice->DeviceWrite(duneReg.vmon_gpio,0x00000000);
+	fDevice->DeviceWrite(duneReg.vmon_control,0x00010001);
+	fDevice->DeviceWrite(duneReg.imon_config,0x0012F000);
+	fDevice->DeviceWrite(duneReg.imon_select,0x00FFFF00);
+	fDevice->DeviceWrite(duneReg.imon_gpio,0x00000000);
+	fDevice->DeviceWrite(duneReg.imon_control,0x00010001);
 
 	//Registers in the Artix FPGA (DSP)//AddressDefault ValueRead MaskWrite MaskCode Name
 	fDevice->DeviceWrite(duneReg.module_id,module_id);
@@ -793,3 +812,22 @@ unsigned long SSPDAQ::DeviceInterface::GetTimestamp(const SSPDAQ::EventHeader& h
   return packetTime;
 }
 
+void SSPDAQ::DeviceInterface::PrintHardwareState(){
+
+  dune::DAQLogger::LogInfo("SSP_DeviceInterface")<<"===SSP DIAGNOSTIC REGISTERS==="<<std::endl;
+
+  SSPDAQ::RegMap& duneReg=SSPDAQ::RegMap::Get();
+  unsigned int val;
+
+  fDevice->DeviceRead(duneReg.dp_clock_status, &val);
+  dune::DAQLogger::LogInfo("SSP_DeviceInterface")<<"dsp_clock_status: "<<std::hex<<val<<std::endl;
+  fDevice->DeviceRead(duneReg.live_timestamp_msb, &val);
+  dune::DAQLogger::LogInfo("SSP_DeviceInterface")<<"live_timestamp_msb: "<<val<<std::endl;
+  fDevice->DeviceRead(duneReg.live_timestamp_lsb, &val);
+  dune::DAQLogger::LogInfo("SSP_DeviceInterface")<<"live_timestamp_lsb: "<<val<<std::endl;
+  fDevice->DeviceRead(duneReg.sync_delay, &val);
+  dune::DAQLogger::LogInfo("SSP_DeviceInterface")<<"sync_delay: "<<val<<std::endl;
+  fDevice->DeviceRead(duneReg.sync_count, &val);
+  dune::DAQLogger::LogInfo("SSP_DeviceInterface")<<"sync_count: "<<val<<std::dec<<std::endl;
+  
+}
