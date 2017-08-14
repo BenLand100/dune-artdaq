@@ -168,22 +168,36 @@ class RegMap{
   unsigned int bias_config[12];	
   unsigned int bias_readback[12];	
   
-  unsigned int mon_config;			
-  unsigned int mon_select;			
-  unsigned int mon_gpio;			
-  unsigned int mon_config_readback;		
-  unsigned int mon_select_readback;		
-  unsigned int mon_gpio_readback;		
-  unsigned int mon_id_readback;			
-  unsigned int mon_control;			
-  unsigned int mon_status;			
-  unsigned int mon_bias[12];		
-  unsigned int mon_value[9];			
+  unsigned int vmon_config;			
+  unsigned int vmon_select;			
+  unsigned int vmon_gpio;			
+  unsigned int vmon_config_readback;		
+  unsigned int vmon_select_readback;		
+  unsigned int vmon_gpio_readback;		
+  unsigned int vmon_id_readback;			
+  unsigned int vmon_control;			
+  unsigned int vmon_status;			
+  unsigned int vmon_bias[12];		
+  unsigned int vmon_value[9];			
+
+  unsigned int imon_config;			
+  unsigned int imon_select;			
+  unsigned int imon_gpio;			
+  unsigned int imon_config_readback;		
+  unsigned int imon_select_readback;		
+  unsigned int imon_gpio_readback;		
+  unsigned int imon_id_readback;			
+  unsigned int imon_control;			
+  unsigned int imon_status;			
+  unsigned int imon_bias[12];		
+  unsigned int imon_value[9];			
 
   // Registers in the Artix FPGA
   unsigned int board_id;
   unsigned int fifo_control;
-  unsigned int dsp_clock_status;
+  unsigned int dp_fpga_fw_build;
+  unsigned int calib_build;
+  unsigned int dp_clock_status;
   unsigned int module_id;
   unsigned int c2c_slave_status;
   unsigned int c2c_slave_intr_control;
@@ -202,6 +216,7 @@ class RegMap{
   unsigned int i1_window[12];
   unsigned int disc_width[12];
   unsigned int baseline_start[12];
+  unsigned int c_window[12];
 
   unsigned int trigger_input_delay;
   unsigned int gpio_output_width;
@@ -219,6 +234,7 @@ class RegMap{
   unsigned int qi_pulse_width;
   unsigned int qi_pulsed;
   unsigned int external_gate_width;
+  unsigned int pdts_cmd_control[3];
   unsigned int lat_timestamp_lsb;
   unsigned int lat_timestamp_msb;
   unsigned int live_timestamp_lsb;
@@ -226,8 +242,9 @@ class RegMap{
   unsigned int sync_period;
   unsigned int sync_delay;
   unsigned int sync_count;
-  unsigned int sync_stamp_low;
-  unsigned int sync_stamp_high;
+  unsigned int pdts_control;
+  unsigned int pdts_status;
+  unsigned int pdts_ts_preset[2];
   unsigned int master_logic_control;
   unsigned int master_logic_status;
   unsigned int overflow_status;

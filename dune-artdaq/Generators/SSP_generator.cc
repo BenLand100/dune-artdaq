@@ -104,7 +104,7 @@ void dune::SSP::ConfigureDevice(fhicl::ParameterSet const& ps){
 	chControlReg[vals[0]]=vals[1];
       }
       else if(!hcIter->substr(0,4).compare("ALL_")){ //All array elements set to same value
-	unsigned int val=hardwareConfig.get<unsigned int>(*hcIter);
+        unsigned int val=hardwareConfig.get<unsigned int>(*hcIter);
 	for(unsigned int i=0;i<12;++i){
 	  chControlReg[i]=val;
 	}
@@ -126,6 +126,7 @@ void dune::SSP::ConfigureDevice(fhicl::ParameterSet const& ps){
       device_interface_->SetRegisterArrayByName(hcIter->substr(4,std::string::npos),val);
     }
     else if(!hcIter->substr(0,4).compare("ARR_")){ //All array elements individually
+
       std::vector<unsigned int> vals=hardwareConfig.get<std::vector<unsigned int> >(*hcIter);
       device_interface_->SetRegisterArrayByName(hcIter->substr(4,std::string::npos),vals);
     }
@@ -282,6 +283,7 @@ void dune::SSP::ConfigureDAQ(fhicl::ParameterSet const& ps){
 
   
 void dune::SSP::start(){
+  usleep(10000000);
   device_interface_->Start();
   fNNoFragments=0;
   fNFragmentsSent=0;
@@ -320,6 +322,19 @@ bool dune::SSP::getNext_(artdaq::FragmentPtrs & frags) {
 	DAQLogger::LogError("SSP") << "dune::SSP::getNext_ : found device interface thread in exception state";
       }
 
+    static size_t ncalls = 1;
+    static size_t ncalls_with_millislice = 0;
+
+    if (millislice.size() > 0) {
+      ncalls_with_millislice++;
+    }
+
+    if (ncalls % 100 == 0) {
+      DAQLogger::LogInfo("SSP_SSP_generator") << "On call #" << ncalls << ", there have been " << ncalls_with_millislice << " calls where the millislice size was greater than zero";
+    }
+
+    ncalls++;
+
     if(millislice.size()==0){
       if(!hasSeenSlice){
 	++fNNoFragments;
@@ -352,14 +367,19 @@ bool dune::SSP::getNext_(artdaq::FragmentPtrs & frags) {
     frags.emplace_back( artdaq::Fragment::FragmentBytes(0,
 							ev_counter(), fragment_id(),
 							fragment_type_, metadata) );
-    
+
+    auto timestamp = (metadata.sliceHeader.triggerTime + 1057) / 3 ;
+
+
+    DAQLogger::LogInfo("SSP_SSP_generator") << "SSP fragment w/ fragment ID " << frags.back()->fragmentID() << " timestamp is " << timestamp;
+      
+    frags.back()->setTimestamp(timestamp);   
     // Then any overlay-specific quantities next; will need the
     // SSPFragmentWriter class's setter-functions for this
     
     SSPFragmentWriter newfrag(*frags.back());
     
     newfrag.set_hdr_run_number(999);
-    
     newfrag.resize(dataLength);
     std::copy(millislice.begin()+SSPDAQ::MillisliceHeader::sizeInUInts,millislice.end(),newfrag.dataBegin());
     

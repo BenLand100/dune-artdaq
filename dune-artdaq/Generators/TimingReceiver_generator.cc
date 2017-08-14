@@ -224,6 +224,8 @@ bool dune::TimingReceiver::getNext_(artdaq::FragmentPtrs &frags)
         f->setFragmentID( fragment_id() ); // fragment_id is in our base class, fhicl sets it
         f->setUserType( dune::detail::TIMING );
         //  No metadata in this block
+
+	DAQLogger::LogInfo(instance_name_) << "For timing fragment with sequence ID " << ev_counter() << ", setting the timestamp to " << fo.get_tstamp();
         f->setTimestamp(fo.get_tstamp());  // 64-bit number
 
         frags.emplace_back(std::move(f));

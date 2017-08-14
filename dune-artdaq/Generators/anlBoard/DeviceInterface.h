@@ -13,6 +13,7 @@ namespace SSPDAQ{
   struct TriggerInfo{
     unsigned long startTime;
     unsigned long endTime;
+    unsigned long triggerTime;
     unsigned short triggerType;
   };
 
@@ -117,6 +118,8 @@ namespace SSPDAQ{
 
     void SetUseExternalTimestamp(bool val){fUseExternalTimestamp=val;}
 
+    void PrintHardwareState();
+
     std::string GetIdentifier();
 
     bool exception() const { return exception_.load(); }
@@ -139,8 +142,7 @@ namespace SSPDAQ{
 
     //Called by ReadEvents
     //Build millislice from events in buffer and place in fQueue
-    void BuildFragment(unsigned long startTime,unsigned long endTime,std::vector<unsigned int>& fragmentData,
-		       unsigned int triggerType);
+    void BuildFragment(const TriggerInfo& theTrigger,std::vector<unsigned int>& fragmentData);
 
     bool GetTriggerInfo(const SSPDAQ::EventPacket& event,SSPDAQ::TriggerInfo& newTrigger);
 
