@@ -27,6 +27,7 @@
 #define N_SCHAN 1
 #define N_TYPE 5
 
+//namespace TimingSequences {
   void TimingSequence::bufstatus(uhal::HwInterface& hw) {
     uhal::ValVector<uint32_t> m_t = hw.getNode("master.global.tstamp").readBlock(2);
     uhal::ValWord<uint32_t> m_e = hw.getNode("master.partition.evtctr").read();
@@ -75,6 +76,8 @@
       hw.getNode("io.csr.ctrl.pll_rst").write(0);
       hw.dispatch();
 
+      //std::cout << "d1\n";
+
       I2CCore uid_I2C = I2CCore(hw, 10, 5, "io.uid_i2c", 10);
       std::vector<uint32_t> v1 = { 0x01, 0x7f };
       uid_I2C.write(0x21, v1, true);    // [0x01, 0x7f], True)  
@@ -93,6 +96,8 @@
       }
       std::cout << std::endl;
 
+      //std::cout << "d2\n";
+
       I2CCore clock_I2C = I2CCore(hw, 10, 5, "io.pll_i2c", 0);
       si5344 zeClock = si5344(clock_I2C);
       std::vector<uint32_t> res2 = zeClock.getDeviceVersion();
@@ -100,6 +105,8 @@
       zeClock.getPage();
       std::vector<std::pair<uint32_t,uint32_t>> regCfgList = zeClock.parse_clk(serial_no);
       zeClock.writeConfiguration(regCfgList);
+
+      //std::cout << "d3\n";
 
       for (int i=0;i<2;i++) {
         hw.getNode("io.freq.ctrl.chan_sel").write(i);
@@ -110,6 +117,8 @@
         uhal::ValWord<uint32_t> fv = hw.getNode("io.freq.freq.valid").read();
         hw.dispatch();
         std::cout << "Freq: " << i << " " << int(fv) << " " << int(fq) * 119.20928 / 1000000 << std::endl;
+
+        //std::cout << "d4\n";
       }
         
       hw.getNode("io.csr.ctrl.sfp_tx_dis").write(0);
@@ -119,6 +128,8 @@
       hw.dispatch();
       hw.getNode("io.csr.ctrl.rst").write(0);
       hw.dispatch();
+
+    //std::cout << "d5\n";
   }
 
   void TimingSequence::hwstatus(uhal::HwInterface& hw) {
@@ -127,5 +138,6 @@
     hw.dispatch();
     std::cout << "reg = 0x" << std::hex << reg << std::dec << std::endl;
   }
+//};   // End of namespace TimingSequence
 
 

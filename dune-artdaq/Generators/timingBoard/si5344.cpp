@@ -149,7 +149,7 @@ std::vector<std::pair<uint32_t,uint32_t>> si5344::parse_clk(uint64_t serialno) {
   if (serialno == 0x0000d880395e2b2e) { clk = 3; defaulted = 0; } // The one in the pizza box at CERN 
 
 // Here is where I am having trouble with the linker error message.  Just change the next line to #if 1 to see it - Giles 8.8.2017
-#if 1
+#if 0
   // std::string instance_name { "Timing: si5344.cpp" };
   dune::DAQLogger::LogInfo(instancename_) 
             << "Setting up si5344 on timing board serial number 0x" << std::hex 
