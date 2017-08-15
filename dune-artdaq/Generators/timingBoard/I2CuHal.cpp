@@ -93,7 +93,6 @@ void I2CCore::config() {    // INITIALIZATION OF THE I2S MASTER CORE
 bool I2CCore::checkack() {
   bool inprogress = true;
   bool ack = false;
-  //printf("c1.1\n");
   int32_t nloop = 0;
   while (inprogress) {
     //uhal::ValWord<uint32_t> s_cmd_stat = cmd_stat_.read();
@@ -106,7 +105,6 @@ bool I2CCore::checkack() {
     //           ,cmd_stat_.getPath().c_str(),u_cmd_stat,I2CCore_inprogress,I2CCore_recvdack,inprogress,ack);
     nloop++;
   }
-  //printf("c1.3 exit %d\n",nloop);
   return ack;
 }
 
@@ -149,12 +147,9 @@ int32_t I2CCore::write(uint32_t addr, std::vector<uint32_t> data, bool stop) {
   target_.getNode(name_ + ".cmd_stat").write(I2CCore_startcmd | I2CCore_writecmd);
   //cmd_stat_.write(I2CCore_startcmd | I2CCore_writecmd);
   target_.dispatch();
-  //printf("i1.2\n");
   bool ack = this->delayorcheckack();
-  //printf("i1.3\n");  
 
   if (!ack) {
-        //printf("i1.4\n");
     cmd_stat_.write(I2CCore_stopcmd);
     target_.dispatch();
     return nwritten;
@@ -162,31 +157,23 @@ int32_t I2CCore::write(uint32_t addr, std::vector<uint32_t> data, bool stop) {
   nwritten += 1;
   
   for (auto val : data) {
-      //printf("i1.5\n");
     val &= 0xff;
     // #Write slave memory address
     data_.write(val);
-  //printf("i1.6 %4.4x\n",I2CCore_writecmd);
     // #Set Command Register to 0x10 (write)
     cmd_stat_.write(I2CCore_writecmd);
     target_.dispatch();
-  //printf("i1.7\n");
     bool ack = this->delayorcheckack();
     if (!ack) {
-  //printf("i1.8\n");
       cmd_stat_.write(I2CCore_stopcmd);
       target_.dispatch();
       return nwritten;
     }
-  //printf("i1.9\n");
     nwritten += 1;
   }
 
-  //printf("i1.10\n");  
   if (stop) {
-      //printf("i1.11\n");
     cmd_stat_.write(I2CCore_stopcmd);
-  //printf("i1.12\n");
     target_.dispatch();
   }
   
