@@ -1,3 +1,11 @@
+
+include_directories( $ENV{WIB_DIRECTORY}/include )
+
+simple_plugin(WIBReader "generator"
+         $ENV{WIB_DIRECTORY}/lib/libWIB.so
+         artdaq_Application
+)
+
 simple_plugin(TPCMilliSliceSimulatorWithCopy "generator"
   dune-raw-data_Overlays
   artdaq_Application

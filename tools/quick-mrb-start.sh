@@ -64,6 +64,7 @@ while [ -n "${1-}" ];do
         test -n "$leq"&&eval "set -- \"\$lev\" \"\$@\""&&op=`expr "x$op" : 'x\([^=]*\)'`
         case "$op" in
             \?*|h*)     eval $op1chr; do_help=1;;
+	    -wib-installation-dir) wib_installation_dir="$1";;
 	    -uhal-products-dir)   uhal_products_dir="$1";;
 	    -debug)     opt_debug=--debug;;
 	    -noviewer)    opt_noviewer=--noviewer;;
@@ -96,6 +97,19 @@ if [[ "$?" != "0" ]]; then
     echo "Error: command \"${uhal_setup_cmd}\" failed. uhal needs to be set up in order for the timing fragment generator to build. Is the appropriate uhal version located in $uhal_products_dir ?" >&2
     exit 1
 fi
+
+
+if [[ -z $wib_installation_dir ]]; then
+    echo "Must supply the name of the directory which contains the dune-wib source, shared object libraries, etc." >&2
+    exit 1
+fi
+
+if [[ ! -e $wib_installation_dir ]]; then 
+    echo "Unable to find WIB software installation directory ${wib_installation_dir}; exiting..." >&2
+    exit 1
+fi
+
+export WIB_DIRECTORY=$wib_installation_dir
 
 set -u   # complain about uninitialed shell variables - helps development
 
@@ -377,6 +391,7 @@ cd $Base
         export DUNEARTDAQ_BUILD=$MRB_BUILDDIR/dune_artdaq                                                            
         export DUNEARTDAQ_REPO="$ARTDAQ_DEMO_DIR"                                                                        
         export FHICL_FILE_PATH=.:\$DUNEARTDAQ_REPO/tools/fcl:\$FHICL_FILE_PATH                                           
+        export WIB_DIRECTORY=${wib_installation_dir}
         ${uhal_setup_cmd}                                                                                                                          
 # JCF, 11/25/14                                                                                                          
 # Make it easy for users to take a quick look at their output file via "rawEventDump"                                    

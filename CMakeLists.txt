@@ -51,7 +51,7 @@ cet_set_compiler_flags(DIAGS VIGILANT
  WERROR
  NO_UNDEFINED
  EXTRA_FLAGS -pedantic
- EXTRA_CXX_FLAGS -D_GLIBCXX_USE_NANOSLEEP
+ EXTRA_CXX_FLAGS -D_GLIBCXX_USE_NANOSLEEP -Wno-ignored-qualifiers
  )
 else()
 message(STATUS "Not requiring 0MQ libraries be available for build" )
@@ -60,7 +60,7 @@ cet_set_compiler_flags(DIAGS VIGILANT
  WERROR
  NO_UNDEFINED
  EXTRA_FLAGS -pedantic
- EXTRA_CXX_FLAGS -D_GLIBCXX_USE_NANOSLEEP -DZEROMQ_IGNORED
+ EXTRA_CXX_FLAGS -D_GLIBCXX_USE_NANOSLEEP -DZEROMQ_IGNORED -Wno-ignored-qualifiers
  )
 endif()
 
