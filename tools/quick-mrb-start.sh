@@ -40,9 +40,10 @@ env_opts_var=`basename $0 | sed 's/\.sh$//' | tr 'a-z-' 'A-Z_'`_OPTS
 USAGE="\
    usage: `basename $0` [options]
 examples: `basename $0` 
-          `basename $0` --uhal-products-dir <dirname> --dune-raw-data-developer --dune-raw-data-develop-branch
-          `basename $0` --debug --noviewer --dune-raw-data-developer
---uhal-products-dir <dirname> provide location of products directory containing uhal (mandatory)
+          `basename $0` --wib-installation-dir <dirname1> --uhal-products-dir <dirname2> --dune-raw-data-developer --dune-raw-data-develop-branch
+          `basename $0` --wib-installation-dir <dirname1> --uhal-products-dir <dirname2> --debug --noviewer --dune-raw-data-developer
+--wib-installation-dir <dirname1> provide location of installation of WIB software from Boston University (mandatory)
+--uhal-products-dir <dirname2> provide location of products directory containing uhal (mandatory)
 --debug       perform a debug build
 --noviewer    skip installion of artdaq Message Viewer (use if there is no XWindows)
 --not-dune-artdaq-developer  use if you don't have write access to the dune-artdaq repository
@@ -64,8 +65,8 @@ while [ -n "${1-}" ];do
         test -n "$leq"&&eval "set -- \"\$lev\" \"\$@\""&&op=`expr "x$op" : 'x\([^=]*\)'`
         case "$op" in
             \?*|h*)     eval $op1chr; do_help=1;;
-	    -wib-installation-dir) wib_installation_dir="$1";;
 	    -uhal-products-dir)   uhal_products_dir="$1";;
+	    -wib-installation-dir) wib_installation_dir="$1";;
 	    -debug)     opt_debug=--debug;;
 	    -noviewer)    opt_noviewer=--noviewer;;
 	    -not-dune-artdaq-developer) opt_la_nw=1;;
@@ -118,7 +119,7 @@ if [[ $opt_lrd_develop -eq 0 ]]; then
     exit 1
 fi
 
-test -n "${do_help-}" -o $# -ge 2 && echo "$USAGE" && exit
+test -n "${do_help-}" -o $# -ge 3 && echo "$USAGE" && exit
 
 # JCF, 1/16/15
 # Save all output from this script (stdout + stderr) in a file with a
