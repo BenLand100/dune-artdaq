@@ -110,7 +110,8 @@ if [[ ! -e $wib_installation_dir ]]; then
     exit 1
 fi
 
-export WIB_DIRECTORY=$wib_installation_dir
+# If WIB_DIRECTORY changes here, make sure it also changes in setupDUNEARTDAQ
+export WIB_DIRECTORY=$wib_installation_dir/WIB
 
 set -u   # complain about uninitialed shell variables - helps development
 
@@ -392,7 +393,7 @@ cd $Base
         export DUNEARTDAQ_BUILD=$MRB_BUILDDIR/dune_artdaq                                                            
         export DUNEARTDAQ_REPO="$ARTDAQ_DEMO_DIR"                                                                        
         export FHICL_FILE_PATH=.:\$DUNEARTDAQ_REPO/tools/fcl:\$FHICL_FILE_PATH                                           
-        export WIB_DIRECTORY=${wib_installation_dir}
+        export WIB_DIRECTORY=${wib_installation_dir}/WIB
         ${uhal_setup_cmd}                                                                                                                          
 # JCF, 11/25/14                                                                                                          
 # Make it easy for users to take a quick look at their output file via "rawEventDump"                                    
