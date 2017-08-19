@@ -1,10 +1,4 @@
 
-include_directories( $ENV{WIB_DIRECTORY}/include )
-
-simple_plugin(WIBReader "generator"
-         $ENV{WIB_DIRECTORY}/lib/libWIB.so
-         artdaq_Application
-)
 
 simple_plugin(TPCMilliSliceSimulatorWithCopy "generator"
   dune-raw-data_Overlays
@@ -119,3 +113,14 @@ simple_plugin(TimingReceiver "generator"
   ${UHAL_UHAL}
   ${UHAL_LOG}
   )
+
+if ( DEFINED ENV{WIB_DIRECTORY} )
+
+include_directories( $ENV{WIB_DIRECTORY}/include )
+
+simple_plugin(WIBReader "generator"
+         $ENV{WIB_DIRECTORY}/lib/libWIB.so
+         artdaq_Application
+)
+
+endif()

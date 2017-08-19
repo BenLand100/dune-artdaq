@@ -101,17 +101,20 @@ fi
 
 
 if [[ -z $wib_installation_dir ]]; then
-    echo "Must supply the name of the directory which contains the dune-wib source, shared object libraries, etc." >&2
+    echo "Must supply the name of the directory which contains the dune-wib source, shared object libraries, etc. (or if not desired, use \"IGNORED\" for the name)" >&2
     exit 1
 fi
 
-if [[ ! -e $wib_installation_dir ]]; then 
-    echo "Unable to find WIB software installation directory ${wib_installation_dir}; exiting..." >&2
-    exit 1
-fi
+if [[ $wib_installation_dir != "IGNORED" ]]; then
 
-# If WIB_DIRECTORY changes here, make sure it also changes in setupDUNEARTDAQ
-export WIB_DIRECTORY=$wib_installation_dir/WIB
+    if [[ -e $wib_installation_dir ]]; then
+	export WIB_DIRECTORY=$wib_installation_dir/WIB
+    else
+	echo "Unable to find WIB software installation directory ${wib_installation_dir}; exiting..." >&2
+	exit 1
+    fi
+
+fi
 
 set -u   # complain about uninitialed shell variables - helps development
 
@@ -393,7 +396,7 @@ cd $Base
         export DUNEARTDAQ_BUILD=$MRB_BUILDDIR/dune_artdaq                                                            
         export DUNEARTDAQ_REPO="$ARTDAQ_DEMO_DIR"                                                                        
         export FHICL_FILE_PATH=.:\$DUNEARTDAQ_REPO/tools/fcl:\$FHICL_FILE_PATH                                           
-        export WIB_DIRECTORY=${wib_installation_dir}/WIB
+        export WIB_DIRECTORY=$WIB_DIRECTORY
         ${uhal_setup_cmd}                                                                                                                          
 # JCF, 11/25/14                                                                                                          
 # Make it easy for users to take a quick look at their output file via "rawEventDump"                                    
