@@ -35,14 +35,13 @@ endif()
 include(CetCMakeEnv)
 cet_cmake_env()
 
-# Set ZEROMQ_IGNORED to either "TRUE" or "FALSE", depending on whether
-# 0MQ is available on your system 
 
-# JCF, Jan-3-2017
+# JCF, Aug-19-2017
 
-# Since we're no longer using 35ton RunControl, disable 0MQ by default 
+# Since the inhibit functionality requires 0MQ, leave ZEROMQ_IGNORED
+# set to "FALSE"
 
-set (ZEROMQ_IGNORED "TRUE")
+set (ZEROMQ_IGNORED "FALSE")
 
 if (NOT ZEROMQ_IGNORED) 
 message(STATUS "Requiring 0MQ libraries be available for build" )
