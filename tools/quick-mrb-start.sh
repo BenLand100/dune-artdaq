@@ -380,6 +380,14 @@ if ! $bad_network && [[ "x${opt_noviewer-}" == "x" ]] ; then
 fi
 
 ARTDAQ_DEMO_DIR=$Base/srcs/dune_artdaq
+
+
+wibcmd=""
+
+if [[ ${WIB_DIRECTORY:-xx} != "xx" ]]; then
+    wibcmd="export WIB_DIRECTORY=$WIB_DIRECTORY"
+fi
+
 cd $Base
     cat >setupDUNEARTDAQ <<-EOF
        echo # This script is intended to be sourced.                                                                    
@@ -396,7 +404,7 @@ cd $Base
         export DUNEARTDAQ_BUILD=$MRB_BUILDDIR/dune_artdaq                                                            
         export DUNEARTDAQ_REPO="$ARTDAQ_DEMO_DIR"                                                                        
         export FHICL_FILE_PATH=.:\$DUNEARTDAQ_REPO/tools/fcl:\$FHICL_FILE_PATH                                           
-        export WIB_DIRECTORY=$WIB_DIRECTORY
+        ${wibcmd}
         ${uhal_setup_cmd}                                                                                                                          
 # JCF, 11/25/14                                                                                                          
 # Make it easy for users to take a quick look at their output file via "rawEventDump"                                    
