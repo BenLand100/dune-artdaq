@@ -41,7 +41,7 @@ cet_cmake_env()
 # Since the inhibit functionality requires 0MQ, leave ZEROMQ_IGNORED
 # set to "FALSE"
 
-set (ZEROMQ_IGNORED "FALSE")
+set (ZEROMQ_IGNORED "TRUE")
 
 if (NOT ZEROMQ_IGNORED) 
 message(STATUS "Requiring 0MQ libraries be available for build" )
