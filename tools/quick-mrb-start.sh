@@ -80,6 +80,12 @@ while [ -n "${1-}" ];do
 done
 eval "set -- $args \"\$@\""; unset args aa
 
+which lsb_release 2>&1 > /dev/null
+if [[ "$?" != "0" ]]; then
+    echo "According to the \"which\" command, lsb_release is not available - this needs to be installed in order for dune-artdaq installation to work" >&2
+    exit 1
+fi
+
 if [[ -z $uhal_products_dir ]]; then
     echo "Must supply the name of the products directory containing the uhal package needed for the timing fragment generator" >&2
     exit 1
