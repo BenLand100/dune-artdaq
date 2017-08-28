@@ -3,6 +3,7 @@
 #include <sys/time.h>
 #include <unistd.h>
 
+#include "stdint.h"
 #include "InhibitGet.h"
 
 struct InhibitGet_vars {
