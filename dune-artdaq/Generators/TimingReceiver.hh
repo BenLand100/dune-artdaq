@@ -110,7 +110,7 @@ namespace dune {
 
     // Items that are mostly FHICL parameters being poked down to the hardware
     // or other software components
-    uint32_t inhibitget_timer;  // Time in us before we give up on the InhibitGet and
+    uint32_t inhibitget_timer_; // Time in us before we give up on the InhibitGet and
                                 // just start the run.  A value over 10000000 (10s) 
                                 // is treated as infinite time wait (which should
                                 // be used for production running)
@@ -130,6 +130,19 @@ namespace dune {
                            // 1=Also reports throttling changes that go to hardware, 
                            // 2=calls the bufstatus and hwstatus during init, 
                            // 3=Debug message for each trigger and all throttling data
+    uint32_t initsoftness_; // Controls whether some of the initialisation sequence is bypassed to
+                            // workaround inability of other systems (e.g. WIB) to recover from a
+                            // clock reset quickly.
+                            // 0 = full reset, 3 =  just read a few things, 4 = bypass initialisation completely
+    uint32_t fw_version_active_;   // Default 3 for v3c, Activiate v5e features by setting to 5
+    uint32_t fake_spill_length_;   // If zero, means no fake spills
+    uint32_t fake_spill_cycle_;    // If zero, means no fake spills
+    uint32_t main_trigger_enable_; // Enable triggers from trigger board (penn)
+    uint32_t calib_trigger_enable_; // Enable internal triggers (will become calib triggers)
+    uint32_t partition_;            // Partition number of this partition [Partition 0 controls 
+                                    // the overall functions]
+
+    std::string zmq_conn_;  // String specifying the zmq connection to subscribe for inhibit information
   };
 }
 

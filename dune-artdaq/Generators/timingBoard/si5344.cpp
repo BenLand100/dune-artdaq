@@ -148,18 +148,30 @@ std::vector<std::pair<uint32_t,uint32_t>> si5344::parse_clk(uint64_t serialno) {
   if (serialno == 0x0000112233445566) { clk = 3; defaulted = 0; }
   if (serialno == 0x0000d880395e2b2e) { clk = 3; defaulted = 0; } // The one in the pizza box at CERN 
 
-// Here is where I am having trouble with the linker error message.  Just change the next line to #if 1 to see it - Giles 8.8.2017
-#if 1
-  // std::string instance_name { "Timing: si5344.cpp" };
+  if (serialno == 0x0000d880395e720b) { clk = 0; defaulted = 0; }
+  if (serialno == 0x0000d880395e501a) { clk = 0; defaulted = 0; }
+  if (serialno == 0x0000d880395e50b8) { clk = 0; defaulted = 0; }
+  if (serialno == 0x0000d880395e501b) { clk = 0; defaulted = 0; }
+  if (serialno == 0x0000d880395e7201) { clk = 0; defaulted = 0; }
+  if (serialno == 0x0000d880395e4fcc) { clk = 0; defaulted = 0; }
+  if (serialno == 0x0000d880395e5069) { clk = 0; defaulted = 0; }
+  if (serialno == 0x0000d880395e7206) { clk = 0; defaulted = 0; }
+
+  if (serialno == 0x0000d880395e1c86) { clk = 3; defaulted = 0; }
+  if (serialno == 0x0000d880395e2630) { clk = 3; defaulted = 0; }
+  if (serialno == 0x0000d880395e262b) { clk = 3; defaulted = 0; }
+  if (serialno == 0x0000d880395e2b38) { clk = 3; defaulted = 0; }
+  if (serialno == 0x0000d880395e1a6a) { clk = 3; defaulted = 0; }
+  if (serialno == 0x0000d880395e36ae) { clk = 3; defaulted = 0; }
+  if (serialno == 0x0000d880395e2b2e) { clk = 3; defaulted = 0; }
+  if (serialno == 0x0000d880395e2b33) { clk = 3; defaulted = 0; }
+  if (serialno == 0x0000d880395e1c81) { clk = 3; defaulted = 0; }
+
   dune::DAQLogger::LogInfo(instancename_) 
             << "Setting up si5344 on timing board serial number 0x" << std::hex 
             << serialno << " using PDTS000" << std::dec << clk 
             << ((defaulted)? " s/n unknown, defaulted" : " selected from s/n") 
             << std::endl;
-#else
-  // fudge the compiler unused variable error
-  if (defaulted) { }
-#endif
   if (clk == 3) {
     return this->parse_clk3();
   } else {

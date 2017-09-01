@@ -53,15 +53,18 @@ dune::TimingReceiver::TimingReceiver(fhicl::ParameterSet const & ps):
   ,stopping_flag_(0)
   ,throttling_state_(0)
   ,stopping_state_(0)
-  ,inhibitget_timer(3000000)    // 3 secs TODO: Should make this a ps.get()
+  ,inhibitget_timer_(ps.get<uint32_t>("inhibit_get_timer",5000000))    // 3 secs TODO: Should make this a ps.get()
   ,logFiddle_(0)             // This is a fudge, see explanation above  
   ,connectionsFile_(ps.get<std::string>("connections_file", "/home/artdaq1/giles/a_vm_mbp/dune-artdaq/Generators/timingBoard/connections.xml"))
   ,bcmc_( "file://" + connectionsFile_ )   // a string (non-const)
   ,connectionManager_(bcmc_)
-  ,hw_(connectionManager_.getDevice("DUNE_FMC_RX"))
+  ,hw_(connectionManager_.getDevice(ps.get<std::string>("hardware_select","DUNE_PRIMARY")))
   ,poisson_(ps.get<uint32_t>("poisson",0))
   ,divider_(ps.get<uint32_t>("divider",0xb))
   ,debugprint_(ps.get<uint32_t>("debug_print",0))
+  ,initsoftness_(ps.get<uint32_t>("init_softness",0))
+  ,fw_version_active_(ps.get<uint32_t>("fw_version_active",3))
+  ,zmq_conn_(ps.get<std::string>("zmq_connection","tcp://pddaq-gen05-daq0:5566"))
 {
     int board_id = 0; //:GB  ps.get<int>("board_id", 0);
     std::stringstream instance_name_ss;
@@ -71,14 +74,14 @@ dune::TimingReceiver::TimingReceiver(fhicl::ParameterSet const & ps):
     instance_name_for_metrics_ = "";
 
     // Set up clock chip etc on board
-    TimingSequence::hwinit(hw_,"unused parameter");
+    TimingSequence::hwinit(hw_,initsoftness_);
     if (debugprint_ > 1) {
       TimingSequence::hwstatus(hw_);
       TimingSequence::bufstatus(hw_);
     }
 
     // Set up connection to Inhibit Master
-    InhibitGet_init(inhibitget_timer);
+    InhibitGet_init(zmq_conn_.c_str(),inhibitget_timer_);
 
     DAQLogger::LogInfo(instance_name_) << "Done configure (end of constructor)\n";
 }
@@ -111,7 +114,7 @@ void dune::TimingReceiver::start(void)
     if (debugprint_ > 1) {
       TimingSequence::bufstatus(hw_);
     }
-    InhibitGet_retime(inhibitget_timer);
+    InhibitGet_retime(inhibitget_timer_);
 
     // This is not the final enable.  That is done in getNext_() below. 
     hw_.getNode("master.scmd_gen.chan_ctrl.en").write(1);
@@ -214,7 +217,7 @@ bool dune::TimingReceiver::getNext_(artdaq::FragmentPtrs &frags)
                        ,word[0],word[1],word[2],word[3],word[4],word[5]);
 #else
         if (debugprint_ > 2) {
-          //xx  DAQLogger::LogDebug(instance_name_) << fo;
+          DAQLogger::LogDebug(instance_name_) << fo;
         }
 #endif
 
@@ -249,7 +252,7 @@ bool dune::TimingReceiver::getNext_(artdaq::FragmentPtrs &frags)
       uint32_t bit = 1;                    // If we change, this is the value to set. 1=running 
       if (tf == 0) break;                  // No change, so no need to do anything
       if (debugprint_ > 2) {
-        //xx DAQLogger::LogDebug(instance_name_) << "Received value " << tf << " from InhibitGet_get()\n";
+        DAQLogger::LogDebug(instance_name_) << "Received value " << tf << " from InhibitGet_get()\n";
       }
       if (tf == 1) {                       // Want to be running
         if (throttling_state_ != 1) break; // No change needed
@@ -258,13 +261,13 @@ bool dune::TimingReceiver::getNext_(artdaq::FragmentPtrs &frags)
         if (throttling_state_ == 1) break; // Already stopped, no change needed
         bit = 0;                           // To set stopped
       } else {                             // Should never happen, InhibitGet_get returned unknown value.
-        printf("TimingReceiver_generator.cc: Logic error should not happen\n");
+        DAQLogger::LogWarning(instance_name_) << "TimingReceiver_generator.cc: Logic error should not happen";
         break;                             // Treat as no change
       }
       if (debugprint_ > 0) { 
-        //xx DAQLogger::LogInfo(instance_name_) << "Throttle state change: Writing " << bit 
-        //xx                                    << " to trig_en.  [Throttling state was " << throttling_state_
-        //xx                                    << "] (1 means enabled)\n";
+        DAQLogger::LogInfo(instance_name_) << "Throttle state change: Writing " << bit 
+                                           << " to trig_en.  [Throttling state was " << throttling_state_
+                                           << "] (1 means enabled)\n";
       }
       hw_.getNode("master.partition.csr.ctrl.trig_en").write(bit);  // Set XOFF or XON as requested
       hw_.dispatch();

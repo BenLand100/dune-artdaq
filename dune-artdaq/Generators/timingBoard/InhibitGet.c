@@ -15,11 +15,11 @@ struct InhibitGet_vars {
 
 static struct InhibitGet_vars gIGhandle;
 
-void InhibitGet_init(uint32_t timetoignore) {
+void InhibitGet_init(const char *zmq_conn, uint32_t timetoignore) {
   //  Prepare our context and publisher
   gIGhandle.context = zmq_ctx_new ();
   gIGhandle.subscriber = zmq_socket (gIGhandle.context, ZMQ_SUB);
-  int rc = zmq_connect (gIGhandle.subscriber, "tcp://pddaq-gen05-daq0:5566");
+  int rc = zmq_connect (gIGhandle.subscriber, zmq_conn);  // "tcp://pddaq-gen05-daq0:5566"
   
   char filter[] = "INHIBITMSG_";
   const int hwm=1;
@@ -95,7 +95,7 @@ int main(){
   int i;
   int timeToIgnore = 50000000;   // Units of microsecs
 
-  InhibitGet_init(timeToIgnore);
+  InhibitGet_init("tcp://pddaq-gen05-daq0:5566", timeToIgnore);
 
   for (i=0;i<100;i++) {
     uint32_t g = InhibitGet_get();
