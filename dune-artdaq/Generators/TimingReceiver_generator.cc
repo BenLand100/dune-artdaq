@@ -64,14 +64,19 @@ dune::TimingReceiver::TimingReceiver(fhicl::ParameterSet const & ps):
   ,debugprint_(ps.get<uint32_t>("debug_print",0))
   ,initsoftness_(ps.get<uint32_t>("init_softness",0))
   ,fw_version_active_(ps.get<uint32_t>("fw_version_active",3))
+  ,fake_spill_cycle_(ps.get<uint32_t>("fake_spill_cycle",100))
+  ,fake_spill_length_(ps.get<uint32_t>("fake_spill_length",50))
+  ,main_trigger_enable_(ps.get<uint32_t>("main_trigger_enable",0))
+  ,calib_trigger_enable_(ps.get<uint32_t>("calib_trigger_enable",1))
+  ,trigger_mask_(ps.get<uint32_t>("trigger_mask",0xff))
+  ,partition_(ps.get<uint32_t>("partition_",0))
+  ,end_run_wait_(ps.get<uint32_t>("end_run_wait",1000))
   ,zmq_conn_(ps.get<std::string>("zmq_connection","tcp://pddaq-gen05-daq0:5566"))
 {
     int board_id = 0; //:GB  ps.get<int>("board_id", 0);
     std::stringstream instance_name_ss;
     instance_name_ss << instance_name_ << board_id;
     instance_name_ = instance_name_ss.str();
-
-    instance_name_for_metrics_ = "";
 
     // Set up clock chip etc on board
     TimingSequence::hwinit(hw_,initsoftness_);
@@ -96,8 +101,14 @@ void dune::TimingReceiver::start(void)
     stopping_state_   = 0;
     throttling_state_ = 1;    // 0 Causes it to start triggers immediately, 1 means wait for InhibitMaster to release
 
-    hw_.getNode("master.partition.csr.ctrl.part_en").write(1);
 
+    // master.global.csr.ctrl.part_sel   set to partition_    (not implemented yet)
+    // disable partition 
+
+
+
+    hw_.getNode("master.partition.csr.ctrl.part_en").write(0);
+    // Make it so only partition 0 does the scmd_gen stuff here
     hw_.getNode("master.scmd_gen.ctrl.en").write(1);
     hw_.getNode("master.partition.csr.ctrl.cmd_mask").write(0x000f);
     uint32_t bit = (throttling_state_ == 0) ? 1 : 0;
@@ -108,6 +119,8 @@ void dune::TimingReceiver::start(void)
     uint32_t pat = (poisson_ != 0) ? 1 : 0;
     hw_.getNode("master.scmd_gen.chan_ctrl.patt").write(pat);       // 1 = poisson, 0=fixed interval
     hw_.getNode("master.partition.csr.ctrl.buf_en").write(1);
+    hw_.getNode("master.partition.csr.ctrl.part_en").write(1);
+
     // hw.getNode("endpoint.csr.ctrl.buf_en").write(1)
     hw_.dispatch();
 
@@ -119,6 +132,8 @@ void dune::TimingReceiver::start(void)
     // This is not the final enable.  That is done in getNext_() below. 
     hw_.getNode("master.scmd_gen.chan_ctrl.en").write(1);
     hw_.dispatch();
+
+    this->reset_met_variables(false);
 }
 
 
@@ -171,11 +186,14 @@ bool dune::TimingReceiver::getNext_(artdaq::FragmentPtrs &frags)
     if (stopping_state_ == 0 && stopping_flag_ != 0) {
       hw_.getNode("master.partition.csr.ctrl.part_en").write(0); // Disable the run first (stops)
       hw_.getNode("master.partition.csr.ctrl.trig_en").write(0); // Now unset the trigger_enable (XOFF)
+
+ // Order is first (1) disable trig_en, (2) request run stop, (3) wait for run to stop, (4) check no more to read from buffer, (5) disable buff, (6) disable part
+
       hw_.dispatch();
       throttling_state_ = 0;  // Note for now, we remove XOFF immediately at end
                               // of run, discuss with hw people if that is right.
       stopping_state_ = 1;    // HW has been told to stop, may have more data
-      usleep(10);             // Wait the max time spec for hardware to push more events 
+      usleep(end_run_wait_);  // Wait the max time spec for hardware to push more events 
                               // after a run has stopped
     }
 
@@ -235,6 +253,12 @@ bool dune::TimingReceiver::getNext_(artdaq::FragmentPtrs &frags)
         ev_counter_inc();
         havedata = false;    // Combined with the while above, we could make havedata an integer 
                              // and read multiple events at once (so use "havedata -= 6;")
+        
+        this->update_met_variables(fo);
+
+        // TODO:  Update when we know what the spill start type is
+        if (fo.get_scmd() == 0) this->reset_met_variables(true);  // true = only per-spill variables 
+
       }  // end while
     } else if (stopping_state_ > 0) { // We now know there is no more data at the stop
       stopping_state_ = 2;            // This causes return to be false (no more data)
@@ -279,12 +303,63 @@ bool dune::TimingReceiver::getNext_(artdaq::FragmentPtrs &frags)
     ++counter;
   }
 
+  this->send_met_variables();
+
   if (stopping_state_ == 2) return false;    // stopping_state = 2 means we know there is no more data 
   return true;   // Note: This routine can return (with a false) from inside loop (when 
                  // run has stopped and we know there is no more data)
 }
 
 bool dune::TimingReceiver::startOfDatataking() { return true; }
+
+// Local "private" methods
+void dune::TimingReceiver::reset_met_variables(bool onlyspill) {
+
+  // If onlyspill, only reset the in-spill variables ...
+  met_sevent_ = 0;
+  met_sintmin_ = 2000000000;
+  met_sintmax_ = 0;
+  if (onlyspill) return;
+
+  // ... otherwise reset them all
+  met_event_ = 0;
+  met_tstamp_ = 0;
+  met_rintmin_ = met_sintmin_;
+  met_rintmax_ = met_sintmax_;
+}
+
+void dune::TimingReceiver::update_met_variables(dune::TimingFragment& fo) {
+
+  // Update variables for met
+  met_event_ = fo.get_evtctr();
+  uint64_t told = met_tstamp_;   // Previous time stamp
+  met_tstamp_ = fo.get_tstamp();
+  int64_t diff = met_tstamp_ - told;
+  if (diff >  2000000000) diff =  2000000000;  // Make value fit in int32 for metric
+  if (diff < -2000000000) diff = -2000000000; 
+  met_sevent_++;
+  if (met_rintmin_ > diff) met_rintmin_ = diff;
+  if (met_sintmin_ > diff) met_sintmin_ = diff;
+  if (met_rintmax_ < diff) met_rintmax_ = diff;
+  if (met_sintmax_ < diff) met_sintmax_ = diff;
+}
+
+void dune::TimingReceiver::send_met_variables() {
+
+// Metrics:  Parameters to the sendMetric call are:
+//  (1) name, (2) value (string, int, double, float or long uint), (3) units, 
+//  (4) level, (5) bool accumulate (default true), (6) ... more with good defaults
+
+// All our variables should be int, except the timestamp which is long uint
+  artdaq::Globals::metricMan_->sendMetric("TimingSys Events",            met_event_,  "events", 1, false);
+  const long unsigned int ts = met_tstamp_;
+  artdaq::Globals::metricMan_->sendMetric("TimingSys TimeStamp",         ts,           "ticks", 1, false);
+  artdaq::Globals::metricMan_->sendMetric("TimingSys Events spill",      met_sevent_, "events", 1, false);
+  artdaq::Globals::metricMan_->sendMetric("TimingSys MinInterval run",   met_rintmin_, "ticks", 1, false);
+  artdaq::Globals::metricMan_->sendMetric("TimingSys MinInterval spill", met_sintmin_, "ticks", 1, false);
+  artdaq::Globals::metricMan_->sendMetric("TimingSys MaxInterval run",   met_rintmax_, "ticks", 1, false);
+  artdaq::Globals::metricMan_->sendMetric("TimingSys MaxInterval spill", met_sintmax_, "ticks", 1, false);
+}
 
 // The following macro is defined in artdaq's GeneratorMacros.hh header
 DEFINE_ARTDAQ_COMMANDABLE_GENERATOR(dune::TimingReceiver) 

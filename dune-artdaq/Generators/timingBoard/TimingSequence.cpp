@@ -88,7 +88,7 @@ void TimingSequence::hwinit(uhal::HwInterface& hw, uint32_t init_softness) {
   std::string instancename = "Timing";
 #endif
 
-  if (init_softness < 1) {  // soft_rst
+  if (init_softness < 1) {  // soft_rst:   Does not take clock away, but sets the registers to 'factory' defaults
     std::cout << "hw.id() = " << hw.id() << std::endl;
     uhal::ValWord<uint32_t> reg = hw.getNode("io.csr.stat").read();
     hw.getNode("io.csr.ctrl.soft_rst").write(1);
@@ -99,10 +99,11 @@ void TimingSequence::hwinit(uhal::HwInterface& hw, uint32_t init_softness) {
     if (reg) { /* Defeat compiler unused variable warning */ }
 #endif 
   }
+// write to 'nuke' to completely reset.   This resets so much uhal will not get a reply.   use with real caution.
 
   std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 
-  if (init_softness < 1) {   // pll_rst
+  if (init_softness < 1) {   // pll_rst.   This will remove the 50MHz clock (end point will see this and say not ready)
       hw.getNode("io.csr.ctrl.pll_rst").write(1);
       hw.dispatch();
       hw.getNode("io.csr.ctrl.pll_rst").write(0);
@@ -111,7 +112,8 @@ void TimingSequence::hwinit(uhal::HwInterface& hw, uint32_t init_softness) {
 
   I2CCore uid_I2C = I2CCore(hw, 10, 5, "io.uid_i2c", 10);
 
-  if (init_softness < 1) {   // en_lines
+// Does the bus switch (depends on enclstre or kc705 boards), get access to UID chip (to know how to program PLL)
+  if (init_softness < 4) {   // en_lines    [This assumes it is a n enclustre]   missing write (0x0, [8*0x0])
       std::vector<uint32_t> v1 = { 0x01, 0x7f };
       uid_I2C.write(0x21, v1, true);    // [0x01, 0x7f], True)  
       std::vector<uint32_t> v2 = { 0x01 };
@@ -141,7 +143,7 @@ void TimingSequence::hwinit(uhal::HwInterface& hw, uint32_t init_softness) {
 #endif
   }
 
-  if (init_softness < 2) {   // wr_clk_list
+  if (init_softness < 1) {   // wr_clk_list
       I2CCore clock_I2C = I2CCore(hw, 10, 5, "io.pll_i2c", 0);
       si5344 zeClock = si5344(clock_I2C);
       std::vector<uint32_t> res2 = zeClock.getDeviceVersion();
@@ -169,12 +171,12 @@ void TimingSequence::hwinit(uhal::HwInterface& hw, uint32_t init_softness) {
       }
   }
 
-  if (init_softness < 3) {   // sfp_tx_dis        
+  if (init_softness < 4) {   // sfp_tx_dis        
       hw.getNode("io.csr.ctrl.sfp_tx_dis").write(0);
       hw.dispatch();
   }
 
-  if (init_softness < 3) {   // ctrl.rst
+  if (init_softness < 1) {   // ctrl.rst.   Clock is going, now have to reset everything in 50MHz domain (destructive)
       hw.getNode("io.csr.ctrl.rst").write(1);
       hw.dispatch();
       hw.getNode("io.csr.ctrl.rst").write(0);

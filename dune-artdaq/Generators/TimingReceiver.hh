@@ -49,14 +49,17 @@ namespace dune {
 using namespace uhal;
 
 namespace dune {    
+  class TimingFragment;   // Forward definition: trying to not need to include the overlay class header in this .hh file
+}
 
+namespace dune {
   class TimingReceiver : public artdaq::CommandableFragmentGenerator {
   public:
     explicit TimingReceiver(fhicl::ParameterSet const & ps);
 
   protected:
     std::string metricsReportingInstanceName() const {
-      return instance_name_for_metrics_;
+      return "";
     }
 
   private:
@@ -90,7 +93,6 @@ namespace dune {
     std::string report() override { return ""; }
 
     std::string instance_name_;
-    std::string instance_name_for_metrics_;
 
     // stopping_flag_ : This is written in stopNoMutex() and
     //     again in stop().  It is read inside the getNext_() while
@@ -123,6 +125,7 @@ namespace dune {
     uhal::ConnectionManager connectionManager_; 
     uhal::HwInterface hw_;
 
+// Things that are Fhicl parameters
     uint32_t poisson_;  // 0=Set fixed rate, 1= Poission distributed
     uint32_t divider_;  // The divider to get the rate = 50MHz/2**(12+divider_)   [e.g. 0xb=5.9Hz]
     uint32_t debugprint_;  // Controls the printing of stuff as info messages. 
@@ -135,14 +138,30 @@ namespace dune {
                             // clock reset quickly.
                             // 0 = full reset, 3 =  just read a few things, 4 = bypass initialisation completely
     uint32_t fw_version_active_;   // Default 3 for v3c, Activiate v5e features by setting to 5
-    uint32_t fake_spill_length_;   // If zero, means no fake spills
-    uint32_t fake_spill_cycle_;    // If zero, means no fake spills
+    uint32_t fake_spill_cycle_;   //
+    uint32_t fake_spill_length_;    // If zero, means no fake spills
     uint32_t main_trigger_enable_; // Enable triggers from trigger board (penn)
     uint32_t calib_trigger_enable_; // Enable internal triggers (will become calib triggers)
+    uint32_t trigger_mask_;         // Trigger mask (not used yet)
     uint32_t partition_;            // Partition number of this partition [Partition 0 controls 
                                     // the overall functions]
+    uint32_t end_run_wait_;         // Number of microsecs to wait at the end of a run before looking for last event
 
     std::string zmq_conn_;  // String specifying the zmq connection to subscribe for inhibit information
+
+// Things for metrics (need to use int because the metrics send class signature uses 'int')
+    int met_event_;    // Current event
+    uint64_t met_tstamp_;   // Current timestamp (in 64-bit, may need to truncate to 32 bits to post to metrics
+    int met_sevent_;   // Number of events this spill
+    int met_rintmin_;  // Min interval between events this run
+    int met_sintmin_;  // Min interval between events this spill
+    int met_rintmax_;  // Max interval between events this run
+    int met_sintmax_;  // Max interval between events this spill
+
+// Internal functions
+    void reset_met_variables(bool onlyspill=false);   // If onlyspill, only reset the in-spill variables
+    void update_met_variables(dune::TimingFragment& fo); // Update variables for met
+    void send_met_variables();    // Send the variables to the metrics system
   };
 }
 
