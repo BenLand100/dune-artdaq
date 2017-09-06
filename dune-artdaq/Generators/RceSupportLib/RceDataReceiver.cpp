@@ -24,7 +24,9 @@ struct RceMicrosliceHeader {
   }
 
   uint32_t get_data_size() const {
-     return (raw_header >> 8) & 0xffffff;
+     uint32_t data_size = (raw_header >> 8) & 0xffffff;
+     data_size *= sizeof(uint64_t);
+     return data_size;
   }
 
   uint32_t get_seq_id() const {
@@ -491,13 +493,15 @@ void dune::RceDataReceiver::handle_received_data(std::size_t length) {
         microslice_size_ = header->get_data_size();
         sequence_id = header->get_seq_id();
 	
-	RECV_DEBUG(0) << "Header:" << std::hex << header->raw_header 
-		      << " Identifier: " << std::hex << header->word0
-		      << " Timestamp: " << std::hex  << header->word1;
+    	RECV_DEBUG(0)
+            << "Header:" << std::hex << header->raw_header
+            << " Identifier: " << std::hex << header->word0
+            << " Timestamp: " << std::hex  << header->word1;
 	
 
-        RECV_DEBUG(2) << "Got header for microslice with size "
-                      << microslice_size_ << " sequence ID " << sequence_id;
+        RECV_DEBUG(2)
+            << "Got header for microslice with size "
+            << microslice_size_ << " sequence ID " << sequence_id;
 
         // Validate the sequence ID - should be incrementing monotonically
         if (sequence_id_initialised_ &&
