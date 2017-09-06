@@ -35,6 +35,8 @@ namespace dune {
 		void send_xml(std::string const & xml_frag);
 		template<class T> void set_param(std::string const & name, T const & value, std::string const & );
 
+        std::string read_status();
+
 	private:
 
 		std::size_t send(std::string const & send_str);
