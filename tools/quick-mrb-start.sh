@@ -107,19 +107,15 @@ fi
 
 
 if [[ -z $wib_installation_dir ]]; then
-    echo "Must supply the name of the directory which contains the dune-wib source, shared object libraries, etc. (or if not desired, use \"IGNORED\" for the name)" >&2
+    echo "Must supply the name of the directory which contains the dune-wib source, shared object libraries, etc." >&2
     exit 1
 fi
 
-if [[ $wib_installation_dir != "IGNORED" ]]; then
-
-    if [[ -e $wib_installation_dir ]]; then
-	export WIB_DIRECTORY=$wib_installation_dir/WIB
-    else
-	echo "Unable to find WIB software installation directory ${wib_installation_dir}; exiting..." >&2
-	exit 1
-    fi
-
+if [[ -e $wib_installation_dir ]]; then
+    export WIB_DIRECTORY=$wib_installation_dir/WIB
+else
+    echo "Unable to find WIB software installation directory ${wib_installation_dir}; exiting..." >&2
+    exit 1
 fi
 
 set -u   # complain about uninitialed shell variables - helps development

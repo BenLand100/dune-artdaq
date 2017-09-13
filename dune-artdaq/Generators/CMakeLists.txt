@@ -116,11 +116,16 @@ simple_plugin(TimingReceiver "generator"
 
 if ( DEFINED ENV{WIB_DIRECTORY} )
 
-include_directories( $ENV{WIB_DIRECTORY}/include )
+include_directories( $ENV{WIB_DIRECTORY}/WIB/include )
 
 simple_plugin(WIBReader "generator"
-         $ENV{WIB_DIRECTORY}/lib/libWIB.so
+         $ENV{WIB_DIRECTORY}/WIB/lib/libWIB.so
+         $ENV{WIB_DIRECTORY}/exception/lib/libToolException.so
          artdaq_Application
 )
+
+else()
+
+message( FATAL_ERROR "You need an environment variable called WIB_DIRECTORY whose value is the directory of the WIB code installation" )
 
 endif()
