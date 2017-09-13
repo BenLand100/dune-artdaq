@@ -112,7 +112,7 @@ if [[ -z $wib_installation_dir ]]; then
 fi
 
 if [[ -e $wib_installation_dir ]]; then
-    export WIB_DIRECTORY=$wib_installation_dir/WIB
+    export WIB_DIRECTORY=$wib_installation_dir
 else
     echo "Unable to find WIB software installation directory ${wib_installation_dir}; exiting..." >&2
     exit 1
