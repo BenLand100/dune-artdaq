@@ -122,6 +122,7 @@ simple_plugin(WIBReader "generator"
          $ENV{WIB_DIRECTORY}/WIB/lib/libWIB.so
          $ENV{WIB_DIRECTORY}/exception/lib/libToolException.so
          artdaq_Application
+	 dune-artdaq_DAQLogger
 )
 
 else()
