@@ -16,7 +16,7 @@
 
 namespace TimingSequence {
   void bufstatus(uhal::HwInterface& hw);
-  void hwinit(uhal::HwInterface& hw, std::string pll_cfg);
+  void hwinit(uhal::HwInterface& hw, uint32_t init_softness);
   void hwstatus(uhal::HwInterface& hw);
 }
 

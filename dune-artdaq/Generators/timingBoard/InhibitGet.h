@@ -5,7 +5,7 @@
 extern "C" {
 #endif
 // Initialise zmq connection. (Called at fragmentgenerator construction)
-void     InhibitGet_init(uint32_t timetoignore);   
+void     InhibitGet_init(const char* zmc_conn, uint32_t timetoignore);   
 // timetoignore (usec) Time to wait before proceeding with enabling triggers anyway
 
 // Restart timer for timetoignore (called at fragmentgenerator start())
