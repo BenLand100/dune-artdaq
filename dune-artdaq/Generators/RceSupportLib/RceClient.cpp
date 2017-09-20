@@ -419,26 +419,3 @@ bool dune::RceClient::response_is_ack(std::string const & response, std::string 
 
 	return is_ack;
 }
-
-std::string dune::RceClient::read_status(void)
-{
-    std::string xml_string;
-    int max_retries = 100;
-    for (int n_retries = 0;
-            n_retries < max_retries && xml_string.empty();
-            ++n_retries)
-    {
-
-        xml_string = this->receive();
-
-	    DAQLogger::LogDebug(instance_name_)
-            << "Trial:" << n_retries
-            << " len(xml_string): " << xml_string.length();
-    }
-
-    // remove \f from the end of xml string
-    if (!xml_string.empty())
-        xml_string.pop_back();
-
-    return xml_string;
-}
