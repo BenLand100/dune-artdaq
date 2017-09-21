@@ -16,17 +16,6 @@ WIBReader::WIBReader(fhicl::ParameterSet const& ps) :
 
   std::string wib_address = ps.get<std::string>("WIB.address");
   bool useWIBFakeData = true;
-  (void) useWIBFakeData;
-  // JCF, Sep-14-2017
-
-  // It's safer to use one of C++11's "smart" pointers than to use a
-  // raw pointer, as objects pointed to by smart pointers will be
-  // automatically cleaned up when the smart pointer goes out of
-  // scope, without requiring the programmer to cleanup with the
-  // "delete" keyword. However, be aware that here, deallocation will
-  // occur at the end of the constructor. To make the WIB instance
-  // persistent through the lifetime of WIBReader, make it a WIBReader
-  // member.
 
   dune::DAQLogger::LogInfo("WIBReader") << "Connecting to WIB at " <<  wib_address;
   wib = std::make_unique<WIB>( wib_address, "WIB.adt", "FEMB.adt" );
