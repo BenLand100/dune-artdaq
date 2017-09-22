@@ -128,6 +128,7 @@ void ToyHardwareInterface::FillBuffer(char* buffer, size_t* bytes_read) {
     // the desired distribution
 
     std::function<data_t()> generator;
+    data_t gen_value = 0;
 
     switch (distribution_type_) {
     case DistributionType::uniform:
@@ -140,21 +141,19 @@ void ToyHardwareInterface::FillBuffer(char* buffer, size_t* bytes_read) {
     case DistributionType::gaussian:
       generator = [&]() {
 
-	data_t gen(0);
 	do {
-	  gen = static_cast<data_t>( std::round( (*gaussian_distn_)( engine_ ) ) );
+	  gen_value = static_cast<data_t>( std::round( (*gaussian_distn_)( engine_ ) ) );
 	} 
-	while(gen > maxADCvalue_);                                                                    
-	return gen;
+	while(gen_value > maxADCvalue_);                                                                    
+	return gen_value;
       };
       break;
 
     case DistributionType::monotonic:
       {
-	data_t increasing_integer = 0;
 	generator = [&]() {
-	  increasing_integer++;
-	  return increasing_integer > maxADCvalue_ ? 999 : increasing_integer;
+	  gen_value++;
+	  return gen_value > maxADCvalue_ ? 9 : gen_value;
 	};
       }
       break;
