@@ -329,10 +329,6 @@ bool dune::SSP::getNext_(artdaq::FragmentPtrs & frags) {
       ncalls_with_millislice++;
     }
 
-    if (ncalls % 100 == 0) {
-      DAQLogger::LogDebug("SSP_SSP_generator") << "On call #" << ncalls << ", there have been " << ncalls_with_millislice << " calls where the millislice size was greater than zero";
-    }
-
     ncalls++;
 
     if(millislice.size()==0){
