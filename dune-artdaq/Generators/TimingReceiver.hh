@@ -137,6 +137,7 @@ namespace dune {
                             // workaround inability of other systems (e.g. WIB) to recover from a
                             // clock reset quickly.
                             // 0 = full reset, 3 =  just read a few things, 4 = bypass initialisation completely
+    uint32_t startaltern_;  // Alternate start (default is 0: 0=from pdtbutler 20170920, 1= Original from 201705)
     uint32_t fw_version_active_;   // Default 3 for v3c, Activiate v5e features by setting to 5
     uint32_t fake_spill_cycle_;   //
     uint32_t fake_spill_length_;    // If zero, means no fake spills

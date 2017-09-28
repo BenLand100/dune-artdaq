@@ -63,6 +63,7 @@ dune::TimingReceiver::TimingReceiver(fhicl::ParameterSet const & ps):
   ,divider_(ps.get<uint32_t>("divider",0xb))
   ,debugprint_(ps.get<uint32_t>("debug_print",0))
   ,initsoftness_(ps.get<uint32_t>("init_softness",0))
+  ,startaltern_(ps.get<uint32_t>("start_altern",0))
   ,fw_version_active_(ps.get<uint32_t>("fw_version_active",3))
   ,fake_spill_cycle_(ps.get<uint32_t>("fake_spill_cycle",100))
   ,fake_spill_length_(ps.get<uint32_t>("fake_spill_length",50))
@@ -85,6 +86,13 @@ dune::TimingReceiver::TimingReceiver(fhicl::ParameterSet const & ps):
       TimingSequence::bufstatus(hw_);
     }
 
+    // Added by Giles 20170927:  [We need to review which steps in FSM to enable this sort of stuff, but it can't hurt
+    // to have sync pulses enabled (and not sending triggers that might override them) at this point.]
+    hw_.getNode("master.partition.csr.ctrl.part_en").write(1); //# Enable partition 0
+    hw_.getNode("master.scmd_gen.ctrl.en").write(1); //# Enable sync command generators
+    hw_.getNode("master.scmd_gen.chan_ctrl.en").write(0); //# Stop the command stream
+    hw_.dispatch();
+
     // Set up connection to Inhibit Master
     InhibitGet_init(zmq_conn_.c_str(),inhibitget_timer_);
 
@@ -101,11 +109,63 @@ void dune::TimingReceiver::start(void)
     stopping_state_   = 0;
     throttling_state_ = 1;    // 0 Causes it to start triggers immediately, 1 means wait for InhibitMaster to release
 
-
     // master.global.csr.ctrl.part_sel   set to partition_    (not implemented yet)
     // disable partition 
 
 
+// Modified "FOR-WES" version 22.9.2017 to run the commands in the same order as pdtbutler.  To activate
+// set the fhicl parameter init_softness to 5 or higher.
+// These both do the same thing, but in a different order.   Dave says that the things that are within
+// one .dispatch() all happen essentially simultaneously and so the ordering within that doesn't matter.
+// So the main noticable difference is that pdtbutler sends the forced sync command before enabling the type=3 triggers
+// to be sent out.
+  if (startaltern_ == 0) {
+    DAQLogger::LogWarning(instance_name_) << "In start(), using the alternate run start() sequence from pdtbutler 22.09.2017\n";
+
+    // From pdtbutler::setup function
+    // pdtbutler reads the status at this point and prints it
+    // echo("Configuring prtition 0")
+    hw_.getNode("master.partition.csr.ctrl.trig_en").write(1);
+    hw_.getNode("master.partition.csr.ctrl.part_en").write(1); //# Enable partition 0
+    hw_.getNode("master.partition.csr.ctrl.buf_en").write(1); //# Disable buffer in partition 0
+    hw_.getNode("master.partition.csr.ctrl.cmd_mask").write(0x000f); //# Set command mask in partition 0
+    hw_.dispatch();
+
+//    std::this_thread::sleep_for(std::chrono::milliseconds(1000));   // Python units are in seconds
+//   // time.sleep(1) # Allow endpoint time to sync
+
+    // echo("Enable time-sync command generators")
+    hw_.getNode("master.scmd_gen.ctrl.en").write(1); //# Enable sync command generators
+    hw_.dispatch();
+    
+    std::this_thread::sleep_for(std::chrono::milliseconds(1000));   // Python units are in seconds
+    // time.sleep(1) # Allow endpoint time to sync
+
+    // echo("Sending a single sync command")
+    //# Send a sync command? Just in case?
+    hw_.getNode("master.scmd_gen.chan_ctrl.type").write(4);  // write(kCommands['TimeSync']) //# Set command type = 1 for generator 0
+    hw_.getNode("master.scmd_gen.chan_ctrl.force").write(1); //# Issue a single command
+    hw_.dispatch();
+
+    // From pdtbutler::trigger function
+   if (calib_trigger_enable_ != 0) {
+    hw_.getNode("master.scmd_gen.chan_ctrl.type").write(3); //# Set command type = 3 for generator 0
+    uint32_t rate = (divider_ > 0xf) ? 0xf : divider_;              // Allow 0x0 -> 0xf
+    hw_.getNode("master.scmd_gen.chan_ctrl.rate_div").write(rate); //# Set about 1Hz rate for generator 0
+    uint32_t pat = (poisson_ != 0) ? 1 : 0;
+    hw_.getNode("master.scmd_gen.chan_ctrl.patt").write(pat); //# Set Poisson mode for generator 0
+    hw_.dispatch();
+    //echo( "> Setting trigger rate to {:.3e} Hz".format((50e6/(1<<(12+divider)))))
+    //echo( "> Trigger spacing mode:" + {False: 'equally spaced', True: 'poisson'}[poisson] )
+
+    hw_.getNode("master.scmd_gen.chan_ctrl.en").write(1); //# Start the command stream
+    hw_.dispatch();
+   } else {
+    hw_.getNode("master.scmd_gen.chan_ctrl.en").write(0); //# Stop the command stream
+    hw_.dispatch();
+   }
+  } else {   // init_softness
+    DAQLogger::LogWarning(instance_name_) << "In start(), using the alternate run start() sequence from original M4 05.2017\n";
 
     hw_.getNode("master.partition.csr.ctrl.part_en").write(0);
     // Make it so only partition 0 does the scmd_gen stuff here
@@ -123,6 +183,7 @@ void dune::TimingReceiver::start(void)
 
     // hw.getNode("endpoint.csr.ctrl.buf_en").write(1)
     hw_.dispatch();
+  }   // End of init_softness if {} else {}
 
     if (debugprint_ > 1) {
       TimingSequence::bufstatus(hw_);
@@ -184,7 +245,7 @@ bool dune::TimingReceiver::getNext_(artdaq::FragmentPtrs &frags)
 
     // Check for stop run
     if (stopping_state_ == 0 && stopping_flag_ != 0) {
-      hw_.getNode("master.partition.csr.ctrl.part_en").write(0); // Disable the run first (stops)
+      // hw_.getNode("master.partition.csr.ctrl.part_en").write(0); // Disable the run first (stops)
       hw_.getNode("master.partition.csr.ctrl.trig_en").write(0); // Now unset the trigger_enable (XOFF)
 
  // Order is first (1) disable trig_en, (2) request run stop, (3) wait for run to stop, (4) check no more to read from buffer, (5) disable buff, (6) disable part
