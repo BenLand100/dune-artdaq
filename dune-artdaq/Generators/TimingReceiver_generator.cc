@@ -79,7 +79,7 @@ dune::TimingReceiver::TimingReceiver(fhicl::ParameterSet const & ps):
     instance_name_ss << instance_name_ << board_id;
     instance_name_ = instance_name_ss.str();
 
-    if (inhibitget_timer_ < 0) inhibitget_timer_ = 2000000000;  // Negative inhibitget_timer sets it to infinite.
+    if (inhibitget_timer_ == 0) inhibitget_timer_ = 2000000000;  // Zero inhibitget_timer waits infinite.
 
     //
     // Dave N's message part 1:
