@@ -74,6 +74,10 @@ dune::TimingReceiver::TimingReceiver(fhicl::ParameterSet const & ps):
   ,end_run_wait_(ps.get<uint32_t>("end_run_wait",1000))
   ,zmq_conn_(ps.get<std::string>("zmq_connection","tcp://pddaq-gen05-daq0:5566"))
 {
+
+    // TODO:
+    // AT: Move hardware interface creation in here, for better exception handling
+
     int board_id = 0; //:GB  ps.get<int>("board_id", 0);
     std::stringstream instance_name_ss;
     instance_name_ss << instance_name_ << board_id;
@@ -98,6 +102,37 @@ dune::TimingReceiver::TimingReceiver(fhicl::ParameterSet const & ps):
       TimingSequence::bufstatus(hw_);
     }
 
+    // AT: Ensure that the hardware is up and running.
+    // Check that the board is reachable
+    // Read configuration version
+    ValWord<uint32_t> lVersion = hw_.getNode("master.global.version").read();
+    hw_.dispatch();
+
+    // Match Fw version with configuration
+    DAQLogger::LogInfo(instance_name_) << "Timing Master firmware version " << std::showbase << std::hex << (uint32_t)lVersion;
+    if ( lVersion != fw_version_active_ ) {
+      DAQLogger::LogWarning(instance_name_) << "Firmware version mismatch! Expected: " <<  fw_version_active_ << " detected: " << (uint32_t)lVersion;
+    }
+
+    // Measure the input clock frequency
+    hw_.getNode("io.freq.ctrl.chan_sel").write(0);
+    hw_.getNode("io.freq.ctrl.en_crap_mode").write(0);
+    hw_.dispatch();
+    std::this_thread::sleep_for(std::chrono::milliseconds(2000));
+    uhal::ValWord<uint32_t> fq = hw_.getNode("io.freq.freq.count").read();
+    uhal::ValWord<uint32_t> fv = hw_.getNode("io.freq.freq.valid").read();
+    hw_.dispatch();
+
+
+    float lFrequency = ((uint32_t)fq) * 119.20928 / 1000000;
+    DAQLogger::LogInfo(instance_name_) << "Measured timing master frequency: " << lFrequency << " Hz";
+
+    if ( lFrequency < 240. || lFrequency > 260) {
+      DAQLogger::LogError(instance_name_) << "Timing master clock out of expected range: " << lFrequency << " Hz. Has it been configured?";
+    }
+
+    // Probably the two following commands are to be removed
+
     // Command generators setup
     hw_.getNode("master.scmd_gen.ctrl.en").write(1); //# Enable sync command generators
     hw_.getNode("master.scmd_gen.chan_ctrl.en").write(0); //# Stop the command stream
@@ -113,15 +148,15 @@ dune::TimingReceiver::TimingReceiver(fhicl::ParameterSet const & ps):
     // - Set the command mask                            [done here, repeated at start()]
     // - Enable triggers                                 [Not done until inhubit lifted (in get_next_())]
 
-   if (initsoftness_ < 5) {
-    hw_.getNode("master.partition.csr.ctrl.part_en").write(0); //# Disable partition 0
-   }
+    if (initsoftness_ < 5) {
+      hw_.getNode("master.partition.csr.ctrl.part_en").write(0); //# Disable partition 0
+    }
     hw_.getNode("master.partition.csr.ctrl.trig_en").write(0); // Disable triggers
-    hw_.getNode("master.partition.csr.ctrl.buff_en").write(0); // Disable buffer
+    hw_.getNode("master.partition.csr.ctrl.buf_en").write(0); // Disable buffer
     hw_.dispatch();
 
     hw_.getNode("master.partition.csr.ctrl.part_en").write(1); //# Enable partition 0
-    hw_.getNode("master.partition.csr.ctrl.cmd_mask").write(0x000f); //# Set command mask in partition 0
+    hw_.getNode("master.partition.csr.ctrl.cmd_mask").write(0x0f); //# Set command mask in partition 0
     hw_.dispatch();
 
     // Set up connection to Inhibit Master
@@ -155,7 +190,7 @@ void dune::TimingReceiver::start(void)
     // - Wait for run_stat to go high                    [not done, needs newer firmware]
 
     hw_.getNode("master.partition.csr.ctrl.part_en").write(1); //# Enable partition 0
-    hw_.getNode("master.partition.csr.ctrl.cmd_mask").write(0x000f); //# Set command mask in partition 0
+    hw_.getNode("master.partition.csr.ctrl.cmd_mask").write(0x0f); //# Set command mask in partition 0
     hw_.getNode("master.partition.csr.ctrl.buf_en").write(0); //# Disable buffer in partition 0
     hw_.dispatch();
 
@@ -166,19 +201,19 @@ void dune::TimingReceiver::start(void)
     // Next firmware cycle, add wait for run_stat
 
     // From pdtbutler::trigger function
-   if (calib_trigger_enable_ != 0) {
-    hw_.getNode("master.scmd_gen.chan_ctrl.type").write(3); //# Set command type = 3 for generator 0
-    uint32_t rate = (divider_ > 0xf) ? 0xf : divider_;              // Allow 0x0 -> 0xf
-    hw_.getNode("master.scmd_gen.chan_ctrl.rate_div").write(rate); //# Set about 1Hz rate for generator 0
-    uint32_t pat = (poisson_ != 0) ? 1 : 0;
-    hw_.getNode("master.scmd_gen.chan_ctrl.patt").write(pat); //# Set Poisson mode for generator 0
-    hw_.dispatch();
-    //echo( "> Setting trigger rate to {:.3e} Hz".format((50e6/(1<<(12+divider)))))
-    //echo( "> Trigger spacing mode:" + {False: 'equally spaced', True: 'poisson'}[poisson] )
+    if (calib_trigger_enable_ != 0) {
+      hw_.getNode("master.scmd_gen.chan_ctrl.type").write(3); //# Set command type = 3 for generator 0
+      uint32_t rate = (divider_ > 0xf) ? 0xf : divider_;              // Allow 0x0 -> 0xf
+      hw_.getNode("master.scmd_gen.chan_ctrl.rate_div").write(rate); //# Set about 1Hz rate for generator 0
+      uint32_t pat = (poisson_ != 0) ? 1 : 0;
+      hw_.getNode("master.scmd_gen.chan_ctrl.patt").write(pat); //# Set Poisson mode for generator 0
+      hw_.dispatch();
+      //echo( "> Setting trigger rate to {:.3e} Hz".format((50e6/(1<<(12+divider)))))
+      //echo( "> Trigger spacing mode:" + {False: 'equally spaced', True: 'poisson'}[poisson] )
 
-    hw_.getNode("master.scmd_gen.chan_ctrl.en").write(1); //# Start the command stream
-    hw_.dispatch();
-   }
+      hw_.getNode("master.scmd_gen.chan_ctrl.en").write(1); //# Start the command stream
+      hw_.dispatch();
+    }
 
     if (debugprint_ > 1) {
       TimingSequence::bufstatus(hw_);
@@ -186,8 +221,8 @@ void dune::TimingReceiver::start(void)
     InhibitGet_retime(inhibitget_timer_);
 
     // This is not the final enable.  That is done in getNext_() below. 
-    hw_.getNode("master.scmd_gen.chan_ctrl.en").write(1);
-    hw_.dispatch();
+    // hw_.getNode("master.scmd_gen.chan_ctrl.en").write(1);
+    // hw_.dispatch();
 
     this->reset_met_variables(false);
 }
@@ -243,7 +278,7 @@ bool dune::TimingReceiver::getNext_(artdaq::FragmentPtrs &frags)
       // hw_.getNode("master.partition.csr.ctrl.part_en").write(0); // Disable the run first (stops)
       hw_.getNode("master.partition.csr.ctrl.trig_en").write(0); // Now unset the trigger_enable (XOFF)
 
- // Order is first (1) disable trig_en, (2) request run stop, (3) wait for run to stop, (4) check no more to read from buffer, (5) disable buff, (6) disable part
+    // Order is first (1) disable trig_en, (2) request run stop, (3) wait for run to stop, (4) check no more to read from buffer, (5) disable buff, (6) disable part
 
       hw_.dispatch();
       throttling_state_ = 0;  // Note for now, we remove XOFF immediately at end
@@ -302,7 +337,7 @@ bool dune::TimingReceiver::getNext_(artdaq::FragmentPtrs &frags)
         f->setUserType( dune::detail::TIMING );
         //  No metadata in this block
 
-	DAQLogger::LogInfo(instance_name_) << "For timing fragment with sequence ID " << ev_counter() << ", setting the timestamp to " << fo.get_tstamp();
+        DAQLogger::LogInfo(instance_name_) << "For timing fragment with sequence ID " << ev_counter() << ", setting the timestamp to " << fo.get_tstamp();
         f->setTimestamp(fo.get_tstamp());  // 64-bit number
 
         frags.emplace_back(std::move(f));
