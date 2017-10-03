@@ -2,7 +2,8 @@
 #include "artdaq/Application/GeneratorMacros.hh"
 #include "dune-artdaq/DAQLogger/DAQLogger.hh"
 
-#include <iostream>
+#include <sstream>
+#include <vector>
 #include <memory>
 #include <iomanip>
 #include <chrono>
@@ -15,7 +16,10 @@ WIBReader::WIBReader(fhicl::ParameterSet const& ps) :
     CommandableFragmentGenerator(ps) {
 
   std::string wib_address = ps.get<std::string>("WIB.address");
-  bool useWIBFakeData = true;
+  std::vector<std::vector<unsigned> > coldDataModes(4,std::vector<unsigned>(2,0));
+  std::vector<std::vector<bool> > useWIBFakeData(4,std::vector<bool>(4,true));
+  std::vector<bool> enableDAQLink(4,true);
+  std::vector<bool> enableDAQRegs(4,0xF);
 
   dune::DAQLogger::LogInfo("WIBReader") << "Connecting to WIB at " <<  wib_address;
   wib = std::make_unique<WIB>( wib_address, "WIB.adt", "FEMB.adt" );
@@ -23,38 +27,48 @@ WIBReader::WIBReader(fhicl::ParameterSet const& ps) :
   wib->ResetWIB();
   std::this_thread::sleep_for(std::chrono::seconds(1));
 
+  dune::DAQLogger::LogInfo("WIBReader") << "Setting up DTS" <<  wib_address;
+
   wib->InitializeDTS(1); // initDTS in script
   std::this_thread::sleep_for(std::chrono::seconds(1));
+
+  dune::DAQLogger::LogInfo("WIBReader") << "Writing data source and link registers" <<  wib_address;
 
   for(uint8_t iFEMB=1; iFEMB <= 4; iFEMB++)
   {
     for(uint8_t iCD=1; iCD <= 2; iCD++)
     {
-      wib->SetFEMBFakeCOLDATAMode(iFEMB,iCD,0); // 0 for S (counter) or 1 for C (nonsense)
+      wib->SetFEMBFakeCOLDATAMode(iFEMB,iCD,coldDataModes.at(iFEMB-1).at(iCD-1)); // 0 for S (counter) or 1 for C (nonsense)
     }
     for(uint8_t iStream=1; iStream <= 4; iStream++)
     {
-      wib->SetFEMBStreamSource(iFEMB,iStream,useWIBFakeData);
+      wib->SetFEMBStreamSource(iFEMB,iStream,useWIBFakeData.at(iFEMB-1).at(iStream-1));
     }
     for(uint8_t iStream=1; iStream <= 4; iStream++)
     {
       uint64_t sourceByte = 0;
-      if(useWIBFakeData) sourceByte = 0xF;
+      if(useWIBFakeData.at(iFEMB-1).at(iStream-1)) sourceByte = 0xF;
       wib->SourceFEMB(iFEMB,sourceByte);
     }
   }
 
   for(uint8_t iLink=1; iLink <= 4; iLink++)
   {
-    wib->EnableDAQLink_Lite(iLink,true);
+    wib->EnableDAQLink_Lite(iLink,enableDAQLink.at(iLink-1));
   }
+
+  dune::DAQLogger::LogInfo("WIBReader") << "Syncing DTS" <<  wib_address;
 
   wib->StartSyncDTS();
 
-  wib->Write("FEMB1.DAQ.ENABLE",0xF);
-  wib->Write("FEMB2.DAQ.ENABLE",0xF);
-  wib->Write("FEMB3.DAQ.ENABLE",0xF);
-  wib->Write("FEMB4.DAQ.ENABLE",0xF);
+  dune::DAQLogger::LogInfo("WIBReader") << "Enableing DAQ" <<  wib_address;
+
+  for(uint8_t iFEMB=1; iFEMB <= 4; iFEMB++)
+  {
+    std::stringstream regNameStream;
+    regNameStream << "FEMB" << iFEMB << ".DAQ.ENABLE";
+    wib->Write(regNameStream.get(),enableDAQRegs.at(iFEMB-1));
+  }
 
   //fhicl::ParameterSet wib_config = ps.get<fhicl::ParameterSet>("WIB.config");
   //// Read values from FHiCL document and feed them to WIB library
