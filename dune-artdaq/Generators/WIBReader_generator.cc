@@ -16,7 +16,7 @@ WIBReader::WIBReader(fhicl::ParameterSet const& ps) :
     CommandableFragmentGenerator(ps) {
 
   std::string wib_address = ps.get<std::string>("WIB.address");
-  std::vector<std::vector<unsigned> > coldDataModes(4,std::vector<unsigned>(2,0));
+  std::vector<std::vector<unsigned> > fakeColdDataModes(4,std::vector<unsigned>(2,1));
   std::vector<std::vector<bool> > useWIBFakeData(4,std::vector<bool>(4,true));
   std::vector<bool> enableDAQLink(4,true);
   std::vector<bool> enableDAQRegs(4,0xF);
@@ -27,22 +27,41 @@ WIBReader::WIBReader(fhicl::ParameterSet const& ps) :
   wib->ResetWIB();
   std::this_thread::sleep_for(std::chrono::seconds(1));
 
-  dune::DAQLogger::LogInfo("WIBReader") << "Setting up DTS" <<  wib_address;
+  dune::DAQLogger::LogInfo("WIBReader") << "WIB Firmware Version: 0x" 
+        << std::hex << std::setw(8) << std::setfill('0')
+        <<  wib->Read("SYSTEM.FW_VERSION")
+        << " Synthesized: " 
+        << std::hex << std::setw(2) << std::setfill('0')
+        << wib->Read("SYSTEM.SYNTH_DATE.CENTURY")
+        << std::hex << std::setw(2) << std::setfill('0')
+        << wib->Read("SYSTEM.SYNTH_DATE.YEAR") << "-"
+        << std::hex << std::setw(2) << std::setfill('0')
+        << wib->Read("SYSTEM.SYNTH_DATE.MONTH") << "-"
+        << std::hex << std::setw(2) << std::setfill('0')
+        << wib->Read("SYSTEM.SYNTH_DATE.DAY") << " "
+        << std::hex << std::setw(2) << std::setfill('0')
+        << wib->Read("SYSTEM.SYNTH_TIME.HOUR") << ":"
+        << std::hex << std::setw(2) << std::setfill('0')
+        << wib->Read("SYSTEM.SYNTH_TIME.MINUTE") << ":"
+        << std::hex << std::setw(2) << std::setfill('0')
+        << wib->Read("SYSTEM.SYNTH_TIME.SECOND");
+
+  dune::DAQLogger::LogInfo("WIBReader") << "Setting up DTS";
 
   wib->InitializeDTS(1); // initDTS in script
   std::this_thread::sleep_for(std::chrono::seconds(1));
 
-  dune::DAQLogger::LogInfo("WIBReader") << "Writing data source and link registers" <<  wib_address;
+  dune::DAQLogger::LogInfo("WIBReader") << "Writing data source and link registers";
 
   for(uint8_t iFEMB=1; iFEMB <= 4; iFEMB++)
   {
     for(uint8_t iCD=1; iCD <= 2; iCD++)
     {
-      wib->SetFEMBFakeCOLDATAMode(iFEMB,iCD,coldDataModes.at(iFEMB-1).at(iCD-1)); // 0 for S (counter) or 1 for C (nonsense)
+      wib->SetFEMBFakeCOLDATAMode(iFEMB,iCD,fakeColdDataModes.at(iFEMB-1).at(iCD-1)); // 0 for "SAMPLES" (counter) or 1 for "COUNTER" (nonsense)
     }
     for(uint8_t iStream=1; iStream <= 4; iStream++)
     {
-      wib->SetFEMBStreamSource(iFEMB,iStream,useWIBFakeData.at(iFEMB-1).at(iStream-1));
+      wib->SetFEMBStreamSource(iFEMB,iStream,!useWIBFakeData.at(iFEMB-1).at(iStream-1)); // last arg is bool isReal
     }
     for(uint8_t iStream=1; iStream <= 4; iStream++)
     {
@@ -57,11 +76,16 @@ WIBReader::WIBReader(fhicl::ParameterSet const& ps) :
     wib->EnableDAQLink_Lite(iLink,enableDAQLink.at(iLink-1));
   }
 
-  dune::DAQLogger::LogInfo("WIBReader") << "Syncing DTS" <<  wib_address;
+  dune::DAQLogger::LogInfo("WIBReader") << "Enabling DTS";
+
+  wib->Write("DTS.PDTS_ENABLE",1);
+  std::this_thread::sleep_for(std::chrono::seconds(3));
+
+  dune::DAQLogger::LogInfo("WIBReader") << "Syncing DTS";
 
   wib->StartSyncDTS();
 
-  dune::DAQLogger::LogInfo("WIBReader") << "Enableing DAQ" <<  wib_address;
+  dune::DAQLogger::LogInfo("WIBReader") << "Enabling DAQ";
 
   for(uint8_t iFEMB=1; iFEMB <= 4; iFEMB++)
   {
