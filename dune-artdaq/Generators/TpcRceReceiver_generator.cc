@@ -22,6 +22,8 @@
 #include <thread>
 
 #include <unistd.h>
+#include <boost/property_tree/xml_parser.hpp>
+#include <boost/property_tree/ptree.hpp>
 
 //#define NO_RCE_CLIENT 1
 
@@ -234,6 +236,8 @@ void dune::TpcRceReceiver::start(void) {
 
   // Set the run state to enabled
   dpm_client_->send_command("SetRunState", "Enable");
+
+  send_status();
 
 #endif
 }
@@ -834,6 +838,29 @@ bool dune::TpcRceReceiver::startOfDatataking() {
   run_at_last_check = run_number();
 
   return is_start;
+}
+
+// Send RCE status to DIM monitor
+bool dune::TpcRceReceiver::send_status()
+{
+    //std::stringstream xml_stream;
+    //xml_stream << dpm_client_->receive();
+
+    //boost::property_tree::ptree xml_tree;
+    //boost::property_tree::xml_parser::read_xml( xml_stream, xml_tree);
+
+    //const auto& data_buffer = xml_tree.get_child(
+    //        "system.status.DataDpm.DataBuffer");
+
+
+    //DAQLogger::LogDebug(instance_name_)
+    //    << "[RCE Status] RxRate: "
+    //    << data_buffer.get<float>("RxRate");
+
+    DAQLogger::LogDebug(instance_name_)
+        << "[RCE Status]"
+        << dpm_client_->read_status();
+    return true;
 }
 
 // The following macro is defined in artdaq's GeneratorMacros.hh header
