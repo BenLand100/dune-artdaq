@@ -272,15 +272,12 @@ void dune::SSP::ConfigureDAQ(fhicl::ParameterSet const& ps){
       throw SSPDAQ::EDAQConfigError("");
   }
 
-  unsigned int triggerMask=daqConfig.get<unsigned int>("TriggerMask",0);
-
   device_interface_->SetPreTrigLength(preTrigLength);
   device_interface_->SetPostTrigLength(postTrigLength);
   device_interface_->SetUseExternalTimestamp(useExternalTimestamp);
   device_interface_->SetTriggerWriteDelay(triggerWriteDelay);
   device_interface_->SetDummyPeriod(dummyPeriod);
   device_interface_->SetHardwareClockRateInMHz(hardwareClockRate);
-  device_interface_->SetTriggerMask(triggerMask);
 }
 
 
@@ -307,7 +304,7 @@ bool dune::SSP::getNext_(artdaq::FragmentPtrs & frags) {
 
   bool hasSeenSlice=false;
 
-  unsigned int maxFrags=1;
+  unsigned int maxFrags=100;
 
   for(unsigned int fragsBuilt=0;fragsBuilt<maxFrags;++fragsBuilt){
 
