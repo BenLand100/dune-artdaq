@@ -9,8 +9,8 @@
 SSPDAQ::DeviceInterface::DeviceInterface(SSPDAQ::Comm_t commType, unsigned long deviceId)
   : fCommType(commType), fDeviceId(deviceId), fState(SSPDAQ::DeviceInterface::kUninitialized),
     fUseExternalTimestamp(false), fHardwareClockRateInMHz(128), fPreTrigLength(1E8), 
-    fPostTrigLength(1E7), fTriggerWriteDelay(1000), fTriggerMask(0), fDummyPeriod(-1), 
-    fSlowControlOnly(false), exception_(false){
+    fPostTrigLength(1E7), fTriggerWriteDelay(1000), fDummyPeriod(-1), fSlowControlOnly(false),
+    exception_(false){
 }
 
 void SSPDAQ::DeviceInterface::OpenSlowControl(){
@@ -225,7 +225,7 @@ bool SSPDAQ::DeviceInterface::GetTriggerInfo(const SSPDAQ::EventPacket& event,SS
     return true; 
   }
     
-  if(((event.header.group1&0xFFFF)&fTriggerMask)!=0){
+  if((event.header.group1&0xFFFF)!=0){
     
     if(!channelsSeen[channel]&&packetTime<currentTriggerTime+1000){
       channelsSeen[channel]=true;

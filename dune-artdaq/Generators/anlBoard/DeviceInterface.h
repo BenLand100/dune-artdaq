@@ -118,8 +118,6 @@ namespace SSPDAQ{
 
     void SetUseExternalTimestamp(bool val){fUseExternalTimestamp=val;}
 
-    void SetTriggerMask(unsigned int val){fTriggerMask=val;}
-
     void PrintHardwareState();
 
     std::string GetIdentifier();
@@ -176,8 +174,6 @@ namespace SSPDAQ{
     unsigned int fPostTrigLength;
 
     unsigned long fTriggerWriteDelay;
-
-    unsigned int fTriggerMask;
 
     int fDummyPeriod;
 
