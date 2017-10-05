@@ -123,6 +123,33 @@ void WIBReader::stop() {
 
 // Called by BoardReaderMain in a loop between "start" and "stop"
 bool WIBReader::getNext_(artdaq::FragmentPtrs& /*frags*/) {
+  dune::DAQLogger::LogInfo("WIBReader") <<"getNext_()";
+  if(artdaq::Globals::metricMan_ != nullptr) {
+    //sendMetric(const string&, const int&, const string&,   int,                bool,    const string&,                         bool)
+    //                    name,      value,         units, level, average values=true,        prefix="",   don't apply prefixes=false
+
+    artdaq::Globals::metricMan_->sendMetric("SYSTEM.DTS_LOCKED",(long unsigned int) wib->Read("SYSTEM.DTS_LOCKED"), "", 4,false, "WIB");
+    artdaq::Globals::metricMan_->sendMetric("SYSTEM.EB_LOCKED",(long unsigned int) wib->Read("SYSTEM.EB_LOCKED"), "", 4,false, "WIB");
+    artdaq::Globals::metricMan_->sendMetric("SYSTEM.FEMB_LOCKED",(long unsigned int) wib->Read("SYSTEM.FEMB_LOCKED"), "", 4,false, "WIB");
+    artdaq::Globals::metricMan_->sendMetric("SYSTEM.SYS_LOCKED",(long unsigned int) wib->Read("SYSTEM.SYS_LOCKED"), "", 4,false, "WIB");
+
+    artdaq::Globals::metricMan_->sendMetric("DTS.CONVERT_CONTROL.STATE",(long unsigned int) wib->Read("DTS.CONVERT_CONTROL.STATE"), "", 5,false, "WIB");
+    artdaq::Globals::metricMan_->sendMetric("DTS.CONVERT_CONTROL.SYNC_PERIOD",(long unsigned int) wib->Read("DTS.CONVERT_CONTROL.SYNC_PERIOD"), "", 5,false, "WIB");
+    artdaq::Globals::metricMan_->sendMetric("DTS.CONVERT_CONTROL.LOCAL_TIMESTAMP",(long unsigned int) wib->Read("DTS.CONVERT_CONTROL.LOCAL_TIMESTAMP"), "", 5,false, "WIB");
+    artdaq::Globals::metricMan_->sendMetric("DTS.PDTS_STATE",(long unsigned int) wib->Read("DTS.PDTS_STATE"), "", 5,false, "WIB");
+    artdaq::Globals::metricMan_->sendMetric("DTS.CONVERT_CONTROL.OOS",(long unsigned int) wib->Read("DTS.CONVERT_CONTROL.OOS"), "", 5,false, "WIB");
+    artdaq::Globals::metricMan_->sendMetric("DTS.EVENT_NUMBER",(long unsigned int) wib->Read("DTS.EVENT_NUMBER"), "", 5,false, "WIB");
+
+    artdaq::Globals::metricMan_->sendMetric("DAQ_LINK_1.EVENT_COUNT",   (long unsigned int) wib->Read("DAQ_LINK_1.EVENT_COUNT"), "", 5,false, "WIB");
+    artdaq::Globals::metricMan_->sendMetric("DAQ_LINK_1.MISMATCH_COUNT",(long unsigned int) wib->Read("DAQ_LINK_1.MISMATCH_COUNT"), "", 5,false, "WIB");
+    artdaq::Globals::metricMan_->sendMetric("DAQ_LINK_2.EVENT_COUNT",   (long unsigned int) wib->Read("DAQ_LINK_2.EVENT_COUNT"), "", 5,false, "WIB");
+    artdaq::Globals::metricMan_->sendMetric("DAQ_LINK_2.MISMATCH_COUNT",(long unsigned int) wib->Read("DAQ_LINK_2.MISMATCH_COUNT"), "", 5,false, "WIB");
+    artdaq::Globals::metricMan_->sendMetric("DAQ_LINK_3.EVENT_COUNT",   (long unsigned int) wib->Read("DAQ_LINK_3.EVENT_COUNT"), "", 5,false, "WIB");
+    artdaq::Globals::metricMan_->sendMetric("DAQ_LINK_3.MISMATCH_COUNT",(long unsigned int) wib->Read("DAQ_LINK_3.MISMATCH_COUNT"), "", 5,false, "WIB");
+    artdaq::Globals::metricMan_->sendMetric("DAQ_LINK_4.EVENT_COUNT",   (long unsigned int) wib->Read("DAQ_LINK_4.EVENT_COUNT"), "", 5,false, "WIB");
+    artdaq::Globals::metricMan_->sendMetric("DAQ_LINK_4.MISMATCH_COUNT",(long unsigned int) wib->Read("DAQ_LINK_4.MISMATCH_COUNT"), "", 5,false, "WIB");
+  }
+  std::this_thread::sleep_for(std::chrono::milliseconds(100));
   return false;
 }
 
