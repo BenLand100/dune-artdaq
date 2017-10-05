@@ -307,7 +307,7 @@ bool dune::SSP::getNext_(artdaq::FragmentPtrs & frags) {
 
   bool hasSeenSlice=false;
 
-  unsigned int maxFrags=1;
+  unsigned int maxFrags=100;
 
   for(unsigned int fragsBuilt=0;fragsBuilt<maxFrags;++fragsBuilt){
 
