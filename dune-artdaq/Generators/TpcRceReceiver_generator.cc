@@ -237,7 +237,7 @@ void dune::TpcRceReceiver::start(void) {
   // Set the run state to enabled
   dpm_client_->send_command("SetRunState", "Enable");
 
-  send_status();
+  //send_status();
 
 #endif
 }
@@ -327,7 +327,7 @@ bool dune::TpcRceReceiver::getNext_(artdaq::FragmentPtrs& frags) {
 
   // If we find buffers in the while loop, then at the bottom of
   // this function we'll skip the timeout check...
-  bool buffers_found_in_while_loop = false;
+  // bool buffers_found_in_while_loop = false;
 
   // Loop to release fragments if filled buffers available, up to the maximum
   // allowed
@@ -355,7 +355,7 @@ bool dune::TpcRceReceiver::getNext_(artdaq::FragmentPtrs& frags) {
     // it occurred as a point of reference to later
     // determine if there's been a data timeout
 
-    buffers_found_in_while_loop = true;
+    // buffers_found_in_while_loop = true;
     last_buffer_received_time_ = std::chrono::high_resolution_clock::now();
 
     // Get a pointer to the data in the current buffer and create a new fragment
@@ -526,8 +526,13 @@ bool dune::TpcRceReceiver::getNext_(artdaq::FragmentPtrs& frags) {
   // Finally, if we haven't received a buffer after a set amount
   // of time, give up (i.e., throw an exception)
 
-  if (!buffers_found_in_while_loop) {
+  //if (!buffers_found_in_while_loop) {
 
+  // PatrickTsang Oct-05-2017
+  // Do not timeout when there is no data recevied
+
+  if (false)
+  {
     auto time_since_last_buffer =
         std::chrono::duration_cast<std::chrono::microseconds>(
             std::chrono::high_resolution_clock::now() -
