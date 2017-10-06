@@ -111,9 +111,6 @@ add_subdirectory(test)
 # tools
 add_subdirectory(tools)
 
-# Standalone executables for manual testing + development
-add_subdirectory(proto)
-
 # ups - table and config files
 add_subdirectory(ups)
 

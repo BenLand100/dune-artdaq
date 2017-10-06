@@ -19,7 +19,6 @@ bindir      fq_dir      bin
 product		version		optional
 artdaq		v2_03_02        
 dune_raw_data 	v1_06_00
-gallery 	v1_04_03
 cetbuildtools	v5_08_01	-	only_for_build
 uhal		v2_4_2
 end_product_list
@@ -28,12 +27,13 @@ end_product_list
 # e14 - with gcc 6.3.0 
 # s41 - with art v2_03_00
 # s48 - with art v2_06_03
+# s50 - with art v2_07_03
 
 # -nq- here means there is no qualifier
 # a "-" here means the dependent product is not required by the parent and will not be setup
-qualifier    	       	artdaq                  	dune_raw_data  	   	gallery		uhal
-e14:prof 		e14:s50:eth:prof   		online:e14:s50:prof	e14:prof	e14:prof:s50
-e14:debug 		e14:s50:eth:debug   		online:e14:s50:debug    e14:debug	e14:debug:s50
+qualifier    	       	artdaq                  	dune_raw_data  	   	uhal
+e14:prof 		e14:s50:eth:prof   		online:e14:s50:prof	e14:prof:s50
+e14:debug 		e14:s50:eth:debug   		online:e14:s50:debug    e14:debug:s50
 end_qualifier_list
 
 # Preserve tabs and formatting in emacs and vi / vim:
