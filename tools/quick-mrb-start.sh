@@ -8,6 +8,19 @@
 # JCF, Mar-2-2017
 # Modified it again to work with the brand new dune-artdaq package
 
+
+if ! [[ "$HOSTNAME" =~ ^np04-srv ]]; then 
+    echo "This script will only work on the CERN protoDUNE teststand computers, np04-srv-*" >&2
+    exit 1
+fi
+
+if [[ -e /nfs/sw/artdaq/products/setup ]]; then
+    . /nfs/sw/artdaq/products/setup
+else
+    echo "Expected there to be a products directory /nfs/sw/artdaq/products/" >&2 
+    exit 1
+fi
+
 bad_network=false
 
 
@@ -211,12 +224,12 @@ if [[ ! -e $Base/download/product_deps ]]; then
 fi
 
 artdaq_core_version=v3_00_00
+artdaq_utilities_version=v1_03_00
 
 demo_version=`grep "parent dune_artdaq" $Base/download/product_deps|awk '{print $3}'`
 
 artdaq_version=`grep -E "^artdaq\s+" $Base/download/product_deps | awk '{print $2}'`
 coredemo_version=`grep -E "^dune_raw_data\s+" $Base/download/product_deps | awk '{print $2}'`
-gallery_version=`grep -E "^gallery\s+" $Base/download/product_deps | awk '{print $2}'`
 
 default_quals_cmd="sed -r -n 's/.*(e[0-9]+):(s[0-9]+).*/\1 \2/p' $Base/download/product_deps | uniq"
 
@@ -244,32 +257,23 @@ else
     build_type="prof"
 fi
 
-# JCF, Jan-1-2016
-
-# The gallery package is currently something only dune-artdaq depends
-# on, hence we can't rely on pullProducts to get it for us
-
-if ! $bad_network; then
-os=`$Base/download/cetpkgsupport/bin/get-directory-name os`
-detectAndPull gallery ${os}-x86_64 "${equalifier}-${build_type}" $gallery_version
-fi
 
 # If we aren't connected to the outside world, you'll need to have
 # previously scp'd or rsync'd the products to the host you're trying
 # to install dune-artdaq on
 
-if ! $bad_network; then
-    wget http://scisoft.fnal.gov/scisoft/bundles/tools/pullProducts
-    chmod +x pullProducts
-    ./pullProducts $Base/products ${os} artdaq-${artdaq_version} ${squalifier}-${equalifier} ${build_type}
+# if ! $bad_network; then
+#     wget http://scisoft.fnal.gov/scisoft/bundles/tools/pullProducts
+#     chmod +x pullProducts
+#     ./pullProducts $Base/products ${os} artdaq-${artdaq_version} ${squalifier}-${equalifier} ${build_type}
 
-    if [ $? -ne 0 ]; then
-	echo "Error in pullProducts. Please go to http://scisoft.fnal.gov/scisoft/bundles/artdaq/${artdaq_version}/manifest and make sure that a manifest for the specified qualifiers (${squalifier}-${equalifier}) exists."
-	exit 1
-    fi
+#     if [ $? -ne 0 ]; then
+# 	echo "Error in pullProducts. Please go to http://scisoft.fnal.gov/scisoft/bundles/artdaq/${artdaq_version}/manifest and make sure that a manifest for the specified qualifiers (${squalifier}-${equalifier}) exists."
+# 	exit 1
+#     fi
 
-    detectAndPull mrb noarch
-fi
+#     detectAndPull mrb noarch
+# fi
 
 source $Base/products/setup
 setup mrb
@@ -322,6 +326,13 @@ if ! $bad_network; then
 	exit 1
     fi
 
+    mrb gitCheckout -t $artdaq_utilities_version -d artdaq_utilities  http://cdcvs.fnal.gov/projects/artdaq-utilities
+
+    if [[ "$?" != "0" ]]; then
+	echo "Unable to perform checkout of artdaq-utilities"
+	exit 1
+    fi
+
     mrb gitCheckout -t ${artdaq_version} -d artdaq http://cdcvs.fnal.gov/projects/artdaq
 
     if [[ "$?" != "0" ]]; then
@@ -358,6 +369,8 @@ if [[ ! -e artdaq/ups/product_deps ]]; then
     echo "Can't find artdaq/ups/product_deps; you need to be in the srcs/ directory"
     exit 1
 fi
+
+sed -i -r 's/^\s*defaultqual(\s+).*/defaultqual\1'$equalifier':'$squalifier'/' artdaq_core/ups/product_deps
 
 sed -i -r 's/^\s*defaultqual(\s+).*/defaultqual\1'$equalifier':'$squalifier'/' artdaq/ups/product_deps
 
