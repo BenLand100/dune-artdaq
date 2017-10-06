@@ -202,7 +202,7 @@ if [ -z "${tag:-}" ]; then
 fi
 
 if ! $bad_network; then
-    wget https://cdcvs.fnal.gov/redmine/projects/dune-artdaq/repository/revisions/$tag/raw/ups/product_deps
+    wget https://cdcvs.fnal.gov/redmine/projects/dune-artdaq/repository/revisions/fd1c556e70d2ee2cfcc47df93e56c6c8963084b7/raw/ups/product_deps
 fi
 
 if [[ ! -e $Base/download/product_deps ]]; then
@@ -210,6 +210,7 @@ if [[ ! -e $Base/download/product_deps ]]; then
     exit 1
 fi
 
+artdaq_core_version=v3_00_00
 
 demo_version=`grep "parent dune_artdaq" $Base/download/product_deps|awk '{print $3}'`
 
@@ -289,7 +290,7 @@ if [[ $opt_lrd_develop -eq 1 ]]; then
 else
     dune_raw_data_checkout_arg="-t ${coredemo_version} -d dune_raw_data"
 fi
-
+dune_raw_data_checkout_arg="-b feature/artdaq_v2_03_03 -d dune_raw_data"
 
 if [[ $opt_lrd_w -eq 1 ]]; then
     dune_raw_data_repo="ssh://p-dune-raw-data@cdcvs.fnal.gov/cvs/projects/dune-raw-data"
@@ -302,7 +303,7 @@ if [[ $tag == "develop" ]]; then
 else
     dune_artdaq_checkout_arg="-t $tag -d dune_artdaq"
 fi
-
+dune_artdaq_checkout_arg="-b feature/artdaq_v2_03_03 -d dune_artdaq"
 
 # Notice the default for write access to dune-artdaq is the opposite of that for dune-raw-data
 if [[ $opt_la_nw -eq 1 ]]; then
@@ -313,6 +314,13 @@ fi
 
 
 if ! $bad_network; then
+
+    mrb gitCheckout -t $artdaq_core_version -d artdaq_core  http://cdcvs.fnal.gov/projects/artdaq-core
+
+    if [[ "$?" != "0" ]]; then
+	echo "Unable to perform checkout of artdaq-core"
+	exit 1
+    fi
 
     mrb gitCheckout -t ${artdaq_version} -d artdaq http://cdcvs.fnal.gov/projects/artdaq
 
