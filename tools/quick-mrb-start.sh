@@ -54,11 +54,10 @@ USAGE="\
    usage: `basename $0` [options]
 examples: `basename $0` 
           `basename $0` --wib-installation-dir <dirname1> --uhal-products-dir <dirname2> --dune-raw-data-developer --dune-raw-data-develop-branch
-          `basename $0` --wib-installation-dir <dirname1> --uhal-products-dir <dirname2> --debug --noviewer --dune-raw-data-developer
+          `basename $0` --wib-installation-dir <dirname1> --uhal-products-dir <dirname2> --debug --dune-raw-data-developer
 --wib-installation-dir <dirname1> provide location of installation of WIB software from Boston University (mandatory)
 --uhal-products-dir <dirname2> provide location of products directory containing uhal (mandatory)
 --debug       perform a debug build
---noviewer    skip installion of artdaq Message Viewer (use if there is no XWindows)
 --not-dune-artdaq-developer  use if you don't have write access to the dune-artdaq repository
 --dune-raw-data-develop-branch     Install the current \"develop\" version of dune-raw-data (may be unstable!)
 --dune-raw-data-developer    use if you have (and want to use) write access to the dune-raw-data repository
@@ -81,7 +80,6 @@ while [ -n "${1-}" ];do
 	    -uhal-products-dir)   uhal_products_dir="$1";;
 	    -wib-installation-dir) wib_installation_dir="$1";;
 	    -debug)     opt_debug=--debug;;
-	    -noviewer)    opt_noviewer=--noviewer;;
 	    -not-dune-artdaq-developer) opt_la_nw=1;;
 	    -dune-raw-data-develop-branch) opt_lrd_develop=1;;
 	    -dune-raw-data-developer)  opt_lrd_w=1;;
@@ -319,27 +317,6 @@ fi
 
 if ! $bad_network; then
 
-    mrb gitCheckout -t $artdaq_core_version -d artdaq_core  http://cdcvs.fnal.gov/projects/artdaq-core
-
-    if [[ "$?" != "0" ]]; then
-	echo "Unable to perform checkout of artdaq-core"
-	exit 1
-    fi
-
-    mrb gitCheckout -t $artdaq_utilities_version -d artdaq_utilities  http://cdcvs.fnal.gov/projects/artdaq-utilities
-
-    if [[ "$?" != "0" ]]; then
-	echo "Unable to perform checkout of artdaq-utilities"
-	exit 1
-    fi
-
-    mrb gitCheckout -t ${artdaq_version} -d artdaq http://cdcvs.fnal.gov/projects/artdaq
-
-    if [[ "$?" != "0" ]]; then
-	echo "Unable to perform checkout of http://cdcvs.fnal.gov/projects/artdaq"
-	exit 1
-    fi
-
     mrb gitCheckout $dune_raw_data_checkout_arg $dune_raw_data_repo
 
     if [[ "$?" != "0" ]]; then
@@ -355,26 +332,7 @@ if ! $bad_network; then
     fi
 fi
 
-# JCF, Jun-13-2017
-
-# The following modification of product_deps is Cargo Cult
-# Programming: apparently, mrbSetEnv seems to look at the default qual
-# in artdaq's ups/product_deps file (e10:s46), even if the default
-# qual in dune-artdaq implies a different qualifier (e14:s48) for
-# artdaq. Passing the option "-q e14:prof" to mrb newDev beforehand
-# doesn't help, and as mrbSetEnv itself is unreadable, I've arrived at
-# the following "patch" through trial-and-error:
-
-if [[ ! -e artdaq/ups/product_deps ]]; then
-    echo "Can't find artdaq/ups/product_deps; you need to be in the srcs/ directory"
-    exit 1
-fi
-
-sed -i -r 's/^\s*defaultqual(\s+).*/defaultqual\1'$equalifier':'$squalifier'/' artdaq_core/ups/product_deps
-
-sed -i -r 's/^\s*defaultqual(\s+).*/defaultqual\1'$equalifier':'$squalifier'/' artdaq/ups/product_deps
-
-if ! $bad_network && [[ "x${opt_noviewer-}" == "x" ]] ; then 
+if false ; then 
 
     cd $MRB_SOURCE
     mfextensionsver=$( awk '/^[[:space:]]*artdaq_mfextensions/ { print $2 }' artdaq/ups/product_deps )
