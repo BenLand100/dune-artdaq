@@ -445,14 +445,14 @@ void dune::TimingReceiver::send_met_variables() {
 //  (4) level, (5) bool accumulate (default true), (6) ... more with good defaults
 
 // All our variables should be int, except the timestamp which is long uint
-  artdaq::Globals::metricMan_->sendMetric("TimingSys Events",            met_event_,  "events", 1, false);
+  artdaq::Globals::metricMan_->sendMetric("TimingSys Events",            met_event_,  "events", 1, artdaq::MetricMode::LastPoint);
   const long unsigned int ts = met_tstamp_;
-  artdaq::Globals::metricMan_->sendMetric("TimingSys TimeStamp",         ts,           "ticks", 1, false);
-  artdaq::Globals::metricMan_->sendMetric("TimingSys Events spill",      met_sevent_, "events", 1, false);
-  artdaq::Globals::metricMan_->sendMetric("TimingSys MinInterval run",   met_rintmin_, "ticks", 1, false);
-  artdaq::Globals::metricMan_->sendMetric("TimingSys MinInterval spill", met_sintmin_, "ticks", 1, false);
-  artdaq::Globals::metricMan_->sendMetric("TimingSys MaxInterval run",   met_rintmax_, "ticks", 1, false);
-  artdaq::Globals::metricMan_->sendMetric("TimingSys MaxInterval spill", met_sintmax_, "ticks", 1, false);
+  artdaq::Globals::metricMan_->sendMetric("TimingSys TimeStamp",         ts,           "ticks", 1, artdaq::MetricMode::LastPoint);
+  artdaq::Globals::metricMan_->sendMetric("TimingSys Events spill",      met_sevent_, "events", 1, artdaq::MetricMode::LastPoint);
+  artdaq::Globals::metricMan_->sendMetric("TimingSys MinInterval run",   met_rintmin_, "ticks", 1, artdaq::MetricMode::LastPoint);
+  artdaq::Globals::metricMan_->sendMetric("TimingSys MinInterval spill", met_sintmin_, "ticks", 1, artdaq::MetricMode::LastPoint);
+  artdaq::Globals::metricMan_->sendMetric("TimingSys MaxInterval run",   met_rintmax_, "ticks", 1, artdaq::MetricMode::LastPoint);
+  artdaq::Globals::metricMan_->sendMetric("TimingSys MaxInterval spill", met_sintmax_, "ticks", 1, artdaq::MetricMode::LastPoint);
 }
 
 // The following macro is defined in artdaq's GeneratorMacros.hh header
