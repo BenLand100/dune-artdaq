@@ -221,9 +221,6 @@ if [[ ! -e $Base/download/product_deps ]]; then
     exit 1
 fi
 
-artdaq_core_version=v3_00_00
-artdaq_utilities_version=v1_03_00
-
 demo_version=`grep "parent dune_artdaq" $Base/download/product_deps|awk '{print $3}'`
 
 artdaq_version=`grep -E "^artdaq\s+" $Base/download/product_deps | awk '{print $2}'`
@@ -317,6 +314,14 @@ fi
 
 if ! $bad_network; then
 
+
+    mrb gitCheckout -t ${artdaq_version} -d artdaq http://cdcvs.fnal.gov/projects/artdaq
+
+    if [[ "$?" != "0" ]]; then
+    	echo "Unable to perform checkout of http://cdcvs.fnal.gov/projects/artdaq"
+    	exit 1
+    fi
+
     mrb gitCheckout $dune_raw_data_checkout_arg $dune_raw_data_repo
 
     if [[ "$?" != "0" ]]; then
@@ -331,6 +336,8 @@ if ! $bad_network; then
 	exit 1
     fi
 fi
+
+sed -i -r 's/^\s*defaultqual(\s+).*/defaultqual\1'$equalifier':'$squalifier'/' artdaq/ups/product_deps
 
 if false ; then 
 
