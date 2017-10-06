@@ -23,7 +23,8 @@ dune::SSP::SSP(fhicl::ParameterSet const & ps)
   :
   CommandableFragmentGenerator(ps),
   fragment_type_(dune::detail::PHOTON),
-  board_id_(ps.get<unsigned int>("board_id",0))
+  board_id_(ps.get<unsigned int>("board_id",0)),
+  max_frags_(ps.get<unsigned int>("max_frags_in_send",1))
 {
   instance_name_for_metrics_ = "SSP " + boost::lexical_cast<std::string>(board_id_);
 
@@ -304,9 +305,7 @@ bool dune::SSP::getNext_(artdaq::FragmentPtrs & frags) {
 
   bool hasSeenSlice=false;
 
-  unsigned int maxFrags=100;
-
-  for(unsigned int fragsBuilt=0;fragsBuilt<maxFrags;++fragsBuilt){
+  for(unsigned int fragsBuilt=0;fragsBuilt<max_frags_;++fragsBuilt){
 
     std::vector<unsigned int> millislice;
 
