@@ -23,8 +23,7 @@ dune::SSP::SSP(fhicl::ParameterSet const & ps)
   :
   CommandableFragmentGenerator(ps),
   fragment_type_(dune::detail::PHOTON),
-  board_id_(ps.get<unsigned int>("board_id",0)),
-  max_frags_(ps.get<unsigned int>("max_frags_in_send",1))
+  board_id_(ps.get<unsigned int>("board_id",0))
 {
   instance_name_for_metrics_ = "SSP " + boost::lexical_cast<std::string>(board_id_);
 
@@ -273,12 +272,15 @@ void dune::SSP::ConfigureDAQ(fhicl::ParameterSet const& ps){
       throw SSPDAQ::EDAQConfigError("");
   }
 
+  unsigned int triggerMask=daqConfig.get<unsigned int>("TriggerMask",0);
+
   device_interface_->SetPreTrigLength(preTrigLength);
   device_interface_->SetPostTrigLength(postTrigLength);
   device_interface_->SetUseExternalTimestamp(useExternalTimestamp);
   device_interface_->SetTriggerWriteDelay(triggerWriteDelay);
   device_interface_->SetDummyPeriod(dummyPeriod);
   device_interface_->SetHardwareClockRateInMHz(hardwareClockRate);
+  device_interface_->SetTriggerMask(triggerMask);
 }
 
 
@@ -305,7 +307,9 @@ bool dune::SSP::getNext_(artdaq::FragmentPtrs & frags) {
 
   bool hasSeenSlice=false;
 
-  for(unsigned int fragsBuilt=0;fragsBuilt<max_frags_;++fragsBuilt){
+  unsigned int maxFrags=1;
+
+  for(unsigned int fragsBuilt=0;fragsBuilt<maxFrags;++fragsBuilt){
 
     std::vector<unsigned int> millislice;
 
@@ -333,6 +337,7 @@ bool dune::SSP::getNext_(artdaq::FragmentPtrs & frags) {
     if(millislice.size()==0){
       if(!hasSeenSlice){
 	++fNNoFragments;
+	usleep(100000);
       }
     break;
     }
@@ -366,7 +371,8 @@ bool dune::SSP::getNext_(artdaq::FragmentPtrs & frags) {
     auto timestamp = (metadata.sliceHeader.triggerTime + 1057) / 3 ;
 
 
-    DAQLogger::LogInfo("SSP_SSP_generator") << "SSP fragment w/ fragment ID " << frags.back()->fragmentID() << " timestamp is " << timestamp;
+    DAQLogger::LogInfo("SSP_SSP_generator") << "SSP fragment w/ fragment ID " << frags.back()->fragmentID() << " timestamp is " << timestamp
+					    << " ev_counter is "<< std::to_string(ev_counter());
       
     frags.back()->setTimestamp(timestamp);   
     // Then any overlay-specific quantities next; will need the

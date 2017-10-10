@@ -80,8 +80,6 @@ namespace dune {
     unsigned long fNGetNextCalls;
 
     std::string instance_name_for_metrics_;
-
-    unsigned int max_frags_;
   };
 }
 
