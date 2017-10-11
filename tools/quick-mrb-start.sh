@@ -213,7 +213,7 @@ if [ -z "${tag:-}" ]; then
 fi
 
 if ! $bad_network; then
-    wget https://cdcvs.fnal.gov/redmine/projects/dune-artdaq/repository/revisions/fd1c556e70d2ee2cfcc47df93e56c6c8963084b7/raw/ups/product_deps
+    wget https://cdcvs.fnal.gov/redmine/projects/dune-artdaq/repository/revisions/develop/raw/ups/product_deps
 fi
 
 if [[ ! -e $Base/download/product_deps ]]; then
@@ -257,18 +257,18 @@ fi
 # previously scp'd or rsync'd the products to the host you're trying
 # to install dune-artdaq on
 
-# if ! $bad_network; then
-#     wget http://scisoft.fnal.gov/scisoft/bundles/tools/pullProducts
-#     chmod +x pullProducts
-#     ./pullProducts $Base/products ${os} artdaq-${artdaq_version} ${squalifier}-${equalifier} ${build_type}
+if ! $bad_network; then
+    wget http://scisoft.fnal.gov/scisoft/bundles/tools/pullProducts
+    chmod +x pullProducts
+    ./pullProducts $Base/products ${os} artdaq-${artdaq_version} ${squalifier}-${equalifier} ${build_type}
 
-#     if [ $? -ne 0 ]; then
-# 	echo "Error in pullProducts. Please go to http://scisoft.fnal.gov/scisoft/bundles/artdaq/${artdaq_version}/manifest and make sure that a manifest for the specified qualifiers (${squalifier}-${equalifier}) exists."
-# 	exit 1
-#     fi
+    if [ $? -ne 0 ]; then
+	echo "Error in pullProducts. Please go to http://scisoft.fnal.gov/scisoft/bundles/artdaq/${artdaq_version}/manifest and make sure that a manifest for the specified qualifiers (${squalifier}-${equalifier}) exists."
+	exit 1
+    fi
 
-#     detectAndPull mrb noarch
-# fi
+    detectAndPull mrb noarch
+fi
 
 source $Base/products/setup
 setup mrb
@@ -289,7 +289,6 @@ if [[ $opt_lrd_develop -eq 1 ]]; then
 else
     dune_raw_data_checkout_arg="-t ${coredemo_version} -d dune_raw_data"
 fi
-dune_raw_data_checkout_arg="-b feature/artdaq_v2_03_03 -d dune_raw_data"
 
 if [[ $opt_lrd_w -eq 1 ]]; then
     dune_raw_data_repo="ssh://p-dune-raw-data@cdcvs.fnal.gov/cvs/projects/dune-raw-data"
@@ -302,7 +301,6 @@ if [[ $tag == "develop" ]]; then
 else
     dune_artdaq_checkout_arg="-t $tag -d dune_artdaq"
 fi
-dune_artdaq_checkout_arg="-b feature/artdaq_v2_03_03 -d dune_artdaq"
 
 # Notice the default for write access to dune-artdaq is the opposite of that for dune-raw-data
 if [[ $opt_la_nw -eq 1 ]]; then
@@ -339,7 +337,7 @@ fi
 
 sed -i -r 's/^\s*defaultqual(\s+).*/defaultqual\1'$equalifier':'$squalifier'/' artdaq/ups/product_deps
 
-if false ; then 
+if true ; then 
 
     cd $MRB_SOURCE
     mfextensionsver=$( awk '/^[[:space:]]*artdaq_mfextensions/ { print $2 }' artdaq/ups/product_deps )
