@@ -220,7 +220,6 @@ void SSPDAQ::DeviceInterface::ReadEvents(std::vector<unsigned int>& fragment){
   unsigned long packetTime=GetTimestamp(fPacketBuffer.back().header);
 
   if(packetTime>fTriggers.front().endTime+fTriggerWriteDelay){
-    dune::DAQLogger::LogInfo("SSP_DeviceInterface")<<"getNext thread will build fragment..."<<std::endl;
     this->BuildFragment(fTriggers.front(),fragment);
     fTriggers.pop();
   }
@@ -362,6 +361,8 @@ void SSPDAQ::DeviceInterface::BuildFragment(const SSPDAQ::TriggerInfo& theTrigge
     sliceDataPtr+=(*ev)->header.length-headerSizeInWords;
   }
   
+  dune::DAQLogger::LogInfo("SSP_DeviceInterface")<<"Building fragment with "<<eventsToWrite.size()<<" packets"<<std::endl;
+
   //=======================//
   //Add millislice to queue//
   //=======================//
