@@ -9,7 +9,6 @@ def generateBoardReaderMain(totalEBs, totalFRs, fragSizeWords, generatorCode)
   max_fragment_size_words: %{size_words}
   fragment_receiver: {
     mpi_buffer_count: %{buffer_count}
-    mpi_sync_interval: 50
     first_event_builder_rank: %{total_frs}
     event_builder_count: %{total_ebs}
 

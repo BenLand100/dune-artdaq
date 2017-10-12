@@ -1,0 +1,44 @@
+ physics:
+{
+  analyzers:
+  {
+    tpcScope:
+    {
+      module_type: TPCScope
+      raw_data_label: daq
+      frag_type: TPC
+      channels_to_look_at: [0,15,24,55,127] #make this an empty vector to turn ON all channels
+      max_number_of_ticks_in_scope:  10000000 #it will write the histograms before this if ther is a gap int he timestamps
+      hold_off: 9999
+      max_traces : 1
+    }
+  }
+
+  a1: [ tpcScope ]
+  e1: [ out1 ]
+  end_paths: [ a1, e1 ]
+}
+
+services : {
+  TFileService:
+  {
+      fileName: "TPCScopeTraces.root"
+  }
+}
+
+outputs:
+{
+  out1:
+  {
+    module_type: FileDumperOutput
+    wantProductFriendlyClassName: true
+  }
+}
+
+source:
+{
+  module_type: RootInput
+}
+
+process_name: EVTDUMP
+ 

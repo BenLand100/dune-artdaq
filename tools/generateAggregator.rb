@@ -1,7 +1,7 @@
 
 def generateAggregator(totalFRs, totalEBs, bunchSize, fragSizeWords,
                        xmlrpcClientList, fileSizeThreshold, fileDuration,
-                       fileEventCount, queueDepth, queueTimeout, onmonEventPrescale)
+                       fileEventCount, queueDepth, queueTimeout, onmonEventPrescale, aggDescriptionString)
 
 agConfig = String.new( "\
 daq: {
@@ -19,7 +19,17 @@ daq: {
     file_size_MB: %{file_size}
     file_duration: %{file_duration}
     file_event_count: %{file_event_count}
+    %{agg_description}
   }
+
+   transfer_to_dispatcher: {
+         transferPluginType: Shmem
+
+    unique_label: \"shared_memory_between_data_logger_and_dispatcher\"
+
+    max_fragment_size_words: %{size_words}
+    first_event_builder_rank: %{total_frs} 
+   }
 }" )
 
   agConfig.gsub!(/\%\{size_words\}/, String(fragSizeWords))
@@ -33,6 +43,7 @@ daq: {
   agConfig.gsub!(/\%\{file_size\}/, String(fileSizeThreshold))
   agConfig.gsub!(/\%\{file_duration\}/, String(fileDuration))
   agConfig.gsub!(/\%\{file_event_count\}/, String(fileEventCount))
+  agConfig.gsub!(/\%\{agg_description\}/, String(aggDescriptionString))
 
   return agConfig
 end

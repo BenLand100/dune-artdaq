@@ -1,5 +1,5 @@
 
-# Generate the FHiCL document which configures the lbne::ToySimulator class
+# Generate the FHiCL document which configures the dune::ToySimulator class
 
 # Note that if "nADCcounts" is set to nil, its FHiCL
 # setting is defined in a separate file called ToySimulator.fcl,
@@ -16,7 +16,8 @@ def generateToy(startingFragmentId, boardId,
     fragment_id: %{starting_fragment_id}
     board_id: %{board_id}
     random_seed: %{random_seed}
-    sleep_on_stop_us: 500000 " \
+    distribution_type: 1
+    sleep_on_stop_us: 0 " \
                           + read_fcl("ToySimulator.fcl") )
   
   toyConfig.gsub!(/\%\{starting_fragment_id\}/, String(startingFragmentId))

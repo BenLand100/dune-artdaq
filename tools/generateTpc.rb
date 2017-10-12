@@ -1,11 +1,14 @@
 
-# Generate the FHiCL document which configures the lbne::TpcRceReceiver class
+# Generate the FHiCL document which configures the dune::TpcRceReceiver class
 
 
 require File.join( File.dirname(__FILE__), 'demo_utilities' )
   
 def generateTpc(startingFragmentId, boardId, fragmentType)
 
+  fclFileName = "TpcRceReceiver" + String(boardId) + ".fcl"
+  puts "***generateTpc boardId %d fclFileName %s" % [boardId, fclFileName]
+ 
   tpcConfig = String.new( "\
     generator: TpcRceReceiver
     fragment_type: %{fragment_type}
@@ -13,7 +16,7 @@ def generateTpc(startingFragmentId, boardId, fragmentType)
     board_id: %{board_id}
     sleep_on_stop_us: 500000 
     " \
-     + read_fcl("TpcRceReceiver.fcl") )
+     + read_fcl(fclFileName) )
   
   tpcConfig.gsub!(/\%\{starting_fragment_id\}/, String(startingFragmentId))
   tpcConfig.gsub!(/\%\{board_id\}/, String(boardId))

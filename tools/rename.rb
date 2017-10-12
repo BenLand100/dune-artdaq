@@ -1,10 +1,10 @@
 #!/bin/env ruby
 
 # This script is meant to be run out of the base directory (i.e., the
-# one containing the "setupLBNEARTDAQ" file); provided with a
-# directory (package) name to replace "lbne-artdaq" and a namespace
+# one containing the "setupDUNEARTDAQ" file); provided with a
+# directory (package) name to replace "dune-artdaq" and a namespace
 # name to replace "demo", it will allow experiments to effectively use
-# this stripped-down version of lbne-artdaq as a starting point for
+# this stripped-down version of dune-artdaq as a starting point for
 # their own development
 
 if ! ARGV.length.between?(2,2)
@@ -15,13 +15,13 @@ end
 dirname = ARGV[0]
 namespace = ARGV[1]
 
-#if ! File.file?("setupLBNEARTDAQ")
-#  puts "Should be in the same directory as the \"setupLBNEARTDAQ\" file"
+#if ! File.file?("setupDUNEARTDAQ")
+#  puts "Should be in the same directory as the \"setupDUNEARTDAQ\" file"
 #  exit(2)
 #end
 
-if ! File.exists?("lbne-artdaq") #|| !  File.exists?("build_lbne-artdaq")
-  puts "Should see source directory \"lbne-artdaq\""
+if ! File.exists?("dune-artdaq") #|| !  File.exists?("build_dune-artdaq")
+  puts "Should see source directory \"dune-artdaq\""
   exit(3)
 end
 
@@ -32,11 +32,11 @@ def modify( filename, newdir, newnamespace)
   source.gsub!(/artdaq\-demo/, newdir)
   source.gsub!(/demo\:\:/, newnamespace + "::")
   source.gsub!(/namespace(\s+)demo/, "namespace " + newnamespace )
-  source.gsub!(/LBNEARTDAQ/, newdir.dup.gsub!(/\-/,"").upcase )
+  source.gsub!(/DUNEARTDAQ/, newdir.dup.gsub!(/\-/,"").upcase )
   
   defname = String.new( newdir )
   defname.gsub!("\-", "_")
-  source.gsub!("lbne_artdaq", defname)
+  source.gsub!("dune_artdaq", defname)
 
   cmd = "rm %s" % [filename]
   `#{cmd}`
@@ -46,13 +46,13 @@ def modify( filename, newdir, newnamespace)
 
 end
 
-# First, modify the source files in lbne-artdaq to reflect the new
+# First, modify the source files in dune-artdaq to reflect the new
 # package's directory and namespace
 
-# Searching for every file in the lbne-artdaq directory less than a
+# Searching for every file in the dune-artdaq directory less than a
 # megabtye is a way of capturing all its source files
 
-results = `find lbne-artdaq -type f -size -1000k -not -regex ".*\.git.*"`
+results = `find dune-artdaq -type f -size -1000k -not -regex ".*\.git.*"`
 
 results.each do |filename|
 
@@ -78,20 +78,20 @@ end
 
 # Next, actually change the directory names :
 
-#cmd = "mv build_lbne-artdaq build_" + dirname
+#cmd = "mv build_dune-artdaq build_" + dirname
 #`#{cmd}`
 
-cmd = "mv lbne-artdaq/lbne-artdaq lbne-artdaq/" + dirname
+cmd = "mv dune-artdaq/dune-artdaq dune-artdaq/" + dirname
 `#{cmd}`
 
-cmd = "mv lbne-artdaq " + dirname
+cmd = "mv dune-artdaq " + dirname
 `#{cmd}`
 
-# # And now the setupLBNEARTDAQ file itself
-#modify( "setupLBNEARTDAQ", dirname, namespace)
+# # And now the setupDUNEARTDAQ file itself
+#modify( "setupDUNEARTDAQ", dirname, namespace)
 
 ## And change its name accordingly
-#cmd = "mv setupLBNEARTDAQ setup" + dirname.dup.gsub!(/\-/,"").upcase
+#cmd = "mv setupDUNEARTDAQ setup" + dirname.dup.gsub!(/\-/,"").upcase
 # `#{cmd}`
 
 puts "Finished; please check sourcefile comments for references to wikis, repositories, etc. and update the ups/product_deps file to reflect the desired ups version"

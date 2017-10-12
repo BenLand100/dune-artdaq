@@ -4,12 +4,12 @@
  number_of_microslices_per_millislice: 100
    
  # RCE client connection parameters
- rce_client_host_addr: lbnedaq2 
+ rce_client_host_addr: dunedaq3 
  rce_client_host_port: 9999
  rce_client_timeout_usecs: 500000
    
  # RCE emulator configuration parameters 
- rce_data_dest_host: '10.0.0.2'
+ rce_data_dest_host: '10.0.1.2'
  rce_data_dest_port: 8989  
  rce_data_num_millislices: 0    # 0=Run until stopped
  rce_data_num_microslices: 100

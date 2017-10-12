@@ -5,7 +5,7 @@
 # This script is meant to provide a very simple example of how one
 # might control an artdaq-based program from the command line. The
 # idea is that this script uses its command line arguments to generate
-# a FHiCL document which in turn is passed to the lbne-artdaq's
+# a FHiCL document which in turn is passed to the dune-artdaq's
 # "driver" program for processing.
 
 # DemoControl.rb, the main script used to run the full teststand
@@ -15,7 +15,7 @@
 
 # Here, we simply create a FHiCL script designed to run the new
 # "ToyDump" module so as to print ADC values from fragments of type
-# TOY1 or TOY2 to screen (see the lbne-raw-data/Overlays/ToyFragment.hh
+# TOY1 or TOY2 to screen (see the dune-raw-data/Overlays/ToyFragment.hh
 # file for more)
 
 require File.join( File.dirname(__FILE__), 'generateToy' )

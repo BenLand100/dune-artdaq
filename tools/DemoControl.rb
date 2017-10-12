@@ -22,10 +22,11 @@ require File.join( File.dirname(__FILE__), 'demo_utilities' )
 # arguments, will generate FHiCL code usable by the artdaq processes
 # (BoardReaderMain, EventBuilderMain, AggregatorMain)
 
+require File.join( File.dirname(__FILE__), 'generateSSP' )
 require File.join( File.dirname(__FILE__), 'generateToy' )
 require File.join( File.dirname(__FILE__), 'generateTpc' )
+require File.join( File.dirname(__FILE__), 'generatePenn' )
 require File.join( File.dirname(__FILE__), 'generateWFViewer' )
-
 require File.join( File.dirname(__FILE__), 'generateBoardReaderMain' )
 require File.join( File.dirname(__FILE__), 'generateEventBuilderMain' )
 require File.join( File.dirname(__FILE__), 'generateAggregatorMain' )
@@ -189,6 +190,28 @@ daq: {
         xmlrpcClients += ",3"  # group number
       end
     end
+    (cmdLineOptions.penns).each do |proc|
+      br = cmdLineOptions.boardReaders[proc.board_reader_index]
+      if br.hasBeenIncludedInXMLRPCList
+        next
+      else
+        br.hasBeenIncludedInXMLRPCList = true
+        xmlrpcClients += ";http://" + proc.host + ":" +
+          String(proc.port) + "/RPC2"
+        xmlrpcClients += ",3"  # group number
+      end
+    end
+    (cmdLineOptions.ssps).each do |proc|
+      br = cmdLineOptions.boardReaders[proc.board_reader_index]
+      if br.hasBeenIncludedInXMLRPCList
+        next
+      else
+        br.hasBeenIncludedInXMLRPCList = true
+        xmlrpcClients += ";http://" + proc.host + ":" +
+          String(proc.port) + "/RPC2"
+        xmlrpcClients += ",3"  # group number
+      end
+    end
     (cmdLineOptions.eventBuilders).each do |proc|
       xmlrpcClients += ";http://" + proc.host + ":" +
         String(proc.port) + "/RPC2"
@@ -217,6 +240,8 @@ class CommandLineParser
     @options.eventBuilders = []
     @options.toys = []
     @options.tpcs = []
+    @options.penns = []
+    @options.ssps = []
     @options.boardReaders = []
     @options.dataDir = nil
     @options.command = nil
@@ -224,6 +249,7 @@ class CommandLineParser
     @options.runNumber = "0101"
     @options.serialize = false
     @options.runOnmon = 0
+    @options.runTrigger = 0
     @options.writeData = 1
     @options.runDurationSeconds = -1
     @options.eventsInRun = -1
@@ -268,7 +294,7 @@ class CommandLineParser
         @options.aggregators << agConfig
       end
     
-	  opts.on("--tpc [host.port,board_id]", Array,
+      opts.on("--tpc [host.port,board_id]", Array,
               "Add a TPC fragment receiver that runs on the specified host, port, ",
               "and board ID.") do |tpc|
         if tpc.length != 3
@@ -284,6 +310,43 @@ class CommandLineParser
         tpcConfig.board_reader_index = addToBoardReaderList(tpcConfig.host, tpcConfig.port,
                                                               tpcConfig.kind, tpcConfig.index)
         @options.tpcs << tpcConfig
+      end
+
+      opts.on("--penn [host.port,board_id]", Array,
+              "Add a PENN fragment receiver that runs on the specified host, port, ",
+              "and board ID.") do |penn|
+        if penn.length != 3
+          puts "You must specify a host, port, and board ID."
+          exit
+        end
+        pennConfig = OpenStruct.new
+        pennConfig.host = penn[0]
+        pennConfig.port = Integer(penn[1])
+        pennConfig.board_id = Integer(penn[2])
+        pennConfig.kind = "PENN"
+        pennConfig.index = (@options.penns).length
+        pennConfig.board_reader_index = addToBoardReaderList(pennConfig.host, pennConfig.port,
+                                                              pennConfig.kind, pennConfig.index)
+        @options.penns << pennConfig
+      end
+
+      opts.on("--ssp [host.port,board_id,interface_type]", Array,
+              "Add an SSP fragment receiver that runs on the specified host, port, ",
+              "and board ID.") do |ssp|
+        if ssp.length != 4
+          puts "You must specify a host, port, board ID and interface type."
+          exit
+        end
+        sspConfig = OpenStruct.new
+        sspConfig.host = ssp[0]
+        sspConfig.port = Integer(ssp[1])
+        sspConfig.board_id = Integer(ssp[2])
+        sspConfig.interface_type = Integer(ssp[3])
+        sspConfig.kind = "SSP"
+        sspConfig.index = (@options.ssps).length
+        sspConfig.board_reader_index = addToBoardReaderList(sspConfig.host, sspConfig.port,
+                                                              sspConfig.kind, sspConfig.index)
+        @options.ssps << sspConfig
       end
 	  
       opts.on("--toy1 [host,port,board_id]", Array, 
@@ -333,6 +396,11 @@ class CommandLineParser
       opts.on("-m", "--online-monitoring [enable flag (0 or 1)]", 
               "Whether to run the online monitoring modules.") do |runOnmon|
         @options.runOnmon = runOnmon
+      end
+
+      opts.on("-T", "--trigger [enable flag (0 or 1)]", 
+              "Whether to run the trigger modules.") do |runTrigger|
+        @options.runTrigger = runTrigger
       end
 
       opts.on("-w", "--write-data [enable flag (0 or 1)]", 
@@ -441,7 +509,8 @@ class CommandLineParser
     # is running on which host.
     puts "Configuration Summary:"
     hostMap = {}
-    (@options.eventBuilders + @options.toys + @options.tpcs + @options.aggregators).each do |proc|
+
+    (@options.eventBuilders + @options.toys + @options.tpcs + @options.penns + @options.ssps + @options.aggregators).each do |proc|
       if not hostMap.keys.include?(proc.host)
         hostMap[proc.host] = []
       end
@@ -468,6 +537,19 @@ class CommandLineParser
              item.port,
              item.index,
              item.board_id]
+        when "PENN"
+          puts "    PennReceiver, %s, port %d, rank %d, board_id %d" %
+            [item.kind.upcase,
+             item.port,
+             item.index,
+             item.board_id]
+        when "SSP"
+          puts "    SSPReceiver, %s, port %d, rank %d, board_id %d, interface_type %d" %
+            [item.kind.upcase,
+             item.port,
+             item.index,
+             item.board_id,
+             item.interface_type]
         when "TOY1", "TOY2"
           puts "    FragmentReceiver, Simulated %s, port %d, rank %d, board_id %d" % 
             [item.kind.upcase,
@@ -505,7 +587,9 @@ class SystemControl
     agIndex = 0
     totaltoy1s = 0
     totaltoy2s = 0
-	totalTpcs = 0
+    totalTpcs = 0
+    totalPenns = 0
+    totalSSPs = 0
 	
     @options.toys.each do |proc|
       case proc.kind
@@ -516,13 +600,14 @@ class SystemControl
       end
     end
     
-	totalTpcs = @options.tpcs.length
-	
-    totalBoards = @options.toys.length + @options.tpcs.length
+    totalTpcs = @options.tpcs.length
+    totalPenns = @options.penns.length
+    totalSSPs = @options.ssps.length	
+    totalBoards = @options.toys.length + @options.tpcs.length + @options.penns.length + @options.ssps.length
     totalFRs = @options.boardReaders.length
     totalEBs = @options.eventBuilders.length
     totalAGs = @options.aggregators.length
-    inputBuffSizeWords = 2097152
+    inputBuffSizeWords = 8388608
 
     #if Integer(totalv1720s) > 0
     #  inputBuffSizeWords = 8192 * @options.v1720s[0].gate_width
@@ -537,9 +622,10 @@ class SystemControl
     # store the CFGs in the boardReader list for everything
 
     # John F., 1/21/14 -- added the toy fragment generators
-	# Tim N., 7/29/14 -- added the TPC RCE fragment generators
+    # Tim N., 7/29/14 -- added the TPC RCE fragment generators
+    # Tom D., 2/04/15 -- added the Penn fragment generators
 
-    (@options.toys + @options.tpcs).each { |boardreaderOptions|	
+    (@options.toys + @options.tpcs + @options.penns + @options.ssps).each { |boardreaderOptions|	
       br = @options.boardReaders[boardreaderOptions.board_reader_index]
       listIndex = 0
       br.kindList.each do |kind|
@@ -550,10 +636,22 @@ class SystemControl
                                         boardreaderOptions.board_id, kind)
           end
 
-	      if kind == "TPC" 
-	        generatorCode = generateTpc(boardreaderOptions.index,
-	                                    boardreaderOptions.board_id, kind)
-	      end
+          if kind == "TPC" 
+            generatorCode = generateTpc(boardreaderOptions.index,
+                                        boardreaderOptions.board_id, kind)
+          end
+
+          if kind == "PENN" 
+            generatorCode = generatePenn(boardreaderOptions.index,
+                                        boardreaderOptions.board_id, kind)
+          end
+
+          if kind == "SSP" 
+            generatorCode = generateSSP(boardreaderOptions.index,
+                                        boardreaderOptions.board_id,
+                                        boardreaderOptions.interface_type,
+                                        kind)
+          end
 	      
           cfg = generateBoardReaderMain(totalEBs, totalFRs,
                                         Integer(inputBuffSizeWords/8), 
@@ -571,7 +669,7 @@ class SystemControl
 
     threads = []
 
-    (@options.toys + @options.tpcs).each { |proc|
+    (@options.toys + @options.tpcs + @options.penns + @options.ssps).each { |proc|
       br = @options.boardReaders[proc.board_reader_index]
       if br.boardCount > 1
         if br.commandHasBeenSent
@@ -588,6 +686,7 @@ class SystemControl
       currentTime = DateTime.now.strftime("%Y/%m/%d %H:%M:%S")
       puts "%s: Sending the INIT command to %s:%d." %
         [currentTime, proc.host, proc.port]
+      sleep(10)
       threads << Thread.new() do
         xmlrpcClient = XMLRPC::Client.new(proc.host, "/RPC2",
                                           proc.port)
@@ -628,7 +727,7 @@ class SystemControl
                                        )
 
         cfg = generateEventBuilderMain(ebIndex, totalFRs, totalEBs, totalAGs,
-                                   @options.dataDir, @options.runOnmon,
+                                   @options.dataDir, @options.runOnmon, @options.runTrigger,
                                    @options.writeData, inputBuffSizeWords,
                                    totalBoards, 
                                    fclWFViewer
@@ -701,6 +800,8 @@ class SystemControl
     self.sendCommandSet("start", @options.eventBuilders, runNumber)
     self.sendCommandSet("start", @options.toys, runNumber)
     self.sendCommandSet("start", @options.tpcs, runNumber)
+    self.sendCommandSet("start", @options.penns, runNumber)
+    self.sendCommandSet("start", @options.ssps, runNumber)
   end
 
   def sendCommandSet(commandName, procs, commandArg = nil)
@@ -762,6 +863,9 @@ class SystemControl
         when "TPC"
           puts "%s: TPC TpcRceReceiver on %s:%d result: %s" %
             [currentTime, proc.host, proc.port, result]
+        when "TPC"
+          puts "%s: PENN PennReceiver on %s:%d result: %s" %
+            [currentTime, proc.host, proc.port, result]
         when "multi-board"
           puts "%s: multi-board FragmentReceiver on %s:%d result: %s" %
             [currentTime, proc.host, proc.port, result]
@@ -776,6 +880,8 @@ class SystemControl
 
   def shutdown()
     self.sendCommandSet("shutdown", @options.tpcs)
+    self.sendCommandSet("shutdown", @options.penns)
+    self.sendCommandSet("shutdown", @options.ssps)
     self.sendCommandSet("shutdown", @options.toys)
     self.sendCommandSet("shutdown", @options.eventBuilders)
     self.sendCommandSet("shutdown", @options.aggregators)
@@ -783,6 +889,8 @@ class SystemControl
 
   def pause()
     self.sendCommandSet("pause", @options.tpcs)
+    self.sendCommandSet("pause", @options.penns)
+    self.sendCommandSet("pause", @options.ssps)
     self.sendCommandSet("pause", @options.toys)
     self.sendCommandSet("pause", @options.eventBuilders)
     self.sendCommandSet("pause", @options.aggregators)
@@ -918,6 +1026,8 @@ class SystemControl
     end
 
     self.sendCommandSet("stop", @options.tpcs)
+    self.sendCommandSet("stop", @options.penns)
+    self.sendCommandSet("stop", @options.ssps)
     self.sendCommandSet("stop", @options.toys)
     self.sendCommandSet("stop", @options.eventBuilders)
     @options.aggregators.each do |proc|
@@ -932,6 +1042,8 @@ class SystemControl
     self.sendCommandSet("resume", @options.eventBuilders)
     self.sendCommandSet("resume", @options.toys)
     self.sendCommandSet("resume", @options.tpcs)
+    self.sendCommandSet("resume", @options.penns)
+    self.sendCommandSet("resume", @options.ssps)
   end
 
   def checkStatus()
@@ -939,6 +1051,8 @@ class SystemControl
     self.sendCommandSet("status", @options.eventBuilders)
     self.sendCommandSet("status", @options.toys)
     self.sendCommandSet("status", @options.tpcs)
+    self.sendCommandSet("status", @options.penns)
+    self.sendCommandSet("status", @options.ssps)
   end
 
   def getLegalCommands()
@@ -946,6 +1060,8 @@ class SystemControl
     self.sendCommandSet("legal_commands", @options.eventBuilders)
     self.sendCommandSet("legal_commands", @options.toys)
     self.sendCommandSet("legal_commands", @options.tpcs)
+    self.sendCommandSet("legal_commands", @options.penns)
+    self.sendCommandSet("legal_commands", @options.ssps)
   end
 end
 

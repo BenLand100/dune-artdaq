@@ -1,5 +1,5 @@
 
-# Generate the FHiCL document which configures the lbne::WFViewer class
+# Generate the FHiCL document which configures the dune::WFViewer class
 
 # Note that in the case of the "prescale" and "digital_sum_only"
 # parameters, if one or both of these parameters are "nil", the

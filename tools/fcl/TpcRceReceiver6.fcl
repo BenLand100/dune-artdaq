@@ -1,0 +1,40 @@
+ # FHiCL parameters for configuring TpcRceReceiver generator
+ 
+ # Number of microslice to concatenate into a millislice
+ number_of_microslices_per_millislice: 10
+   
+ # RCE client connection parameters
+ rce_client_host_addr: dunedpm6
+# rce_client_host_addr: '192.168.2.116'
+ rce_client_host_port: 8090
+ rce_client_timeout_usecs: 500000
+   
+ # Real RCE configuration parameters
+ rce_xml_config_file: 'config/defaults.xml'  # Configuration file
+ rce_daq_mode: 'Trigger' # Can be one of Burst, Scope, Trigger
+
+ # RCE emulator configuration parameters 
+ rce_data_dest_host: '10.0.1.2'
+ rce_data_dest_port: 8992  
+ rce_data_num_millislices: 0    # 0=Run until stopped
+ rce_data_num_microslices: 100
+ rce_data_frag_rate: 1000.0
+ rce_data_adc_mode: 4
+ rce_data_adc_mean: 1000.0
+ rce_data_adc_sigma: 100.0
+ 
+ # Port to receive data from RCE on  
+ receive_port: 8997
+ 
+ # Receiver parameters  
+ receiver_debug_level: 0
+ receiver_tick_period_usecs: 10000
+ 
+ # Stats reporting
+ reporting_interval_fragments: 100
+ reporting_interval_time: 10
+ 
+ # Buffer parameters  
+ raw_buffer_size: 4000000
+ raw_buffer_precommit: 100 
+ use_fragments_as_raw_buffer: true

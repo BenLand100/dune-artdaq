@@ -1,0 +1,74 @@
+ # FHiCL parameters for configuring PennReceiver generator
+
+
+ #########
+ # HARDWARE OPTIONS
+
+ # Penn client connection parameters (config stream)
+ penn_client_host_addr     : '127.0.0.1' # this is localhost
+ penn_client_host_port     : 9999
+ penn_client_timeout_usecs : 5E5
+   
+ # Penn trigger options
+ penn_mode_calibration        : false              # Turn calibration triggers on
+ penn_mode_external_triggers  : false              # Turn triggers from external sources on
+ penn_mode_muon_triggers      : true               # Turn triggers from the muon counters on
+
+ # Penn channel masks
+ penn_hit_mask_bsu            : 0x0003FFFFFFFFFFFF # Mask for the BSU channels
+ penn_hit_mask_tsu            : 0x000000FFFFFFFFFF # Mask for the TSU channels
+
+ # Penn microslice duration 
+ penn_data_microslice_size  : 7       # There are (2^x)-1 ticks per microslice
+                                      # (the Penn hardware looks at the rollover of the lowest x bits)
+
+ # Data stream connection parameters
+ penn_data_dest_host                    : localhost
+ penn_data_dest_port                    : 8991  
+
+
+ #########
+ # BOARDREADER OPTIONS 
+
+ # Receiver parameters  
+ receiver_tick_period_usecs : 1E4
+ 
+ # Millislice size options
+ millislice_size         : 200    #number of blocks or number of ticks, depending on REBLOCK_PENN_USLICE value
+ millislice_overlap_size : 20     #number of blocks or number of ticks, depending on REBLOCK_PENN_USLICE value
+                                  #by construction, the first millislice is smaller than the others (overlap is pre-pended, not post-pended)
+
+ # Stats reporting
+ reporting_interval_fragments : 1000  # Print a message every x millislices
+ reporting_interval_time      : 0     # Print a message every x seconds (0 to turn off)
+ receiver_debug_level         : 0   #higher number = print more info (6 is current highest level and crashes runs after a short while)
+ 
+ # Buffer parameters  
+ raw_buffer_size             : 4000000
+ raw_buffer_precommit        : 50 
+
+
+ #########
+ # EMULATOR OPTIONS
+
+ # Amount of data to generate
+ penn_data_num_millislices              : 1         # 0=Run until stopped
+ penn_data_num_microslices              : 1000
+ penn_data_frag_rate                    : 1000      # Hz
+
+ # Type of data to generate
+ penn_data_payload_mode                 : 4         #Counter & Trigger payload contents:
+                                                    #  0=all off
+						    #  1=all on
+						    #  2=alternating on/off
+						    #  3=random
+						    #  4=counter mostly 0 (but a few bits randomly on) word not sent if 0, trigger value is nhits if nhits>1
+ penn_data_trigger_mode                 : 1         #Trigger word send frequency
+                                                    #  0=no trigger words sent
+						    #  1=trigger word sent every tick
+						    #  2=trigger word sent randomly
+ penn_data_fragment_microslice_at_ticks : 0         #After this many ticks the uslice will be fragmented (<=0 means fragment automatically based on size)
+
+ # Special debug / testing parameters
+ penn_data_repeat_microslices           : false     #for rate testing
+ penn_data_debug_partial_recv           : false     #slows emulator down to send 1 byte at a time, every 0.1 seconds. For testing how the boardreader handles async_receive that grabs less than requested bytes

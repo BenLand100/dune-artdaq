@@ -3,10 +3,11 @@
 # artdaq::EventBuilderCore object
 
 require File.join( File.dirname(__FILE__), 'generateEventBuilder' )
+require File.join( File.dirname(__FILE__), 'generateTrigger' )
 
 
 def generateEventBuilderMain(ebIndex, totalFRs, totalEBs, totalAGs, 
-                         dataDir, onmonEnable,
+                         dataDir, onmonEnable, triggerEnable,
                          diskWritingEnable, fragSizeWords, totalFragments,
                          fclWFViewer )
   # Do the substitutions in the event builder configuration given the options
@@ -16,6 +17,7 @@ def generateEventBuilderMain(ebIndex, totalFRs, totalEBs, totalAGs,
 
 services: {
   scheduler: {
+    errorOnFailureToPut: true
     fileMode: NOMERGE
   }
   user: {
@@ -35,28 +37,30 @@ services: {
 %{event_builder_code}
 
 outputs: {
-  %{netmon_output}netMonOutput: {
-  %{netmon_output}  module_type: NetMonOutput
+  %{netmon_output}rootMPIOutput: {
+  %{netmon_output}  module_type: RootMPIOutput
+  %{netmon_output}%{trigger_output}
   %{netmon_output}}
   %{root_output}normalOutput: {
   %{root_output}  module_type: RootOutput
   %{root_output}  fileName: \"%{output_file}\"
   %{root_output}  compressionLevel: 0
   %{root_output}}
+  
 }
 
 physics: {
   analyzers: {
 %{phys_anal_onmon_cfg}
   }
-
-  producers: {
-  }
-
+  
+  %{trigger_code}
+  
   %{enable_onmon}a1: [ app, wf ]
 
-  %{netmon_output}my_output_modules: [ netMonOutput ]
+  %{netmon_output}my_output_modules: [ rootMPIOutput ]
   %{root_output}my_output_modules: [ normalOutput ]
+  %{trigger_path}
 }
 source: {
   module_type: RawInput
@@ -76,6 +80,19 @@ end
 event_builder_code = generateEventBuilder( fragSizeWords, totalFRs, totalAGs, totalFragments, verbose)
 
 ebConfig.gsub!(/\%\{event_builder_code\}/, event_builder_code)
+
+if Integer(triggerEnable) != 0
+  trigger_output,trigger_code,trigger_path =  generateTrigger()
+else
+  trigger_output = ""
+  trigger_code   = ""
+  trigger_path   = ""
+end
+ebConfig.gsub!(/\%\{trigger_output\}/, trigger_output)
+ebConfig.gsub!(/\%\{trigger_code\}/,   trigger_code)
+ebConfig.gsub!(/\%\{trigger_path\}/,   trigger_path)
+# puts ebConfig
+# raise "Fail"
 
 ebConfig.gsub!(/\%\{ag_rank\}/, String(totalFRs + totalEBs))
 ebConfig.gsub!(/\%\{ag_count\}/, String(totalAGs))
@@ -105,7 +122,7 @@ end
 
 
 currentTime = Time.now
-fileName = "lbne_eb%02d_" % ebIndex
+fileName = "dune_eb%02d_" % ebIndex
 fileName += "r%06r_sr%02s_%to"
 fileName += ".root"
 outputFile = File.join(dataDir, fileName)
