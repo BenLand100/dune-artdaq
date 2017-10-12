@@ -131,11 +131,6 @@ fi
 
 set -u   # complain about uninitialed shell variables - helps development
 
-if [[ $opt_lrd_develop -eq 0 ]]; then
-    echo "JCF, May-12-2017: currently there isn't an official cut release of dune-raw-data; therefore you need to supply the --dune-raw-data-develop-branch argument to this script" >&2
-    exit 1
-fi
-
 test -n "${do_help-}" -o $# -ge 3 && echo "$USAGE" && exit
 
 # JCF, 1/16/15
