@@ -386,7 +386,14 @@ cd $Base
         export DUNEARTDAQ_REPO="$ARTDAQ_DEMO_DIR"                                                                        
         export FHICL_FILE_PATH=.:\$DUNEARTDAQ_REPO/tools/fcl:\$FHICL_FILE_PATH                                           
         ${wibcmd}
-        ${uhal_setup_cmd}                                                                                                                          
+        ${uhal_setup_cmd}                                                      
+
+        returndir=\$PWD
+        cd \$WIB_DIRECTORY
+        source ./env.sh
+        cd \$returndir
+
+                                                                    
 # JCF, 11/25/14                                                                                                          
 # Make it easy for users to take a quick look at their output file via "rawEventDump"                                    
                                                                                                                          
