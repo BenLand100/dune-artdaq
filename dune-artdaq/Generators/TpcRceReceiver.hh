@@ -54,6 +54,8 @@ class TpcRceReceiver : public artdaq::CommandableFragmentGenerator {
 
   bool getNext_(artdaq::FragmentPtrs& output) override;
 
+  bool send_status();
+
   // JCF, Dec-11-2015
 
   // startOfDatataking will determine whether or not we've begun

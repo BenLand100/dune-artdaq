@@ -51,9 +51,11 @@ namespace SSPDAQ{
     //in fhicl - this method is for convenience when running test code.
     void Configure();
 
-    //Will read events from device and monitor for
-    //millislice boundaries
+    //Generate fragment from the data available on the buffer, if possible
     void ReadEvents(std::vector<unsigned int>& fragment);
+
+    //Actually read from the hardware. Thread spawned here at Start
+    void HardwareReadLoop();
 
     //Called by ReadEvents
     //Get an event off the hardware buffer.
@@ -118,6 +120,8 @@ namespace SSPDAQ{
 
     void SetUseExternalTimestamp(bool val){fUseExternalTimestamp=val;}
 
+    void SetTriggerMask(unsigned int val){fTriggerMask=val;}
+
     void PrintHardwareState();
 
     std::string GetIdentifier();
@@ -175,6 +179,8 @@ namespace SSPDAQ{
 
     unsigned long fTriggerWriteDelay;
 
+    unsigned int fTriggerMask;
+
     int fDummyPeriod;
 
     bool fSlowControlOnly;
@@ -184,6 +190,12 @@ namespace SSPDAQ{
     std::queue<TriggerInfo> fTriggers;
 
     std::atomic<bool> exception_;
+
+    std::atomic<bool> fShouldStop;
+
+    std::thread* fDataThread;
+
+    std::mutex fBufferMutex;
 
   };
   

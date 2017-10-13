@@ -8,6 +8,19 @@
 # JCF, Mar-2-2017
 # Modified it again to work with the brand new dune-artdaq package
 
+
+if ! [[ "$HOSTNAME" =~ ^np04-srv ]]; then 
+    echo "This script will only work on the CERN protoDUNE teststand computers, np04-srv-*" >&2
+    exit 1
+fi
+
+if [[ -e /nfs/sw/artdaq/products/setup ]]; then
+    . /nfs/sw/artdaq/products/setup
+else
+    echo "Expected there to be a products directory /nfs/sw/artdaq/products/" >&2 
+    exit 1
+fi
+
 bad_network=false
 
 
@@ -41,11 +54,10 @@ USAGE="\
    usage: `basename $0` [options]
 examples: `basename $0` 
           `basename $0` --wib-installation-dir <dirname1> --uhal-products-dir <dirname2> --dune-raw-data-developer --dune-raw-data-develop-branch
-          `basename $0` --wib-installation-dir <dirname1> --uhal-products-dir <dirname2> --debug --noviewer --dune-raw-data-developer
+          `basename $0` --wib-installation-dir <dirname1> --uhal-products-dir <dirname2> --debug --dune-raw-data-developer
 --wib-installation-dir <dirname1> provide location of installation of WIB software from Boston University (mandatory)
 --uhal-products-dir <dirname2> provide location of products directory containing uhal (mandatory)
 --debug       perform a debug build
---noviewer    skip installion of artdaq Message Viewer (use if there is no XWindows)
 --not-dune-artdaq-developer  use if you don't have write access to the dune-artdaq repository
 --dune-raw-data-develop-branch     Install the current \"develop\" version of dune-raw-data (may be unstable!)
 --dune-raw-data-developer    use if you have (and want to use) write access to the dune-raw-data repository
@@ -68,7 +80,6 @@ while [ -n "${1-}" ];do
 	    -uhal-products-dir)   uhal_products_dir="$1";;
 	    -wib-installation-dir) wib_installation_dir="$1";;
 	    -debug)     opt_debug=--debug;;
-	    -noviewer)    opt_noviewer=--noviewer;;
 	    -not-dune-artdaq-developer) opt_la_nw=1;;
 	    -dune-raw-data-develop-branch) opt_lrd_develop=1;;
 	    -dune-raw-data-developer)  opt_lrd_w=1;;
@@ -119,11 +130,6 @@ else
 fi
 
 set -u   # complain about uninitialed shell variables - helps development
-
-if [[ $opt_lrd_develop -eq 0 ]]; then
-    echo "JCF, May-12-2017: currently there isn't an official cut release of dune-raw-data; therefore you need to supply the --dune-raw-data-develop-branch argument to this script" >&2
-    exit 1
-fi
 
 test -n "${do_help-}" -o $# -ge 3 && echo "$USAGE" && exit
 
@@ -202,7 +208,7 @@ if [ -z "${tag:-}" ]; then
 fi
 
 if ! $bad_network; then
-    wget https://cdcvs.fnal.gov/redmine/projects/dune-artdaq/repository/revisions/$tag/raw/ups/product_deps
+    wget https://cdcvs.fnal.gov/redmine/projects/dune-artdaq/repository/revisions/develop/raw/ups/product_deps
 fi
 
 if [[ ! -e $Base/download/product_deps ]]; then
@@ -210,12 +216,10 @@ if [[ ! -e $Base/download/product_deps ]]; then
     exit 1
 fi
 
-
 demo_version=`grep "parent dune_artdaq" $Base/download/product_deps|awk '{print $3}'`
 
 artdaq_version=`grep -E "^artdaq\s+" $Base/download/product_deps | awk '{print $2}'`
 coredemo_version=`grep -E "^dune_raw_data\s+" $Base/download/product_deps | awk '{print $2}'`
-gallery_version=`grep -E "^gallery\s+" $Base/download/product_deps | awk '{print $2}'`
 
 default_quals_cmd="sed -r -n 's/.*(e[0-9]+):(s[0-9]+).*/\1 \2/p' $Base/download/product_deps | uniq"
 
@@ -243,15 +247,6 @@ else
     build_type="prof"
 fi
 
-# JCF, Jan-1-2016
-
-# The gallery package is currently something only dune-artdaq depends
-# on, hence we can't rely on pullProducts to get it for us
-
-if ! $bad_network; then
-os=`$Base/download/cetpkgsupport/bin/get-directory-name os`
-detectAndPull gallery ${os}-x86_64 "${equalifier}-${build_type}" $gallery_version
-fi
 
 # If we aren't connected to the outside world, you'll need to have
 # previously scp'd or rsync'd the products to the host you're trying
@@ -290,7 +285,6 @@ else
     dune_raw_data_checkout_arg="-t ${coredemo_version} -d dune_raw_data"
 fi
 
-
 if [[ $opt_lrd_w -eq 1 ]]; then
     dune_raw_data_repo="ssh://p-dune-raw-data@cdcvs.fnal.gov/cvs/projects/dune-raw-data"
 else
@@ -303,7 +297,6 @@ else
     dune_artdaq_checkout_arg="-t $tag -d dune_artdaq"
 fi
 
-
 # Notice the default for write access to dune-artdaq is the opposite of that for dune-raw-data
 if [[ $opt_la_nw -eq 1 ]]; then
     dune_artdaq_repo="http://cdcvs.fnal.gov/projects/dune-artdaq"
@@ -314,11 +307,12 @@ fi
 
 if ! $bad_network; then
 
+
     mrb gitCheckout -t ${artdaq_version} -d artdaq http://cdcvs.fnal.gov/projects/artdaq
 
     if [[ "$?" != "0" ]]; then
-	echo "Unable to perform checkout of http://cdcvs.fnal.gov/projects/artdaq"
-	exit 1
+    	echo "Unable to perform checkout of http://cdcvs.fnal.gov/projects/artdaq"
+    	exit 1
     fi
 
     mrb gitCheckout $dune_raw_data_checkout_arg $dune_raw_data_repo
@@ -336,24 +330,9 @@ if ! $bad_network; then
     fi
 fi
 
-# JCF, Jun-13-2017
-
-# The following modification of product_deps is Cargo Cult
-# Programming: apparently, mrbSetEnv seems to look at the default qual
-# in artdaq's ups/product_deps file (e10:s46), even if the default
-# qual in dune-artdaq implies a different qualifier (e14:s48) for
-# artdaq. Passing the option "-q e14:prof" to mrb newDev beforehand
-# doesn't help, and as mrbSetEnv itself is unreadable, I've arrived at
-# the following "patch" through trial-and-error:
-
-if [[ ! -e artdaq/ups/product_deps ]]; then
-    echo "Can't find artdaq/ups/product_deps; you need to be in the srcs/ directory"
-    exit 1
-fi
-
 sed -i -r 's/^\s*defaultqual(\s+).*/defaultqual\1'$equalifier':'$squalifier'/' artdaq/ups/product_deps
 
-if ! $bad_network && [[ "x${opt_noviewer-}" == "x" ]] ; then 
+if true ; then 
 
     cd $MRB_SOURCE
     mfextensionsver=$( awk '/^[[:space:]]*artdaq_mfextensions/ { print $2 }' artdaq/ups/product_deps )
@@ -407,7 +386,14 @@ cd $Base
         export DUNEARTDAQ_REPO="$ARTDAQ_DEMO_DIR"                                                                        
         export FHICL_FILE_PATH=.:\$DUNEARTDAQ_REPO/tools/fcl:\$FHICL_FILE_PATH                                           
         ${wibcmd}
-        ${uhal_setup_cmd}                                                                                                                          
+        ${uhal_setup_cmd}                                                      
+
+        returndir=\$PWD
+        cd \$WIB_DIRECTORY
+        source ./env.sh
+        cd \$returndir
+
+                                                                    
 # JCF, 11/25/14                                                                                                          
 # Make it easy for users to take a quick look at their output file via "rawEventDump"                                    
                                                                                                                          

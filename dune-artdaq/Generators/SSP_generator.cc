@@ -272,12 +272,15 @@ void dune::SSP::ConfigureDAQ(fhicl::ParameterSet const& ps){
       throw SSPDAQ::EDAQConfigError("");
   }
 
+  unsigned int triggerMask=daqConfig.get<unsigned int>("TriggerMask",0);
+
   device_interface_->SetPreTrigLength(preTrigLength);
   device_interface_->SetPostTrigLength(postTrigLength);
   device_interface_->SetUseExternalTimestamp(useExternalTimestamp);
   device_interface_->SetTriggerWriteDelay(triggerWriteDelay);
   device_interface_->SetDummyPeriod(dummyPeriod);
   device_interface_->SetHardwareClockRateInMHz(hardwareClockRate);
+  device_interface_->SetTriggerMask(triggerMask);
 }
 
 
@@ -304,7 +307,7 @@ bool dune::SSP::getNext_(artdaq::FragmentPtrs & frags) {
 
   bool hasSeenSlice=false;
 
-  unsigned int maxFrags=100;
+  unsigned int maxFrags=1;
 
   for(unsigned int fragsBuilt=0;fragsBuilt<maxFrags;++fragsBuilt){
 
@@ -329,15 +332,12 @@ bool dune::SSP::getNext_(artdaq::FragmentPtrs & frags) {
       ncalls_with_millislice++;
     }
 
-    if (ncalls % 100 == 0) {
-      DAQLogger::LogDebug("SSP_SSP_generator") << "On call #" << ncalls << ", there have been " << ncalls_with_millislice << " calls where the millislice size was greater than zero";
-    }
-
     ncalls++;
 
     if(millislice.size()==0){
       if(!hasSeenSlice){
 	++fNNoFragments;
+	usleep(100000);
       }
     break;
     }
@@ -371,7 +371,8 @@ bool dune::SSP::getNext_(artdaq::FragmentPtrs & frags) {
     auto timestamp = (metadata.sliceHeader.triggerTime + 1057) / 3 ;
 
 
-    DAQLogger::LogInfo("SSP_SSP_generator") << "SSP fragment w/ fragment ID " << frags.back()->fragmentID() << " timestamp is " << timestamp;
+    DAQLogger::LogInfo("SSP_SSP_generator") << "SSP fragment w/ fragment ID " << frags.back()->fragmentID() << " timestamp is " << timestamp
+					    << " ev_counter is "<< std::to_string(ev_counter());
       
     frags.back()->setTimestamp(timestamp);   
     // Then any overlay-specific quantities next; will need the

@@ -22,6 +22,8 @@
 #include <thread>
 
 #include <unistd.h>
+#include <boost/property_tree/xml_parser.hpp>
+#include <boost/property_tree/ptree.hpp>
 
 //#define NO_RCE_CLIENT 1
 
@@ -235,6 +237,8 @@ void dune::TpcRceReceiver::start(void) {
   // Set the run state to enabled
   dpm_client_->send_command("SetRunState", "Enable");
 
+  //send_status();
+
 #endif
 }
 
@@ -323,7 +327,7 @@ bool dune::TpcRceReceiver::getNext_(artdaq::FragmentPtrs& frags) {
 
   // If we find buffers in the while loop, then at the bottom of
   // this function we'll skip the timeout check...
-  bool buffers_found_in_while_loop = false;
+  // bool buffers_found_in_while_loop = false;
 
   // Loop to release fragments if filled buffers available, up to the maximum
   // allowed
@@ -351,7 +355,7 @@ bool dune::TpcRceReceiver::getNext_(artdaq::FragmentPtrs& frags) {
     // it occurred as a point of reference to later
     // determine if there's been a data timeout
 
-    buffers_found_in_while_loop = true;
+    // buffers_found_in_while_loop = true;
     last_buffer_received_time_ = std::chrono::high_resolution_clock::now();
 
     // Get a pointer to the data in the current buffer and create a new fragment
@@ -478,16 +482,16 @@ bool dune::TpcRceReceiver::getNext_(artdaq::FragmentPtrs& frags) {
   // Send buffer metrics based on values captured at entry into this function
 
   artdaq::Globals::metricMan_->sendMetric(empty_buffer_low_water_metric_name_,
-                                          empty_buffer_low_mark_, "buffers", 1);
+                                          empty_buffer_low_mark_, "buffers", 1, artdaq::MetricMode::Accumulate);
   artdaq::Globals::metricMan_->sendMetric(empty_buffer_available_metric_name_,
                                           empty_buffers_available, "buffers",
-                                          1);
+                                          1, artdaq::MetricMode::Accumulate);
   artdaq::Globals::metricMan_->sendMetric(filled_buffer_high_water_metric_name_,
                                           filled_buffer_high_mark_, "buffers",
-                                          1);
+                                          1, artdaq::MetricMode::Accumulate);
   artdaq::Globals::metricMan_->sendMetric(filled_buffer_available_metric_name_,
                                           filled_buffers_available, "buffers",
-                                          1);
+                                          1, artdaq::MetricMode::Accumulate);
 
   // Determine return value, depending on whether run is stopping, if there are
   // any filled buffers available
@@ -522,8 +526,13 @@ bool dune::TpcRceReceiver::getNext_(artdaq::FragmentPtrs& frags) {
   // Finally, if we haven't received a buffer after a set amount
   // of time, give up (i.e., throw an exception)
 
-  if (!buffers_found_in_while_loop) {
+  //if (!buffers_found_in_while_loop) {
 
+  // PatrickTsang Oct-05-2017
+  // Do not timeout when there is no data recevied
+
+  if (false)
+  {
     auto time_since_last_buffer =
         std::chrono::duration_cast<std::chrono::microseconds>(
             std::chrono::high_resolution_clock::now() -
@@ -701,16 +710,16 @@ bool dune::TpcRceReceiver::getNext_(artdaq::FragmentPtrs& frags) {
     filled_buffer_high_mark_ = filled_buffers_available;
   }
   artdaq::Globals::metricMan_->sendMetric(empty_buffer_low_water_metric_name_,
-                                          empty_buffer_low_mark_, "buffers", 1);
+                                          empty_buffer_low_mark_, "buffers", 1, artdaq::MetricMode::Accumulate);
   artdaq::Globals::metricMan_->sendMetric(empty_buffer_available_metric_name_,
                                           empty_buffers_available, "buffers",
-                                          1);
+                                          1, artdaq::MetricMode::Accumulate);
   artdaq::Globals::metricMan_->sendMetric(filled_buffer_high_water_metric_name_,
                                           filled_buffer_high_mark_, "buffers",
-                                          1);
+                                          1, artdaq::MetricMode::Accumulate);
   artdaq::Globals::metricMan_->sendMetric(filled_buffer_available_metric_name_,
                                           filled_buffers_available, "buffers",
-                                          1);
+                                          1, artdaq::MetricMode::Accumulate);
 
   // Recycle the raw buffer onto the commit queue for re-use by the receiver.
   data_receiver_->commit_empty_buffer(recvd_buffer);
@@ -834,6 +843,29 @@ bool dune::TpcRceReceiver::startOfDatataking() {
   run_at_last_check = run_number();
 
   return is_start;
+}
+
+// Send RCE status to DIM monitor
+bool dune::TpcRceReceiver::send_status()
+{
+    //std::stringstream xml_stream;
+    //xml_stream << dpm_client_->receive();
+
+    //boost::property_tree::ptree xml_tree;
+    //boost::property_tree::xml_parser::read_xml( xml_stream, xml_tree);
+
+    //const auto& data_buffer = xml_tree.get_child(
+    //        "system.status.DataDpm.DataBuffer");
+
+
+    //DAQLogger::LogDebug(instance_name_)
+    //    << "[RCE Status] RxRate: "
+    //    << data_buffer.get<float>("RxRate");
+
+    DAQLogger::LogDebug(instance_name_)
+        << "[RCE Status]"
+        << dpm_client_->read_status();
+    return true;
 }
 
 // The following macro is defined in artdaq's GeneratorMacros.hh header

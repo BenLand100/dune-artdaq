@@ -39,27 +39,6 @@ simple_plugin(ToySimulator "generator"
   ${CETLIB}
   )
 
-
-simple_plugin(Playback "generator"
-  dune-artdaq_DAQLogger
-  dune-raw-data_Overlays
-  artdaq-core_Data
-  art_Framework_IO_Sources
-  artdaq_Application
-  artdaq_DAQdata
-  artdaq-core_Utilities
-  ${CANVAS}
-  ${GALLERY}
-  ${FHICLCPP}
-  ${CETLIB}
-  ${ROOT_CINTEX}
-  ${ROOT_RIO}
-  ${ROOT_CORE}
-  ${ROOT_NET}
-  ${ROOT_REFLEX}
-  )
-
-
   add_subdirectory(anlBoard)
   
 simple_plugin(TpcRceReceiver "generator"
