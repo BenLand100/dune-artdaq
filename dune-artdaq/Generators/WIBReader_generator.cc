@@ -3,6 +3,8 @@
 #include "dune-artdaq/DAQLogger/DAQLogger.hh"
 #include "cetlib/exception.h"
 
+#include "BUException/ExceptionBase.hh"
+
 #include <sstream>
 #include <vector>
 #include <memory>
@@ -32,162 +34,175 @@ WIBReader::WIBReader(fhicl::ParameterSet const& ps) :
   auto enable_DAQ_regs = ps.get<std::vector<unsigned> >("WIB.config.enable_DAQ_regs");
 
   auto local_clock = ps.get<bool>("WIB.config.local_clock");
-  auto PDTS_source = ps.get<unsigned>("WIB.config.PDTS_source"); // 0 front panel, 1 back plane
+  auto PDTS_source = ps.get<unsigned>("WIB.config.PDTS_source"); // 0 back plane, 1 front panel
   auto clock_source = ps.get<unsigned>("WIB.config.clock_source"); // 0 timing system, 1 25Mhz OSC, 2 SMA, 3 Feedback
   auto use_SI5342 = ps.get<bool>("WIB.config.use_SI5342"); // true for FELIX
 
-  dune::DAQLogger::LogInfo("WIBReader") << "Connecting to WIB at " <<  wib_address;
-  wib = std::make_unique<WIB>( wib_address, wib_table, femb_table );
-
-  wib->ResetWIB();
-  std::this_thread::sleep_for(std::chrono::seconds(1));
-
-  // Check and print firmware version
-  uint32_t wib_fw_version = wib->Read("SYSTEM.FW_VERSION");
-
-  dune::DAQLogger::LogInfo("WIBReader") << "WIB Firmware Version: 0x" 
-        << std::hex << std::setw(8) << std::setfill('0')
-        <<  wib_fw_version
-        << " Synthesized: " 
-        << std::hex << std::setw(2) << std::setfill('0')
-        << wib->Read("SYSTEM.SYNTH_DATE.CENTURY")
-        << std::hex << std::setw(2) << std::setfill('0')
-        << wib->Read("SYSTEM.SYNTH_DATE.YEAR") << "-"
-        << std::hex << std::setw(2) << std::setfill('0')
-        << wib->Read("SYSTEM.SYNTH_DATE.MONTH") << "-"
-        << std::hex << std::setw(2) << std::setfill('0')
-        << wib->Read("SYSTEM.SYNTH_DATE.DAY") << " "
-        << std::hex << std::setw(2) << std::setfill('0')
-        << wib->Read("SYSTEM.SYNTH_TIME.HOUR") << ":"
-        << std::hex << std::setw(2) << std::setfill('0')
-        << wib->Read("SYSTEM.SYNTH_TIME.MINUTE") << ":"
-        << std::hex << std::setw(2) << std::setfill('0')
-        << wib->Read("SYSTEM.SYNTH_TIME.SECOND");
-
-  if (expected_wib_fw_version != wib_fw_version)
+  try
+  {
+    dune::DAQLogger::LogInfo("WIBReader") << "Connecting to WIB at " <<  wib_address;
+    wib = std::make_unique<WIB>( wib_address, wib_table, femb_table );
+  
+    wib->ResetWIB();
+    std::this_thread::sleep_for(std::chrono::seconds(1));
+  
+    // Check and print firmware version
+    uint32_t wib_fw_version = wib->Read("SYSTEM.FW_VERSION");
+  
+    dune::DAQLogger::LogInfo("WIBReader") << "WIB Firmware Version: 0x" 
+          << std::hex << std::setw(8) << std::setfill('0')
+          <<  wib_fw_version
+          << " Synthesized: " 
+          << std::hex << std::setw(2) << std::setfill('0')
+          << wib->Read("SYSTEM.SYNTH_DATE.CENTURY")
+          << std::hex << std::setw(2) << std::setfill('0')
+          << wib->Read("SYSTEM.SYNTH_DATE.YEAR") << "-"
+          << std::hex << std::setw(2) << std::setfill('0')
+          << wib->Read("SYSTEM.SYNTH_DATE.MONTH") << "-"
+          << std::hex << std::setw(2) << std::setfill('0')
+          << wib->Read("SYSTEM.SYNTH_DATE.DAY") << " "
+          << std::hex << std::setw(2) << std::setfill('0')
+          << wib->Read("SYSTEM.SYNTH_TIME.HOUR") << ":"
+          << std::hex << std::setw(2) << std::setfill('0')
+          << wib->Read("SYSTEM.SYNTH_TIME.MINUTE") << ":"
+          << std::hex << std::setw(2) << std::setfill('0')
+          << wib->Read("SYSTEM.SYNTH_TIME.SECOND");
+  
+    if (expected_wib_fw_version != wib_fw_version)
+    {
+      cet::exception excpt("WIBReader");
+      excpt << "WIB Firmware version is "
+          << std::hex << std::setw(8) << std::setfill('0')
+          << wib_fw_version
+          <<" but expect "
+          << std::hex << std::setw(8) << std::setfill('0')
+          << expected_wib_fw_version
+          <<" version in fcl";
+      throw excpt;
+    }
+  
+    // Check if WIB firmware is for RCE or FELIX DAQ
+    WIB::WIB_DAQ_t daqMode = wib->GetDAQMode();
+  
+    if (daqMode == WIB::RCE)
+    {
+      dune::DAQLogger::LogInfo("WIBReader") << "WIB Firmware setup for RCE DAQ Mode";
+      if(expected_daq_mode != "RCE" and expected_daq_mode != "rce")
+      {
+          cet::exception excpt("WIBReader");
+          excpt << "WIB Firmware setup in RCE mode, but expect '"<< expected_daq_mode <<"' mode in fcl";
+          throw excpt;
+      }
+    }
+    else if (daqMode == WIB::FELIX)
+    {
+      dune::DAQLogger::LogInfo("WIBReader") << "WIB Firmware setup for FELIX DAQ Mode";
+      if(expected_daq_mode != "FELIX" and expected_daq_mode != "felix")
+      {
+          cet::exception excpt("WIBReader");
+          excpt << "WIB Firmware setup in FELIX mode, but expect '"<< expected_daq_mode <<"' mode in fcl";
+          throw excpt;
+      }
+    }
+    else
+    {
+      cet::exception excpt("WIBReader");
+      excpt << "Unknown WIB firmware DAQ mode'"<< daqMode << "'";
+      throw excpt;
+    }
+  
+    if(use_SI5342) // for FELIX
+    {
+      dune::DAQLogger::LogInfo("WIBReader") << "Configuring and selecting SI5342 for FELIX";
+      wib->LoadConfigDAQ_SI5342("default");
+      wib->SelectSI5342(1,true);
+      std::this_thread::sleep_for(std::chrono::seconds(1));
+    }
+    else
+    {
+      dune::DAQLogger::LogInfo("WIBReader") << "Not using SI5342 (don't need for RCE)";
+    }
+  
+    if (local_clock)
+    {
+      dune::DAQLogger::LogInfo("WIBReader") << "Setting up Local Clock";
+      wib->LoadConfigDTS_SI5344("default"); // configSI5344 in script
+      wib->SelectSI5344(clock_source,1);
+      std::this_thread::sleep_for(std::chrono::seconds(1));
+      wib->Write("DTS.CONVERT_CONTROL.EN_FAKE",1);
+      wib->Write("DTS.CONVERT_CONTROL.LOCAL_TIMESTAMP",1);
+      std::this_thread::sleep_for(std::chrono::seconds(1));
+    }
+    else // normal timing system
+    {
+      dune::DAQLogger::LogInfo("WIBReader") << "Setting up DTS";
+      wib->InitializeDTS(PDTS_source,clock_source); // initDTS in script
+      std::this_thread::sleep_for(std::chrono::seconds(1));
+    }
+  
+    dune::DAQLogger::LogInfo("WIBReader") << "Writing data source and link registers";
+  
+    for(uint8_t iFEMB=1; iFEMB <= 4; iFEMB++)
+    {
+      for(uint8_t iCD=1; iCD <= 2; iCD++)
+      {
+        wib->SetFEMBFakeCOLDATAMode(iFEMB,iCD,fake_cold_data_modes.at(iFEMB-1).at(iCD-1)); // 0 for "SAMPLES" (counter) or 1 for "COUNTER" (nonsense)
+      }
+      for(uint8_t iStream=1; iStream <= 4; iStream++)
+      {
+        wib->SetFEMBStreamSource(iFEMB,iStream,!use_WIB_fake_data.at(iFEMB-1).at(iStream-1)); // last arg is bool isReal
+      }
+      for(uint8_t iStream=1; iStream <= 4; iStream++)
+      {
+        uint64_t sourceByte = 0;
+        if(use_WIB_fake_data.at(iFEMB-1).at(iStream-1)) sourceByte = 0xF;
+        wib->SourceFEMB(iFEMB,sourceByte);
+      }
+    }
+  
+    for(uint8_t iLink=1; iLink <= 4; iLink++)
+    {
+      wib->EnableDAQLink_Lite(iLink,enable_DAQ_link.at(iLink-1));
+    }
+  
+    dune::DAQLogger::LogInfo("WIBReader") << "Enabling DTS";
+  
+    wib->Write("DTS.PDTS_ENABLE",1);
+    std::this_thread::sleep_for(std::chrono::seconds(3));
+  
+    dune::DAQLogger::LogInfo("WIBReader") << "Syncing DTS";
+  
+    wib->StartSyncDTS();
+  
+    dune::DAQLogger::LogInfo("WIBReader") << "Enabling DAQ";
+  
+    for(uint8_t iFEMB=1; iFEMB <= 4; iFEMB++)
+    {
+      std::stringstream regNameStream;
+      regNameStream << "FEMB" << iFEMB << ".DAQ.ENABLE";
+      wib->Write(regNameStream.get(),enable_DAQ_regs.at(iFEMB-1));
+    }
+  
+    //fhicl::ParameterSet wib_config = ps.get<fhicl::ParameterSet>("WIB.config");
+    //// Read values from FHiCL document and feed them to WIB library
+    //for (std::string key : wib_config.get_names()) {
+    //  if (wib_config.is_key_to_atom(key)) {
+    //    uint32_t value = wib_config.get<long int>(key);
+    //    wib->Write(key, value);
+    //    dune::DAQLogger::LogInfo("WIBReader") << "Set " << key << " to 0x" << std::hex << std::setw(8) << std::setfill('0') << value << std::dec;
+    //  }
+    //}
+  } // try
+  //catch (const std::exception &exc)
+  catch (const BUException::exBase& exc)
   {
     cet::exception excpt("WIBReader");
-    excpt << "WIB Firmware version is "
-        << std::hex << std::setw(8) << std::setfill('0')
-        << wib_fw_version
-        <<" but expect "
-        << std::hex << std::setw(8) << std::setfill('0')
-        << expected_wib_fw_version
-        <<" version in fcl";
+    excpt << "Unhandled BUException: "
+        << exc.what()
+        << ": "
+        << exc.Description();
     throw excpt;
   }
-
-  // Check if WIB firmware is for RCE or FELIX DAQ
-  WIB::WIB_DAQ_t daqMode = wib->GetDAQMode();
-
-  if (daqMode == WIB::RCE)
-  {
-    dune::DAQLogger::LogInfo("WIBReader") << "WIB Firmware setup for RCE DAQ Mode";
-    if(expected_daq_mode != "RCE" and expected_daq_mode != "rce")
-    {
-        cet::exception excpt("WIBReader");
-        excpt << "WIB Firmware setup in RCE mode, but expect '"<< expected_daq_mode <<"' mode in fcl";
-        throw excpt;
-    }
-  }
-  else if (daqMode == WIB::FELIX)
-  {
-    dune::DAQLogger::LogInfo("WIBReader") << "WIB Firmware setup for FELIX DAQ Mode";
-    if(expected_daq_mode != "FELIX" and expected_daq_mode != "felix")
-    {
-        cet::exception excpt("WIBReader");
-        excpt << "WIB Firmware setup in FELIX mode, but expect '"<< expected_daq_mode <<"' mode in fcl";
-        throw excpt;
-    }
-  }
-  else
-  {
-    cet::exception excpt("WIBReader");
-    excpt << "Unknown WIB firmware DAQ mode'"<< daqMode << "'";
-    throw excpt;
-  }
-
-  if(use_SI5342)
-  {
-    dune::DAQLogger::LogInfo("WIBReader") << "Configuring and selecting SI5342 for FELIX";
-    wib->LoadConfigDAQ_SI5342("default");
-    wib->SelectSI5342(1,true);
-    std::this_thread::sleep_for(std::chrono::seconds(1));
-  }
-  else
-  {
-    dune::DAQLogger::LogInfo("WIBReader") << "Not using SI5342 (don't need for RCE)";
-  }
-
-  if (local_clock)
-  {
-    dune::DAQLogger::LogInfo("WIBReader") << "Setting up Local Clock";
-    wib->LoadConfigDTS_SI5344("default"); // configSI5344 in script
-    wib->SelectSI5344(clock_source,1);
-    std::this_thread::sleep_for(std::chrono::seconds(1));
-    wib->Write("DTS.CONVERT_CONTROL.EN_FAKE",1);
-    wib->Write("DTS.CONVERT_CONTROL.LOCAL_TIMESTAMP",1);
-    std::this_thread::sleep_for(std::chrono::seconds(1));
-  }
-  else
-  {
-    dune::DAQLogger::LogInfo("WIBReader") << "Setting up DTS";
-    wib->InitializeDTS(PDTS_source,clock_source); // initDTS in script
-    std::this_thread::sleep_for(std::chrono::seconds(1));
-  }
-
-  dune::DAQLogger::LogInfo("WIBReader") << "Writing data source and link registers";
-
-  for(uint8_t iFEMB=1; iFEMB <= 4; iFEMB++)
-  {
-    for(uint8_t iCD=1; iCD <= 2; iCD++)
-    {
-      wib->SetFEMBFakeCOLDATAMode(iFEMB,iCD,fake_cold_data_modes.at(iFEMB-1).at(iCD-1)); // 0 for "SAMPLES" (counter) or 1 for "COUNTER" (nonsense)
-    }
-    for(uint8_t iStream=1; iStream <= 4; iStream++)
-    {
-      wib->SetFEMBStreamSource(iFEMB,iStream,!use_WIB_fake_data.at(iFEMB-1).at(iStream-1)); // last arg is bool isReal
-    }
-    for(uint8_t iStream=1; iStream <= 4; iStream++)
-    {
-      uint64_t sourceByte = 0;
-      if(use_WIB_fake_data.at(iFEMB-1).at(iStream-1)) sourceByte = 0xF;
-      wib->SourceFEMB(iFEMB,sourceByte);
-    }
-  }
-
-  for(uint8_t iLink=1; iLink <= 4; iLink++)
-  {
-    wib->EnableDAQLink_Lite(iLink,enable_DAQ_link.at(iLink-1));
-  }
-
-  dune::DAQLogger::LogInfo("WIBReader") << "Enabling DTS";
-
-  wib->Write("DTS.PDTS_ENABLE",1);
-  std::this_thread::sleep_for(std::chrono::seconds(3));
-
-  dune::DAQLogger::LogInfo("WIBReader") << "Syncing DTS";
-
-  wib->StartSyncDTS();
-
-  dune::DAQLogger::LogInfo("WIBReader") << "Enabling DAQ";
-
-  for(uint8_t iFEMB=1; iFEMB <= 4; iFEMB++)
-  {
-    std::stringstream regNameStream;
-    regNameStream << "FEMB" << iFEMB << ".DAQ.ENABLE";
-    wib->Write(regNameStream.get(),enable_DAQ_regs.at(iFEMB-1));
-  }
-
-  //fhicl::ParameterSet wib_config = ps.get<fhicl::ParameterSet>("WIB.config");
-  //// Read values from FHiCL document and feed them to WIB library
-  //for (std::string key : wib_config.get_names()) {
-  //  if (wib_config.is_key_to_atom(key)) {
-  //    uint32_t value = wib_config.get<long int>(key);
-  //    wib->Write(key, value);
-  //    dune::DAQLogger::LogInfo("WIBReader") << "Set " << key << " to 0x" << std::hex << std::setw(8) << std::setfill('0') << value << std::dec;
-  //  }
-  //}
   dune::DAQLogger::LogInfo("WIBReader") << "Configured WIB";
 }
 
