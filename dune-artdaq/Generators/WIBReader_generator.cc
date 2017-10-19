@@ -82,6 +82,8 @@ WIBReader::WIBReader(fhicl::ParameterSet const& ps) :
     }
   
     // Check if WIB firmware is for RCE or FELIX DAQ
+    dune::DAQLogger::LogDebug("WIBReader") << "N DAQ Links: "  << wib->Read("SYSTEM.DAQ_LINK_COUNT");
+    dune::DAQLogger::LogDebug("WIBReader") << "N FEMB Ports: "  << wib->Read("SYSTEM.FEMB_COUNT");
     WIB::WIB_DAQ_t daqMode = wib->GetDAQMode();
   
     if (daqMode == WIB::RCE)
@@ -104,11 +106,19 @@ WIBReader::WIBReader(fhicl::ParameterSet const& ps) :
           throw excpt;
       }
     }
+    else if (daqMode == WIB::UNKNOWN)
+    {
+      cet::exception excpt("WIBReader");
+      excpt << "WIB Firmware DAQ setup UNKNOWN";
+      throw excpt;
+      //dune::DAQLogger::LogInfo("WIBReader") << "WIB Firmware DAQ setup UNKNOWN";
+    }
     else
     {
       cet::exception excpt("WIBReader");
-      excpt << "Unknown WIB firmware DAQ mode'"<< daqMode << "'";
+      excpt << "Bogus WIB firmware DAQ mode "<< ((unsigned) daqMode);
       throw excpt;
+      //dune::DAQLogger::LogInfo("WIBReader") << "Bogus WIB firmware DAQ mode "<< ((unsigned) daqMode);
     }
   
     if(use_SI5342) // for FELIX
@@ -140,7 +150,7 @@ WIBReader::WIBReader(fhicl::ParameterSet const& ps) :
       std::this_thread::sleep_for(std::chrono::seconds(1));
     }
   
-    dune::DAQLogger::LogInfo("WIBReader") << "Writing data source and link registers";
+    dune::DAQLogger::LogInfo("WIBReader") << "Writing data source and enabling DAQ links";
   
     for(uint8_t iFEMB=1; iFEMB <= 4; iFEMB++)
     {
@@ -160,7 +170,7 @@ WIBReader::WIBReader(fhicl::ParameterSet const& ps) :
       }
     }
   
-    for(uint8_t iLink=1; iLink <= 4; iLink++)
+    for(uint8_t iLink=1; iLink <= enable_DAQ_link.size(); iLink++)
     {
       wib->EnableDAQLink_Lite(iLink,enable_DAQ_link.at(iLink-1));
     }
@@ -193,7 +203,6 @@ WIBReader::WIBReader(fhicl::ParameterSet const& ps) :
     //  }
     //}
   } // try
-  //catch (const std::exception &exc)
   catch (const BUException::exBase& exc)
   {
     cet::exception excpt("WIBReader");
