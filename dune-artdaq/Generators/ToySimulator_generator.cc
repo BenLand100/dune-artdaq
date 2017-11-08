@@ -28,6 +28,8 @@ dune::ToySimulator::ToySimulator(fhicl::ParameterSet const & ps)
   :
   CommandableFragmentGenerator(ps),
   hardware_interface_( new ToyHardwareInterface(ps) ),
+  timestamp_(0),
+  timestampScale_(ps.get<int>("timestamp_scale_factor", 1)),
   readout_buffer_(nullptr),
   fragment_type_(static_cast<decltype(fragment_type_)>( artdaq::Fragment::InvalidFragmentType )),
   throw_exception_(ps.get<bool>("throw_exception",false))
@@ -85,9 +87,9 @@ bool dune::ToySimulator::getNext_(artdaq::FragmentPtrs & frags) {
    					    artdaq::Fragment::FragmentBytes(bytes_read,  
    									    ev_counter(), fragment_id(),
    									    fragment_type_, 
-   									    metadata_));
+   									    metadata_,
+									    timestamp_));
 
-  fragptr->setTimestamp( ev_counter() );
   memcpy(fragptr->dataBeginBytes(), readout_buffer_, bytes_read );
 
   frags.emplace_back( std::move(fragptr ));
@@ -97,6 +99,7 @@ bool dune::ToySimulator::getNext_(artdaq::FragmentPtrs & frags) {
   }
 
   ev_counter_inc();
+  timestamp_ += timestampScale_;
 
 
   if (ev_counter() % 1 == 0) {
