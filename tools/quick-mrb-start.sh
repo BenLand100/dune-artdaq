@@ -129,6 +129,13 @@ else
     exit 1
 fi
 
+dune_repo=/cvmfs/dune.opensciencegrid.org/products/dune
+
+if [[ ! -e $dune_repo ]]; then
+    echo "This installation needs access to the CVMFS mount point for the dune repo, ${dune_repo}, in order to obtain the dunepdsprce packages. Aborting..." >&2
+    exit 1
+fi
+
 set -u   # complain about uninitialed shell variables - helps development
 
 test -n "${do_help-}" -o $# -ge 3 && echo "$USAGE" && exit
@@ -331,8 +338,9 @@ if ! $bad_network; then
 fi
 
 sed -i -r 's/^\s*defaultqual(\s+).*/defaultqual\1'$equalifier':'$squalifier'/' artdaq/ups/product_deps
+#sed -i -r 's/^\s*defaultqual(\s+).*/defaultqual\1online:'$equalifier':'$squalifier'/' dune_raw_data/ups/product_deps
 
-if true ; then 
+if false ; then 
 
     cd $MRB_SOURCE
     mfextensionsver=$( awk '/^[[:space:]]*artdaq_mfextensions/ { print $2 }' artdaq/ups/product_deps )
@@ -375,6 +383,7 @@ cd $Base
                                                                                                                          
         sh -c "[ \`ps \$\$ | grep bash | wc -l\` -gt 0 ] || { echo 'Please switch to the bash shell before running dune-artdaq.'; exit; }" || exit                                                                                           
         source ${uhal_products_dir}/setup                                      
+        source ${dune_repo}/setup
         source $Base/products/setup                                                                                   
         setup mrb
         source $Base/localProducts_dune_artdaq_${demo_version}_${equalifier}_${build_type}/setup
@@ -405,6 +414,7 @@ alias rawEventDump="art -c \$DUNEARTDAQ_REPO/tools/fcl/rawEventDump.fcl "
 # Build artdaq_demo
 cd $MRB_BUILDDIR
 set +u
+source ${dune_repo}/setup
 source mrbSetEnv
 set -u
 export CETPKG_J=$((`cat /proc/cpuinfo|grep processor|tail -1|awk '{print $3}'` + 1))
