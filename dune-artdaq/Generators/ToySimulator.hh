@@ -56,6 +56,8 @@ namespace dune {
     void stopNoMutex() override {}
 
     std::unique_ptr<ToyHardwareInterface> hardware_interface_; 
+    artdaq::Fragment::timestamp_t timestamp_;
+    int timestampScale_;
 
     ToyFragment::Metadata metadata_;
 

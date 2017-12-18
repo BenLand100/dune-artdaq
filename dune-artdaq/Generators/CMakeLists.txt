@@ -96,6 +96,7 @@ simple_plugin(TimingReceiver "generator"
 if ( DEFINED ENV{WIB_DIRECTORY} )
 
 include_directories( $ENV{WIB_DIRECTORY}/WIB/include )
+include_directories( $ENV{WIB_DIRECTORY}/exception/include )
 
 simple_plugin(WIBReader "generator"
          $ENV{WIB_DIRECTORY}/WIB/lib/libWIB.so

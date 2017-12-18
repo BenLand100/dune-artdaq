@@ -28,6 +28,8 @@ dune::ToySimulator::ToySimulator(fhicl::ParameterSet const & ps)
   :
   CommandableFragmentGenerator(ps),
   hardware_interface_( new ToyHardwareInterface(ps) ),
+  timestamp_(0),
+  timestampScale_(ps.get<int>("timestamp_scale_factor", 1)),
   readout_buffer_(nullptr),
   fragment_type_(static_cast<decltype(fragment_type_)>( artdaq::Fragment::InvalidFragmentType )),
   throw_exception_(ps.get<bool>("throw_exception",false))
@@ -85,7 +87,8 @@ bool dune::ToySimulator::getNext_(artdaq::FragmentPtrs & frags) {
    					    artdaq::Fragment::FragmentBytes(bytes_read,  
    									    ev_counter(), fragment_id(),
    									    fragment_type_, 
-   									    metadata_));
+   									    metadata_,
+									    timestamp_));
 
   memcpy(fragptr->dataBeginBytes(), readout_buffer_, bytes_read );
 
@@ -96,16 +99,15 @@ bool dune::ToySimulator::getNext_(artdaq::FragmentPtrs & frags) {
   }
 
   ev_counter_inc();
+  timestamp_ += timestampScale_;
 
 
-  if (ev_counter() % 100 == 0) {
+  if (ev_counter() % 1 == 0) {
 
-    if(artdaq::Globals::metricMan_ != nullptr) {
-      artdaq::Globals::metricMan_->sendMetric("Fragments Sent",ev_counter(), "Fragments", 0, artdaq::MetricMode::Accumulate);
-    }
+    // if(artdaq::Globals::metricMan_ != nullptr) {
+    //   artdaq::Globals::metricMan_->sendMetric("Fragments Sent",ev_counter(), "Fragments", 0, artdaq::MetricMode::Accumulate);
+    // }
 
-    DAQLogger::LogWarning("ToySimulator") << "On fragment " << ev_counter() << ", this is a test of the DAQLogger's LogWarning function";
-    DAQLogger::LogInfo("ToySimulator") << "On fragment " << ev_counter() << ", this is a test of the DAQLogger's LogInfo function";
     DAQLogger::LogDebug("ToySimulator") << "On fragment " << ev_counter() << ", this is a test of the DAQLogger's LogDebug function";
 
 

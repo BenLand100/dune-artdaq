@@ -22,7 +22,7 @@ private:
   bool getNext_(artdaq::FragmentPtrs& output) override;
   void stopNoMutex() override {}
 
-  WIB *wib;
+  std::unique_ptr<WIB> wib;
 
 };
 

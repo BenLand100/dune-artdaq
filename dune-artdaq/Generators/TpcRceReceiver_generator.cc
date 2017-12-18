@@ -203,12 +203,20 @@ void dune::TpcRceReceiver::start(void) {
   DAQLogger::LogDebug(instance_name_) << "Enable FEB emulation in RCE? ["
                                       << rce_feb_emulation_ << "]";
   if (rce_feb_emulation_) {
-    // DAQLogger::LogDebug(instance_name_) << "Enabling FEB emulation in RCE";
-    std::ostringstream config_frag;
-    config_frag << "<DataDpm><DataDpmEmu><Loopback>True</Loopback></"
-                   "DataDpmEmu></DataDpm>";
-    dpm_client_->send_config(config_frag.str());
-    DAQLogger::LogDebug(instance_name_) << "FEB emulation enabled";
+    std::ostringstream cfg;
+    cfg << "<DataDpm>"
+        "<DataDpmEmu><Loopback>True</Loopback></DataDpmEmu>"
+        "<DataDpmWib><RxPolarity>False</RxPolarity></DataDpmWib>"
+        "</DataDpm>";
+    dpm_client_->send_config(cfg.str());
+  }
+  else {
+    std::ostringstream cfg;
+    cfg << "<DataDpm>"
+        "<DataDpmEmu><Loopback>False</Loopback></DataDpmEmu>"
+        "<DataDpmWib><RxPolarity>True</RxPolarity></DataDpmWib>"
+        "</DataDpm>";
+    dpm_client_->send_config(cfg.str());
   }
 
   // Set the DPM run mode as specified
