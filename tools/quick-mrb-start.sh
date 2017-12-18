@@ -226,6 +226,14 @@ fi
 demo_version=`grep "parent dune_artdaq" $Base/download/product_deps|awk '{print $3}'`
 
 artdaq_version=`grep -E "^artdaq\s+" $Base/download/product_deps | awk '{print $2}'`
+
+if [[ "$artdaq_version" != "v2_03_04" ]]; then
+    artdaq_manifest_version=$artdaq_version
+else
+    artdaq_manifest_version=v2_03_03
+fi
+
+
 coredemo_version=`grep -E "^dune_raw_data\s+" $Base/download/product_deps | awk '{print $2}'`
 
 default_quals_cmd="sed -r -n 's/.*(e[0-9]+):(s[0-9]+).*/\1 \2/p' $Base/download/product_deps | uniq"
@@ -262,10 +270,10 @@ fi
 if ! $bad_network; then
     wget http://scisoft.fnal.gov/scisoft/bundles/tools/pullProducts
     chmod +x pullProducts
-    ./pullProducts $Base/products ${os} artdaq-${artdaq_version} ${squalifier}-${equalifier} ${build_type}
+    ./pullProducts $Base/products ${os} artdaq-${artdaq_manifest_version} ${squalifier}-${equalifier} ${build_type}
 
     if [ $? -ne 0 ]; then
-	echo "Error in pullProducts. Please go to http://scisoft.fnal.gov/scisoft/bundles/artdaq/${artdaq_version}/manifest and make sure that a manifest for the specified qualifiers (${squalifier}-${equalifier}) exists."
+	echo "Error in pullProducts. Please go to http://scisoft.fnal.gov/scisoft/bundles/artdaq/${artdaq_manifest_version}/manifest and make sure that a manifest for the specified qualifiers (${squalifier}-${equalifier}) exists."
 	exit 1
     fi
 
