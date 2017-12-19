@@ -91,6 +91,7 @@ simple_plugin(TimingReceiver "generator"
   dune-artdaq_DAQLogger
   ${UHAL_UHAL}
   ${UHAL_LOG}
+  ${PDT_CORE}
   )
 
 if ( DEFINED ENV{WIB_DIRECTORY} )
