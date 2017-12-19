@@ -346,7 +346,7 @@ if ! $bad_network; then
 fi
 
 sed -i -r 's/^\s*defaultqual(\s+).*/defaultqual\1'$equalifier':'$squalifier'/' artdaq/ups/product_deps
-#sed -i -r 's/^\s*defaultqual(\s+).*/defaultqual\1online:'$equalifier':'$squalifier'/' dune_raw_data/ups/product_deps
+sed -i -r 's/^\s*defaultqual(\s+).*/defaultqual\1online:'$equalifier':'$squalifier'/' dune_raw_data/ups/product_deps
 
 if false ; then 
 
