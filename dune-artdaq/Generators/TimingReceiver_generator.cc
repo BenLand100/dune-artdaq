@@ -1,6 +1,6 @@
 //################################################################################
 //# /*
-//#        TimingReceiver_generato.cpp
+//#        TimingReceiver_generator.cpp
 //#
 //#  Giles Barr, Justo Martin-Albo, Farrukh Azfar, Jan 2017,  May 2017 
 //#  for ProtoDUNE
@@ -32,6 +32,8 @@
 #include "timingBoard/TimingSequence.hpp"  // Defs of the sequence functions of uhal commands for setup etc.
 
 #include "timingBoard/InhibitGet.h"
+
+#include "pdt/PartitionNode.hpp"
 
 using namespace dune;
 
@@ -148,16 +150,16 @@ dune::TimingReceiver::TimingReceiver(fhicl::ParameterSet const & ps):
     // - Set the command mask                            [done here, repeated at start()]
     // - Enable triggers                                 [Not done until inhubit lifted (in get_next_())]
 
-    if (initsoftness_ < 5) {
-      hw_.getNode("master.partition.csr.ctrl.part_en").write(0); //# Disable partition 0
-    }
-    hw_.getNode("master.partition.csr.ctrl.trig_en").write(0); // Disable triggers
-    hw_.getNode("master.partition.csr.ctrl.buf_en").write(0); // Disable buffer
-    hw_.dispatch();
 
-    hw_.getNode("master.partition.csr.ctrl.part_en").write(1); //# Enable partition 0
-    hw_.getNode("master.partition.csr.ctrl.cmd_mask").write(0x0f); //# Set command mask in partition 0
-    hw_.dispatch();
+
+    // TODO PAR: We dispatch after each of these calls. Should we just dispatch at the end?
+    if (initsoftness_ < 5) {
+	master_partition().enable(0, true);
+    }
+    master_partition().stop();
+    master_partition().enable(1, true);
+    master_partition().setCommandMask(0x0f);
+
 
     // Set up connection to Inhibit Master
     InhibitGet_init(zmq_conn_.c_str(),inhibitget_timer_);
@@ -189,12 +191,14 @@ void dune::TimingReceiver::start(void)
     // - Set run_req                                     [not done, needs newer firmware]
     // - Wait for run_stat to go high                    [not done, needs newer firmware]
 
-    hw_.getNode("master.partition.csr.ctrl.part_en").write(1); //# Enable partition 0
-    hw_.getNode("master.partition.csr.ctrl.cmd_mask").write(0x0f); //# Set command mask in partition 0
-    hw_.getNode("master.partition.csr.ctrl.buf_en").write(0); //# Disable buffer in partition 0
+    master_partition().enable(1);
+    master_partition().setCommandMask(0x0f);
+    // TODO PAR: PartitionNode doesn't seem to have a way to enable
+    // the buffer without enabling triggers
+    master_partition().getNode("csr.ctrl.buf_en").write(0); //# Disable buffer in partition 0
     hw_.dispatch();
 
-    hw_.getNode("master.partition.csr.ctrl.buf_en").write(1); //# Enable buffer in partition 0
+    master_partition().getNode("csr.ctrl.buf_en").write(1); //# Enable buffer in partition 0
     // Next firmware cycle, add set run_req
     hw_.dispatch();
 
@@ -288,12 +292,7 @@ bool dune::TimingReceiver::getNext_(artdaq::FragmentPtrs &frags)
                               // after a run has stopped
     }
 
-    // Check for new event data
-    ValWord<uint32_t> valr = hw_.getNode("master.partition.buf.count").read();  // Can be max 65536 
-          // TODO: Make "master.partition" a parameter so we can change partition, or use on an endpoint
-    hw_.dispatch();
-    // std::cout << "valr " << valr << std::endl;
-    unsigned int havedata = (valr.value() > 5);   // Wait for a complete event - 6 words TODO: Not hardwired length
+    unsigned int havedata = (master_partition().numEventsInBuffer()>0);   // Wait for a complete event
     if (havedata) timeout = 1;  // If we have data, we don't wait around in case there is more or a throttle
 
     // TODO: Consider moving throttling check up here; as it is, we could receive a huge rate of events even though we
@@ -306,8 +305,7 @@ bool dune::TimingReceiver::getNext_(artdaq::FragmentPtrs &frags)
         std::unique_ptr<artdaq::Fragment> f = artdaq::Fragment::FragmentBytes( TimingFragment::size()*sizeof(uint32_t));
 
         // Read the data from the hardware
-        ValVector<uint32_t> uwords = hw_.getNode("master.partition.buf.data").readBlock(6);  
-        hw_.dispatch();
+	std::vector<uint32_t> uwords = master_partition().readEvents(1);
 
 #ifdef SEPARATE_DEBUG
         uint32_t word[6];  // Declare like this if we want a local variable instead of putting it straight in the fragmenti
@@ -353,6 +351,9 @@ bool dune::TimingReceiver::getNext_(artdaq::FragmentPtrs &frags)
       }  // end while
     } else if (stopping_state_ > 0) { // We now know there is no more data at the stop
       stopping_state_ = 2;            // This causes return to be false (no more data)
+      // TODO PAR: PartitionNode::stop() is presumably what we want,
+      // but it will also disable triggers (trig_en -> 0). Not sure
+      // what to do
       hw_.getNode("master.partition.csr.ctrl.buf_en").write(0); //# Disable buffer in partition 0
       hw_.dispatch();
       DAQLogger::LogInfo(instance_name_) << "Fragment generator returning clean run stop and end of data";
@@ -387,6 +388,9 @@ bool dune::TimingReceiver::getNext_(artdaq::FragmentPtrs &frags)
                                            << " to trig_en.  [Throttling state was " << throttling_state_
                                            << "] (1 means enabled)\n";
       }
+      // TODO PAR: PartitionNode::stop() will disable both the buffer
+      // (buf_en -> 0) and the triggers (trig_en -> 0), so not sure
+      // what to do here
       hw_.getNode("master.partition.csr.ctrl.trig_en").write(bit);  // Set XOFF or XON as requested
       hw_.dispatch();
       throttling_state_ = bit ^ 0x1;       // throttling_state is the opposite of bit
@@ -407,6 +411,10 @@ bool dune::TimingReceiver::getNext_(artdaq::FragmentPtrs &frags)
 bool dune::TimingReceiver::startOfDatataking() { return true; }
 
 // Local "private" methods
+const pdt::PartitionNode& dune::TimingReceiver::master_partition() {
+    return hw_.getNode<pdt::PartitionNode>("master.partition");
+}
+
 void dune::TimingReceiver::reset_met_variables(bool onlyspill) {
 
   // If onlyspill, only reset the in-spill variables ...

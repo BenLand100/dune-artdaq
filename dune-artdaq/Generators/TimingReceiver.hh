@@ -52,6 +52,10 @@ namespace dune {
   class TimingFragment;   // Forward definition: trying to not need to include the overlay class header in this .hh file
 }
 
+namespace pdt {
+    class PartitionNode; // Forward definition
+}
+
 namespace dune {
   class TimingReceiver : public artdaq::CommandableFragmentGenerator {
   public:
@@ -163,6 +167,9 @@ namespace dune {
     void reset_met_variables(bool onlyspill=false);   // If onlyspill, only reset the in-spill variables
     void update_met_variables(dune::TimingFragment& fo); // Update variables for met
     void send_met_variables();    // Send the variables to the metrics system
+
+    // TODO: Should this be const?
+    const pdt::PartitionNode& master_partition();
   };
 }
 
