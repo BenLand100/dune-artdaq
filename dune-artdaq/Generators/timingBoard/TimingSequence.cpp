@@ -3,7 +3,7 @@
 //#        TimingSequence.cpp
 //#
 //#  Translated from Python by Giles Barr May 2017 for ProtoDUNE
-//#  The pythin version was created by the Bristol High Energy Physics group
+//#  The python version was created by the Bristol High Energy Physics group
 //#  It was a sequence of calls to I2CUHAL etc to configure and set up the
 //#  timing board.
 //# */
