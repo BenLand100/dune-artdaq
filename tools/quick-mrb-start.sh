@@ -410,6 +410,7 @@ cd $Base
         source ./env.sh
         cd \$returndir
 
+        setup dunepdsprce v0_0_3 -q e14:gen:prof
                                                                     
 # JCF, 11/25/14                                                                                                          
 # Make it easy for users to take a quick look at their output file via "rawEventDump"                                    
@@ -426,6 +427,8 @@ source ${dune_repo}/setup
 source mrbSetEnv
 set -u
 export CETPKG_J=$((`cat /proc/cpuinfo|grep processor|tail -1|awk '{print $3}'` + 1))
+
+setup dunepdsprce v0_0_3 -q e14:gen:prof
 mrb build    # VERBOSE=1
 installStatus=$?
 
