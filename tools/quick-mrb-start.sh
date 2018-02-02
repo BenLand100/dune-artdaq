@@ -421,6 +421,7 @@ else
 fi
 
 cd $Base
+os=`./download/cetpkgsupport/bin/get-directory-name os`
 find build_${os}.x86_64 -type d | xargs -i chmod g+rwx {}
 find build_${os}.x86_64 -type f | xargs -i chmod g+rw {}
 
