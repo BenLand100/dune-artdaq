@@ -348,33 +348,6 @@ fi
 sed -i -r 's/^\s*defaultqual(\s+).*/defaultqual\1'$equalifier':'$squalifier'/' artdaq/ups/product_deps
 sed -i -r 's/^\s*defaultqual(\s+).*/defaultqual\1online:'$equalifier':'$squalifier'/' dune_raw_data/ups/product_deps
 
-if false ; then 
-
-    cd $MRB_SOURCE
-    mfextensionsver=$( awk '/^[[:space:]]*artdaq_mfextensions/ { print $2 }' artdaq/ups/product_deps )
-
-    git clone http://cdcvs.fnal.gov/projects/mf-extensions-git
-    cd mf-extensions-git
-    git checkout $mfextensionsver
-    cd ..
-
-    qtver=$( awk '/^[[:space:]]*qt[[:space:]]*/ {print $2}' mf-extensions-git/ups/product_deps )
-
-    rm -rf mf-extensions-git
-
-    os=`$Base/download/cetpkgsupport/bin/get-directory-name os`
-
-    # qt v5_7_1 uses the token "sl7", and artdaq_mfextensions uses the
-    # token "slf7", as I found out the hard way
-
-    detectAndPull artdaq_mfextensions ${os}-x86_64 ${equalifier}-${squalifier}-${build_type} $mfextensionsver
-
-    if [[ "$os" == "slf7" ]]; then
-     	os="sl7"
-    fi
-
-    detectAndPull qt ${os}-x86_64 ${equalifier} ${qtver}
-fi
 
 ARTDAQ_DEMO_DIR=$Base/srcs/dune_artdaq
 
@@ -446,6 +419,10 @@ else
     echo "Build error. If all else fails, try (A) logging into a new terminal and (B) creating a new directory out of which to run this script."
     echo
 fi
+
+cd $Base
+find build_${os}.x86_64 -type d | xargs -i chmod g+rwx {}
+find build_${os}.x86_64 -type f | xargs -i chmod g+rw {}
 
 endtime=`date`
 
