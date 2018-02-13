@@ -108,7 +108,7 @@ if [[ ! -e $uhal_products_dir ]]; then
 fi
 
 . $uhal_products_dir/setup
-uhal_setup_cmd="setup uhal v2_4_2 -q e14:prof:s50"
+uhal_setup_cmd="setup uhal v2_6_0 -q e14:prof:s50"
 $uhal_setup_cmd
 
 if [[ "$?" != "0" ]]; then
