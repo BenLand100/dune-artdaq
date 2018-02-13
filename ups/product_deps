@@ -20,7 +20,7 @@ product		version		optional
 artdaq		v2_03_04        
 dune_raw_data 	v1_09_00
 cetbuildtools	v5_08_01	-	only_for_build
-uhal		v2_4_2
+uhal		v2_6_0
 end_product_list
 
 # e10 - with gcc 4.9.3a and -std=c++14
