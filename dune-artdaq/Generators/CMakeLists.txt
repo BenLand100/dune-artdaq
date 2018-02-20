@@ -72,6 +72,7 @@ simple_plugin(PennReceiver "generator"
 
 
   add_subdirectory(pennBoard)
+  add_subdirectory(CTB)
   add_subdirectory(ToyHardwareInterface)
 
 
