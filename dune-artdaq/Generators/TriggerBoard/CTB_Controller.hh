@@ -1,0 +1,6 @@
+#ifndef DUNE_ARTDAQ_CTB_CONTROLLER_HH
+#define DUNE_ARTDAQ_CTB_CONTROLLER_HH
+
+
+
+#endif
