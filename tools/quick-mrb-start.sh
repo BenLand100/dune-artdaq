@@ -215,7 +215,8 @@ if [ -z "${tag:-}" ]; then
 fi
 
 if ! $bad_network; then
-    wget https://cdcvs.fnal.gov/redmine/projects/dune-artdaq/repository/revisions/develop/raw/ups/product_deps
+    echo "Special feature/artdaq_v3 branch version of product_deps will be downloaded"
+    wget https://cdcvs.fnal.gov/redmine/projects/dune-artdaq/repository/revisions/6aa8e71ecdb57400b4f15ecc3e2c4db9ceb20ad2/raw/ups/product_deps
 fi
 
 if [[ ! -e $Base/download/product_deps ]]; then
@@ -299,6 +300,7 @@ if [[ $opt_lrd_develop -eq 1 ]]; then
 else
     dune_raw_data_checkout_arg="-t ${coredemo_version} -d dune_raw_data"
 fi
+dune_raw_data_checkout_arg="-b feature/artdaq_v3 -d dune_raw_data"
 
 if [[ $opt_lrd_w -eq 1 ]]; then
     dune_raw_data_repo="ssh://p-dune-raw-data@cdcvs.fnal.gov/cvs/projects/dune-raw-data"
@@ -311,6 +313,7 @@ if [[ $tag == "develop" ]]; then
 else
     dune_artdaq_checkout_arg="-t $tag -d dune_artdaq"
 fi
+dune_artdaq_checkout_arg="-b feature/artdaq_v3 -d dune_artdaq"
 
 # Notice the default for write access to dune-artdaq is the opposite of that for dune-raw-data
 if [[ $opt_la_nw -eq 1 ]]; then
@@ -383,7 +386,7 @@ cd $Base
         source ./env.sh
         cd \$returndir
 
-        setup dunepdsprce v0_0_3 -q e14:gen:prof
+        setup dunepdsprce v0_0_4 -q e14:gen:prof
                                                                     
 # JCF, 11/25/14                                                                                                          
 # Make it easy for users to take a quick look at their output file via "rawEventDump"                                    
@@ -401,7 +404,7 @@ source mrbSetEnv
 set -u
 export CETPKG_J=$((`cat /proc/cpuinfo|grep processor|tail -1|awk '{print $3}'` + 1))
 
-setup dunepdsprce v0_0_3 -q e14:gen:prof
+setup dunepdsprce v0_0_4 -q e14:gen:prof
 mrb build    # VERBOSE=1
 installStatus=$?
 
