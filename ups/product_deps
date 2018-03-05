@@ -1,6 +1,6 @@
 # The parent line must be the first non-comment line in the file
 # This line defines the product name and version
-parent dune_artdaq	v1_10_00
+parent dune_artdaq	v1_15_00
 defaultqual	e14
 
 # These optional lines define the installed directories where
@@ -17,10 +17,10 @@ bindir      fq_dir      bin
 
 #
 product		version		optional
-artdaq		v2_03_04        
-dune_raw_data 	v1_09_00
-cetbuildtools	v5_08_01	-	only_for_build
-uhal		v2_4_2
+artdaq		v3_00_02        
+dune_raw_data 	v1_16_00
+cetbuildtools	v7_00_02	-	only_for_build
+uhal		v2_6_0
 end_product_list
 
 # e10 - with gcc 4.9.3a and -std=c++14

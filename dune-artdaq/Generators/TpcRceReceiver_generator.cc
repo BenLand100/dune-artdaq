@@ -487,20 +487,6 @@ bool dune::TpcRceReceiver::getNext_(artdaq::FragmentPtrs& frags) {
     }
   }
 
-  // Send buffer metrics based on values captured at entry into this function
-
-  artdaq::Globals::metricMan_->sendMetric(empty_buffer_low_water_metric_name_,
-                                          empty_buffer_low_mark_, "buffers", 1, artdaq::MetricMode::Accumulate);
-  artdaq::Globals::metricMan_->sendMetric(empty_buffer_available_metric_name_,
-                                          empty_buffers_available, "buffers",
-                                          1, artdaq::MetricMode::Accumulate);
-  artdaq::Globals::metricMan_->sendMetric(filled_buffer_high_water_metric_name_,
-                                          filled_buffer_high_mark_, "buffers",
-                                          1, artdaq::MetricMode::Accumulate);
-  artdaq::Globals::metricMan_->sendMetric(filled_buffer_available_metric_name_,
-                                          filled_buffers_available, "buffers",
-                                          1, artdaq::MetricMode::Accumulate);
-
   // Determine return value, depending on whether run is stopping, if there are
   // any filled buffers available
   // and if the receiver thread generated an exception
@@ -717,17 +703,6 @@ bool dune::TpcRceReceiver::getNext_(artdaq::FragmentPtrs& frags) {
   if (filled_buffers_available > filled_buffer_high_mark_) {
     filled_buffer_high_mark_ = filled_buffers_available;
   }
-  artdaq::Globals::metricMan_->sendMetric(empty_buffer_low_water_metric_name_,
-                                          empty_buffer_low_mark_, "buffers", 1, artdaq::MetricMode::Accumulate);
-  artdaq::Globals::metricMan_->sendMetric(empty_buffer_available_metric_name_,
-                                          empty_buffers_available, "buffers",
-                                          1, artdaq::MetricMode::Accumulate);
-  artdaq::Globals::metricMan_->sendMetric(filled_buffer_high_water_metric_name_,
-                                          filled_buffer_high_mark_, "buffers",
-                                          1, artdaq::MetricMode::Accumulate);
-  artdaq::Globals::metricMan_->sendMetric(filled_buffer_available_metric_name_,
-                                          filled_buffers_available, "buffers",
-                                          1, artdaq::MetricMode::Accumulate);
 
   // Recycle the raw buffer onto the commit queue for re-use by the receiver.
   data_receiver_->commit_empty_buffer(recvd_buffer);

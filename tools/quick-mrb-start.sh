@@ -108,7 +108,7 @@ if [[ ! -e $uhal_products_dir ]]; then
 fi
 
 . $uhal_products_dir/setup
-uhal_setup_cmd="setup uhal v2_4_2 -q e14:prof:s50"
+uhal_setup_cmd="setup uhal v2_6_0 -q e14:prof:s50"
 $uhal_setup_cmd
 
 if [[ "$?" != "0" ]]; then
@@ -215,7 +215,8 @@ if [ -z "${tag:-}" ]; then
 fi
 
 if ! $bad_network; then
-    wget https://cdcvs.fnal.gov/redmine/projects/dune-artdaq/repository/revisions/develop/raw/ups/product_deps
+    echo "Special feature/artdaq_v3 branch version of product_deps will be downloaded"
+    wget https://cdcvs.fnal.gov/redmine/projects/dune-artdaq/repository/revisions/6aa8e71ecdb57400b4f15ecc3e2c4db9ceb20ad2/raw/ups/product_deps
 fi
 
 if [[ ! -e $Base/download/product_deps ]]; then
@@ -299,6 +300,7 @@ if [[ $opt_lrd_develop -eq 1 ]]; then
 else
     dune_raw_data_checkout_arg="-t ${coredemo_version} -d dune_raw_data"
 fi
+dune_raw_data_checkout_arg="-b feature/artdaq_v3 -d dune_raw_data"
 
 if [[ $opt_lrd_w -eq 1 ]]; then
     dune_raw_data_repo="ssh://p-dune-raw-data@cdcvs.fnal.gov/cvs/projects/dune-raw-data"
@@ -311,6 +313,7 @@ if [[ $tag == "develop" ]]; then
 else
     dune_artdaq_checkout_arg="-t $tag -d dune_artdaq"
 fi
+dune_artdaq_checkout_arg="-b feature/artdaq_v3 -d dune_artdaq"
 
 # Notice the default for write access to dune-artdaq is the opposite of that for dune-raw-data
 if [[ $opt_la_nw -eq 1 ]]; then
@@ -346,35 +349,8 @@ if ! $bad_network; then
 fi
 
 sed -i -r 's/^\s*defaultqual(\s+).*/defaultqual\1'$equalifier':'$squalifier'/' artdaq/ups/product_deps
-#sed -i -r 's/^\s*defaultqual(\s+).*/defaultqual\1online:'$equalifier':'$squalifier'/' dune_raw_data/ups/product_deps
+sed -i -r 's/^\s*defaultqual(\s+).*/defaultqual\1online:'$equalifier':'$squalifier'/' dune_raw_data/ups/product_deps
 
-if false ; then 
-
-    cd $MRB_SOURCE
-    mfextensionsver=$( awk '/^[[:space:]]*artdaq_mfextensions/ { print $2 }' artdaq/ups/product_deps )
-
-    git clone http://cdcvs.fnal.gov/projects/mf-extensions-git
-    cd mf-extensions-git
-    git checkout $mfextensionsver
-    cd ..
-
-    qtver=$( awk '/^[[:space:]]*qt[[:space:]]*/ {print $2}' mf-extensions-git/ups/product_deps )
-
-    rm -rf mf-extensions-git
-
-    os=`$Base/download/cetpkgsupport/bin/get-directory-name os`
-
-    # qt v5_7_1 uses the token "sl7", and artdaq_mfextensions uses the
-    # token "slf7", as I found out the hard way
-
-    detectAndPull artdaq_mfextensions ${os}-x86_64 ${equalifier}-${squalifier}-${build_type} $mfextensionsver
-
-    if [[ "$os" == "slf7" ]]; then
-     	os="sl7"
-    fi
-
-    detectAndPull qt ${os}-x86_64 ${equalifier} ${qtver}
-fi
 
 ARTDAQ_DEMO_DIR=$Base/srcs/dune_artdaq
 
@@ -410,6 +386,7 @@ cd $Base
         source ./env.sh
         cd \$returndir
 
+        setup dunepdsprce v0_0_4 -q e14:gen:prof
                                                                     
 # JCF, 11/25/14                                                                                                          
 # Make it easy for users to take a quick look at their output file via "rawEventDump"                                    
@@ -426,6 +403,8 @@ source ${dune_repo}/setup
 source mrbSetEnv
 set -u
 export CETPKG_J=$((`cat /proc/cpuinfo|grep processor|tail -1|awk '{print $3}'` + 1))
+
+setup dunepdsprce v0_0_4 -q e14:gen:prof
 mrb build    # VERBOSE=1
 installStatus=$?
 
@@ -443,6 +422,11 @@ else
     echo "Build error. If all else fails, try (A) logging into a new terminal and (B) creating a new directory out of which to run this script."
     echo
 fi
+
+cd $Base
+os=`./download/cetpkgsupport/bin/get-directory-name os`
+find build_${os}.x86_64 -type d | xargs -i chmod g+rwx {}
+find build_${os}.x86_64 -type f | xargs -i chmod g+rw {}
 
 endtime=`date`
 
