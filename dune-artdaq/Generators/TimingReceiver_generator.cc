@@ -279,7 +279,7 @@ bool dune::TimingReceiver::getNext_(artdaq::FragmentPtrs &frags)
 
     // Check for stop run
     if (stopping_state_ == 0 && stopping_flag_ != 0) {
-      // hw_.getNode("master.partition.csr.ctrl.part_en").write(0); // Disable the run first (stops)
+      hw_.getNode("master.partition.csr.ctrl.part_en").write(0); // Disable the run first (stops)
       hw_.getNode("master.partition.csr.ctrl.trig_en").write(0); // Now unset the trigger_enable (XOFF)
 
     // Order is first (1) disable trig_en, (2) request run stop, (3) wait for run to stop, (4) check no more to read from buffer, (5) disable buff, (6) disable part
