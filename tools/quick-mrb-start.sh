@@ -108,7 +108,7 @@ if [[ ! -e $uhal_products_dir ]]; then
 fi
 
 . $uhal_products_dir/setup
-uhal_setup_cmd="setup uhal v2_4_2 -q e14:prof:s50"
+uhal_setup_cmd="setup uhal v2_6_0 -q e14:prof:s50"
 $uhal_setup_cmd
 
 if [[ "$?" != "0" ]]; then
@@ -126,6 +126,13 @@ if [[ -e $wib_installation_dir ]]; then
     export WIB_DIRECTORY=$wib_installation_dir
 else
     echo "Unable to find WIB software installation directory ${wib_installation_dir}; exiting..." >&2
+    exit 1
+fi
+
+dune_repo=/cvmfs/dune.opensciencegrid.org/products/dune
+
+if [[ ! -e $dune_repo ]]; then
+    echo "This installation needs access to the CVMFS mount point for the dune repo, ${dune_repo}, in order to obtain the dunepdsprce packages. Aborting..." >&2
     exit 1
 fi
 
@@ -219,6 +226,14 @@ fi
 demo_version=`grep "parent dune_artdaq" $Base/download/product_deps|awk '{print $3}'`
 
 artdaq_version=`grep -E "^artdaq\s+" $Base/download/product_deps | awk '{print $2}'`
+
+if [[ "$artdaq_version" != "v2_03_04" ]]; then
+    artdaq_manifest_version=$artdaq_version
+else
+    artdaq_manifest_version=v2_03_03
+fi
+
+
 coredemo_version=`grep -E "^dune_raw_data\s+" $Base/download/product_deps | awk '{print $2}'`
 
 default_quals_cmd="sed -r -n 's/.*(e[0-9]+):(s[0-9]+).*/\1 \2/p' $Base/download/product_deps | uniq"
@@ -255,10 +270,10 @@ fi
 if ! $bad_network; then
     wget http://scisoft.fnal.gov/scisoft/bundles/tools/pullProducts
     chmod +x pullProducts
-    ./pullProducts $Base/products ${os} artdaq-${artdaq_version} ${squalifier}-${equalifier} ${build_type}
+    ./pullProducts $Base/products ${os} artdaq-${artdaq_manifest_version} ${squalifier}-${equalifier} ${build_type}
 
     if [ $? -ne 0 ]; then
-	echo "Error in pullProducts. Please go to http://scisoft.fnal.gov/scisoft/bundles/artdaq/${artdaq_version}/manifest and make sure that a manifest for the specified qualifiers (${squalifier}-${equalifier}) exists."
+	echo "Error in pullProducts. Please go to http://scisoft.fnal.gov/scisoft/bundles/artdaq/${artdaq_manifest_version}/manifest and make sure that a manifest for the specified qualifiers (${squalifier}-${equalifier}) exists."
 	exit 1
     fi
 
@@ -331,34 +346,8 @@ if ! $bad_network; then
 fi
 
 sed -i -r 's/^\s*defaultqual(\s+).*/defaultqual\1'$equalifier':'$squalifier'/' artdaq/ups/product_deps
+sed -i -r 's/^\s*defaultqual(\s+).*/defaultqual\1online:'$equalifier':'$squalifier'/' dune_raw_data/ups/product_deps
 
-if true ; then 
-
-    cd $MRB_SOURCE
-    mfextensionsver=$( awk '/^[[:space:]]*artdaq_mfextensions/ { print $2 }' artdaq/ups/product_deps )
-
-    git clone http://cdcvs.fnal.gov/projects/mf-extensions-git
-    cd mf-extensions-git
-    git checkout $mfextensionsver
-    cd ..
-
-    qtver=$( awk '/^[[:space:]]*qt[[:space:]]*/ {print $2}' mf-extensions-git/ups/product_deps )
-
-    rm -rf mf-extensions-git
-
-    os=`$Base/download/cetpkgsupport/bin/get-directory-name os`
-
-    # qt v5_7_1 uses the token "sl7", and artdaq_mfextensions uses the
-    # token "slf7", as I found out the hard way
-
-    detectAndPull artdaq_mfextensions ${os}-x86_64 ${equalifier}-${squalifier}-${build_type} $mfextensionsver
-
-    if [[ "$os" == "slf7" ]]; then
-     	os="sl7"
-    fi
-
-    detectAndPull qt ${os}-x86_64 ${equalifier} ${qtver}
-fi
 
 ARTDAQ_DEMO_DIR=$Base/srcs/dune_artdaq
 
@@ -375,6 +364,7 @@ cd $Base
                                                                                                                          
         sh -c "[ \`ps \$\$ | grep bash | wc -l\` -gt 0 ] || { echo 'Please switch to the bash shell before running dune-artdaq.'; exit; }" || exit                                                                                           
         source ${uhal_products_dir}/setup                                      
+        source ${dune_repo}/setup
         source $Base/products/setup                                                                                   
         setup mrb
         source $Base/localProducts_dune_artdaq_${demo_version}_${equalifier}_${build_type}/setup
@@ -393,6 +383,7 @@ cd $Base
         source ./env.sh
         cd \$returndir
 
+        setup dunepdsprce v0_0_4 -q e14:gen:prof
                                                                     
 # JCF, 11/25/14                                                                                                          
 # Make it easy for users to take a quick look at their output file via "rawEventDump"                                    
@@ -405,9 +396,12 @@ alias rawEventDump="art -c \$DUNEARTDAQ_REPO/tools/fcl/rawEventDump.fcl "
 # Build artdaq_demo
 cd $MRB_BUILDDIR
 set +u
+source ${dune_repo}/setup
 source mrbSetEnv
 set -u
 export CETPKG_J=$((`cat /proc/cpuinfo|grep processor|tail -1|awk '{print $3}'` + 1))
+
+setup dunepdsprce v0_0_4 -q e14:gen:prof
 mrb build    # VERBOSE=1
 installStatus=$?
 
@@ -425,6 +419,11 @@ else
     echo "Build error. If all else fails, try (A) logging into a new terminal and (B) creating a new directory out of which to run this script."
     echo
 fi
+
+cd $Base
+os=`./download/cetpkgsupport/bin/get-directory-name os`
+find build_${os}.x86_64 -type d | xargs -i chmod g+rwx {}
+find build_${os}.x86_64 -type f | xargs -i chmod g+rw {}
 
 endtime=`date`
 
