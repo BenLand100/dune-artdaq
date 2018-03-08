@@ -1,10 +1,6 @@
 #ifndef dune_artdaq_DAQLogger_DAQLogger_hh
 #define dune_artdaq_DAQLogger_DAQLogger_hh
 
-#ifndef ZEROMQ_IGNORED
-#include "dune-artdaq/RCConnection/RCConnection.hh"
-#endif
-
 #include "messagefacility/MessageLogger/MessageLogger.h"
 
 #include <stdexcept>
@@ -95,34 +91,6 @@ namespace dune {
     // LogWarning, LogInfo, and LogDebug), so a lot of potential
     // typo-based errors and hassle can be prevented by this macro
 
-    // JCF, 7/6/15
-
-    // Now that I've defined the preprocessor variable ZEROMQ_IGNORED,
-    // write another version of the macro where there's no use of the
-    // RC connection
-
-
-#ifndef ZEROMQ_IGNORED
-
-#define GENERATE_NONERROR_LOGSTRUCT(NAME, REPORT)                	\
-    struct Log ## NAME : public MessagingBase {		         	\
-								        \
-      Log ## NAME(const std::string& caller_name) :      		\
-	MessagingBase(caller_name)			         	\
-      {						         		\
-      }							         	\
-					            			\
-						        		\
-      virtual ~Log ## NAME() noexcept(false) {		        	\
-							        	\
-	mf::Log ## NAME(CallerName()) << Msg();	         		\
-							        	\
-        if (REPORT) {				        		\
-	  RCConnection::Get().SendMessage( CallerName(), Msg(), # NAME ); \
-	}						         	\
-      }							         	\
-};								
-#else
 
 #define GENERATE_NONERROR_LOGSTRUCT(NAME, REPORT)                	\
     struct Log ## NAME : public MessagingBase {		         	\
@@ -139,7 +107,6 @@ namespace dune {
       }							         	\
 };
 
-#endif
 
 GENERATE_NONERROR_LOGSTRUCT(Warning, true)
 GENERATE_NONERROR_LOGSTRUCT(Info, false)
@@ -180,10 +147,6 @@ GENERATE_NONERROR_LOGSTRUCT(Debug, false)
 
 	mf::LogError(CallerName()) << Msg();
 
-#ifndef ZEROMQ_IGNORED
-	RCConnection::Get().SendMessage( CallerName(), Msg(), "Error" );
-#endif
-	
 	ExceptClass myexcept( Msg() );
 	throw myexcept;
       }

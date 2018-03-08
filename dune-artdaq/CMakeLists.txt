@@ -17,6 +17,3 @@ add_subdirectory(DAQLogger)
 #add_subdirectory(OnlineMonitoring)
 #add_subdirectory(PedestalMonitoring)
 
-if (NOT ZEROMQ_IGNORED)
-add_subdirectory(RCConnection)
-endif()
