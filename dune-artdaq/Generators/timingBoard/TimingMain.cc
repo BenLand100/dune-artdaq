@@ -41,6 +41,8 @@
 #include "../TimingReceiver.hh"
 #undef protected
 
+#include "messagefacility/MessageLogger/MessageLogger.h"
+
 // Fiddle (static global: There should be a nicer way of allowing the 
 // data_take() function to see the trg object)
 dune::TimingReceiver* trgp = 0;
@@ -92,8 +94,18 @@ int main(int argn, char** argv) {
     return 1;
   }
 
+  mf::setStandAloneMessageThreshold({"DEBUG"});
+
   printf("main: Configuring...\n");
   fhicl::ParameterSet ps;
+  ps.put<int>("board_id", 0);
+  // No need to enable triggers: I'll do that with the butler
+  ps.put<int>("calib_trigger_enable", 0);
+  ps.put<int>("init_softness", 5);
+  ps.put<int>("fragment_id", 5);
+  ps.put<int>("debug_print", 3);
+  ps.put<std::string>("connections_file", "/nfs/home/phrodrig/protodune/timing/upsify/timing-board-software/tests/etc/connections.xml");
+  ps.put<std::string>("hardware_select", "DUNE_FMC_SECONDARY");
   dune::TimingReceiver trg(ps);       // (1) This does the configure step
   trgp = &trg;                        // Set this global variable to complete the fiddle at the start
   std::this_thread::sleep_for(std::chrono::milliseconds(1000));

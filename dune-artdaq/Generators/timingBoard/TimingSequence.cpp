@@ -38,18 +38,18 @@
 
 void TimingSequence::bufstatus(uhal::HwInterface& hw) {
     //Superseeded Sep2017.   uhal::ValVector<uint32_t> m_t = hw.getNode("master.global.tstamp").readBlock(2);
-    uhal::ValWord<uint32_t> m_e = hw.getNode("master.partition.evtctr").read();
+    uhal::ValWord<uint32_t> m_e = hw.getNode("master.partition0.evtctr").read();
     //uhal::ValVector<uint32_t> e_t = hw.getNode("endpoint.tstamp").readBlock(2);
     //uhal::ValWord<uint32_t> e_e = hw.getNode("endpoint.evtctr").read();
-    uhal::ValWord<uint32_t> m_c = hw.getNode("master.partition.buf.count").read();
+    uhal::ValWord<uint32_t> m_c = hw.getNode("master.partition0.buf.count").read();
     //uhal::ValWord<uint32_t> e_c = hw.getNode("endpoint.buf.count").read();
     uhal::ValWord<uint32_t> m_stat = hw.getNode("master.global.csr.stat").read();
-    uhal::ValWord<uint32_t> p_stat = hw.getNode("master.partition.csr.stat").read();
+    uhal::ValWord<uint32_t> p_stat = hw.getNode("master.partition0.csr.stat").read();
     //uhal::ValWord<uint32_t> e_stat = hw.getNode("endpoint.csr.stat").read();
     uhal::ValVector<uint32_t> s_a = hw.getNode("master.scmd_gen.actrs").readBlock(N_SCHAN);
     uhal::ValVector<uint32_t> s_r = hw.getNode("master.scmd_gen.rctrs").readBlock(N_SCHAN);
-    uhal::ValVector<uint32_t> p_a = hw.getNode("master.partition.actrs").readBlock(N_TYPE);
-    uhal::ValVector<uint32_t> p_r = hw.getNode("master.partition.rctrs").readBlock(N_TYPE);
+    uhal::ValVector<uint32_t> p_a = hw.getNode("master.partition0.actrs").readBlock(N_TYPE);
+    uhal::ValVector<uint32_t> p_r = hw.getNode("master.partition0.rctrs").readBlock(N_TYPE);
     //uhal::ValVector<uint32_t> e_a = hw.getNode("endpoint.ctrs").readBlock(N_TYPE);
     hw.dispatch();
 #ifdef VERBOSE

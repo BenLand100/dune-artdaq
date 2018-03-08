@@ -60,7 +60,7 @@ dune::TimingReceiver::TimingReceiver(fhicl::ParameterSet const & ps):
   ,connectionsFile_(ps.get<std::string>("connections_file", "/home/artdaq1/giles/a_vm_mbp/dune-artdaq/Generators/timingBoard/connections.xml"))
   ,bcmc_( "file://" + connectionsFile_ )   // a string (non-const)
   ,connectionManager_(bcmc_)
-  ,hw_(connectionManager_.getDevice(ps.get<std::string>("hardware_select","DUNE_PRIMARY")))
+  ,hw_(connectionManager_.getDevice(ps.get<std::string>("hardware_select","DUNE_SECONDARY")))
   ,poisson_(ps.get<uint32_t>("poisson",0))
   ,divider_(ps.get<uint32_t>("divider",0xb))
   ,debugprint_(ps.get<uint32_t>("debug_print",0))
@@ -98,7 +98,12 @@ dune::TimingReceiver::TimingReceiver(fhicl::ParameterSet const & ps):
     // - Spills or fake spills enabled                   [wait for firmware upgrade]
 
     // Set up clock chip etc on board
-    TimingSequence::hwinit(hw_,initsoftness_);
+
+    // PAR 2018-03-08. We're not doing any initialization of the board
+    // itself any more: that's done in the butler
+    // 
+    // TimingSequence::hwinit(hw_,initsoftness_);
+
     if (debugprint_ > 1) {
       TimingSequence::hwstatus(hw_);
       TimingSequence::bufstatus(hw_);
@@ -151,11 +156,9 @@ dune::TimingReceiver::TimingReceiver(fhicl::ParameterSet const & ps):
     // - Enable triggers                                 [Not done until inhubit lifted (in get_next_())]
 
 
-
-    // TODO PAR: We dispatch after each of these calls. Should we just dispatch at the end?
-    if (initsoftness_ < 5) {
-	master_partition().enable(0, true);
-    }
+    // arguments to enable() are whether to enable and whether to
+    // dispatch() respectively
+    master_partition().enable(0, true);
     master_partition().stop();
     master_partition().enable(1, true);
     master_partition().setCommandMask(0x0f);
@@ -183,26 +186,27 @@ void dune::TimingReceiver::start(void)
     // - Enable the partition                            [done here]
     // - Set the command mask                            [done here]
 
+    // These are the steps taken by pdtbutler's `configure` command
+    master_partition().reset();
+    master_partition().setCommandMask(0x0f);
+    master_partition().enable(1);
+
     // Dave N's message part 3
     // To start a run (assuming that no data has been read out between runs):
     //
-    // - Disable buffer                                  [done here]        
-    // - Enable buffer                                   [done here]
-    // - Set run_req                                     [not done, needs newer firmware]
-    // - Wait for run_stat to go high                    [not done, needs newer firmware]
+    // - Disable buffer                                  [done by master_partition().start()]
+    // - Enable buffer                                   [done by master_partition().start()]
+    // - Set run_req                                     [done by master_partition().start()]
+    // - Wait for run_stat to go high                    [done by master_partition().start()]
 
-    master_partition().enable(1);
-    master_partition().setCommandMask(0x0f);
-    // TODO PAR: PartitionNode doesn't seem to have a way to enable
-    // the buffer without enabling triggers
-    master_partition().getNode("csr.ctrl.buf_en").write(0); //# Disable buffer in partition 0
-    hw_.dispatch();
 
-    master_partition().getNode("csr.ctrl.buf_en").write(1); //# Enable buffer in partition 0
-    // Next firmware cycle, add set run_req
-    hw_.dispatch();
-
-    // Next firmware cycle, add wait for run_stat
+    // **********************************************
+    // TODO TODO TODO TODO TODO:
+    //
+    // At time of writing, PartitionNode::start() also enables
+    // triggers, which we don't necessarily want to do here
+    // **********************************************
+    master_partition().start();
 
     // From pdtbutler::trigger function
     if (calib_trigger_enable_ != 0) {
@@ -279,9 +283,23 @@ bool dune::TimingReceiver::getNext_(artdaq::FragmentPtrs &frags)
 
     // Check for stop run
     if (stopping_state_ == 0 && stopping_flag_ != 0) {
-      hw_.getNode("master.partition.csr.ctrl.part_en").write(0); // Disable the run first (stops)
-      hw_.getNode("master.partition.csr.ctrl.trig_en").write(0); // Now unset the trigger_enable (XOFF)
-
+      // Stop the run, disable buffer and triggers
+      master_partition().stop();
+      // Disable the partition.
+      //
+      // PAR 2018-03-08 Quoth Dave on slack:
+      //
+      // """
+      // I don’t think you ever want to disable the partition Stopping
+      // the run should be enough If you stop the partition,
+      // timestamps will stop gooing to the endpoints, and everything
+      // will instantly go out of sync.
+      // The basic ‘master control’ is run start / stop
+      // """
+      // 
+      // So we won't disable the partition here
+      // master_partition().enable(0, true);
+      
     // Order is first (1) disable trig_en, (2) request run stop, (3) wait for run to stop, (4) check no more to read from buffer, (5) disable buff, (6) disable part
 
       hw_.dispatch();
@@ -353,9 +371,16 @@ bool dune::TimingReceiver::getNext_(artdaq::FragmentPtrs &frags)
       stopping_state_ = 2;            // This causes return to be false (no more data)
       // TODO PAR: PartitionNode::stop() is presumably what we want,
       // but it will also disable triggers (trig_en -> 0). Not sure
-      // what to do
-      hw_.getNode("master.partition.csr.ctrl.buf_en").write(0); //# Disable buffer in partition 0
-      hw_.dispatch();
+      // what to do. But, Dave on slack, 2018-03-08:
+      // """
+      // Likewise, not clear why we’d ever want to run with buf_en
+      // disabled, it’s really there so you can make sure the buffer
+      // is clear at run start
+      //
+      // ie. toggle it low then high before starting a run
+      // """
+      // hw_.getNode("master.partition0.csr.ctrl.buf_en").write(0); //# Disable buffer in partition 0
+      // hw_.dispatch();
       DAQLogger::LogInfo(instance_name_) << "Fragment generator returning clean run stop and end of data";
       break;
     } else {
@@ -391,7 +416,7 @@ bool dune::TimingReceiver::getNext_(artdaq::FragmentPtrs &frags)
       // TODO PAR: PartitionNode::stop() will disable both the buffer
       // (buf_en -> 0) and the triggers (trig_en -> 0), so not sure
       // what to do here
-      hw_.getNode("master.partition.csr.ctrl.trig_en").write(bit);  // Set XOFF or XON as requested
+      hw_.getNode("master.partition0.csr.ctrl.trig_en").write(bit);  // Set XOFF or XON as requested
       hw_.dispatch();
       throttling_state_ = bit ^ 0x1;       // throttling_state is the opposite of bit
     } while (false);                       // Do loop once only (mainly to have lots of 'break's above)
@@ -412,7 +437,7 @@ bool dune::TimingReceiver::startOfDatataking() { return true; }
 
 // Local "private" methods
 const pdt::PartitionNode& dune::TimingReceiver::master_partition() {
-    return hw_.getNode<pdt::PartitionNode>("master.partition");
+    return hw_.getNode<pdt::PartitionNode>("master.partition0");
 }
 
 void dune::TimingReceiver::reset_met_variables(bool onlyspill) {
@@ -447,6 +472,11 @@ void dune::TimingReceiver::update_met_variables(dune::TimingFragment& fo) {
 }
 
 void dune::TimingReceiver::send_met_variables() {
+
+  // When running in standalone mode, there's no metric manager, so just skip this bit
+  if(!artdaq::Globals::metricMan_){
+    return;
+  }
 
 // Metrics:  Parameters to the sendMetric call are:
 //  (1) name, (2) value (string, int, double, float or long uint), (3) units, 
