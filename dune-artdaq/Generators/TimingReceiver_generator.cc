@@ -195,17 +195,14 @@ void dune::TimingReceiver::start(void)
     try{
         master_partition().start();
     } catch(pdt::RunRequestTimeoutExpired& e){
-        
+        // TODO TODO TODO: What do I do here to notify artdaq that
+        // it's all gone pear-shaped?
     }
 
     if (debugprint_ > 1) {
       TimingSequence::bufstatus(hw_);
     }
     InhibitGet_retime(inhibitget_timer_);
-
-    // This is not the final enable.  That is done in getNext_() below. 
-    // hw_.getNode("master.scmd_gen.chan_ctrl.en").write(1);
-    // hw_.dispatch();
 
     this->reset_met_variables(false);
 }
