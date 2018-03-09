@@ -2,7 +2,8 @@
 //# /*
 //#        TimingReceiver_generator.cpp
 //#
-//#  Giles Barr, Justo Martin-Albo, Farrukh Azfar, Jan 2017,  May 2017 
+//#  Giles Barr, Justo Martin-Albo, Farrukh Azfar, Philip Rodrigues
+//#  Jan 2017,  May 2017, Mar 2018
 //#  for ProtoDUNE
 //# */
 //################################################################################
@@ -10,14 +11,11 @@
 #include "dune-artdaq/Generators/TimingReceiver.hh"
 #include "dune-artdaq/DAQLogger/DAQLogger.hh"
 
-//:#include "canvas/Utilities/Exception.h"
 #include "artdaq/Application/GeneratorMacros.hh"
 #include "cetlib/exception.h"
 #include "dune-raw-data/Overlays/TimingFragment.hh"
 #include "dune-raw-data/Overlays/FragmentType.hh"
 #include "fhiclcpp/ParameterSet.h"
-//:#include "artdaq-core/Utilities/SimpleLookupPolicy.h"
-//:#include "messagefacility/MessageLogger/MessageLogger.h"
 
 #include <fstream>
 #include <iomanip>
@@ -31,9 +29,11 @@
 #include <unistd.h>
 #include "timingBoard/TimingSequence.hpp"  // Defs of the sequence functions of uhal commands for setup etc.
 
-#include "timingBoard/InhibitGet.h"
+#include "timingBoard/InhibitGet.h" // The interface to the ZeroMQ trigger inhibit master
 
-#include "pdt/PartitionNode.hpp"
+#include "pdt/PartitionNode.hpp" // The interface to a timing system
+                                 // partition, from the
+                                 // protodune_timing UPS product
 
 using namespace dune;
 
