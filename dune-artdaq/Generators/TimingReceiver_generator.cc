@@ -66,7 +66,7 @@ dune::TimingReceiver::TimingReceiver(fhicl::ParameterSet const & ps):
   ,debugprint_(ps.get<uint32_t>("debug_print",0))
   ,initsoftness_(ps.get<uint32_t>("init_softness",0))
   ,startaltern_(ps.get<uint32_t>("start_altern",0))
-  ,fw_version_active_(ps.get<uint32_t>("fw_version_active",3))
+  ,fw_version_active_(ps.get<uint32_t>("fw_version_active",0x4a4))
   ,fake_spill_cycle_(ps.get<uint32_t>("fake_spill_cycle",100))
   ,fake_spill_length_(ps.get<uint32_t>("fake_spill_length",50))
   ,main_trigger_enable_(ps.get<uint32_t>("main_trigger_enable",0))
