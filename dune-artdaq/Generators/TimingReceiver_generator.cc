@@ -341,9 +341,7 @@ bool dune::TimingReceiver::getNext_(artdaq::FragmentPtrs &frags)
       }  // end while
     } else if (stopping_state_ > 0) { // We now know there is no more data at the stop
       stopping_state_ = 2;            // This causes return to be false (no more data)
-      // TODO PAR: PartitionNode::stop() is presumably what we want,
-      // but it will also disable triggers (trig_en -> 0). Not sure
-      // what to do. But, Dave on slack, 2018-03-08:
+      // We used to disable the buffer here, but Dave on slack, 2018-03-08:
       // """
       // Likewise, not clear why we’d ever want to run with buf_en
       // disabled, it’s really there so you can make sure the buffer
@@ -351,8 +349,8 @@ bool dune::TimingReceiver::getNext_(artdaq::FragmentPtrs &frags)
       //
       // ie. toggle it low then high before starting a run
       // """
-      // hw_.getNode("master.partition0.csr.ctrl.buf_en").write(0); //# Disable buffer in partition 0
-      // hw_.dispatch();
+      //
+      // So now we don't disable the buffer
       DAQLogger::LogInfo(instance_name_) << "Fragment generator returning clean run stop and end of data";
       break;
     } else {
@@ -385,11 +383,7 @@ bool dune::TimingReceiver::getNext_(artdaq::FragmentPtrs &frags)
                                            << " to trig_en.  [Throttling state was " << throttling_state_
                                            << "] (1 means enabled)\n";
       }
-      // TODO PAR: PartitionNode::stop() will disable both the buffer
-      // (buf_en -> 0) and the triggers (trig_en -> 0), so not sure
-      // what to do here
-      hw_.getNode("master.partition0.csr.ctrl.trig_en").write(bit);  // Set XOFF or XON as requested
-      hw_.dispatch();
+      master_partition().enableTriggers(bit); // Set XOFF or XON as requested
       throttling_state_ = bit ^ 0x1;       // throttling_state is the opposite of bit
     } while (false);                       // Do loop once only (mainly to have lots of 'break's above)
 
