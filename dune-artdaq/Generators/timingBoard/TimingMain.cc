@@ -104,6 +104,7 @@ int main(int argn, char** argv) {
   ps.put<int>("init_softness", 5);
   ps.put<int>("fragment_id", 5);
   ps.put<int>("debug_print", 3);
+  ps.put<int>("partition_number", 0);
   ps.put<std::string>("connections_file", "/nfs/home/phrodrig/protodune/timing/upsify/timing-board-software/tests/etc/connections.xml");
   ps.put<std::string>("hardware_select", "DUNE_FMC_SECONDARY");
   dune::TimingReceiver trg(ps);       // (1) This does the configure step
