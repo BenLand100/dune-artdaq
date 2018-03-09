@@ -138,13 +138,6 @@ dune::TimingReceiver::TimingReceiver(fhicl::ParameterSet const & ps):
       DAQLogger::LogError(instance_name_) << "Timing master clock out of expected range: " << lFrequency << " Hz. Has it been configured?";
     }
 
-    // Probably the two following commands are to be removed
-
-    // Command generators setup
-    hw_.getNode("master.scmd_gen.ctrl.en").write(1); //# Enable sync command generators
-    hw_.getNode("master.scmd_gen.chan_ctrl.en").write(0); //# Stop the command stream
-    hw_.dispatch();
-
     // Dave N's message part 2:
     // So a likely cold-start procedure for the partition (not the board!) would be:
     //
