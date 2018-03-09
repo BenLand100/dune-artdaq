@@ -146,7 +146,6 @@ namespace dune {
     uint32_t fake_spill_cycle_;   //
     uint32_t fake_spill_length_;    // If zero, means no fake spills
     uint32_t main_trigger_enable_; // Enable triggers from trigger board (penn)
-    uint32_t calib_trigger_enable_; // Enable internal triggers (will become calib triggers)
     uint32_t trigger_mask_;         // Trigger mask (not used yet)
     uint32_t partition_;            // Partition number of this partition [Partition 0 controls 
                                     // the overall functions]

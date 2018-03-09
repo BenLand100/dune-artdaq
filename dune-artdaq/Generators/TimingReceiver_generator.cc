@@ -70,7 +70,6 @@ dune::TimingReceiver::TimingReceiver(fhicl::ParameterSet const & ps):
   ,fake_spill_cycle_(ps.get<uint32_t>("fake_spill_cycle",100))
   ,fake_spill_length_(ps.get<uint32_t>("fake_spill_length",50))
   ,main_trigger_enable_(ps.get<uint32_t>("main_trigger_enable",0))
-  ,calib_trigger_enable_(ps.get<uint32_t>("calib_trigger_enable",1))
   ,trigger_mask_(ps.get<uint32_t>("trigger_mask",0xff))
   ,partition_(ps.get<uint32_t>("partition_",0))
   ,end_run_wait_(ps.get<uint32_t>("end_run_wait",1000))
@@ -197,21 +196,6 @@ void dune::TimingReceiver::start(void)
         master_partition().start();
     } catch(pdt::RunRequestTimeoutExpired& e){
         
-    }
-
-    // From pdtbutler::trigger function
-    if (calib_trigger_enable_ != 0) {
-      hw_.getNode("master.scmd_gen.chan_ctrl.type").write(3); //# Set command type = 3 for generator 0
-      uint32_t rate = (divider_ > 0xf) ? 0xf : divider_;              // Allow 0x0 -> 0xf
-      hw_.getNode("master.scmd_gen.chan_ctrl.rate_div").write(rate); //# Set about 1Hz rate for generator 0
-      uint32_t pat = (poisson_ != 0) ? 1 : 0;
-      hw_.getNode("master.scmd_gen.chan_ctrl.patt").write(pat); //# Set Poisson mode for generator 0
-      hw_.dispatch();
-      //echo( "> Setting trigger rate to {:.3e} Hz".format((50e6/(1<<(12+divider)))))
-      //echo( "> Trigger spacing mode:" + {False: 'equally spaced', True: 'poisson'}[poisson] )
-
-      hw_.getNode("master.scmd_gen.chan_ctrl.en").write(1); //# Start the command stream
-      hw_.dispatch();
     }
 
     if (debugprint_ > 1) {
