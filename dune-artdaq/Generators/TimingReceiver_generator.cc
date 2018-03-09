@@ -181,7 +181,7 @@ void dune::TimingReceiver::start(void)
 
     // These are the steps taken by pdtbutler's `configure` command
     master_partition().reset();
-    master_partition().writeTriggerMask(0x0f);
+    master_partition().writeTriggerMask(trigger_mask_);
     master_partition().enable(1);
 
     // Dave N's message part 3
