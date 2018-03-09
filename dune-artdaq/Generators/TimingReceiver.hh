@@ -130,6 +130,7 @@ namespace dune {
     uhal::HwInterface hw_;
 
 // Things that are Fhicl parameters
+    uint32_t partition_number_; // The partition number we're talking to
     uint32_t poisson_;  // 0=Set fixed rate, 1= Poission distributed
     uint32_t divider_;  // The divider to get the rate = 50MHz/2**(12+divider_)   [e.g. 0xb=5.9Hz]
     uint32_t debugprint_;  // Controls the printing of stuff as info messages. 

@@ -61,6 +61,7 @@ dune::TimingReceiver::TimingReceiver(fhicl::ParameterSet const & ps):
   ,bcmc_( "file://" + connectionsFile_ )   // a string (non-const)
   ,connectionManager_(bcmc_)
   ,hw_(connectionManager_.getDevice(ps.get<std::string>("hardware_select","DUNE_SECONDARY")))
+  ,partition_number_(ps.get<uint32_t>("partition_number",0))
   ,poisson_(ps.get<uint32_t>("poisson",0))
   ,divider_(ps.get<uint32_t>("divider",0xb))
   ,debugprint_(ps.get<uint32_t>("debug_print",0))
@@ -403,7 +404,9 @@ bool dune::TimingReceiver::startOfDatataking() { return true; }
 
 // Local "private" methods
 const pdt::PartitionNode& dune::TimingReceiver::master_partition() {
-    return hw_.getNode<pdt::PartitionNode>("master.partition0");
+    std::stringstream ss;
+    ss << "master.partition" << partition_number_;
+    return hw_.getNode<pdt::PartitionNode>(ss.str());
 }
 
 void dune::TimingReceiver::reset_met_variables(bool onlyspill) {
