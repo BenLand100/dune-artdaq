@@ -154,7 +154,7 @@ dune::TimingReceiver::TimingReceiver(fhicl::ParameterSet const & ps):
     master_partition().enable(0, true);
     master_partition().stop();
     master_partition().enable(1, true);
-    master_partition().writeTriggerMask(0x0f);
+    master_partition().writeTriggerMask(trigger_mask_);
 
 
     // Set up connection to Inhibit Master
