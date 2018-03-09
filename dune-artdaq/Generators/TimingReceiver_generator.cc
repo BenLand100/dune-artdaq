@@ -153,7 +153,7 @@ dune::TimingReceiver::TimingReceiver(fhicl::ParameterSet const & ps):
     // - Disable buffer                                  [done here, repeated at start()]
     // - Enable the partition                            [done here, repeated at start()]
     // - Set the command mask                            [done here, repeated at start()]
-    // - Enable triggers                                 [Not done until inhubit lifted (in get_next_())]
+    // - Enable triggers                                 [Not done until inhibit lifted (in get_next_())]
 
 
     // arguments to enable() are whether to enable and whether to
@@ -161,7 +161,7 @@ dune::TimingReceiver::TimingReceiver(fhicl::ParameterSet const & ps):
     master_partition().enable(0, true);
     master_partition().stop();
     master_partition().enable(1, true);
-    master_partition().setCommandMask(0x0f);
+    master_partition().writeTriggerMask(0x0f);
 
 
     // Set up connection to Inhibit Master
@@ -188,7 +188,7 @@ void dune::TimingReceiver::start(void)
 
     // These are the steps taken by pdtbutler's `configure` command
     master_partition().reset();
-    master_partition().setCommandMask(0x0f);
+    master_partition().writeTriggerMask(0x0f);
     master_partition().enable(1);
 
     // Dave N's message part 3
@@ -200,13 +200,11 @@ void dune::TimingReceiver::start(void)
     // - Wait for run_stat to go high                    [done by master_partition().start()]
 
 
-    // **********************************************
-    // TODO TODO TODO TODO TODO:
-    //
-    // At time of writing, PartitionNode::start() also enables
-    // triggers, which we don't necessarily want to do here
-    // **********************************************
-    master_partition().start();
+    try{
+        master_partition().start();
+    } catch(pdt::RunRequestTimeoutExpired& e){
+        
+    }
 
     // From pdtbutler::trigger function
     if (calib_trigger_enable_ != 0) {
