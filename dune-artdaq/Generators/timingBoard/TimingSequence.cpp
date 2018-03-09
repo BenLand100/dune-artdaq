@@ -31,25 +31,26 @@
 // it to use std::cout only and have all the prints from the python scripts.
 //#define VERBOSE
 
-#ifndef VERBOSE
 #include "messagefacility/MessageLogger/MessageLogger.h"  // For log messages
 #include "dune-artdaq/DAQLogger/DAQLogger.hh"             // For log messsages
-#endif
 
-void TimingSequence::bufstatus(uhal::HwInterface& hw) {
+void TimingSequence::bufstatus(uhal::HwInterface& hw, uint32_t partition_number) {
+    std::stringstream ss;
+    ss << "master.partition" << partition_number;
+    std::string partition_string=ss.str();
     //Superseeded Sep2017.   uhal::ValVector<uint32_t> m_t = hw.getNode("master.global.tstamp").readBlock(2);
-    uhal::ValWord<uint32_t> m_e = hw.getNode("master.partition0.evtctr").read();
+    uhal::ValWord<uint32_t> m_e = hw.getNode(partition_string+".evtctr").read();
     //uhal::ValVector<uint32_t> e_t = hw.getNode("endpoint.tstamp").readBlock(2);
     //uhal::ValWord<uint32_t> e_e = hw.getNode("endpoint.evtctr").read();
-    uhal::ValWord<uint32_t> m_c = hw.getNode("master.partition0.buf.count").read();
+    uhal::ValWord<uint32_t> m_c = hw.getNode(partition_string+".buf.count").read();
     //uhal::ValWord<uint32_t> e_c = hw.getNode("endpoint.buf.count").read();
     uhal::ValWord<uint32_t> m_stat = hw.getNode("master.global.csr.stat").read();
-    uhal::ValWord<uint32_t> p_stat = hw.getNode("master.partition0.csr.stat").read();
+    uhal::ValWord<uint32_t> p_stat = hw.getNode(partition_string+".csr.stat").read();
     //uhal::ValWord<uint32_t> e_stat = hw.getNode("endpoint.csr.stat").read();
     uhal::ValVector<uint32_t> s_a = hw.getNode("master.scmd_gen.actrs").readBlock(N_SCHAN);
     uhal::ValVector<uint32_t> s_r = hw.getNode("master.scmd_gen.rctrs").readBlock(N_SCHAN);
-    uhal::ValVector<uint32_t> p_a = hw.getNode("master.partition0.actrs").readBlock(N_TYPE);
-    uhal::ValVector<uint32_t> p_r = hw.getNode("master.partition0.rctrs").readBlock(N_TYPE);
+    uhal::ValVector<uint32_t> p_a = hw.getNode(partition_string+".actrs").readBlock(N_TYPE);
+    uhal::ValVector<uint32_t> p_r = hw.getNode(partition_string+".rctrs").readBlock(N_TYPE);
     //uhal::ValVector<uint32_t> e_a = hw.getNode("endpoint.ctrs").readBlock(N_TYPE);
     hw.dispatch();
 #ifdef VERBOSE
@@ -84,9 +85,9 @@ void TimingSequence::hwinit(uhal::HwInterface& hw, uint32_t init_softness) {
   // init_softness = 2            Do:                    I2C,           promread,              freq_meas, sfp_tx_dif, ctrl.rst
   // init_softness = 3            Do:                    I2C,           promread,              freq_meas
 
-#ifndef VERBOSE
+
   std::string instancename = "Timing";
-#endif
+
 
   if (init_softness < 1) {  // soft_rst:   Does not take clock away, but sets the registers to 'factory' defaults
     std::cout << "hw.id() = " << hw.id() << std::endl;

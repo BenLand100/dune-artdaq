@@ -87,6 +87,9 @@ dune::TimingReceiver::TimingReceiver(fhicl::ParameterSet const & ps):
 
     if (inhibitget_timer_ == 0) inhibitget_timer_ = 2000000000;  // Zero inhibitget_timer waits infinite.
 
+    // PAR 2018-03-09: We don't do any pre-partition-setup steps in
+    // the board reader any more. They're done by the butler. I'm
+    // leaving the comment below for posterity though
     //
     // Dave N's message part 1:
     // The pre-partition-setup status needs to be:
@@ -97,16 +100,10 @@ dune::TimingReceiver::TimingReceiver(fhicl::ParameterSet const & ps):
     // - Command generators set up                       [done here] 
     // - Spills or fake spills enabled                   [wait for firmware upgrade]
 
-    // Set up clock chip etc on board
-
-    // PAR 2018-03-08. We're not doing any initialization of the board
-    // itself any more: that's done in the butler
-    // 
-    // TimingSequence::hwinit(hw_,initsoftness_);
 
     if (debugprint_ > 1) {
       TimingSequence::hwstatus(hw_);
-      TimingSequence::bufstatus(hw_);
+      TimingSequence::bufstatus(hw_, partition_number_);
     }
 
     // AT: Ensure that the hardware is up and running.
@@ -201,7 +198,7 @@ void dune::TimingReceiver::start(void)
     }
 
     if (debugprint_ > 1) {
-      TimingSequence::bufstatus(hw_);
+      TimingSequence::bufstatus(hw_, partition_number_);
     }
     InhibitGet_retime(inhibitget_timer_);
 
