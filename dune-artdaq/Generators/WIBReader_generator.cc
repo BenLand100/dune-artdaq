@@ -26,7 +26,6 @@ WIBReader::WIBReader(fhicl::ParameterSet const& ps) :
   auto wib_table = ps.get<std::string>("WIB.wib_table");
   auto femb_table = ps.get<std::string>("WIB.femb_table");
   auto expected_wib_fw_version = ps.get<unsigned>("WIB.config.expected_wib_fw_version");
-  auto expected_femb_fw_version = ps.get<uint32_t>("WIB.config.expected_femb_fw_version");
   auto expected_daq_mode = ps.get<std::string>("WIB.config.expected_daq_mode");
 
   auto use_WIB_fake_data = ps.get<std::vector<bool> >("WIB.config.use_WIB_fake_data");
@@ -57,6 +56,7 @@ WIBReader::WIBReader(fhicl::ParameterSet const& ps) :
     dune::DAQLogger::LogInfo("WIBReader") << "Connecting to WIB at " <<  wib_address;
     wib = std::make_unique<WIB>( wib_address, wib_table, femb_table );
   
+    // Reset and setup clock
     wib->ResetWIBAndCfgDTS(DTS_source,local_clock);
     std::this_thread::sleep_for(std::chrono::seconds(1));
   
@@ -159,7 +159,8 @@ WIBReader::WIBReader(fhicl::ParameterSet const& ps) :
         else
         {
           dune::DAQLogger::LogInfo("WIBReader") << "Setting up FEMB"<<iFEMB;
-          setupFEMB(iFEMB,3,3,1,0,0,0,0,0,1,1,1,0,0,0,1,expected_femb_fw_version);
+          //setupFEMB(iFEMB,3,3,1,0,0,0,0,0,1,1,1,0,0,0,1,expected_femb_fw_version);
+          setupFEMB(iFEMB,FEMB_config);
         }
       }
       else
@@ -171,15 +172,6 @@ WIBReader::WIBReader(fhicl::ParameterSet const& ps) :
     dune::DAQLogger::LogInfo("WIBReader") << "Enabling DAQ links";
     wib->StartStreamToDAQ();
   
-    //fhicl::ParameterSet wib_config = ps.get<fhicl::ParameterSet>("WIB.config");
-    //// Read values from FHiCL document and feed them to WIB library
-    //for (std::string key : wib_config.get_names()) {
-    //  if (wib_config.is_key_to_atom(key)) {
-    //    uint32_t value = wib_config.get<long int>(key);
-    //    wib->Write(key, value);
-    //    dune::DAQLogger::LogInfo("WIBReader") << "Set " << key << " to 0x" << std::hex << std::setw(8) << std::setfill('0') << value << std::dec;
-    //  }
-    //}
   } // try
   catch (const BUException::exBase& exc)
   {
@@ -261,8 +253,30 @@ void WIBReader::setupFEMBFakeData(size_t iFEMB, fhicl::ParameterSet const& FEMB_
   wib->ConfigFEMBFakeData(iFEMB,fake_mode,fake_word,femb_number,fake_waveform);
 }
 
-void WIBReader::setupFEMB(size_t iFEMB, uint32_t gain, uint32_t shape, uint32_t base, uint32_t leakHigh, uint32_t leak10X, uint32_t acCouple, uint32_t buffer, uint32_t tstIn, uint32_t extClk, uint8_t clk_cs, uint8_t pls_cs, uint8_t dac_sel, uint8_t fpga_dac, uint8_t asic_dac, uint8_t mon_cs, uint32_t expected_femb_fw_version){
+void WIBReader::setupFEMB(size_t iFEMB, fhicl::ParameterSet const& FEMB_config){
+//void WIBReader::setupFEMB(size_t iFEMB, uint32_t gain, uint32_t shape, uint32_t base, uint32_t leakHigh, uint32_t leak10X, uint32_t acCouple, uint32_t buffer, uint32_t tstIn, uint32_t extClk, uint8_t clk_cs, uint8_t pls_cs, uint8_t dac_sel, uint8_t fpga_dac, uint8_t asic_dac, uint8_t mon_cs, uint32_t expected_femb_fw_version){
   // Don't forget to disable WIB fake data
+
+
+
+  const auto gain = FEMB_config.get<uint32_t>("gain");
+  const auto shape = FEMB_config.get<uint32_t>("shape");
+  const auto base = FEMB_config.get<uint32_t>("base");
+  const auto leakHigh = FEMB_config.get<uint32_t>("leakHigh");
+  const auto leak10X = FEMB_config.get<uint32_t>("leak10X");
+  const auto acCouple = FEMB_config.get<uint32_t>("acCouple");
+  const auto buffer = FEMB_config.get<uint32_t>("buffer");
+  const auto tstIn = FEMB_config.get<uint32_t>("tstIn");
+  const auto extClk = FEMB_config.get<uint32_t>("extClk");
+  const auto clk_cs = FEMB_config.get<uint8_t>("clk_cs");
+  const auto pls_cs = FEMB_config.get<uint8_t>("pls_cs");
+  const auto dac_sel = FEMB_config.get<uint8_t>("dac_sel");
+  const auto fpga_dac = FEMB_config.get<uint8_t>("fpga_dac");
+  const auto asic_dac = FEMB_config.get<uint8_t>("asic_dac");
+  const auto mon_cs = FEMB_config.get<uint8_t>("mon_cs");
+  const auto expected_femb_fw_version = FEMB_config.get<uint32_t>("expected_femb_fw_version");
+
+  //////////////////////
 
   if (gain > 3)
   {
