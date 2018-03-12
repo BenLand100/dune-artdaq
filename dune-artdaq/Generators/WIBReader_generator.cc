@@ -28,18 +28,22 @@ WIBReader::WIBReader(fhicl::ParameterSet const& ps) :
   auto expected_wib_fw_version = ps.get<unsigned>("WIB.config.expected_wib_fw_version");
   auto expected_femb_fw_version = ps.get<uint32_t>("WIB.config.expected_femb_fw_version");
   auto expected_daq_mode = ps.get<std::string>("WIB.config.expected_daq_mode");
-  auto fake_cold_data_modes = ps.get<std::vector<std::vector<unsigned> > >("WIB.config.fake_cold_data_modes"); // 0 SAMPLES, 1 COUNTER
-  auto use_WIB_fake_data = ps.get<std::vector<std::vector<bool> > >("WIB.config.use_WIB_fake_data");
-  auto enable_DAQ_link = ps.get<std::vector<bool> >("WIB.config.enable_DAQ_link");
-  auto enable_DAQ_regs = ps.get<std::vector<unsigned> >("WIB.config.enable_DAQ_regs");
 
-  auto local_clock = ps.get<bool>("WIB.config.local_clock");
-  auto PDTS_source = ps.get<unsigned>("WIB.config.PDTS_source"); // 0 back plane, 1 front panel
-  auto clock_source = ps.get<unsigned>("WIB.config.clock_source"); // 0 timing system, 1 25Mhz OSC, 2 SMA, 3 Feedback
-  auto use_SI5342 = ps.get<bool>("WIB.config.use_SI5342"); // true for FELIX
+  auto use_WIB_fake_data = ps.get<std::vector<bool> >("WIB.config.use_WIB_fake_data");
+  auto use_WIB_fake_data_counter = ps.get<bool>("WIB.config.use_WIB_fake_data_counter"); // false SAMPLES, true COUNTER
+
+  auto local_clock = ps.get<bool>("WIB.config.local_clock"); // use local clock if true, else DTS
+  auto DTS_source = ps.get<unsigned>("WIB.config.DTS_source"); // 0 back plane, 1 front panel
 
   auto enable_FEMB = ps.get<std::vector<bool> >("WIB.config.enable_FEMB");
   auto FEMB_configs = ps.get<std::vector<fhicl::ParameterSet> >("WIB.config.FEMBs");
+
+  if (use_WIB_fake_data.size() != 4)
+  {
+    cet::exception excpt("WIBReader");
+    excpt << "Length of WIB.config.use_WIB_fake_data must be 4, not: " << use_WIB_fake_data.size();
+    throw excpt;
+  }
 
   if (FEMB_configs.size() != 4)
   {
@@ -53,7 +57,7 @@ WIBReader::WIBReader(fhicl::ParameterSet const& ps) :
     dune::DAQLogger::LogInfo("WIBReader") << "Connecting to WIB at " <<  wib_address;
     wib = std::make_unique<WIB>( wib_address, wib_table, femb_table );
   
-    wib->ResetWIB();
+    wib->ResetWIBAndCfgDTS(DTS_source,local_clock);
     std::this_thread::sleep_for(std::chrono::seconds(1));
   
     // Check and print firmware version
@@ -130,56 +134,16 @@ WIBReader::WIBReader(fhicl::ParameterSet const& ps) :
       throw excpt;
       //dune::DAQLogger::LogInfo("WIBReader") << "Bogus WIB firmware DAQ mode "<< ((unsigned) daqMode);
     }
-  
-    if(use_SI5342) // for FELIX
-    {
-      dune::DAQLogger::LogInfo("WIBReader") << "Configuring and selecting SI5342 for FELIX";
-      wib->LoadConfigDAQ_SI5342("default");
-      wib->SelectSI5342(1,true);
-      std::this_thread::sleep_for(std::chrono::seconds(1));
-    }
-    else
-    {
-      dune::DAQLogger::LogInfo("WIBReader") << "Not using SI5342 (don't need for RCE)";
-    }
-  
-    if (local_clock)
-    {
-      dune::DAQLogger::LogInfo("WIBReader") << "Setting up Local Clock";
-      wib->LoadConfigDTS_SI5344("default"); // configSI5344 in script
-      wib->SelectSI5344(clock_source,1);
-      std::this_thread::sleep_for(std::chrono::seconds(1));
-      wib->Write("DTS.CONVERT_CONTROL.EN_FAKE",1);
-      wib->Write("DTS.CONVERT_CONTROL.LOCAL_TIMESTAMP",1);
-      std::this_thread::sleep_for(std::chrono::seconds(1));
-    }
-    else // normal timing system
-    {
-      dune::DAQLogger::LogInfo("WIBReader") << "Setting up DTS";
-      wib->InitializeDTS(PDTS_source,clock_source); // initDTS in script
-      std::this_thread::sleep_for(std::chrono::seconds(1));
-    }
-  
-    dune::DAQLogger::LogInfo("WIBReader") << "Writing data source and enabling DAQ links";
-  
-    for(size_t iFEMB=1; iFEMB <= 4; iFEMB++)
-    {
-      for(size_t iCD=1; iCD <= 2; iCD++)
-      {
-        wib->SetFEMBFakeCOLDATAMode(iFEMB,iCD,fake_cold_data_modes.at(iFEMB-1).at(iCD-1)); // 0 for "SAMPLES" (counter) or 1 for "COUNTER" (nonsense)
-      }
-      for(size_t iStream=1; iStream <= 4; iStream++)
-      {
-        wib->SetFEMBStreamSource(iFEMB,iStream,!use_WIB_fake_data.at(iFEMB-1).at(iStream-1)); // last arg is bool isReal
-      }
-      for(size_t iStream=1; iStream <= 4; iStream++)
-      {
-        uint64_t sourceByte = 0;
-        if(use_WIB_fake_data.at(iFEMB-1).at(iStream-1)) sourceByte = 0xF;
-        wib->SourceFEMB(iFEMB,sourceByte);
-      }
-    }
 
+    // Configure WIB fake data enable and mode
+    dune::DAQLogger::LogInfo("WIBReader") << "Configuring WIB Fake Data";
+    wib->ConfigWIBFakeData(use_WIB_fake_data.at(0),
+                           use_WIB_fake_data.at(1),
+                           use_WIB_fake_data.at(2),
+                           use_WIB_fake_data.at(3),
+                           use_WIB_fake_data_counter);
+  
+    // Configure FEMBs
     for(size_t iFEMB=1; iFEMB <= 4; iFEMB++)
     {
       if(enable_FEMB.at(iFEMB-1))
@@ -204,31 +168,8 @@ WIBReader::WIBReader(fhicl::ParameterSet const& ps) :
       }
     }
 
-    wib->Write("SYSTEM.RESET.DAQ_PATH_RESET",1);
-    wib->Write("SYSTEM.RESET.DAQ_PATH_RESET",0);
-  
-    for(size_t iLink=1; iLink <= enable_DAQ_link.size(); iLink++)
-    {
-      wib->EnableDAQLink_Lite(iLink,enable_DAQ_link.at(iLink-1));
-    }
-  
-    dune::DAQLogger::LogInfo("WIBReader") << "Enabling DTS";
-  
-    wib->Write("DTS.PDTS_ENABLE",1);
-    std::this_thread::sleep_for(std::chrono::seconds(3));
-  
-    dune::DAQLogger::LogInfo("WIBReader") << "Syncing DTS";
-  
-    wib->StartSyncDTS();
-  
-    dune::DAQLogger::LogInfo("WIBReader") << "Enabling DAQ";
-  
-    for(size_t iFEMB=1; iFEMB <= 4; iFEMB++)
-    {
-      std::stringstream regNameStream;
-      regNameStream << "FEMB" << iFEMB << ".DAQ.ENABLE";
-      wib->Write(regNameStream.str(),enable_DAQ_regs.at(iFEMB-1));
-    }
+    dune::DAQLogger::LogInfo("WIBReader") << "Enabling DAQ links";
+    wib->StartStreamToDAQ();
   
     //fhicl::ParameterSet wib_config = ps.get<fhicl::ParameterSet>("WIB.config");
     //// Read values from FHiCL document and feed them to WIB library
@@ -273,62 +214,39 @@ void WIBReader::setupFEMBFakeData(size_t iFEMB, fhicl::ParameterSet const& FEMB_
     throw excpt;
   }
 
-  wib->WriteFEMB(iFEMB,"STREAM_AND_ADC_DATA_EN",0x0);
-  sleep(0.01);
-
-  // Reset FEMB PLL and transceivers
-  wib->WriteFEMB(iFEMB,"TX_PLL_AND_DIGITAL_RST",0x3);
-  sleep(1);
-  wib->WriteFEMB(iFEMB,"TX_PLL_AND_DIGITAL_RST",0x0);
-  sleep(1);
-
-  wib->WriteFEMB(iFEMB,"START_FRAME_MODE_SELECT",0x1);
-  sleep(0.01);
-  wib->WriteFEMB(iFEMB,"START_FRAME_SWAP",0x1);
-  sleep(0.01);
+  uint8_t fake_mode = 0;
+  uint8_t fake_word = 0;
+  uint8_t femb_number = iFEMB;
+  std::vector<uint32_t> fake_waveform;
 
   auto fakeDataSelect = FEMB_config.get<std::string>("fake_data_select");
   if (fakeDataSelect == "fake_word")
   {
-    auto fakeWord = FEMB_config.get<uint32_t>("fake_word");
-    wib->WriteFEMB(iFEMB,"DATA_TEST_PATTERN",fakeWord);
-    sleep(0.01);
-    wib->WriteFEMB(iFEMB,"FEMB_TST_SEL",1);
-    sleep(0.01);
+    fake_mode = 1;
+    fake_word = FEMB_config.get<uint32_t>("fake_word");
   }
   else if (fakeDataSelect == "fake_waveform")
   {
-    auto fakeWaveform = FEMB_config.get<std::vector<uint32_t> >("fake_waveform");
-    if (fakeWaveform.size() != 255)
+    fake_mode = 2;
+    fake_waveform = FEMB_config.get<std::vector<uint32_t> >("fake_waveform");
+    if (fake_waveform.size() != 255)
     {
       cet::exception excpt("WIBReader");
       excpt << "setupFEMBFakeData: FEMB "
           << iFEMB
           << " fake_waveform must be 255 long, but is "
-          << fakeWaveform.size()
+          << fake_waveform.size()
           << " long";
       throw excpt;
     }
-    // Put waveform in FEMB registers
-    for (size_t iSample=0; iSample < 255; iSample++)
-    {
-      wib->WriteFEMB(iFEMB,0x300+iSample,fakeWaveform.at(iSample));
-      sleep(0.005);
-    }
-    wib->WriteFEMB(iFEMB,"FEMB_TST_SEL",2);
-    sleep(0.01);
   }
   else if (fakeDataSelect == "femb_channel_id")
   {
-    wib->WriteFEMB(iFEMB,"FEMB_NUMBER",iFEMB);
-    sleep(0.01);
-    wib->WriteFEMB(iFEMB,"FEMB_TST_SEL",3);
-    sleep(0.01);
+    fake_mode = 3;
   }
   else if (fakeDataSelect == "counter_channel_id")
   {
-    wib->WriteFEMB(iFEMB,"FEMB_TST_SEL",4);
-    sleep(0.01);
+    fake_mode = 4;
   }
   else
   {
@@ -340,160 +258,8 @@ void WIBReader::setupFEMBFakeData(size_t iFEMB, fhicl::ParameterSet const& FEMB_
     throw excpt;
   }
 
-  //turn on data streaming and adc samples
-  wib->WriteFEMB(iFEMB,"STREAM_AND_ADC_DATA_EN",0x9);
-  sleep(0.01);
+  wib->ConfigFEMBFakeData(iFEMB,fake_mode,fake_word,femb_number,fake_waveform);
 }
-
-//void WIBReader::setupFEMBFakeWaveform(size_t iFEMB, std::vector<unsigned> fakeWaveform, uint32_t expected_femb_fw_version) {
-//  // Don't forget to disable WIB fake data
-//
-//  if (fakeWaveform.size() != 255)
-//  {
-//    cet::exception excpt("WIBReader");
-//    excpt << "setupFEMBFakeWaveform: FEMB "
-//        << iFEMB
-//        << " waveform must be 255 long, but is "
-//        << fakeWaveform.size()
-//        << " long";
-//    throw excpt;
-//  }
-//
-//  wib->FEMBPower(iFEMB,1);
-//  sleep(1);
-//
-//  uint32_t femb_fw_version = wib->ReadFEMB(iFEMB,"VERSION_ID");
-//  if (expected_femb_fw_version != femb_fw_version)
-//  {
-//    cet::exception excpt("WIBReader");
-//    excpt << "FEMB" << iFEMB << " Firmware version is "
-//        << std::hex << std::setw(8) << std::setfill('0')
-//        << femb_fw_version
-//        <<" but expect "
-//        << std::hex << std::setw(8) << std::setfill('0')
-//        << expected_femb_fw_version
-//        <<" version in fcl";
-//    throw excpt;
-//  }
-//
-//  // Put waveform in FEMB registers
-//  for (size_t iSample=0; iSample < 255; iSample++)
-//  {
-//    wib->WriteFEMB(iFEMB,0x300+iSample,fakeWaveform.at(iSample));
-//  }
-//
-//  // Reset FEMB PLL and transceivers
-//  wib->WriteFEMB(iFEMB,"TX_PLL_AND_DIGITAL_RST",0x3);
-//  sleep(1);
-//  wib->WriteFEMB(iFEMB,"TX_PLL_AND_DIGITAL_RST",0x0);
-//  sleep(1);
-//
-//  wib->WriteFEMB(iFEMB,"START_FRAME_MODE_SELECT",0x1);
-//  wib->WriteFEMB(iFEMB,"START_FRAME_SWAP",0x1);
-//
-//  // Fake Waveform
-//  wib->WriteFEMB(iFEMB,"ADC_ASIC_DISABLE",0xFF);
-//  wib->WriteFEMB(iFEMB,"FEMB_TST_MODE",0x1);
-//
-//  //turn on data streaming and adc samples
-//  wib->WriteFEMB(iFEMB,"STREAM_AND_ADC_DATA_EN",0x9);
-//}
-//
-//void WIBReader::setupFEMBFakeWord(size_t iFEMB, unsigned fakeWord, uint32_t expected_femb_fw_version) {
-//  // Don't forget to disable WIB fake data
-//  
-//  wib->FEMBPower(iFEMB,1);
-//  sleep(1);
-//
-//  uint32_t femb_fw_version = wib->ReadFEMB(iFEMB,"VERSION_ID");
-//  if (expected_femb_fw_version != femb_fw_version)
-//  {
-//    cet::exception excpt("WIBReader");
-//    excpt << "FEMB" << iFEMB << " Firmware version is "
-//        << std::hex << std::setw(8) << std::setfill('0')
-//        << femb_fw_version
-//        <<" but expect "
-//        << std::hex << std::setw(8) << std::setfill('0')
-//        << expected_femb_fw_version
-//        <<" version in fcl";
-//    throw excpt;
-//  }
-//
-//  // Reset FEMB PLL and transceivers
-//  wib->WriteFEMB(iFEMB,"TX_PLL_AND_DIGITAL_RST",0x3);
-//  sleep(1);
-//  wib->WriteFEMB(iFEMB,"TX_PLL_AND_DIGITAL_RST",0x0);
-//  sleep(1);
-//
-//  wib->WriteFEMB(iFEMB,"START_FRAME_MODE_SELECT",0x1);
-//  sleep(0.01);
-//  wib->WriteFEMB(iFEMB,"START_FRAME_SWAP",0x1);
-//  sleep(0.01);
-//
-//  // Fake Samples
-//  wib->WriteFEMB(iFEMB,"DATA_TEST_PATTERN",fakeWord);
-//  sleep(0.01);
-//  wib->WriteFEMB(iFEMB,"ADC_ASIC_DISABLE",0xFF);
-//  sleep(0.01);
-//
-//  //turn on data streaming and adc samples
-//  wib->WriteFEMB(iFEMB,"STREAM_AND_ADC_DATA_EN",0x9);
-//  sleep(0.01);
-//}
-//
-//void WIBReader::setupFEMBFakeWaveform(size_t iFEMB, std::vector<unsigned> fakeWaveform, uint32_t expected_femb_fw_version) {
-//  // Don't forget to disable WIB fake data
-//
-//  if (fakeWaveform.size() != 255)
-//  {
-//    cet::exception excpt("WIBReader");
-//    excpt << "setupFEMBFakeWaveform: FEMB "
-//        << iFEMB
-//        << " waveform must be 255 long, but is "
-//        << fakeWaveform.size()
-//        << " long";
-//    throw excpt;
-//  }
-//
-//  wib->FEMBPower(iFEMB,1);
-//  sleep(1);
-//
-//  uint32_t femb_fw_version = wib->ReadFEMB(iFEMB,"VERSION_ID");
-//  if (expected_femb_fw_version != femb_fw_version)
-//  {
-//    cet::exception excpt("WIBReader");
-//    excpt << "FEMB" << iFEMB << " Firmware version is "
-//        << std::hex << std::setw(8) << std::setfill('0')
-//        << femb_fw_version
-//        <<" but expect "
-//        << std::hex << std::setw(8) << std::setfill('0')
-//        << expected_femb_fw_version
-//        <<" version in fcl";
-//    throw excpt;
-//  }
-//
-//  // Put waveform in FEMB registers
-//  for (size_t iSample=0; iSample < 255; iSample++)
-//  {
-//    wib->WriteFEMB(iFEMB,0x300+iSample,fakeWaveform.at(iSample));
-//  }
-//
-//  // Reset FEMB PLL and transceivers
-//  wib->WriteFEMB(iFEMB,"TX_PLL_AND_DIGITAL_RST",0x3);
-//  sleep(1);
-//  wib->WriteFEMB(iFEMB,"TX_PLL_AND_DIGITAL_RST",0x0);
-//  sleep(1);
-//
-//  wib->WriteFEMB(iFEMB,"START_FRAME_MODE_SELECT",0x1);
-//  wib->WriteFEMB(iFEMB,"START_FRAME_SWAP",0x1);
-//
-//  // Fake Waveform
-//  wib->WriteFEMB(iFEMB,"ADC_ASIC_DISABLE",0xFF);
-//  wib->WriteFEMB(iFEMB,"FEMB_TST_MODE",0x1);
-//
-//  //turn on data streaming and adc samples
-//  wib->WriteFEMB(iFEMB,"STREAM_AND_ADC_DATA_EN",0x9);
-//}
 
 void WIBReader::setupFEMB(size_t iFEMB, uint32_t gain, uint32_t shape, uint32_t base, uint32_t leakHigh, uint32_t leak10X, uint32_t acCouple, uint32_t buffer, uint32_t tstIn, uint32_t extClk, uint8_t clk_cs, uint8_t pls_cs, uint8_t dac_sel, uint8_t fpga_dac, uint8_t asic_dac, uint8_t mon_cs, uint32_t expected_femb_fw_version){
   // Don't forget to disable WIB fake data
@@ -652,16 +418,6 @@ void WIBReader::setupFEMB(size_t iFEMB, uint32_t gain, uint32_t shape, uint32_t 
         <<" version in fcl";
     throw excpt;
   }
-
-  wib->WriteFEMB(iFEMB,"REG_RESET",1);
-  sleep(1);
-  wib->WriteFEMB(iFEMB,"FE_ASIC_RESET",1);
-  sleep(1);
-  wib->WriteFEMB(iFEMB,"ADC_ASIC_RESET",1);
-  sleep(1);
-
-  wib->WriteFEMB(iFEMB,"START_FRAME_MODE_SELECT",0x1);
-  wib->WriteFEMB(iFEMB,"START_FRAME_SWAP",0x1);
 
   std::vector<uint32_t> fe_config = {gain,shape,base,leakHigh,leak10X,acCouple,buffer,tstIn,extClk};
 
