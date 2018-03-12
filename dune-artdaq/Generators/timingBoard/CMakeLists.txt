@@ -1,4 +1,4 @@
-art_make_library( SOURCE I2CuHal.cpp si5344.cpp TimingSequence.cpp InhibitGet.c
+art_make_library( SOURCE InhibitGet.c
 		  LIBRARIES ${UHAL_UHAL} ${UHAL_LOG} ${Boost_SYSTEM_LIBRARY} zmq dune-artdaq_DAQLogger
 		  LIBRARY_NAME_VAR TIMING_BOARD_LIB )
 
