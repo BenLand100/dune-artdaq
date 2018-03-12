@@ -27,7 +27,6 @@
 #include <vector>
 
 #include <unistd.h>
-#include "timingBoard/TimingSequence.hpp"  // Defs of the sequence functions of uhal commands for setup etc.
 
 #include "timingBoard/InhibitGet.h" // The interface to the ZeroMQ trigger inhibit master
 
@@ -100,11 +99,6 @@ dune::TimingReceiver::TimingReceiver(fhicl::ParameterSet const & ps):
     // - Command generators set up                       [done here] 
     // - Spills or fake spills enabled                   [wait for firmware upgrade]
 
-
-    if (debugprint_ > 1) {
-      TimingSequence::hwstatus(hw_);
-      TimingSequence::bufstatus(hw_, partition_number_);
-    }
 
     // AT: Ensure that the hardware is up and running.
     // Check that the board is reachable
@@ -197,9 +191,6 @@ void dune::TimingReceiver::start(void)
         // it's all gone pear-shaped?
     }
 
-    if (debugprint_ > 1) {
-      TimingSequence::bufstatus(hw_, partition_number_);
-    }
     InhibitGet_retime(inhibitget_timer_);
 
     this->reset_met_variables(false);
