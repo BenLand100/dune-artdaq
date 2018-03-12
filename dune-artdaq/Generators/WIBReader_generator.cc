@@ -23,8 +23,10 @@ WIBReader::WIBReader(fhicl::ParameterSet const& ps) :
     CommandableFragmentGenerator(ps) {
 
   auto wib_address = ps.get<std::string>("WIB.address");
-  auto wib_table = ps.get<std::string>("WIB.wib_table");
-  auto femb_table = ps.get<std::string>("WIB.femb_table");
+
+  auto wib_table = ps.get<std::string>("WIB.config.wib_table");
+  auto femb_table = ps.get<std::string>("WIB.config.femb_table");
+
   auto expected_wib_fw_version = ps.get<unsigned>("WIB.config.expected_wib_fw_version");
   auto expected_daq_mode = ps.get<std::string>("WIB.config.expected_daq_mode");
 
@@ -34,7 +36,7 @@ WIBReader::WIBReader(fhicl::ParameterSet const& ps) :
   auto local_clock = ps.get<bool>("WIB.config.local_clock"); // use local clock if true, else DTS
   auto DTS_source = ps.get<unsigned>("WIB.config.DTS_source"); // 0 back plane, 1 front panel
 
-  auto enable_FEMB = ps.get<std::vector<bool> >("WIB.config.enable_FEMB");
+  auto enable_FEMBs = ps.get<std::vector<bool> >("WIB.config.enable_FEMBs");
   auto FEMB_configs = ps.get<std::vector<fhicl::ParameterSet> >("WIB.config.FEMBs");
 
   if (use_WIB_fake_data.size() != 4)
@@ -137,6 +139,11 @@ WIBReader::WIBReader(fhicl::ParameterSet const& ps) :
 
     // Configure WIB fake data enable and mode
     dune::DAQLogger::LogInfo("WIBReader") << "Configuring WIB Fake Data";
+    dune::DAQLogger::LogInfo("WIBReader") << "Is Fake:"
+                                          << " FEMB1: " << use_WIB_fake_data.at(0)
+                                          << " FEMB2: " << use_WIB_fake_data.at(1)
+                                          << " FEMB3: " << use_WIB_fake_data.at(2)
+                                          << " FEMB4: " << use_WIB_fake_data.at(3);
     wib->ConfigWIBFakeData(use_WIB_fake_data.at(0),
                            use_WIB_fake_data.at(1),
                            use_WIB_fake_data.at(2),
@@ -146,7 +153,7 @@ WIBReader::WIBReader(fhicl::ParameterSet const& ps) :
     // Configure FEMBs
     for(size_t iFEMB=1; iFEMB <= 4; iFEMB++)
     {
-      if(enable_FEMB.at(iFEMB-1))
+      if(enable_FEMBs.at(iFEMB-1))
       {
         fhicl::ParameterSet const& FEMB_config = FEMB_configs.at(iFEMB-1);
         auto enable_FEMB_fake_data = FEMB_config.get<bool>("enable_fake_data");
@@ -207,7 +214,7 @@ void WIBReader::setupFEMBFakeData(size_t iFEMB, fhicl::ParameterSet const& FEMB_
   }
 
   uint8_t fake_mode = 0;
-  uint8_t fake_word = 0;
+  uint16_t fake_word = 0;
   uint8_t femb_number = iFEMB;
   std::vector<uint32_t> fake_waveform;
 
@@ -254,7 +261,6 @@ void WIBReader::setupFEMBFakeData(size_t iFEMB, fhicl::ParameterSet const& FEMB_
 }
 
 void WIBReader::setupFEMB(size_t iFEMB, fhicl::ParameterSet const& FEMB_config){
-//void WIBReader::setupFEMB(size_t iFEMB, uint32_t gain, uint32_t shape, uint32_t base, uint32_t leakHigh, uint32_t leak10X, uint32_t acCouple, uint32_t buffer, uint32_t tstIn, uint32_t extClk, uint8_t clk_cs, uint8_t pls_cs, uint8_t dac_sel, uint8_t fpga_dac, uint8_t asic_dac, uint8_t mon_cs, uint32_t expected_femb_fw_version){
   // Don't forget to disable WIB fake data
 
 
