@@ -1,8 +1,9 @@
 
 
 
-art_make(NO_PLUGINS # Want different link lists for modules
-  SUBDIRS detail
+art_make( BASENAME_ONLY
+  LIBRARY_NAME dune-artdaq_ArtModules
+  NO_PLUGINS # Want different link lists for modules
   DICT_DICTIONARIES
   ${ART_PERSISTENCY_PROVENANCE}
   ${CANVAS}
@@ -61,7 +62,7 @@ simple_plugin(SparsifySSP "module" dune-raw-data_Overlays
 simple_plugin(ToyDump "module")
 
 simple_plugin(DuneInput "source"
-  dune-artdaq_ArtModules
+  dune-raw-data_Overlays
   artdaq_ArtModules
   art_Framework_Core
   art_Framework_IO_Sources

@@ -108,7 +108,7 @@ if [[ ! -e $uhal_products_dir ]]; then
 fi
 
 . $uhal_products_dir/setup
-uhal_setup_cmd="setup uhal v2_4_2 -q e14:prof:s50"
+uhal_setup_cmd="setup uhal v2_6_0 -q e14:prof:s50"
 $uhal_setup_cmd
 
 if [[ "$?" != "0" ]]; then
@@ -227,14 +227,16 @@ demo_version=`grep "parent dune_artdaq" $Base/download/product_deps|awk '{print 
 
 artdaq_version=`grep -E "^artdaq\s+" $Base/download/product_deps | awk '{print $2}'`
 
-if [[ "$artdaq_version" != "v2_03_04" ]]; then
+if [[ "$artdaq_version" != "v3_00_03a" ]]; then
     artdaq_manifest_version=$artdaq_version
 else
-    artdaq_manifest_version=v2_03_03
+    artdaq_manifest_version=v3_00_03
 fi
 
 
 coredemo_version=`grep -E "^dune_raw_data\s+" $Base/download/product_deps | awk '{print $2}'`
+
+artdaq_utilities_version=v1_04_04
 
 default_quals_cmd="sed -r -n 's/.*(e[0-9]+):(s[0-9]+).*/\1 \2/p' $Base/download/product_deps | uniq"
 
@@ -300,6 +302,7 @@ else
     dune_raw_data_checkout_arg="-t ${coredemo_version} -d dune_raw_data"
 fi
 
+
 if [[ $opt_lrd_w -eq 1 ]]; then
     dune_raw_data_repo="ssh://p-dune-raw-data@cdcvs.fnal.gov/cvs/projects/dune-raw-data"
 else
@@ -312,6 +315,7 @@ else
     dune_artdaq_checkout_arg="-t $tag -d dune_artdaq"
 fi
 
+
 # Notice the default for write access to dune-artdaq is the opposite of that for dune-raw-data
 if [[ $opt_la_nw -eq 1 ]]; then
     dune_artdaq_repo="http://cdcvs.fnal.gov/projects/dune-artdaq"
@@ -322,6 +326,12 @@ fi
 
 if ! $bad_network; then
 
+    mrb gitCheckout -t ${artdaq_utilities_version} -d artdaq_utilities http://cdcvs.fnal.gov/projects/artdaq-utilities
+
+    if [[ "$?" != "0" ]]; then
+    	echo "Unable to perform checkout of http://cdcvs.fnal.gov/projects/artdaq-utilities"
+    	exit 1
+    fi
 
     mrb gitCheckout -t ${artdaq_version} -d artdaq http://cdcvs.fnal.gov/projects/artdaq
 
@@ -383,7 +393,7 @@ cd $Base
         source ./env.sh
         cd \$returndir
 
-        setup dunepdsprce v0_0_3 -q e14:gen:prof
+        setup dunepdsprce v0_0_4 -q e14:gen:prof
                                                                     
 # JCF, 11/25/14                                                                                                          
 # Make it easy for users to take a quick look at their output file via "rawEventDump"                                    
@@ -401,7 +411,7 @@ source mrbSetEnv
 set -u
 export CETPKG_J=$((`cat /proc/cpuinfo|grep processor|tail -1|awk '{print $3}'` + 1))
 
-setup dunepdsprce v0_0_3 -q e14:gen:prof
+setup dunepdsprce v0_0_4 -q e14:gen:prof
 mrb build    # VERBOSE=1
 installStatus=$?
 
