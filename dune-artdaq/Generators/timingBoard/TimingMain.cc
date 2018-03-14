@@ -85,7 +85,7 @@ void data_take(int) {     // Main program of data taking thread
 
 int main(int argn, char** argv) {
 
-  int millisecwait = 10000;
+  int millisecwait = 30000;
 
   if (argn == 2) {
     sscanf(argv[1],"%d",&millisecwait);
@@ -107,6 +107,7 @@ int main(int argn, char** argv) {
   ps.put<int>("partition_number", 0);
   ps.put<std::string>("connections_file", "/nfs/home/phrodrig/protodune/timing/upsify/timing-board-software/tests/etc/connections.xml");
   ps.put<std::string>("hardware_select", "DUNE_FMC_SECONDARY");
+  ps.put<std::string>("zmq_connection", "tcp://localhost:5601");
   dune::TimingReceiver trg(ps);       // (1) This does the configure step
   trgp = &trg;                        // Set this global variable to complete the fiddle at the start
   std::this_thread::sleep_for(std::chrono::milliseconds(1000));
