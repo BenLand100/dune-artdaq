@@ -85,7 +85,7 @@ find_ups_product( TRACE v3_07_00 )
 find_ups_product( protodune_timing v4_0_0 )
 
 # JM-A 2017/06/23 ###
-find_ups_product( uhal v2_4_2 ) 
+find_ups_product( uhal v2_6_0 ) 
 include_directories($ENV{UHAL_INC}/uhal)
 find_library( UHAL_UHAL NAMES cactus_uhal_uhal PATHS $ENV{UHAL_LIB})
 find_library( UHAL_LOG  NAMES cactus_uhal_log  PATHS $ENV{UHAL_LIB})
