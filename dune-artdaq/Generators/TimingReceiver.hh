@@ -29,6 +29,7 @@
 #include <chrono>
 
 #include "uhal/uhal.hpp"   // The real uhal
+#include "timingBoard/StatusPublisher.hh"
 
 
 //class testclass : private boost::noncopyable {
@@ -163,11 +164,12 @@ namespace dune {
     int met_rintmax_;  // Max interval between events this run
     int met_sintmax_;  // Max interval between events this spill
 
+    std::unique_ptr<artdaq::StatusPublisher> status_publisher_;
 // Internal functions
     void reset_met_variables(bool onlyspill=false);   // If onlyspill, only reset the in-spill variables
     void update_met_variables(dune::TimingFragment& fo); // Update variables for met
     void send_met_variables();    // Send the variables to the metrics system
-
+    bool isBufferFull(); // Is our buffer full? (ie should we tell inhibit master to turn off triggers?)
     // TODO: Should this be const?
     const pdt::PartitionNode& master_partition();
   };
