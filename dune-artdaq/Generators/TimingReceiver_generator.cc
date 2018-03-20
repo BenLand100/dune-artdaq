@@ -155,7 +155,7 @@ dune::TimingReceiver::TimingReceiver(fhicl::ParameterSet const & ps):
 
     // Set up outgoing connection to InhibitMaster: this is where we
     // broadcast whether we're happy to take triggers
-    status_publisher_.reset(new artdaq::StatusPublisher("TimingPartition0", "tcp://localhost:5599"));
+    status_publisher_.reset(new artdaq::StatusPublisher("TimingPartition0", "tcp://*:5599"));
     status_publisher_->BindPublisher();
     usleep(2000000);
     DAQLogger::LogInfo(instance_name_) << "Done configure (end of constructor)\n";
