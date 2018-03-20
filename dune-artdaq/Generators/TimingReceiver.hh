@@ -154,6 +154,7 @@ namespace dune {
     uint32_t end_run_wait_;         // Number of microsecs to wait at the end of a run before looking for last event
 
     std::string zmq_conn_;  // String specifying the zmq connection to subscribe for inhibit information
+    std::string zmq_conn_out_;  // String specifying the zmq connection we will send our inhibit information to
 
 // Things for metrics (need to use int because the metrics send class signature uses 'int')
     int met_event_;    // Current event

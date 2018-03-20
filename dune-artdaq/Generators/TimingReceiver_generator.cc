@@ -74,6 +74,7 @@ dune::TimingReceiver::TimingReceiver(fhicl::ParameterSet const & ps):
   ,partition_(ps.get<uint32_t>("partition_",0))
   ,end_run_wait_(ps.get<uint32_t>("end_run_wait",1000))
   ,zmq_conn_(ps.get<std::string>("zmq_connection","tcp://pddaq-gen05-daq0:5566"))
+  ,zmq_conn_out_(ps.get<std::string>("zmq_connection_out","tcp://*:5599"))
 {
 
     // TODO:
@@ -147,7 +148,6 @@ dune::TimingReceiver::TimingReceiver(fhicl::ParameterSet const & ps):
     master_partition().enable(1, true);
     master_partition().writeTriggerMask(trigger_mask_);
 
-
     // Set up connection to Inhibit Master. This is the inbound
     // connection (ie, InhibitMaster talks to us to say whether we
     // should enable triggers)
@@ -155,8 +155,9 @@ dune::TimingReceiver::TimingReceiver(fhicl::ParameterSet const & ps):
 
     // Set up outgoing connection to InhibitMaster: this is where we
     // broadcast whether we're happy to take triggers
-    status_publisher_.reset(new artdaq::StatusPublisher("TimingPartition0", "tcp://*:5599"));
+    status_publisher_.reset(new artdaq::StatusPublisher(instance_name_, zmq_conn_out_));
     status_publisher_->BindPublisher();
+    // TODO: Do we really need to sleep here to wait for the socket to bind?
     usleep(2000000);
     DAQLogger::LogInfo(instance_name_) << "Done configure (end of constructor)\n";
 }
