@@ -80,9 +80,8 @@ dune::TimingReceiver::TimingReceiver(fhicl::ParameterSet const & ps):
     // TODO:
     // AT: Move hardware interface creation in here, for better exception handling
 
-    int board_id = 0; //:GB  ps.get<int>("board_id", 0);
     std::stringstream instance_name_ss;
-    instance_name_ss << instance_name_ << board_id;
+    instance_name_ss << instance_name_ << partition_number_;
     instance_name_ = instance_name_ss.str();
 
     if (inhibitget_timer_ == 0) inhibitget_timer_ = 2000000000;  // Zero inhibitget_timer waits infinite.
