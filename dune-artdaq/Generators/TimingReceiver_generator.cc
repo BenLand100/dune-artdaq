@@ -424,10 +424,9 @@ bool dune::TimingReceiver::isBufferFull()
     // to InhibitGet_get() will tell us to stop triggers
     
     uhal::ValWord<uint32_t> buf_warn=master_partition().getNode("csr.stat.buf_warn").read();
-    uhal::ValWord<uint32_t> buf_err=master_partition().getNode("csr.stat.buf_err").read();
     hw_.dispatch();
 
-    return buf_warn || buf_err;
+    return buf_warn;
 }
 
 void dune::TimingReceiver::reset_met_variables(bool onlyspill) {
