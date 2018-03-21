@@ -270,10 +270,12 @@ bool dune::TimingReceiver::getNext_(artdaq::FragmentPtrs &frags)
                               // after a run has stopped
     }
 
-    // TODO: This sends goodness/badness every go round of the
-    // getNext_() loop. Maybe there's some benefit to only sending
-    // when we changed since last time
-    if(isBufferFull()){
+    // We send goodness/badness every go round of the getNext_()
+    // loop. Wes says this is fine (no need to only send on
+    // change). Also, we're safe from rapidly oscillating between warn
+    // and not-warn because the register in the timing board has some
+    // hysteresis
+    if(master_partition().readROBWarningOverflow()){
         // Tell the InhibitMaster that we want to stop triggers, then
         // carry on with this iteration of the loop
         DAQLogger::LogInfo(instance_name_) << "buf_warn is high. Requesting InhibitMaster to stop triggers";
@@ -407,18 +409,6 @@ const pdt::PartitionNode& dune::TimingReceiver::master_partition() {
     std::stringstream ss;
     ss << "master.partition" << partition_number_;
     return hw_.getNode<pdt::PartitionNode>(ss.str());
-}
-
-bool dune::TimingReceiver::isBufferFull()
-{
-    // Is our buffer getting full? If so, we tell the inhibit master
-    // to stop triggers. The next time we go round this loop, the call
-    // to InhibitGet_get() will tell us to stop triggers
-    
-    uhal::ValWord<uint32_t> buf_warn=master_partition().getNode("csr.stat.buf_warn").read();
-    hw_.dispatch();
-
-    return buf_warn;
 }
 
 void dune::TimingReceiver::reset_met_variables(bool onlyspill) {

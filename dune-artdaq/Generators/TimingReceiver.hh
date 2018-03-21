@@ -158,7 +158,6 @@ namespace dune {
     void reset_met_variables(bool onlyspill=false);   // If onlyspill, only reset the in-spill variables
     void update_met_variables(dune::TimingFragment& fo); // Update variables for met
     void send_met_variables();    // Send the variables to the metrics system
-    bool isBufferFull(); // Is our buffer full? (ie should we tell inhibit master to turn off triggers?)
     // TODO: Should this be const?
     const pdt::PartitionNode& master_partition();
   };
