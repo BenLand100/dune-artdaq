@@ -158,6 +158,7 @@ namespace dune {
     void reset_met_variables(bool onlyspill=false);   // If onlyspill, only reset the in-spill variables
     void update_met_variables(dune::TimingFragment& fo); // Update variables for met
     void send_met_variables();    // Send the variables to the metrics system
+    void fiddle_trigger_mask();  // Modify the trigger mask so we only see triggers in our partition
     // TODO: Should this be const?
     const pdt::PartitionNode& master_partition();
   };

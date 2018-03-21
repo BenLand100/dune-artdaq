@@ -28,6 +28,8 @@
 
 #include <unistd.h>
 
+#include <cstdio>
+
 #include "timingBoard/InhibitGet.h" // The interface to the ZeroMQ trigger inhibit master
 
 #include "pdt/PartitionNode.hpp" // The interface to a timing system
@@ -131,6 +133,9 @@ dune::TimingReceiver::TimingReceiver(fhicl::ParameterSet const & ps):
     // - Set the command mask                            [done here, repeated at start()]
     // - Enable triggers                                 [Not done until inhibit lifted (in get_next_())]
 
+
+    // Modify the trigger mask so we only see fake triggers in our own partition
+    fiddle_trigger_mask();
 
     // arguments to enable() are whether to enable and whether to
     // dispatch() respectively
@@ -409,6 +414,27 @@ const pdt::PartitionNode& dune::TimingReceiver::master_partition() {
     std::stringstream ss;
     ss << "master.partition" << partition_number_;
     return hw_.getNode<pdt::PartitionNode>(ss.str());
+}
+
+void dune::TimingReceiver::fiddle_trigger_mask()
+{
+    // There is a different fake trigger command for each partition, as follows:
+
+    // Partition        Command
+    // ------------------------
+    //         0            0x8
+    //         1            0x9
+    //         2            0xa
+    //         3            0xb
+
+    // The trigger mask applies starting at 0x8, so eg mask 0x1 turns
+    // on triggers in partition 0 only
+
+    uint32_t old_mask=trigger_mask_;
+    // We modify the trigger mask to always be zero for the _other_ partitions
+    trigger_mask_ &= 0xf0 + (1<<partition_number_);
+    printf("fiddle_trigger_mask partn %d. Old: 0x%x, New: 0x%x\n",
+           partition_number_, old_mask, trigger_mask_);
 }
 
 void dune::TimingReceiver::reset_met_variables(bool onlyspill) {
