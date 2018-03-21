@@ -28,6 +28,8 @@
 
 #include <unistd.h>
 
+#include <cstdio>
+
 #include "timingBoard/InhibitGet.h" // The interface to the ZeroMQ trigger inhibit master
 
 #include "pdt/PartitionNode.hpp" // The interface to a timing system
@@ -61,17 +63,9 @@ dune::TimingReceiver::TimingReceiver(fhicl::ParameterSet const & ps):
   ,connectionManager_(bcmc_)
   ,hw_(connectionManager_.getDevice(ps.get<std::string>("hardware_select","DUNE_SECONDARY")))
   ,partition_number_(ps.get<uint32_t>("partition_number",0))
-  ,poisson_(ps.get<uint32_t>("poisson",0))
-  ,divider_(ps.get<uint32_t>("divider",0xb))
   ,debugprint_(ps.get<uint32_t>("debug_print",0))
-  ,initsoftness_(ps.get<uint32_t>("init_softness",0))
-  ,startaltern_(ps.get<uint32_t>("start_altern",0))
-  ,fw_version_active_(ps.get<uint32_t>("fw_version_active",0x40004))
-  ,fake_spill_cycle_(ps.get<uint32_t>("fake_spill_cycle",100))
-  ,fake_spill_length_(ps.get<uint32_t>("fake_spill_length",50))
-  ,main_trigger_enable_(ps.get<uint32_t>("main_trigger_enable",0))
+  ,fw_version_active_(ps.get<uint32_t>("fw_version_active",0x40005))
   ,trigger_mask_(ps.get<uint32_t>("trigger_mask",0xff))
-  ,partition_(ps.get<uint32_t>("partition_",0))
   ,end_run_wait_(ps.get<uint32_t>("end_run_wait",1000))
   ,zmq_conn_(ps.get<std::string>("zmq_connection","tcp://pddaq-gen05-daq0:5566"))
   ,zmq_conn_out_(ps.get<std::string>("zmq_connection_out","tcp://*:5599"))
@@ -109,7 +103,7 @@ dune::TimingReceiver::TimingReceiver(fhicl::ParameterSet const & ps):
     // Match Fw version with configuration
     DAQLogger::LogInfo(instance_name_) << "Timing Master firmware version " << std::showbase << std::hex << (uint32_t)lVersion;
     if ( lVersion != fw_version_active_ ) {
-      DAQLogger::LogWarning(instance_name_) << "Firmware version mismatch! Expected: " <<  fw_version_active_ << " detected: " << (uint32_t)lVersion;
+      DAQLogger::LogError(instance_name_) << "Firmware version mismatch! Expected: " <<  fw_version_active_ << " detected: " << (uint32_t)lVersion;
     }
 
     // Measure the input clock frequency
@@ -139,6 +133,9 @@ dune::TimingReceiver::TimingReceiver(fhicl::ParameterSet const & ps):
     // - Set the command mask                            [done here, repeated at start()]
     // - Enable triggers                                 [Not done until inhibit lifted (in get_next_())]
 
+
+    // Modify the trigger mask so we only see fake triggers in our own partition
+    fiddle_trigger_mask();
 
     // arguments to enable() are whether to enable and whether to
     // dispatch() respectively
@@ -278,10 +275,12 @@ bool dune::TimingReceiver::getNext_(artdaq::FragmentPtrs &frags)
                               // after a run has stopped
     }
 
-    // TODO: This sends goodness/badness every go round of the
-    // getNext_() loop. Maybe there's some benefit to only sending
-    // when we changed since last time
-    if(isBufferFull()){
+    // We send goodness/badness every go round of the getNext_()
+    // loop. Wes says this is fine (no need to only send on
+    // change). Also, we're safe from rapidly oscillating between warn
+    // and not-warn because the register in the timing board has some
+    // hysteresis
+    if(master_partition().readROBWarningOverflow()){
         // Tell the InhibitMaster that we want to stop triggers, then
         // carry on with this iteration of the loop
         DAQLogger::LogInfo(instance_name_) << "buf_warn is high. Requesting InhibitMaster to stop triggers";
@@ -417,16 +416,25 @@ const pdt::PartitionNode& dune::TimingReceiver::master_partition() {
     return hw_.getNode<pdt::PartitionNode>(ss.str());
 }
 
-bool dune::TimingReceiver::isBufferFull()
+void dune::TimingReceiver::fiddle_trigger_mask()
 {
-    // Is our buffer getting full? If so, we tell the inhibit master
-    // to stop triggers. The next time we go round this loop, the call
-    // to InhibitGet_get() will tell us to stop triggers
-    
-    uhal::ValWord<uint32_t> buf_warn=master_partition().getNode("csr.stat.buf_warn").read();
-    hw_.dispatch();
+    // There is a different fake trigger command for each partition, as follows:
 
-    return buf_warn;
+    // Partition        Command
+    // ------------------------
+    //         0            0x8
+    //         1            0x9
+    //         2            0xa
+    //         3            0xb
+
+    // The trigger mask applies starting at 0x8, so eg mask 0x1 turns
+    // on triggers in partition 0 only
+
+    uint32_t old_mask=trigger_mask_;
+    // We modify the trigger mask to always be zero for the _other_ partitions
+    trigger_mask_ &= 0xf0 + (1<<partition_number_);
+    printf("fiddle_trigger_mask partn %d. Old: 0x%x, New: 0x%x\n",
+           partition_number_, old_mask, trigger_mask_);
 }
 
 void dune::TimingReceiver::reset_met_variables(bool onlyspill) {

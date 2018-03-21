@@ -82,7 +82,7 @@ find_ups_boost( v1_50_0 filesystem
  )
 find_ups_product( libxml2 v2_9_1a )
 find_ups_product( TRACE v3_07_00 )
-find_ups_product( protodune_timing v4_0_0 )
+find_ups_product( protodune_timing v4_0_1 )
 
 # JM-A 2017/06/23 ###
 find_ups_product( uhal v2_6_0 ) 
