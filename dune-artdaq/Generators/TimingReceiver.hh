@@ -137,7 +137,6 @@ namespace dune {
                            // 1=Also reports throttling changes that go to hardware, 
                            // 2=calls the bufstatus and hwstatus during init, 
                            // 3=Debug message for each trigger and all throttling data
-    uint32_t fw_version_active_;   // The firmware version that we expect to talk to
     uint32_t trigger_mask_;         // Trigger mask (not used yet)
     uint32_t end_run_wait_;         // Number of microsecs to wait at the end of a run before looking for last event
 

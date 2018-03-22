@@ -64,7 +64,6 @@ dune::TimingReceiver::TimingReceiver(fhicl::ParameterSet const & ps):
   ,hw_(connectionManager_.getDevice(ps.get<std::string>("hardware_select","DUNE_SECONDARY")))
   ,partition_number_(ps.get<uint32_t>("partition_number",0))
   ,debugprint_(ps.get<uint32_t>("debug_print",0))
-  ,fw_version_active_(ps.get<uint32_t>("fw_version_active",0x40005))
   ,trigger_mask_(ps.get<uint32_t>("trigger_mask",0xff))
   ,end_run_wait_(ps.get<uint32_t>("end_run_wait",1000))
   ,zmq_conn_(ps.get<std::string>("zmq_connection","tcp://pddaq-gen05-daq0:5566"))
@@ -102,8 +101,9 @@ dune::TimingReceiver::TimingReceiver(fhicl::ParameterSet const & ps):
 
     // Match Fw version with configuration
     DAQLogger::LogInfo(instance_name_) << "Timing Master firmware version " << std::showbase << std::hex << (uint32_t)lVersion;
-    if ( lVersion != fw_version_active_ ) {
-      DAQLogger::LogError(instance_name_) << "Firmware version mismatch! Expected: " <<  fw_version_active_ << " detected: " << (uint32_t)lVersion;
+    uint32_t expected_fw_version=0x40005;
+    if ( lVersion != expected_fw_version ) {
+      DAQLogger::LogError(instance_name_) << "Firmware version mismatch! Expected: " << expected_fw_version << " detected: " << (uint32_t)lVersion;
     }
 
     // Measure the input clock frequency
