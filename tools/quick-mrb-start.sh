@@ -291,6 +291,7 @@ export MRB_PROJECT=dune_artdaq
 cd $Base
 mrb newDev -f -v $demo_version -q ${equalifier}:${build_type}
 set +u
+setup netio
 source $Base/localProducts_dune_artdaq_${demo_version}_${equalifier}_${build_type}/setup
 set -u
 
@@ -377,6 +378,7 @@ cd $Base
         source ${dune_repo}/setup
         source $Base/products/setup                                                                                   
         setup mrb
+        setup netio
         source $Base/localProducts_dune_artdaq_${demo_version}_${equalifier}_${build_type}/setup
         source mrbSetEnv       
                                                                                                                   
