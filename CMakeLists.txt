@@ -75,6 +75,7 @@ find_ups_product( art v2_03_00 )
 find_ups_product( fhiclcpp v2_16_00 )
 find_ups_product( messagefacility v1_10_00 )
 find_ups_product( cetlib v1_03_00 )
+find_ups_product( netio v0_7_0 )
 find_ups_root( v5_34_00 )
 find_ups_boost( v1_50_0 filesystem
                         program_options
@@ -82,6 +83,10 @@ find_ups_boost( v1_50_0 filesystem
  )
 find_ups_product( libxml2 v2_9_1a )
 find_ups_product( TRACE v3_07_00 )
+
+set(netio_INCLUDE_DIR $ENV{NETIO_INC})
+#set(netio_INCLUDE_DIR "/nfs/sw/work_dirs/dune-artdaq-felix-dev2/products/netio/Linux64bit+3.10-2.17-e10-prof/include")
+set(netio_LIBRARY_DIR $ENV{NETIO_LIB}) #"/nfs/sw/work_dirs/dune-artdaq-felix-dev2/products/netio/Linux64bit+3.10-2.17-e10-prof/lib")
 
 # JM-A 2017/06/23 ###
 find_ups_product( uhal v2_4_2 ) 
