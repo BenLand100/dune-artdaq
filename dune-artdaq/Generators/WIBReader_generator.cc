@@ -176,13 +176,12 @@ WIBReader::WIBReader(fhicl::ParameterSet const& ps) :
         if(enable_FEMB_fake_data)
         {
           dune::DAQLogger::LogInfo("WIBReader") << "Setting up FEMB "<<iFEMB<<" for fake data";
-          setupFEMBFakeData(iFEMB,FEMB_config);
+          setupFEMBFakeData(iFEMB,FEMB_config,continueOnFEMBRegReadError);
         }
         else
         {
           dune::DAQLogger::LogInfo("WIBReader") << "Setting up FEMB"<<iFEMB;
-          //setupFEMB(iFEMB,3,3,1,0,0,0,0,0,1,1,1,0,0,0,1,expected_femb_fw_version);
-          setupFEMB(iFEMB,FEMB_config);
+          setupFEMB(iFEMB,FEMB_config,continueOnFEMBRegReadError);
         }
       }
       else
@@ -210,11 +209,26 @@ WIBReader::WIBReader(fhicl::ParameterSet const& ps) :
   dune::DAQLogger::LogInfo("WIBReader") << "Configured WIB";
 }
 
-void WIBReader::setupFEMBFakeData(size_t iFEMB, fhicl::ParameterSet const& FEMB_config) {
+void WIBReader::setupFEMBFakeData(size_t iFEMB, fhicl::ParameterSet const& FEMB_config, bool continueOnFEMBRegReadError) {
   // Don't forget to disable WIB fake data
   
   wib->FEMBPower(iFEMB,1);
   sleep(1);
+
+  if(wib->ReadFEMB(iFEMB,"VERSION_ID") == wib->ReadFEMB(iFEMB,"SYS_RESET")) { // can't read register if equal
+    if(continueOnFEMBRegReadError){
+      dune::DAQLogger::LogWarning("WIBReader") << "Warning: Can't read registers from FEMB " << int(iFEMB) << ". Powering it down and continuing on to others";
+      wib->FEMBPower(iFEMB,0);
+      return;
+    }
+    else
+    {
+      wib->FEMBPower(iFEMB,0);
+      cet::exception excpt("WIBReader");
+      excpt << "Can't read registers from FEMB " << int(iFEMB);
+      throw excpt;
+    }
+  }
 
   auto expected_femb_fw_version = FEMB_config.get<uint32_t>("expected_femb_fw_version");
   uint32_t femb_fw_version = wib->ReadFEMB(iFEMB,"VERSION_ID");
@@ -278,7 +292,7 @@ void WIBReader::setupFEMBFakeData(size_t iFEMB, fhicl::ParameterSet const& FEMB_
   wib->ConfigFEMBFakeData(iFEMB,fake_mode,fake_word,femb_number,fake_waveform);
 }
 
-void WIBReader::setupFEMB(size_t iFEMB, fhicl::ParameterSet const& FEMB_config){
+void WIBReader::setupFEMB(size_t iFEMB, fhicl::ParameterSet const& FEMB_config, bool continueOnFEMBRegReadError){
   // Don't forget to disable WIB fake data
 
   const auto gain = FEMB_config.get<uint32_t>("gain");
@@ -423,6 +437,21 @@ void WIBReader::setupFEMB(size_t iFEMB, fhicl::ParameterSet const& FEMB_config){
 
   wib->FEMBPower(iFEMB,1);
   sleep(1);
+
+  if(wib->ReadFEMB(iFEMB,"VERSION_ID") == wib->ReadFEMB(iFEMB,"SYS_RESET")) { // can't read register if equal
+    if(continueOnFEMBRegReadError){
+      dune::DAQLogger::LogWarning("WIBReader") << "Warning: Can't read registers from FEMB " << int(iFEMB) << ". Powering it down and continuing on to others";
+      wib->FEMBPower(iFEMB,0);
+      return;
+    }
+    else
+    {
+      wib->FEMBPower(iFEMB,0);
+      cet::exception excpt("WIBReader");
+      excpt << "Can't read registers from FEMB " << int(iFEMB);
+      throw excpt;
+    }
+  }
 
   uint32_t femb_fw_version = wib->ReadFEMB(iFEMB,"VERSION_ID");
   if (expected_femb_fw_version != femb_fw_version)

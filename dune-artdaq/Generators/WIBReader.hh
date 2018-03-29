@@ -22,8 +22,8 @@ private:
   bool getNext_(artdaq::FragmentPtrs& output) override;
   void stopNoMutex() override {}
 
-  void setupFEMBFakeData(size_t iFEMB, fhicl::ParameterSet const& FEMB_config);
-  void setupFEMB(size_t iFEMB, fhicl::ParameterSet const& FEMB_config);
+  void setupFEMBFakeData(size_t iFEMB, fhicl::ParameterSet const& FEMB_config, bool continueOnFEMBRegReadError);
+  void setupFEMB(size_t iFEMB, fhicl::ParameterSet const& FEMB_config, bool continueOnFEMBRegReadError);
 
   std::unique_ptr<WIB> wib;
 

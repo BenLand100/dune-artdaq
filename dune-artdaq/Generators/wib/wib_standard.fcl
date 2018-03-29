@@ -27,16 +27,13 @@ wib_config: {
       femb_table: "PDUNE_FEMB_323.adt"
       expected_wib_fw_version: 0x18030101
 
-      #use_WIB_fake_data: [false,false,false,false]
-      use_WIB_fake_data: [true,true,false,false]
+      use_WIB_fake_data: [false,false,false,false]
       use_WIB_fake_data_counter: false
 
-      #local_clock: false
-      local_clock: true
+      local_clock: false
       DTS_source: 0 # 0 back plane, 1 front panel
 
-      #enable_FEMBs: [true,true,true,true]
-      enable_FEMBs: [false,false,true,true]
+      enable_FEMBs: [true,true,true,true]
 
       FEMBs: [@local::femb_config_default,@local::femb_config_default,@local::femb_config_default,@local::femb_config_default]
 
@@ -79,15 +76,19 @@ wib_standard_rce.fragment_receiver.WIB.config: @local::wib_config_rce
 wib_standard_felix: @local::wib_base 
 wib_standard_felix.fragment_receiver.WIB.config: @local::wib_config_felix 
 
-wib902_standard_rce: @local::wib_standard_felix
-wib902_standard_rce.fragment_receiver.fragment_id: 492 
-wib902_standard_rce.fragment_receiver.board_id: 95 
-wib902_standard_rce.fragment_receiver.WIB.address: "192.168.200.2" 
+wib902_standard_felix: @local::wib_standard_felix
+wib902_standard_felix.fragment_receiver.fragment_id: 492 
+wib902_standard_felix.fragment_receiver.board_id: 92
+wib902_standard_felix.fragment_receiver.WIB.address: "192.168.200.2" 
+wib902_standard_felix.fragment_receiver.WIB.config.use_WIB_fake_data: [true,true,true,false]
+wib902_standard_felix.fragment_receiver.WIB.config.enable_FEMBs: [false,false,false,true]
 
 wib905_standard_rce: @local::wib_standard_rce 
 wib905_standard_rce.fragment_receiver.fragment_id: 495
 wib905_standard_rce.fragment_receiver.board_id: 95
 wib905_standard_rce.fragment_receiver.WIB.address: "192.168.200.5" 
+wib905_standard_rce.fragment_receiver.WIB.config.use_WIB_fake_data: [true,true,false,false]
+wib905_standard_rce.fragment_receiver.WIB.config.enable_FEMBs: [false,false,true,true]
 
 wib001_standard_rce: @local::wib_standard_rce 
 wib001_standard_rce.fragment_receiver.fragment_id: 401 
