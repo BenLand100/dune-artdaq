@@ -137,7 +137,7 @@ void SSPDAQ::DeviceInterface::Start(){
   // Registers in the Artix FPGA (DSP)
   // Release master logic reset & enable active channels
 
-  fDevice->DeviceWrite(duneReg.master_logic_control, 0x00000001);
+  fDevice->DeviceWrite(duneReg.master_logic_control, 0x00000041);
   
   fState=SSPDAQ::DeviceInterface::kRunning;
   fShouldStop=false;
@@ -194,6 +194,25 @@ void SSPDAQ::DeviceInterface::HardwareReadLoop(){
       }
       fTriggers.push(newTrigger);
     }
+
+    ////////////////////////////////////////////////////////////
+    //Cull old packets which are not associated with a trigger//
+    ////////////////////////////////////////////////////////////
+
+    unsigned long packetTime=GetTimestamp(fPacketBuffer.back().header);
+    unsigned long firstInterestingTime;
+
+    if(fTriggers.size()){
+      firstInterestingTime=fTriggers.front().startTime-fTriggerWriteDelay;
+    }
+    else{
+      firstInterestingTime=packetTime-fPreTrigLength-fTriggerWriteDelay;
+    }
+
+    while(GetTimestamp(fPacketBuffer.front().header)<firstInterestingTime){
+      fPacketBuffer.pop_front();
+    }
+
     //dune::DAQLogger::LogInfo("SSP_DeviceInterface")<<"HWRead releasing mutex..."<<std::endl;
     mlock.unlock();
   }
@@ -266,7 +285,8 @@ bool SSPDAQ::DeviceInterface::GetTriggerInfo(const SSPDAQ::EventPacket& event,SS
       newTrigger.startTime=currentTriggerTime-fPreTrigLength;
       newTrigger.endTime=currentTriggerTime+fPostTrigLength;
       newTrigger.triggerType=event.header.group1&0xFFFF;
-      //      dune::DAQLogger::LogInfo("SSP_DeviceInterface")<<"Packet has non-trivial trigger word - generating a trigger from this packet!"<<std::endl;
+      auto globalTimestamp = (packetTime + 1057) / 3 ;
+      dune::DAQLogger::LogInfo("SSP_DeviceInterface")<<"Seen packet containing global trigger, timestamp "<<packetTime<<" / "<<globalTimestamp<<std::endl;
       for(unsigned int i=0;i<12;++i){
 	channelsSeen[i]=false;
       }
