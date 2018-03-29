@@ -1,0 +1,132 @@
+BEGIN_PROLOG
+
+femb_config_default: {
+  expected_femb_fw_version: 0x323
+
+  enable_fake_data: false
+  fake_data_select: "fake_word" # options: fake_word, fake_waveform, femb_channel_id, or counter_channel_id
+  
+  gain: 3
+  shape: 3
+  base: 1
+  leakHigh: 0
+  leak10X: 0
+  acCouple: 0
+  buffer: 0
+  extClk: 1
+
+  clk_phases: [0xFFFF,0xFDFF,0xEFEF,0xBFBF,0xBDFF]
+  pls_mode: 0 # 0 off, 1 internal, 2 FPGA external
+  pls_dac_val: 0
+  start_frame_mode_sel: 1
+  start_frame_swap: 1
+}
+
+wib_config: {
+      wib_table: "WIB.adt"
+      femb_table: "PDUNE_FEMB_323.adt"
+      expected_wib_fw_version: 0x18030101
+
+      #use_WIB_fake_data: [false,false,false,false]
+      use_WIB_fake_data: [true,true,false,false]
+      use_WIB_fake_data_counter: false
+
+      #local_clock: false
+      local_clock: true
+      DTS_source: 0 # 0 back plane, 1 front panel
+
+      #enable_FEMBs: [true,true,true,true]
+      enable_FEMBs: [false,false,true,true]
+
+      FEMBs: [@local::femb_config_default,@local::femb_config_default,@local::femb_config_default,@local::femb_config_default]
+
+      # If these are true, then won't raise an exception--will keep going
+      continueOnError: {
+        FEMBRegReadError: false
+        FEMBSPIError: false
+        FEMBSyncError: false
+        ListOfFEMBClockPhasesDontSync: true # if true, will try to hunt for the proper phase
+      }
+}
+
+wib_config.FEMBs[0].fake_word: 0xFE1
+wib_config.FEMBs[1].fake_word: 0xFE2
+wib_config.FEMBs[2].fake_word: 0xFE3
+wib_config.FEMBs[3].fake_word: 0xFE4
+
+wib_config_rce: @local::wib_config
+wib_config_rce.expected_daq_mode: "RCE"
+
+wib_config_felix: @local::wib_config
+wib_config_felix.expected_daq_mode: "FELIX"
+
+wib_base: {
+  fragment_receiver: {
+    generator: WIBReader 
+    partition_number: 999 
+    fragment_type: TPC 
+    fragment_id: 400 
+    board_id: 400 
+    WIB: {}
+    destinations: {}
+    sends_no_fragments: true 
+  }
+}
+
+wib_standard_rce: @local::wib_base 
+wib_standard_rce.fragment_receiver.WIB.config: @local::wib_config_rce 
+
+wib_standard_felix: @local::wib_base 
+wib_standard_felix.fragment_receiver.WIB.config: @local::wib_config_felix 
+
+wib902_standard_rce: @local::wib_standard_felix
+wib902_standard_rce.fragment_receiver.fragment_id: 492 
+wib902_standard_rce.fragment_receiver.board_id: 95 
+wib902_standard_rce.fragment_receiver.WIB.address: "192.168.200.2" 
+
+wib905_standard_rce: @local::wib_standard_rce 
+wib905_standard_rce.fragment_receiver.fragment_id: 495
+wib905_standard_rce.fragment_receiver.board_id: 95
+wib905_standard_rce.fragment_receiver.WIB.address: "192.168.200.5" 
+
+wib001_standard_rce: @local::wib_standard_rce 
+wib001_standard_rce.fragment_receiver.fragment_id: 401 
+wib001_standard_rce.fragment_receiver.board_id: 1 
+wib001_standard_rce.fragment_receiver.WIB.address: "np04-wib-001" 
+
+wib002_standard_rce: @local::wib_standard_rce 
+wib002_standard_rce.fragment_receiver.fragment_id: 402 
+wib002_standard_rce.fragment_receiver.board_id: 2 
+wib002_standard_rce.fragment_receiver.WIB.address: "np04-wib-002" 
+
+wib003_standard_rce: @local::wib_standard_rce 
+wib003_standard_rce.fragment_receiver.fragment_id: 403 
+wib003_standard_rce.fragment_receiver.board_id: 3 
+wib003_standard_rce.fragment_receiver.WIB.address: "np04-wib-003" 
+
+wib004_standard_rce: @local::wib_standard_rce 
+wib004_standard_rce.fragment_receiver.fragment_id: 404 
+wib004_standard_rce.fragment_receiver.board_id: 4 
+wib004_standard_rce.fragment_receiver.WIB.address: "np04-wib-004" 
+
+wib005_standard_rce: @local::wib_standard_rce 
+wib005_standard_rce.fragment_receiver.fragment_id: 405 
+wib005_standard_rce.fragment_receiver.board_id: 5 
+wib005_standard_rce.fragment_receiver.WIB.address: "np04-wib-005" 
+
+wib001_standard_felix: @local::wib001_standard_rce 
+wib001_standard_felix.fragment_receiver.WIB.config: @local::wib_config_felix 
+
+wib002_standard_felix: @local::wib002_standard_rce 
+wib002_standard_felix.fragment_receiver.WIB.config: @local::wib_config_felix 
+
+wib003_standard_felix: @local::wib003_standard_rce 
+wib003_standard_felix.fragment_receiver.WIB.config: @local::wib_config_felix 
+
+wib004_standard_felix: @local::wib004_standard_rce 
+wib004_standard_felix.fragment_receiver.WIB.config: @local::wib_config_felix 
+
+wib005_standard_felix: @local::wib005_standard_rce 
+wib005_standard_felix.fragment_receiver.WIB.config: @local::wib_config_felix 
+
+END_PROLOG
