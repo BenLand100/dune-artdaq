@@ -36,6 +36,12 @@ WIBReader::WIBReader(fhicl::ParameterSet const& ps) :
   auto local_clock = ps.get<bool>("WIB.config.local_clock"); // use local clock if true, else DTS
   auto DTS_source = ps.get<unsigned>("WIB.config.DTS_source"); // 0 back plane, 1 front panel
 
+  // If these are true, will continue on error, if false, will raise an exception
+  auto continueOnFEMBRegReadError = ps.get<bool>("WIB.config.continueOnError.FEMBRegReadError");
+  auto continueOnFEMBSPIError = ps.get<bool>("WIB.config.continueOnError.FEMBSPIError");
+  auto continueOnFEMBSyncError = ps.get<bool>("WIB.config.continueOnError.FEMBSyncError");
+  auto continueIfListOfFEMBClockPhasesDontSync = ps.get<bool>("WIB.config.continueOnError.ListOfFEMBClockPhasesDontSync");
+
   auto enable_FEMBs = ps.get<std::vector<bool> >("WIB.config.enable_FEMBs");
   auto FEMB_configs = ps.get<std::vector<fhicl::ParameterSet> >("WIB.config.FEMBs");
 
@@ -57,6 +63,15 @@ WIBReader::WIBReader(fhicl::ParameterSet const& ps) :
   {
     dune::DAQLogger::LogInfo("WIBReader") << "Connecting to WIB at " <<  wib_address;
     wib = std::make_unique<WIB>( wib_address, wib_table, femb_table );
+
+    // Set DIM do-not-disturb
+    wib->Write("SYSTEM.SLOW_CONTROL_DND",1);
+
+    // Set whether to continue on errors
+    wib->SetContinueOnFEMBRegReadError(continueOnFEMBRegReadError);
+    wib->SetContinueOnFEMBSPIError(continueOnFEMBSPIError);
+    wib->SetContinueOnFEMBSyncError(continueOnFEMBSyncError);
+    wib->SetContinueIfListOfFEMBClockPhasesDontSync(continueIfListOfFEMBClockPhasesDontSync);
   
     // Reset and setup clock
     wib->ResetWIBAndCfgDTS(DTS_source,local_clock);
@@ -179,6 +194,9 @@ WIBReader::WIBReader(fhicl::ParameterSet const& ps) :
     dune::DAQLogger::LogInfo("WIBReader") << "Enabling DAQ links";
     wib->StartStreamToDAQ();
   
+    // Un-set DIM do-not-disturb
+    wib->Write("SYSTEM.SLOW_CONTROL_DND",0);
+
   } // try
   catch (const BUException::exBase& exc)
   {
@@ -263,8 +281,6 @@ void WIBReader::setupFEMBFakeData(size_t iFEMB, fhicl::ParameterSet const& FEMB_
 void WIBReader::setupFEMB(size_t iFEMB, fhicl::ParameterSet const& FEMB_config){
   // Don't forget to disable WIB fake data
 
-
-
   const auto gain = FEMB_config.get<uint32_t>("gain");
   const auto shape = FEMB_config.get<uint32_t>("shape");
   const auto base = FEMB_config.get<uint32_t>("base");
@@ -272,14 +288,15 @@ void WIBReader::setupFEMB(size_t iFEMB, fhicl::ParameterSet const& FEMB_config){
   const auto leak10X = FEMB_config.get<uint32_t>("leak10X");
   const auto acCouple = FEMB_config.get<uint32_t>("acCouple");
   const auto buffer = FEMB_config.get<uint32_t>("buffer");
-  const auto tstIn = FEMB_config.get<uint32_t>("tstIn");
   const auto extClk = FEMB_config.get<uint32_t>("extClk");
-  const auto clk_cs = FEMB_config.get<uint8_t>("clk_cs");
-  const auto pls_cs = FEMB_config.get<uint8_t>("pls_cs");
-  const auto dac_sel = FEMB_config.get<uint8_t>("dac_sel");
-  const auto fpga_dac = FEMB_config.get<uint8_t>("fpga_dac");
-  const auto asic_dac = FEMB_config.get<uint8_t>("asic_dac");
-  const auto mon_cs = FEMB_config.get<uint8_t>("mon_cs");
+
+  const auto clk_phases = FEMB_config.get<std::vector<uint16_t> >("clk_phases");
+  const auto pls_mode = FEMB_config.get<uint32_t>("pls_mode");
+  const auto pls_dac_val = FEMB_config.get<uint32_t>("pls_dac_val");
+
+  const auto start_frame_mode_sel = FEMB_config.get<uint32_t>("start_frame_mode_sel");
+  const auto start_frame_swap = FEMB_config.get<uint32_t>("start_frame_swap");
+
   const auto expected_femb_fw_version = FEMB_config.get<uint32_t>("expected_femb_fw_version");
 
   //////////////////////
@@ -347,15 +364,6 @@ void WIBReader::setupFEMB(size_t iFEMB, fhicl::ParameterSet const& FEMB_config){
         << buffer;
     throw excpt;
   }
-  if (tstIn > 1)
-  {
-    cet::exception excpt("WIBReader");
-    excpt << "setupFEMB: FEMB "
-        << iFEMB
-        << " tstIn should be 0 or 1 is: "
-        << tstIn;
-    throw excpt;
-  }
   if (extClk > 1)
   {
     cet::exception excpt("WIBReader");
@@ -365,58 +373,49 @@ void WIBReader::setupFEMB(size_t iFEMB, fhicl::ParameterSet const& FEMB_config){
         << extClk;
     throw excpt;
   }
-  if (clk_cs > 1)
+  if (clk_phases.size() == 0)
   {
     cet::exception excpt("WIBReader");
     excpt << "setupFEMB: FEMB "
         << iFEMB
-        << " clk_cs should be 0 or 1 is: "
-        << clk_cs;
+        << " clk_phases size should be > 0 ";
     throw excpt;
   }
-  if (pls_cs > 1)
+  if (pls_mode > 2)
   {
     cet::exception excpt("WIBReader");
     excpt << "setupFEMB: FEMB "
         << iFEMB
-        << " pls_cs should be 0 or 1 is: "
-        << pls_cs;
+        << " pls_mode should be 0 (off) 1 (FE ASIC internal) or 2 (FPGA external) is: "
+        << pls_mode;
     throw excpt;
   }
-  if (dac_sel > 1)
+  if ((pls_mode == 1 && pls_dac_val > 63) || (pls_mode == 2 && pls_dac_val > 31))
   {
     cet::exception excpt("WIBReader");
     excpt << "setupFEMB: FEMB "
         << iFEMB
-        << " dac_sel should be 0 or 1 is: "
-        << dac_sel;
+        << " pls_dac_val should be 0-31 in pls_mode 1 or 0-63 in pls_mode 2."
+        << " pls_mode is " << pls_mode
+        << " pls_dac_val is " << pls_dac_val;
     throw excpt;
   }
-  if (fpga_dac > 1)
+  if (start_frame_mode_sel > 1)
   {
     cet::exception excpt("WIBReader");
     excpt << "setupFEMB: FEMB "
         << iFEMB
-        << " fpga_dac should be 0 or 1 is: "
-        << fpga_dac;
+        << " start_frame_mode_sel should be 0 or 1 is: "
+        << start_frame_mode_sel;
     throw excpt;
   }
-  if (asic_dac > 1)
+  if (start_frame_swap > 1)
   {
     cet::exception excpt("WIBReader");
     excpt << "setupFEMB: FEMB "
         << iFEMB
-        << " asic_dac should be 0 or 1 is: "
-        << asic_dac;
-    throw excpt;
-  }
-  if (mon_cs > 1)
-  {
-    cet::exception excpt("WIBReader");
-    excpt << "setupFEMB: FEMB "
-        << iFEMB
-        << " mon_cs should be 0 or 1 is: "
-        << mon_cs;
+        << " start_frame_swap should be 0 or 1 is: "
+        << start_frame_swap;
     throw excpt;
   }
 
@@ -439,9 +438,9 @@ void WIBReader::setupFEMB(size_t iFEMB, fhicl::ParameterSet const& FEMB_config){
     throw excpt;
   }
 
-  std::vector<uint32_t> fe_config = {gain,shape,base,leakHigh,leak10X,acCouple,buffer,tstIn,extClk};
+  std::vector<uint32_t> fe_config = {gain,shape,base,leakHigh,leak10X,acCouple,buffer,extClk};
 
-  wib->ConfigFEMB(iFEMB, fe_config, clk_cs, pls_cs, dac_sel, fpga_dac, asic_dac, mon_cs);
+  wib->ConfigFEMB(iFEMB, fe_config, clk_phases, pls_mode, pls_dac_val, start_frame_mode_sel, start_frame_swap);
 
 }
 
