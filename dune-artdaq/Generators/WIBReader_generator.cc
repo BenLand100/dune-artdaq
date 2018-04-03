@@ -35,6 +35,7 @@ WIBReader::WIBReader(fhicl::ParameterSet const& ps) :
 
   auto local_clock = ps.get<bool>("WIB.config.local_clock"); // use local clock if true, else DTS
   auto DTS_source = ps.get<unsigned>("WIB.config.DTS_source"); // 0 back plane, 1 front panel
+  auto DTS_partition = ps.get<unsigned>("WIB.config.DTS_partition"); // partition or timing group number
 
   // If these are true, will continue on error, if false, will raise an exception
   auto continueOnFEMBRegReadError = ps.get<bool>("WIB.config.continueOnError.FEMBRegReadError");
@@ -59,6 +60,13 @@ WIBReader::WIBReader(fhicl::ParameterSet const& ps) :
     throw excpt;
   }
 
+  if(DTS_partition > 15)
+  {
+    cet::exception excpt("WIBReader");
+    excpt << "DTS_partition must be 0-15, not: " << DTS_partition;
+    throw excpt;
+  }
+
   try
   {
     dune::DAQLogger::LogInfo("WIBReader") << "Connecting to WIB at " <<  wib_address;
@@ -74,7 +82,7 @@ WIBReader::WIBReader(fhicl::ParameterSet const& ps) :
     wib->SetContinueIfListOfFEMBClockPhasesDontSync(continueIfListOfFEMBClockPhasesDontSync);
   
     // Reset and setup clock
-    wib->ResetWIBAndCfgDTS(DTS_source,local_clock);
+    wib->ResetWIBAndCfgDTS(local_clock,DTS_partition,DTS_source);
     std::this_thread::sleep_for(std::chrono::seconds(1));
   
     // Check and print firmware version
@@ -120,7 +128,11 @@ WIBReader::WIBReader(fhicl::ParameterSet const& ps) :
     if (daqMode == WIB::RCE)
     {
       dune::DAQLogger::LogInfo("WIBReader") << "WIB Firmware setup for RCE DAQ Mode";
-      if(expected_daq_mode != "RCE" and expected_daq_mode != "rce")
+      if(expected_daq_mode != "RCE" &&
+         expected_daq_mode != "rce" && 
+         expected_daq_mode != "ANY" && 
+         expected_daq_mode != "any"
+        )
       {
           cet::exception excpt("WIBReader");
           excpt << "WIB Firmware setup in RCE mode, but expect '"<< expected_daq_mode <<"' mode in fcl";
@@ -130,7 +142,11 @@ WIBReader::WIBReader(fhicl::ParameterSet const& ps) :
     else if (daqMode == WIB::FELIX)
     {
       dune::DAQLogger::LogInfo("WIBReader") << "WIB Firmware setup for FELIX DAQ Mode";
-      if(expected_daq_mode != "FELIX" and expected_daq_mode != "felix")
+      if(expected_daq_mode != "FELIX" && 
+         expected_daq_mode != "felix" &&
+         expected_daq_mode != "ANY" &&
+         expected_daq_mode != "any"
+        )
       {
           cet::exception excpt("WIBReader");
           excpt << "WIB Firmware setup in FELIX mode, but expect '"<< expected_daq_mode <<"' mode in fcl";
