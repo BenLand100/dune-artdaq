@@ -8,7 +8,8 @@ services: {
     TimeTracker: {}
 }
 
-fragment_receiver: @local::wib905_standard_rce.fragment_receiver
+fragment_receiver: @local::wib905_standard.fragment_receiver
+#fragment_receiver: @local::wib001_standard.fragment_receiver
 
 event_builder: {
 

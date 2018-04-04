@@ -1,50 +1,85 @@
 BEGIN_PROLOG
 
+# FEMB configuration
 femb_config_default: {
+  # this must match the FEMB firmware version (hex)
   expected_femb_fw_version: 0x323
 
+  # if true, enables FEMB fake data mode, else real data
   enable_fake_data: false
+  # Select the fake data type
   fake_data_select: "fake_word" # options: fake_word, fake_waveform, femb_channel_id, or counter_channel_id
   
+  # FE gain value select
   gain: 3
+  # FE shaping time select
   shape: 3
-  base: 1
+  # FE baseline select (don't need to change)
+  base: 0
+  # 1 for 500 pA FE leakage current, 0 for 100 pA (don't need to change)
   leakHigh: 0
+  # 1 for 10x FE leakage current, 0 for 1x
   leak10X: 0
+  # 1 for AC coupling between FE and ADC channels, 0 for DC coupling
   acCouple: 0
+  # 1 to use FE output buffer, 0 to bypass
   buffer: 0
+  # 0 to use ADC ASIC internal clocking, 1 to use external FPGA clocking
   extClk: 1
 
+  # List of 32 bit ADC FIFO clock phases, will try each phase until header bits line up
   clk_phases: [0xFFFF,0xFDFF,0xEFEF,0xBFBF,0xBDFF]
+  # Calibration pulser mode
   pls_mode: 0 # 0 off, 1 internal, 2 FPGA external
-  pls_dac_val: 0
+  # Calibration pulser amplitude 
+  pls_dac_val: 0 # 6 bits in internal mode, 5 bits in external
+  # 1 to make FPGA to WIB header frame as BU WIB expects
   start_frame_mode_sel: 1
+  # 1 to swap bytes in header frame
   start_frame_swap: 1
 }
 
+# WIB configuration
 wib_config: {
+      # WIB network address string
+      address: "" # can be either IP address or DNS address
+      # WIB register map
       wib_table: "WIB.adt"
+      # FEMB register map
       femb_table: "PDUNE_FEMB_323.adt"
+      # this must match the WIB firmware version (hex)
       expected_wib_fw_version: 0x18030101
-      expected_daq_mode: "any"
+      # this must match the WIB firmware version
+      expected_daq_mode: "any" # "RCE", "FELIX", or "any"
 
-      use_WIB_fake_data: [false,false,false,false]
-      use_WIB_fake_data_counter: false
+      # If true, transmit fake data from WIB, if false data from FEMBs
+      use_WIB_fake_data: [false,false,false,false] # list of 4 bools
+      # if false, put a counters in the DAQ data frame, if true just transmit a raw counter
+      use_WIB_fake_data_counter: false # only applies when use_WIB_fake_data is true for a FEMB
 
+      # if true, generate the clock on the WIB, if false, use timing system clock
       local_clock: false
+      # Where to get the timing system input from
       DTS_source: 0 # 0 back plane, 1 front panel
+      # Which timing system partion or "timing group" to use
       DTS_partition: 1
 
-      enable_FEMBs: [true,true,true,true]
+      # if true, power up and configure FEMBs, else power down and don't configure
+      enable_FEMBs: [true,true,true,true] # list of 4 bools
 
-      FEMBs: [@local::femb_config_default,@local::femb_config_default,@local::femb_config_default,@local::femb_config_default]
+      # FEMB configuration documents
+      FEMBs: [@local::femb_config_default,@local::femb_config_default,@local::femb_config_default,@local::femb_config_default] # list of 4 FEMB configurations
 
       # If these are true, then won't raise an exception--will keep going
       continueOnError: {
-        FEMBRegReadError: false
-        FEMBSPIError: false
-        FEMBSyncError: false
-        ListOfFEMBClockPhasesDontSync: true # if true, will try to hunt for the proper phase
+        # if true, continue on to the next FEMB
+        FEMBRegReadError: false # if you can't seem to control an FEMB
+        # if true, continue on to the next FEMB
+        FEMBSPIError: false # if you can't program the FE and ADC ASICs
+        # if true, continue on to the next FEMB
+        FEMBSyncError: false # if you can't get the ADC-FPGA data path sync'd
+        # if true, continue on to the next FEMB
+        ListOfFEMBClockPhasesDontSync: true # if true, will try to hunt for the proper phase, else error
       }
 }
 
@@ -53,6 +88,7 @@ wib_config.FEMBs[1].fake_word: 0xFE2
 wib_config.FEMBs[2].fake_word: 0xFE3
 wib_config.FEMBs[3].fake_word: 0xFE4
 
+# standard wib configuration
 wib_standard: {
   fragment_receiver: {
     generator: WIBReader 
