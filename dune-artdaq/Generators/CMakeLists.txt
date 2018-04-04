@@ -71,8 +71,23 @@ simple_plugin(PennReceiver "generator"
   )
 
 
+simple_plugin(TriggerBoardReader "generator"
+  dune-raw-data_Overlays
+#  dune-artdaq_Generators_TriggerBoardReader
+  artdaq-core_Data
+  artdaq_Application
+  artdaq_DAQdata
+  artdaq-core_Utilities
+  ${CANVAS}
+  ${FHICLCPP}
+  ${MF_MESSAGELOGGER}
+  ${CETLIB}
+  dune-artdaq_DAQLogger
+  )
+
+
   add_subdirectory(pennBoard)
-  add_subdirectory(CTB)
+  add_subdirectory(TriggerBoard)
   add_subdirectory(ToyHardwareInterface)
 
 
