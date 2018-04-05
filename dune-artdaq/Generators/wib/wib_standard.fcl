@@ -9,6 +9,8 @@ femb_config_default: {
   enable_fake_data: false
   # Select the fake data type
   fake_data_select: "fake_word" # options: fake_word, fake_waveform, femb_channel_id, or counter_channel_id
+  # The fake data word for fake_word mode
+  fake_word: 0xFEB # 12 bits
   
   # FE gain value select
   gain: 3
@@ -39,6 +41,18 @@ femb_config_default: {
   start_frame_swap: 1
 }
 
+# All just to set the fake_word without indexing arrays
+
+femb_config_default_femb1: @local::femb_config_default
+femb_config_default_femb2: @local::femb_config_default
+femb_config_default_femb3: @local::femb_config_default
+femb_config_default_femb4: @local::femb_config_default
+
+femb_config_default_femb1.fake_word: 0xFE1
+femb_config_default_femb2.fake_word: 0xFE2
+femb_config_default_femb3.fake_word: 0xFE3
+femb_config_default_femb4.fake_word: 0xFE4
+
 # WIB configuration
 wib_config: {
       # WIB network address string
@@ -68,7 +82,7 @@ wib_config: {
       enable_FEMBs: [true,true,true,true] # list of 4 bools
 
       # FEMB configuration documents
-      FEMBs: [@local::femb_config_default,@local::femb_config_default,@local::femb_config_default,@local::femb_config_default] # list of 4 FEMB configurations
+      FEMBs: [@local::femb_config_default_femb1,@local::femb_config_default_femb2,@local::femb_config_default_femb3,@local::femb_config_default_femb4] # list of 4 FEMB configurations
 
       # If these are true, then won't raise an exception--will keep going
       continueOnError: {
@@ -82,11 +96,6 @@ wib_config: {
         ListOfFEMBClockPhasesDontSync: true # if true, will try to hunt for the proper phase, else error
       }
 }
-
-wib_config.FEMBs[0].fake_word: 0xFE1
-wib_config.FEMBs[1].fake_word: 0xFE2
-wib_config.FEMBs[2].fake_word: 0xFE3
-wib_config.FEMBs[3].fake_word: 0xFE4
 
 # standard wib configuration
 wib_standard: {
