@@ -14,6 +14,11 @@ if ! [[ "$HOSTNAME" =~ ^np04-srv ]]; then
     exit 1
 fi
 
+if [[ "$HOSTNAME" == "np04-srv-001" || "$HOSTNAME" == "np04-srv-009" || "$HOSTNAME" == "np04-srv-010" ]]; then
+    echo "Host $HOSTNAME either doesn't have enough processors for a speedy build or is in heavy use for other DAQ purposes; try another host (e.g., np04-srv-014)"
+    exit 1
+fi
+
 if [[ -e /nfs/sw/artdaq/products/setup ]]; then
     . /nfs/sw/artdaq/products/setup
 else
@@ -334,12 +339,21 @@ if ! $bad_network; then
     	exit 1
     fi
 
-    mrb gitCheckout -t ${artdaq_version} -d artdaq http://cdcvs.fnal.gov/projects/artdaq
+    mrb gitCheckout -t 854943d1010efb55594a29324f98ed68e667237d -d artdaq http://cdcvs.fnal.gov/projects/artdaq
 
     if [[ "$?" != "0" ]]; then
     	echo "Unable to perform checkout of http://cdcvs.fnal.gov/projects/artdaq"
     	exit 1
     fi
+
+    mrb gitCheckout -t 36b0f1274156a6f265e61404224fd7b3da293363 -d artdaq_utilities_mpich_plugin http://cdcvs.fnal.gov/projects/artdaq-utilities-mpich-plugin
+
+    if [[ "$?" != "0" ]]; then
+	echo "Unable to perform checkout of http://cdcvs.fnal.gov/projects/artdaq-utilities-mpich-plugin"
+	exit 1
+    fi
+
+    artdaq_mpich_version=$( grep "parent artdaq_mpich_plugin" artdaq_utilities_mpich_plugin/ups/product_deps|awk '{print $3}' )
 
     mrb gitCheckout $dune_raw_data_checkout_arg $dune_raw_data_repo
 
@@ -369,6 +383,8 @@ if [[ ${WIB_DIRECTORY:-xx} != "xx" ]]; then
     wibcmd="export WIB_DIRECTORY=$WIB_DIRECTORY"
 fi
 
+nprocessors=$( grep -E "processor\s+:" /proc/cpuinfo | wc -l )
+
 cd $Base
     cat >setupDUNEARTDAQ <<-EOF
        echo # This script is intended to be sourced.                                                                    
@@ -396,14 +412,35 @@ cd $Base
         cd \$returndir
 
         setup dunepdsprce v0_0_4 -q e14:gen:prof
+        setup artdaq_mpich_plugin $artdaq_mpich_version -q e14:prof:s50
                                                                     
 # JCF, 11/25/14                                                                                                          
 # Make it easy for users to take a quick look at their output file via "rawEventDump"                                    
                                                                                                                          
-alias rawEventDump="art -c \$DUNEARTDAQ_REPO/tools/fcl/rawEventDump.fcl "                                                                                        
+alias rawEventDump="art -c \$DUNEARTDAQ_REPO/tools/fcl/rawEventDump.fcl "                                                    
+
+if [[ -n \$USER && \$USER == np04daq ]]; then
+        export DIM_INC=/nfs/sw/dim/dim_v20r20
+        export DIM_LIB=/nfs/sw/dim/dim_v20r20/linux
+        export LD_LIBRARY_PATH=\$DIM_LIB:\$LD_LIBRARY_PATH
+
+        source /nfs/sw/work_dirs/dune-artdaq-dim-dev/localProducts_artdaq_v3_00_03a_e14_prof_s50/setup
+        setup artdaq_dim_plugin v0_02_03 -q e14:prof:s50
+fi
+
+echo "Only need to source this file once in the environment; now, to perform clean builds do the following:"
+echo
+echo "  mrb z"
+echo "  mrbsetenv"
+echo "  mrb b -j$nprocessors -i -I $Base/products"
+echo "  find build_slf7.x86_64/ -type d | xargs -i chmod g+rwx {}"
+echo "  find build_slf7.x86_64/ -type f | xargs -i chmod g+rw {}"
+echo    
+                                    
 
 	EOF
     #
+
 
 # Build artdaq_demo
 cd $MRB_BUILDDIR
@@ -411,8 +448,9 @@ set +u
 source ${dune_repo}/setup
 source mrbSetEnv
 set -u
-export CETPKG_J=$((`cat /proc/cpuinfo|grep processor|tail -1|awk '{print $3}'` + 1))
+export CETPKG_J=$nprocessors
 
+setup artdaq_mpich_plugin $artdaq_mpich_version -q e14:prof:s50
 setup dunepdsprce v0_0_4 -q e14:gen:prof
 mrb build    # VERBOSE=1
 installStatus=$?
