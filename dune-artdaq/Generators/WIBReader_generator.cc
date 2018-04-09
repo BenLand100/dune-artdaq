@@ -35,7 +35,7 @@ WIBReader::WIBReader(fhicl::ParameterSet const& ps) :
 
   auto local_clock = ps.get<bool>("WIB.config.local_clock"); // use local clock if true, else DTS
   auto DTS_source = ps.get<unsigned>("WIB.config.DTS_source"); // 0 back plane, 1 front panel
-  auto DTS_partition = ps.get<unsigned>("WIB.config.DTS_partition"); // partition or timing group number
+  auto partition_number = ps.get<unsigned>("WIB.config.partition_number"); // partition or timing group number
 
   // If these are true, will continue on error, if false, will raise an exception
   auto continueOnFEMBRegReadError = ps.get<bool>("WIB.config.continueOnError.FEMBRegReadError");
@@ -60,10 +60,10 @@ WIBReader::WIBReader(fhicl::ParameterSet const& ps) :
     throw excpt;
   }
 
-  if(DTS_partition > 15)
+  if(partition_number > 15)
   {
     cet::exception excpt("WIBReader");
-    excpt << "DTS_partition must be 0-15, not: " << DTS_partition;
+    excpt << "partition_number must be 0-15, not: " << partition_number;
     throw excpt;
   }
 
@@ -82,7 +82,7 @@ WIBReader::WIBReader(fhicl::ParameterSet const& ps) :
     wib->SetContinueIfListOfFEMBClockPhasesDontSync(continueIfListOfFEMBClockPhasesDontSync);
   
     // Reset and setup clock
-    wib->ResetWIBAndCfgDTS(local_clock,DTS_partition,DTS_source);
+    wib->ResetWIBAndCfgDTS(local_clock,partition_number,DTS_source);
     std::this_thread::sleep_for(std::chrono::seconds(1));
   
     // Check and print firmware version
@@ -313,7 +313,7 @@ void WIBReader::setupFEMB(size_t iFEMB, fhicl::ParameterSet const& FEMB_config, 
 
   const auto gain = FEMB_config.get<uint32_t>("gain");
   const auto shape = FEMB_config.get<uint32_t>("shape");
-  const auto base = FEMB_config.get<uint32_t>("base");
+  const auto baselineHigh = FEMB_config.get<uint32_t>("baselineHigh");
   const auto leakHigh = FEMB_config.get<uint32_t>("leakHigh");
   const auto leak10X = FEMB_config.get<uint32_t>("leak10X");
   const auto acCouple = FEMB_config.get<uint32_t>("acCouple");
@@ -349,13 +349,13 @@ void WIBReader::setupFEMB(size_t iFEMB, fhicl::ParameterSet const& FEMB_config, 
         << shape;
     throw excpt;
   }
-  if (base > 1)
+  if (baselineHigh > 1)
   {
     cet::exception excpt("WIBReader");
     excpt << "setupFEMB: FEMB "
         << iFEMB
-        << " base should be 0 or 1 is: "
-        << base;
+        << " baselineHigh should be 0 or 1 is: "
+        << baselineHigh;
     throw excpt;
   }
   if (leakHigh > 1)
@@ -483,7 +483,7 @@ void WIBReader::setupFEMB(size_t iFEMB, fhicl::ParameterSet const& FEMB_config, 
     throw excpt;
   }
 
-  std::vector<uint32_t> fe_config = {gain,shape,base,leakHigh,leak10X,acCouple,buffer,extClk};
+  std::vector<uint32_t> fe_config = {gain,shape,baselineHigh,leakHigh,leak10X,acCouple,buffer,extClk};
 
   wib->ConfigFEMB(iFEMB, fe_config, clk_phases, pls_mode, pls_dac_val, start_frame_mode_sel, start_frame_swap);
 

@@ -13,21 +13,21 @@ femb_config_default: {
   fake_word: 0xFEB # 12 bits
   
   # FE gain value select
-  gain: 3
+  gain: 3 # 0 (4.7 mV/fC), 1 (7.8 mV/fC), 2 (14 mV/fC), 3 (25 mV/fC)
   # FE shaping time select
-  shape: 3
+  shape: 3 # 0 (0.5 us), 1 (1 us), 2 (2 us), 3 (3 us)
   # FE baseline select (don't need to change)
-  base: 0
+  baselineHigh: 0 # 0 (200 mV), 1 (900 mV)
   # 1 for 500 pA FE leakage current, 0 for 100 pA (don't need to change)
-  leakHigh: 0
+  leakHigh: 1 # 0 (100 pA), 1 (500 pA)
   # 1 for 10x FE leakage current, 0 for 1x
-  leak10X: 0
+  leak10X: 0 # (if 1, multiply leakage by 10)
   # 1 for AC coupling between FE and ADC channels, 0 for DC coupling
-  acCouple: 0
+  acCouple: 0 # 0 (DC coupling), 1 (AC coupling)
   # 1 to use FE output buffer, 0 to bypass
-  buffer: 0
+  buffer: 0 # 0 (bypass), 1 (use buffer)
   # 0 to use ADC ASIC internal clocking, 1 to use external FPGA clocking
-  extClk: 1
+  extClk: 1 # Almost always want 1
 
   # List of 32 bit ADC FIFO clock phases, will try each phase until header bits line up
   clk_phases: [0xFFFF,0xFDFF,0xEFEF,0xBFBF,0xBDFF]
@@ -62,7 +62,7 @@ wib_config: {
       # FEMB register map
       femb_table: "PDUNE_FEMB_323.adt"
       # this must match the WIB firmware version (hex)
-      expected_wib_fw_version: 0x18030101
+      expected_wib_fw_version: 0x18032901
       # this must match the WIB firmware version
       expected_daq_mode: "any" # "RCE", "FELIX", or "any"
 
@@ -76,7 +76,7 @@ wib_config: {
       # Where to get the timing system input from
       DTS_source: 0 # 0 back plane, 1 front panel
       # Which timing system partion or "timing group" to use
-      DTS_partition: 1
+      partition_number: 2
 
       # if true, power up and configure FEMBs, else power down and don't configure
       enable_FEMBs: [true,true,true,true] # list of 4 bools
