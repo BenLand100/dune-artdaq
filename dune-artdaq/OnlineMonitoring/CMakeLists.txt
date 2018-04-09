@@ -18,6 +18,4 @@ art_make( LIBRARY_NAME  OnlineMonitoring
 			${Boost_FILESYSTEM_LIBRARY}
 			${Boost_SYSTEM_LIBRARY}
 	  MODULE_LIBRARIES OnlineMonitoring
-  	  		   # dune-artdaq_RCConnection
-  	    		   # dune-artdaq_I3JSON
 )
