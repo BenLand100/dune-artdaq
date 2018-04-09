@@ -81,10 +81,6 @@ WIBReader::WIBReader(fhicl::ParameterSet const& ps) :
     wib->SetContinueOnFEMBSyncError(continueOnFEMBSyncError);
     wib->SetContinueIfListOfFEMBClockPhasesDontSync(continueIfListOfFEMBClockPhasesDontSync);
   
-    // Reset and setup clock
-    wib->ResetWIBAndCfgDTS(local_clock,partition_number,DTS_source);
-    std::this_thread::sleep_for(std::chrono::seconds(1));
-  
     // Check and print firmware version
     uint32_t wib_fw_version = wib->Read("SYSTEM.FW_VERSION");
   
@@ -168,6 +164,10 @@ WIBReader::WIBReader(fhicl::ParameterSet const& ps) :
       //dune::DAQLogger::LogInfo("WIBReader") << "Bogus WIB firmware DAQ mode "<< ((unsigned) daqMode);
     }
 
+    // Reset and setup clock
+    wib->ResetWIBAndCfgDTS(local_clock,partition_number,DTS_source);
+    std::this_thread::sleep_for(std::chrono::seconds(1));
+  
     // Configure WIB fake data enable and mode
     dune::DAQLogger::LogInfo("WIBReader") << "Configuring WIB Fake Data";
     dune::DAQLogger::LogInfo("WIBReader") << "Is Fake:"
