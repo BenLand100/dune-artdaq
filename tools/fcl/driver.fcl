@@ -4,6 +4,8 @@
 
 events_to_generate: 2
 run_number: 101
+transition_timeout: 30
+debug_cout: false
 
 fragment_receiver: {
 
@@ -25,10 +27,11 @@ fragment_receiver: {
 event_builder: {
 
   expected_fragments_per_event: 1
+  max_fragment_size_bytes: 100000000
+  buffer_count: 10
   use_art: true
   print_event_store_stats: false
-  verbose: false
-  events_expected_in_SimpleQueueReader: @local::events_to_generate
+  verbose: true
 }
 
 ######################################################################
@@ -50,44 +53,33 @@ physics:
       num_adcs_to_show: 10   # Obviously this should be no more than ADC counts per fragment
     }
 
-    # A RootApplication module is needed for the WFViewer module's graphics capabilities
-
-    app: {
-    module_type: RootApplication
-    force_new: true
-    }
-
-
-   wf: {
-    module_type: WFViewer
-
-    # Make sure there are as many fragment type labels as there are fragment IDs!
-
-    fragment_ids: @local::fragment_receiver.fragment_ids
-     fragment_type_labels: [ @local::fragment_receiver.fragment_type ]
-    prescale: 1
-    digital_sum_only: false
+    printBuildInfo: {
+      module_type: PrintBuildInfo 
+      buildinfo_module_label: BuildInfo 
+      buildinfo_instance_label: DuneArtdaq 
     }
 
   }
 
   producers:
   {
-    duneArtdaqBuildInfo:
+    BuildInfo:
     {
      module_type: DuneArtdaqBuildInfo
+     instance_name: DuneArtdaq
     }
   }   
 
 
-  p: [ duneArtdaqBuildInfo ] 
+  p0: [ BuildInfo ] 
+
+  a0: [ printBuildInfo]
 
   a1: [ toyDump ]
-  a2: [ app, wf ]
 
   e1: [ out1, rootout ]
 
-  end_paths: [ p, a1, e1 ]
+  end_paths: [ a1, e1, p0, a0]
 }
 
 outputs:
@@ -109,10 +101,9 @@ outputs:
 
 source:
 {
-module_type: RawInput
+module_type: DuneInput
 waiting_time: 900
 resume_after_timeout: true
-fragment_type_map: [[5, "TOY1"], [6, "TOY2"] ]
 }
 
 process_name: Driver
