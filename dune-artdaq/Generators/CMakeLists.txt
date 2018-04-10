@@ -106,7 +106,13 @@ simple_plugin(TimingReceiver "generator"
   dune-artdaq_DAQLogger
   ${UHAL_UHAL}
   ${UHAL_LOG}
+  ${PDT_CORE}
   )
+
+# The timing board reader #includes headers from uhal which generate
+# compiler warnings, so we need to turn off -Werror for just this target
+
+target_compile_options("dune-artdaq_Generators_TimingReceiver_generator" PRIVATE -Wno-error )
 
 if ( DEFINED ENV{WIB_DIRECTORY} )
 

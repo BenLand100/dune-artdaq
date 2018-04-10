@@ -83,16 +83,18 @@ find_ups_boost( v1_50_0 filesystem
  )
 find_ups_product( libxml2 v2_9_1a )
 find_ups_product( TRACE v3_07_00 )
+find_ups_product( protodune_timing v4_0_1 )
 
 set(netio_INCLUDE_DIR $ENV{NETIO_INC})
 #set(netio_INCLUDE_DIR "/nfs/sw/work_dirs/dune-artdaq-felix-dev2/products/netio/Linux64bit+3.10-2.17-e10-prof/include")
 set(netio_LIBRARY_DIR $ENV{NETIO_LIB}) #"/nfs/sw/work_dirs/dune-artdaq-felix-dev2/products/netio/Linux64bit+3.10-2.17-e10-prof/lib")
 
 # JM-A 2017/06/23 ###
-find_ups_product( uhal v2_4_2 ) 
+find_ups_product( uhal v2_6_0 ) 
 include_directories($ENV{UHAL_INC}/uhal)
 find_library( UHAL_UHAL NAMES cactus_uhal_uhal PATHS $ENV{UHAL_LIB})
 find_library( UHAL_LOG  NAMES cactus_uhal_log  PATHS $ENV{UHAL_LIB})
+find_library( PDT_CORE  NAMES protodune_pdt_core PATHS $ENV{PROTODUNE_TIMING_LIB})
 #####################
 
 # have to make sure cmake doesn't select the system libraries

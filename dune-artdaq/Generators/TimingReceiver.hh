@@ -29,6 +29,7 @@
 #include <chrono>
 
 #include "uhal/uhal.hpp"   // The real uhal
+#include "timingBoard/StatusPublisher.hh"
 
 
 //class testclass : private boost::noncopyable {
@@ -50,6 +51,10 @@ using namespace uhal;
 
 namespace dune {    
   class TimingFragment;   // Forward definition: trying to not need to include the overlay class header in this .hh file
+}
+
+namespace pdt {
+    class PartitionNode; // Forward definition
 }
 
 namespace dune {
@@ -126,29 +131,17 @@ namespace dune {
     uhal::HwInterface hw_;
 
 // Things that are Fhicl parameters
-    uint32_t poisson_;  // 0=Set fixed rate, 1= Poission distributed
-    uint32_t divider_;  // The divider to get the rate = 50MHz/2**(12+divider_)   [e.g. 0xb=5.9Hz]
+    uint32_t partition_number_; // The partition number we're talking to
     uint32_t debugprint_;  // Controls the printing of stuff as info messages. 
                            // 0=minimal, 
                            // 1=Also reports throttling changes that go to hardware, 
                            // 2=calls the bufstatus and hwstatus during init, 
                            // 3=Debug message for each trigger and all throttling data
-    uint32_t initsoftness_; // Controls whether some of the initialisation sequence is bypassed to
-                            // workaround inability of other systems (e.g. WIB) to recover from a
-                            // clock reset quickly.
-                            // 0 = full reset, 3 =  just read a few things, 4 = bypass initialisation completely
-    uint32_t startaltern_;  // Alternate start (default is 0: 0=from pdtbutler 20170920, 1= Original from 201705)
-    uint32_t fw_version_active_;   // Default 3 for v3c, Activiate v5e features by setting to 5
-    uint32_t fake_spill_cycle_;   //
-    uint32_t fake_spill_length_;    // If zero, means no fake spills
-    uint32_t main_trigger_enable_; // Enable triggers from trigger board (penn)
-    uint32_t calib_trigger_enable_; // Enable internal triggers (will become calib triggers)
     uint32_t trigger_mask_;         // Trigger mask (not used yet)
-    uint32_t partition_;            // Partition number of this partition [Partition 0 controls 
-                                    // the overall functions]
     uint32_t end_run_wait_;         // Number of microsecs to wait at the end of a run before looking for last event
 
     std::string zmq_conn_;  // String specifying the zmq connection to subscribe for inhibit information
+    std::string zmq_conn_out_;  // String specifying the zmq connection we will send our inhibit information to
 
 // Things for metrics (need to use int because the metrics send class signature uses 'int')
     int met_event_;    // Current event
@@ -159,10 +152,14 @@ namespace dune {
     int met_rintmax_;  // Max interval between events this run
     int met_sintmax_;  // Max interval between events this spill
 
+    std::unique_ptr<artdaq::StatusPublisher> status_publisher_;
 // Internal functions
     void reset_met_variables(bool onlyspill=false);   // If onlyspill, only reset the in-spill variables
     void update_met_variables(dune::TimingFragment& fo); // Update variables for met
     void send_met_variables();    // Send the variables to the metrics system
+    void fiddle_trigger_mask();  // Modify the trigger mask so we only see triggers in our partition
+    // TODO: Should this be const?
+    const pdt::PartitionNode& master_partition();
   };
 }
 
