@@ -349,12 +349,12 @@ void WIBReader::setupFEMB(size_t iFEMB, fhicl::ParameterSet const& FEMB_config, 
         << shape;
     throw excpt;
   }
-  if (baselineHigh > 1)
+  if (baselineHigh > 2)
   {
     cet::exception excpt("WIBReader");
     excpt << "setupFEMB: FEMB "
         << iFEMB
-        << " baselineHigh should be 0 or 1 is: "
+        << " baselineHigh should be 0 or 1 or 2 is: "
         << baselineHigh;
     throw excpt;
   }
@@ -506,7 +506,7 @@ void WIBReader::stop() {
 
 // Called by BoardReaderMain in a loop between "start" and "stop"
 bool WIBReader::getNext_(artdaq::FragmentPtrs& /*frags*/) {
-  dune::DAQLogger::LogInfo("WIBReader") <<"getNext_()";
+  //dune::DAQLogger::LogInfo("WIBReader") <<"getNext_()";
   if(artdaq::Globals::metricMan_ != nullptr) {
     //sendMetric(const string&, const int&, const string&,   int,                bool,    const string&,                         bool)
     //                    name,      value,         units, level, average values=true,        prefix="",   don't apply prefixes=false
