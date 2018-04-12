@@ -60,9 +60,9 @@ void SSPDAQ::DeviceInterface::Initialize(){
   this->Stop();
 
   //Reset timing endpoint
-  SSPDAQ::RegMap& duneReg=SSPDAQ::RegMap::Get();
-  fDevice->DeviceWrite(duneReg.pdts_control, 0x80000000);
-  fDevice->DeviceWrite(duneReg.pdts_control, 0x00000000);
+  //  SSPDAQ::RegMap& duneReg=SSPDAQ::RegMap::Get();
+  //fDevice->DeviceWrite(duneReg.pdts_control, 0x80000000);
+  //fDevice->DeviceWrite(duneReg.pdts_control, 0x00000000);
 }
 
 void SSPDAQ::DeviceInterface::Stop(){
