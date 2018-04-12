@@ -46,30 +46,33 @@ WIBReader::WIBReader(fhicl::ParameterSet const& ps) :
   auto enable_FEMBs = ps.get<std::vector<bool> >("WIB.config.enable_FEMBs");
   auto FEMB_configs = ps.get<std::vector<fhicl::ParameterSet> >("WIB.config.FEMBs");
 
+  identification = "WIB ";
+  identification.append(wib_address);
+
   if (use_WIB_fake_data.size() != 4)
   {
-    cet::exception excpt("WIBReader");
+    cet::exception excpt(identification);
     excpt << "Length of WIB.config.use_WIB_fake_data must be 4, not: " << use_WIB_fake_data.size();
     throw excpt;
   }
 
   if (FEMB_configs.size() != 4)
   {
-    cet::exception excpt("WIBReader");
+    cet::exception excpt(identification);
     excpt << "Length of WIB.config.FEMBs must be 4, not: " << FEMB_configs.size();
     throw excpt;
   }
 
   if(partition_number > 15)
   {
-    cet::exception excpt("WIBReader");
+    cet::exception excpt(identification);
     excpt << "partition_number must be 0-15, not: " << partition_number;
     throw excpt;
   }
 
   try
   {
-    dune::DAQLogger::LogInfo("WIBReader") << "Connecting to WIB at " <<  wib_address;
+    dune::DAQLogger::LogInfo(identification) << "Connecting to WIB at " <<  wib_address;
     wib = std::make_unique<WIB>( wib_address, wib_table, femb_table );
 
     // Set DIM do-not-disturb
@@ -84,7 +87,7 @@ WIBReader::WIBReader(fhicl::ParameterSet const& ps) :
     // Check and print firmware version
     uint32_t wib_fw_version = wib->Read("SYSTEM.FW_VERSION");
   
-    dune::DAQLogger::LogInfo("WIBReader") << "WIB Firmware Version: 0x" 
+    dune::DAQLogger::LogInfo(identification) << "WIB Firmware Version: 0x" 
           << std::hex << std::setw(8) << std::setfill('0')
           <<  wib_fw_version
           << " Synthesized: " 
@@ -105,7 +108,7 @@ WIBReader::WIBReader(fhicl::ParameterSet const& ps) :
   
     if (expected_wib_fw_version != wib_fw_version)
     {
-      cet::exception excpt("WIBReader");
+      cet::exception excpt(identification);
       excpt << "WIB Firmware version is "
           << std::hex << std::setw(8) << std::setfill('0')
           << wib_fw_version
@@ -117,51 +120,51 @@ WIBReader::WIBReader(fhicl::ParameterSet const& ps) :
     }
   
     // Check if WIB firmware is for RCE or FELIX DAQ
-    dune::DAQLogger::LogDebug("WIBReader") << "N DAQ Links: "  << wib->Read("SYSTEM.DAQ_LINK_COUNT");
-    dune::DAQLogger::LogDebug("WIBReader") << "N FEMB Ports: "  << wib->Read("SYSTEM.FEMB_COUNT");
+    dune::DAQLogger::LogDebug(identification) << "N DAQ Links: "  << wib->Read("SYSTEM.DAQ_LINK_COUNT");
+    dune::DAQLogger::LogDebug(identification) << "N FEMB Ports: "  << wib->Read("SYSTEM.FEMB_COUNT");
     WIB::WIB_DAQ_t daqMode = wib->GetDAQMode();
   
     if (daqMode == WIB::RCE)
     {
-      dune::DAQLogger::LogInfo("WIBReader") << "WIB Firmware setup for RCE DAQ Mode";
+      dune::DAQLogger::LogInfo(identification) << "WIB Firmware setup for RCE DAQ Mode";
       if(expected_daq_mode != "RCE" &&
          expected_daq_mode != "rce" && 
          expected_daq_mode != "ANY" && 
          expected_daq_mode != "any"
         )
       {
-          cet::exception excpt("WIBReader");
+          cet::exception excpt(identification);
           excpt << "WIB Firmware setup in RCE mode, but expect '"<< expected_daq_mode <<"' mode in fcl";
           throw excpt;
       }
     }
     else if (daqMode == WIB::FELIX)
     {
-      dune::DAQLogger::LogInfo("WIBReader") << "WIB Firmware setup for FELIX DAQ Mode";
+      dune::DAQLogger::LogInfo(identification) << "WIB Firmware setup for FELIX DAQ Mode";
       if(expected_daq_mode != "FELIX" && 
          expected_daq_mode != "felix" &&
          expected_daq_mode != "ANY" &&
          expected_daq_mode != "any"
         )
       {
-          cet::exception excpt("WIBReader");
+          cet::exception excpt(identification);
           excpt << "WIB Firmware setup in FELIX mode, but expect '"<< expected_daq_mode <<"' mode in fcl";
           throw excpt;
       }
     }
     else if (daqMode == WIB::UNKNOWN)
     {
-      cet::exception excpt("WIBReader");
+      cet::exception excpt(identification);
       excpt << "WIB Firmware DAQ setup UNKNOWN";
       throw excpt;
-      //dune::DAQLogger::LogInfo("WIBReader") << "WIB Firmware DAQ setup UNKNOWN";
+      //dune::DAQLogger::LogInfo(identification) << "WIB Firmware DAQ setup UNKNOWN";
     }
     else
     {
-      cet::exception excpt("WIBReader");
+      cet::exception excpt(identification);
       excpt << "Bogus WIB firmware DAQ mode "<< ((unsigned) daqMode);
       throw excpt;
-      //dune::DAQLogger::LogInfo("WIBReader") << "Bogus WIB firmware DAQ mode "<< ((unsigned) daqMode);
+      //dune::DAQLogger::LogInfo(identification) << "Bogus WIB firmware DAQ mode "<< ((unsigned) daqMode);
     }
 
     // Reset and setup clock
@@ -169,8 +172,8 @@ WIBReader::WIBReader(fhicl::ParameterSet const& ps) :
     std::this_thread::sleep_for(std::chrono::seconds(1));
   
     // Configure WIB fake data enable and mode
-    dune::DAQLogger::LogInfo("WIBReader") << "Configuring WIB Fake Data";
-    dune::DAQLogger::LogInfo("WIBReader") << "Is Fake:"
+    dune::DAQLogger::LogInfo(identification) << "Configuring WIB Fake Data";
+    dune::DAQLogger::LogInfo(identification) << "Is Fake:"
                                           << " FEMB1: " << use_WIB_fake_data.at(0)
                                           << " FEMB2: " << use_WIB_fake_data.at(1)
                                           << " FEMB3: " << use_WIB_fake_data.at(2)
@@ -191,22 +194,22 @@ WIBReader::WIBReader(fhicl::ParameterSet const& ps) :
 
         if(enable_FEMB_fake_data)
         {
-          dune::DAQLogger::LogInfo("WIBReader") << "Setting up FEMB "<<iFEMB<<" for fake data";
+          dune::DAQLogger::LogInfo(identification) << "Setting up FEMB "<<iFEMB<<" for fake data";
           setupFEMBFakeData(iFEMB,FEMB_config,continueOnFEMBRegReadError);
         }
         else
         {
-          dune::DAQLogger::LogInfo("WIBReader") << "Setting up FEMB"<<iFEMB;
+          dune::DAQLogger::LogInfo(identification) << "Setting up FEMB"<<iFEMB;
           setupFEMB(iFEMB,FEMB_config,continueOnFEMBRegReadError);
         }
       }
       else
       {
-        dune::DAQLogger::LogInfo("WIBReader") << "FEMB"<<iFEMB<<" not enabled";
+        dune::DAQLogger::LogInfo(identification) << "FEMB"<<iFEMB<<" not enabled";
       }
     }
 
-    dune::DAQLogger::LogInfo("WIBReader") << "Enabling DAQ links";
+    dune::DAQLogger::LogInfo(identification) << "Enabling DAQ links";
     wib->StartStreamToDAQ();
   
     // Un-set DIM do-not-disturb
@@ -215,14 +218,14 @@ WIBReader::WIBReader(fhicl::ParameterSet const& ps) :
   } // try
   catch (const BUException::exBase& exc)
   {
-    cet::exception excpt("WIBReader");
+    cet::exception excpt(identification);
     excpt << "Unhandled BUException: "
         << exc.what()
         << ": "
         << exc.Description();
     throw excpt;
   }
-  dune::DAQLogger::LogInfo("WIBReader") << "Configured WIB";
+  dune::DAQLogger::LogInfo(identification) << "Configured WIB";
 }
 
 void WIBReader::setupFEMBFakeData(size_t iFEMB, fhicl::ParameterSet const& FEMB_config, bool continueOnFEMBRegReadError) {
@@ -233,14 +236,14 @@ void WIBReader::setupFEMBFakeData(size_t iFEMB, fhicl::ParameterSet const& FEMB_
 
   if(wib->ReadFEMB(iFEMB,"VERSION_ID") == wib->ReadFEMB(iFEMB,"SYS_RESET")) { // can't read register if equal
     if(continueOnFEMBRegReadError){
-      dune::DAQLogger::LogWarning("WIBReader") << "Warning: Can't read registers from FEMB " << int(iFEMB) << ". Powering it down and continuing on to others";
+      dune::DAQLogger::LogWarning(identification) << "Warning: Can't read registers from FEMB " << int(iFEMB) << ". Powering it down and continuing on to others";
       wib->FEMBPower(iFEMB,0);
       return;
     }
     else
     {
       wib->FEMBPower(iFEMB,0);
-      cet::exception excpt("WIBReader");
+      cet::exception excpt(identification);
       excpt << "Can't read registers from FEMB " << int(iFEMB);
       throw excpt;
     }
@@ -250,7 +253,7 @@ void WIBReader::setupFEMBFakeData(size_t iFEMB, fhicl::ParameterSet const& FEMB_
   uint32_t femb_fw_version = wib->ReadFEMB(iFEMB,"VERSION_ID");
   if (expected_femb_fw_version != femb_fw_version)
   {
-    cet::exception excpt("WIBReader");
+    cet::exception excpt(identification);
     excpt << "FEMB" << iFEMB << " Firmware version is "
         << std::hex << std::setw(8) << std::setfill('0')
         << femb_fw_version
@@ -278,7 +281,7 @@ void WIBReader::setupFEMBFakeData(size_t iFEMB, fhicl::ParameterSet const& FEMB_
     fake_waveform = FEMB_config.get<std::vector<uint32_t> >("fake_waveform");
     if (fake_waveform.size() != 255)
     {
-      cet::exception excpt("WIBReader");
+      cet::exception excpt(identification);
       excpt << "setupFEMBFakeData: FEMB "
           << iFEMB
           << " fake_waveform must be 255 long, but is "
@@ -297,7 +300,7 @@ void WIBReader::setupFEMBFakeData(size_t iFEMB, fhicl::ParameterSet const& FEMB_
   }
   else
   {
-    cet::exception excpt("WIBReader");
+    cet::exception excpt(identification);
     excpt << "FEMB" << iFEMB << " fake_data_select is \""
         << fakeDataSelect
         <<"\" but expect "
@@ -333,7 +336,7 @@ void WIBReader::setupFEMB(size_t iFEMB, fhicl::ParameterSet const& FEMB_config, 
 
   if (gain > 3)
   {
-    cet::exception excpt("WIBReader");
+    cet::exception excpt(identification);
     excpt << "setupFEMB: FEMB "
         << iFEMB
         << " gain shouldn't be larger than 3 is: "
@@ -342,7 +345,7 @@ void WIBReader::setupFEMB(size_t iFEMB, fhicl::ParameterSet const& FEMB_config, 
   }
   if (shape > 3)
   {
-    cet::exception excpt("WIBReader");
+    cet::exception excpt(identification);
     excpt << "setupFEMB: FEMB "
         << iFEMB
         << " shape shouldn't be larger than 3 is: "
@@ -351,7 +354,7 @@ void WIBReader::setupFEMB(size_t iFEMB, fhicl::ParameterSet const& FEMB_config, 
   }
   if (baselineHigh > 2)
   {
-    cet::exception excpt("WIBReader");
+    cet::exception excpt(identification);
     excpt << "setupFEMB: FEMB "
         << iFEMB
         << " baselineHigh should be 0 or 1 or 2 is: "
@@ -360,7 +363,7 @@ void WIBReader::setupFEMB(size_t iFEMB, fhicl::ParameterSet const& FEMB_config, 
   }
   if (leakHigh > 1)
   {
-    cet::exception excpt("WIBReader");
+    cet::exception excpt(identification);
     excpt << "setupFEMB: FEMB "
         << iFEMB
         << " leakHigh should be 0 or 1 is: "
@@ -369,7 +372,7 @@ void WIBReader::setupFEMB(size_t iFEMB, fhicl::ParameterSet const& FEMB_config, 
   }
   if (leak10X > 1)
   {
-    cet::exception excpt("WIBReader");
+    cet::exception excpt(identification);
     excpt << "setupFEMB: FEMB "
         << iFEMB
         << " leak10X should be 0 or 1 is: "
@@ -378,7 +381,7 @@ void WIBReader::setupFEMB(size_t iFEMB, fhicl::ParameterSet const& FEMB_config, 
   }
   if (acCouple > 1)
   {
-    cet::exception excpt("WIBReader");
+    cet::exception excpt(identification);
     excpt << "setupFEMB: FEMB "
         << iFEMB
         << " acCouple should be 0 or 1 is: "
@@ -387,7 +390,7 @@ void WIBReader::setupFEMB(size_t iFEMB, fhicl::ParameterSet const& FEMB_config, 
   }
   if (buffer > 1)
   {
-    cet::exception excpt("WIBReader");
+    cet::exception excpt(identification);
     excpt << "setupFEMB: FEMB "
         << iFEMB
         << " buffer should be 0 or 1 is: "
@@ -396,7 +399,7 @@ void WIBReader::setupFEMB(size_t iFEMB, fhicl::ParameterSet const& FEMB_config, 
   }
   if (extClk > 1)
   {
-    cet::exception excpt("WIBReader");
+    cet::exception excpt(identification);
     excpt << "setupFEMB: FEMB "
         << iFEMB
         << " extClk should be 0 or 1 is: "
@@ -405,7 +408,7 @@ void WIBReader::setupFEMB(size_t iFEMB, fhicl::ParameterSet const& FEMB_config, 
   }
   if (clk_phases.size() == 0)
   {
-    cet::exception excpt("WIBReader");
+    cet::exception excpt(identification);
     excpt << "setupFEMB: FEMB "
         << iFEMB
         << " clk_phases size should be > 0 ";
@@ -413,7 +416,7 @@ void WIBReader::setupFEMB(size_t iFEMB, fhicl::ParameterSet const& FEMB_config, 
   }
   if (pls_mode > 2)
   {
-    cet::exception excpt("WIBReader");
+    cet::exception excpt(identification);
     excpt << "setupFEMB: FEMB "
         << iFEMB
         << " pls_mode should be 0 (off) 1 (FE ASIC internal) or 2 (FPGA external) is: "
@@ -422,7 +425,7 @@ void WIBReader::setupFEMB(size_t iFEMB, fhicl::ParameterSet const& FEMB_config, 
   }
   if ((pls_mode == 1 && pls_dac_val > 63) || (pls_mode == 2 && pls_dac_val > 31))
   {
-    cet::exception excpt("WIBReader");
+    cet::exception excpt(identification);
     excpt << "setupFEMB: FEMB "
         << iFEMB
         << " pls_dac_val should be 0-31 in pls_mode 1 or 0-63 in pls_mode 2."
@@ -432,7 +435,7 @@ void WIBReader::setupFEMB(size_t iFEMB, fhicl::ParameterSet const& FEMB_config, 
   }
   if (start_frame_mode_sel > 1)
   {
-    cet::exception excpt("WIBReader");
+    cet::exception excpt(identification);
     excpt << "setupFEMB: FEMB "
         << iFEMB
         << " start_frame_mode_sel should be 0 or 1 is: "
@@ -441,7 +444,7 @@ void WIBReader::setupFEMB(size_t iFEMB, fhicl::ParameterSet const& FEMB_config, 
   }
   if (start_frame_swap > 1)
   {
-    cet::exception excpt("WIBReader");
+    cet::exception excpt(identification);
     excpt << "setupFEMB: FEMB "
         << iFEMB
         << " start_frame_swap should be 0 or 1 is: "
@@ -456,14 +459,14 @@ void WIBReader::setupFEMB(size_t iFEMB, fhicl::ParameterSet const& FEMB_config, 
 
   if(wib->ReadFEMB(iFEMB,"VERSION_ID") == wib->ReadFEMB(iFEMB,"SYS_RESET")) { // can't read register if equal
     if(continueOnFEMBRegReadError){
-      dune::DAQLogger::LogWarning("WIBReader") << "Warning: Can't read registers from FEMB " << int(iFEMB) << ". Powering it down and continuing on to others";
+      dune::DAQLogger::LogWarning(identification) << "Warning: Can't read registers from FEMB " << int(iFEMB) << ". Powering it down and continuing on to others";
       wib->FEMBPower(iFEMB,0);
       return;
     }
     else
     {
       wib->FEMBPower(iFEMB,0);
-      cet::exception excpt("WIBReader");
+      cet::exception excpt(identification);
       excpt << "Can't read registers from FEMB " << int(iFEMB);
       throw excpt;
     }
@@ -472,7 +475,7 @@ void WIBReader::setupFEMB(size_t iFEMB, fhicl::ParameterSet const& FEMB_config, 
   uint32_t femb_fw_version = wib->ReadFEMB(iFEMB,"VERSION_ID");
   if (expected_femb_fw_version != femb_fw_version)
   {
-    cet::exception excpt("WIBReader");
+    cet::exception excpt(identification);
     excpt << "FEMB" << iFEMB << " Firmware version is "
         << std::hex << std::setw(8) << std::setfill('0')
         << femb_fw_version

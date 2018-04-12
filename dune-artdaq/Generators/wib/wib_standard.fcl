@@ -23,7 +23,7 @@ femb_config_default: {
   # 1 for 10x FE leakage current, 0 for 1x
   leak10X: 0 # (if 1, multiply leakage by 10)
   # 1 for AC coupling between FE and ADC channels, 0 for DC coupling
-  acCouple: 1 # 0 (DC coupling), 1 (AC coupling)
+  acCouple: 0 # 0 (DC coupling), 1 (AC coupling)
   # 1 to use FE output buffer, 0 to bypass
   buffer: 0 # 0 (bypass), 1 (use buffer)
   # 0 to use ADC ASIC internal clocking, 1 to use external FPGA clocking
