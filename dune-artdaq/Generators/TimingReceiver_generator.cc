@@ -1,8 +1,9 @@
 //################################################################################
 //# /*
-//#        TimingReceiver_generato.cpp
+//#        TimingReceiver_generator.cpp
 //#
-//#  Giles Barr, Justo Martin-Albo, Farrukh Azfar, Jan 2017,  May 2017 
+//#  Giles Barr, Justo Martin-Albo, Farrukh Azfar, Philip Rodrigues
+//#  Jan 2017,  May 2017, Mar 2018
 //#  for ProtoDUNE
 //# */
 //################################################################################
@@ -10,14 +11,11 @@
 #include "dune-artdaq/Generators/TimingReceiver.hh"
 #include "dune-artdaq/DAQLogger/DAQLogger.hh"
 
-//:#include "canvas/Utilities/Exception.h"
 #include "artdaq/Application/GeneratorMacros.hh"
 #include "cetlib/exception.h"
 #include "dune-raw-data/Overlays/TimingFragment.hh"
 #include "dune-raw-data/Overlays/FragmentType.hh"
 #include "fhiclcpp/ParameterSet.h"
-//:#include "artdaq-core/Utilities/SimpleLookupPolicy.h"
-//:#include "messagefacility/MessageLogger/MessageLogger.h"
 
 #include <fstream>
 #include <iomanip>
@@ -29,9 +27,14 @@
 #include <vector>
 
 #include <unistd.h>
-#include "timingBoard/TimingSequence.hpp"  // Defs of the sequence functions of uhal commands for setup etc.
 
-#include "timingBoard/InhibitGet.h"
+#include <cstdio>
+
+#include "timingBoard/InhibitGet.h" // The interface to the ZeroMQ trigger inhibit master
+
+#include "pdt/PartitionNode.hpp" // The interface to a timing system
+                                 // partition, from the
+                                 // protodune_timing UPS product
 
 using namespace dune;
 
@@ -58,33 +61,27 @@ dune::TimingReceiver::TimingReceiver(fhicl::ParameterSet const & ps):
   ,connectionsFile_(ps.get<std::string>("connections_file", "/home/artdaq1/giles/a_vm_mbp/dune-artdaq/Generators/timingBoard/connections.xml"))
   ,bcmc_( "file://" + connectionsFile_ )   // a string (non-const)
   ,connectionManager_(bcmc_)
-  ,hw_(connectionManager_.getDevice(ps.get<std::string>("hardware_select","DUNE_PRIMARY")))
-  ,poisson_(ps.get<uint32_t>("poisson",0))
-  ,divider_(ps.get<uint32_t>("divider",0xb))
+  ,hw_(connectionManager_.getDevice(ps.get<std::string>("hardware_select","DUNE_SECONDARY")))
+  ,partition_number_(ps.get<uint32_t>("partition_number",0))
   ,debugprint_(ps.get<uint32_t>("debug_print",0))
-  ,initsoftness_(ps.get<uint32_t>("init_softness",0))
-  ,startaltern_(ps.get<uint32_t>("start_altern",0))
-  ,fw_version_active_(ps.get<uint32_t>("fw_version_active",3))
-  ,fake_spill_cycle_(ps.get<uint32_t>("fake_spill_cycle",100))
-  ,fake_spill_length_(ps.get<uint32_t>("fake_spill_length",50))
-  ,main_trigger_enable_(ps.get<uint32_t>("main_trigger_enable",0))
-  ,calib_trigger_enable_(ps.get<uint32_t>("calib_trigger_enable",1))
   ,trigger_mask_(ps.get<uint32_t>("trigger_mask",0xff))
-  ,partition_(ps.get<uint32_t>("partition_",0))
   ,end_run_wait_(ps.get<uint32_t>("end_run_wait",1000))
   ,zmq_conn_(ps.get<std::string>("zmq_connection","tcp://pddaq-gen05-daq0:5566"))
+  ,zmq_conn_out_(ps.get<std::string>("zmq_connection_out","tcp://*:5599"))
 {
 
     // TODO:
     // AT: Move hardware interface creation in here, for better exception handling
 
-    int board_id = 0; //:GB  ps.get<int>("board_id", 0);
     std::stringstream instance_name_ss;
-    instance_name_ss << instance_name_ << board_id;
+    instance_name_ss << instance_name_ << partition_number_;
     instance_name_ = instance_name_ss.str();
 
     if (inhibitget_timer_ == 0) inhibitget_timer_ = 2000000000;  // Zero inhibitget_timer waits infinite.
 
+    // PAR 2018-03-09: We don't do any pre-partition-setup steps in
+    // the board reader any more. They're done by the butler. I'm
+    // leaving the comment below for posterity though
     //
     // Dave N's message part 1:
     // The pre-partition-setup status needs to be:
@@ -95,12 +92,6 @@ dune::TimingReceiver::TimingReceiver(fhicl::ParameterSet const & ps):
     // - Command generators set up                       [done here] 
     // - Spills or fake spills enabled                   [wait for firmware upgrade]
 
-    // Set up clock chip etc on board
-    TimingSequence::hwinit(hw_,initsoftness_);
-    if (debugprint_ > 1) {
-      TimingSequence::hwstatus(hw_);
-      TimingSequence::bufstatus(hw_);
-    }
 
     // AT: Ensure that the hardware is up and running.
     // Check that the board is reachable
@@ -110,8 +101,9 @@ dune::TimingReceiver::TimingReceiver(fhicl::ParameterSet const & ps):
 
     // Match Fw version with configuration
     DAQLogger::LogInfo(instance_name_) << "Timing Master firmware version " << std::showbase << std::hex << (uint32_t)lVersion;
-    if ( lVersion != fw_version_active_ ) {
-      DAQLogger::LogWarning(instance_name_) << "Firmware version mismatch! Expected: " <<  fw_version_active_ << " detected: " << (uint32_t)lVersion;
+    uint32_t expected_fw_version=0x40006;
+    if ( lVersion != expected_fw_version ) {
+      DAQLogger::LogError(instance_name_) << "Firmware version mismatch! Expected: " << expected_fw_version << " detected: " << (uint32_t)lVersion;
     }
 
     // Measure the input clock frequency
@@ -131,13 +123,6 @@ dune::TimingReceiver::TimingReceiver(fhicl::ParameterSet const & ps):
       DAQLogger::LogError(instance_name_) << "Timing master clock out of expected range: " << lFrequency << " Hz. Has it been configured?";
     }
 
-    // Probably the two following commands are to be removed
-
-    // Command generators setup
-    hw_.getNode("master.scmd_gen.ctrl.en").write(1); //# Enable sync command generators
-    hw_.getNode("master.scmd_gen.chan_ctrl.en").write(0); //# Stop the command stream
-    hw_.dispatch();
-
     // Dave N's message part 2:
     // So a likely cold-start procedure for the partition (not the board!) would be:
     //
@@ -146,22 +131,30 @@ dune::TimingReceiver::TimingReceiver(fhicl::ParameterSet const & ps):
     // - Disable buffer                                  [done here, repeated at start()]
     // - Enable the partition                            [done here, repeated at start()]
     // - Set the command mask                            [done here, repeated at start()]
-    // - Enable triggers                                 [Not done until inhubit lifted (in get_next_())]
+    // - Enable triggers                                 [Not done until inhibit lifted (in get_next_())]
 
-    if (initsoftness_ < 5) {
-      hw_.getNode("master.partition.csr.ctrl.part_en").write(0); //# Disable partition 0
-    }
-    hw_.getNode("master.partition.csr.ctrl.trig_en").write(0); // Disable triggers
-    hw_.getNode("master.partition.csr.ctrl.buf_en").write(0); // Disable buffer
-    hw_.dispatch();
 
-    hw_.getNode("master.partition.csr.ctrl.part_en").write(1); //# Enable partition 0
-    hw_.getNode("master.partition.csr.ctrl.cmd_mask").write(0x0f); //# Set command mask in partition 0
-    hw_.dispatch();
+    // Modify the trigger mask so we only see fake triggers in our own partition
+    fiddle_trigger_mask();
 
-    // Set up connection to Inhibit Master
+    // arguments to enable() are whether to enable and whether to
+    // dispatch() respectively
+    master_partition().enable(0, true);
+    master_partition().stop();
+    master_partition().enable(1, true);
+    master_partition().writeTriggerMask(trigger_mask_);
+
+    // Set up connection to Inhibit Master. This is the inbound
+    // connection (ie, InhibitMaster talks to us to say whether we
+    // should enable triggers)
     InhibitGet_init(zmq_conn_.c_str(),inhibitget_timer_);
 
+    // Set up outgoing connection to InhibitMaster: this is where we
+    // broadcast whether we're happy to take triggers
+    status_publisher_.reset(new artdaq::StatusPublisher(instance_name_, zmq_conn_out_));
+    status_publisher_->BindPublisher();
+    // TODO: Do we really need to sleep here to wait for the socket to bind?
+    usleep(2000000);
     DAQLogger::LogInfo(instance_name_) << "Done configure (end of constructor)\n";
 }
 
@@ -181,48 +174,28 @@ void dune::TimingReceiver::start(void)
     // - Enable the partition                            [done here]
     // - Set the command mask                            [done here]
 
+    // These are the steps taken by pdtbutler's `configure` command
+    master_partition().reset();
+    master_partition().writeTriggerMask(trigger_mask_);
+    master_partition().enable(1);
+
     // Dave N's message part 3
     // To start a run (assuming that no data has been read out between runs):
     //
-    // - Disable buffer                                  [done here]        
-    // - Enable buffer                                   [done here]
-    // - Set run_req                                     [not done, needs newer firmware]
-    // - Wait for run_stat to go high                    [not done, needs newer firmware]
+    // - Disable buffer                                  [done by master_partition().start()]
+    // - Enable buffer                                   [done by master_partition().start()]
+    // - Set run_req                                     [done by master_partition().start()]
+    // - Wait for run_stat to go high                    [done by master_partition().start()]
 
-    hw_.getNode("master.partition.csr.ctrl.part_en").write(1); //# Enable partition 0
-    hw_.getNode("master.partition.csr.ctrl.cmd_mask").write(0x0f); //# Set command mask in partition 0
-    hw_.getNode("master.partition.csr.ctrl.buf_en").write(0); //# Disable buffer in partition 0
-    hw_.dispatch();
 
-    hw_.getNode("master.partition.csr.ctrl.buf_en").write(1); //# Enable buffer in partition 0
-    // Next firmware cycle, add set run_req
-    hw_.dispatch();
-
-    // Next firmware cycle, add wait for run_stat
-
-    // From pdtbutler::trigger function
-    if (calib_trigger_enable_ != 0) {
-      hw_.getNode("master.scmd_gen.chan_ctrl.type").write(3); //# Set command type = 3 for generator 0
-      uint32_t rate = (divider_ > 0xf) ? 0xf : divider_;              // Allow 0x0 -> 0xf
-      hw_.getNode("master.scmd_gen.chan_ctrl.rate_div").write(rate); //# Set about 1Hz rate for generator 0
-      uint32_t pat = (poisson_ != 0) ? 1 : 0;
-      hw_.getNode("master.scmd_gen.chan_ctrl.patt").write(pat); //# Set Poisson mode for generator 0
-      hw_.dispatch();
-      //echo( "> Setting trigger rate to {:.3e} Hz".format((50e6/(1<<(12+divider)))))
-      //echo( "> Trigger spacing mode:" + {False: 'equally spaced', True: 'poisson'}[poisson] )
-
-      hw_.getNode("master.scmd_gen.chan_ctrl.en").write(1); //# Start the command stream
-      hw_.dispatch();
+    try{
+        master_partition().start();
+    } catch(pdt::RunRequestTimeoutExpired& e){
+        // TODO TODO TODO: What do I do here to notify artdaq that
+        // it's all gone pear-shaped?
     }
 
-    if (debugprint_ > 1) {
-      TimingSequence::bufstatus(hw_);
-    }
     InhibitGet_retime(inhibitget_timer_);
-
-    // This is not the final enable.  That is done in getNext_() below. 
-    // hw_.getNode("master.scmd_gen.chan_ctrl.en").write(1);
-    // hw_.dispatch();
 
     this->reset_met_variables(false);
 }
@@ -275,9 +248,23 @@ bool dune::TimingReceiver::getNext_(artdaq::FragmentPtrs &frags)
 
     // Check for stop run
     if (stopping_state_ == 0 && stopping_flag_ != 0) {
-      // hw_.getNode("master.partition.csr.ctrl.part_en").write(0); // Disable the run first (stops)
-      hw_.getNode("master.partition.csr.ctrl.trig_en").write(0); // Now unset the trigger_enable (XOFF)
-
+      // Stop the run, disable buffer and triggers
+      master_partition().stop();
+      // Disable the partition.
+      //
+      // PAR 2018-03-08 Quoth Dave on slack:
+      //
+      // """
+      // I don’t think you ever want to disable the partition Stopping
+      // the run should be enough If you stop the partition,
+      // timestamps will stop gooing to the endpoints, and everything
+      // will instantly go out of sync.
+      // The basic ‘master control’ is run start / stop
+      // """
+      // 
+      // So we won't disable the partition here
+      // master_partition().enable(0, true);
+      
     // Order is first (1) disable trig_en, (2) request run stop, (3) wait for run to stop, (4) check no more to read from buffer, (5) disable buff, (6) disable part
 
       hw_.dispatch();
@@ -288,12 +275,22 @@ bool dune::TimingReceiver::getNext_(artdaq::FragmentPtrs &frags)
                               // after a run has stopped
     }
 
-    // Check for new event data
-    ValWord<uint32_t> valr = hw_.getNode("master.partition.buf.count").read();  // Can be max 65536 
-          // TODO: Make "master.partition" a parameter so we can change partition, or use on an endpoint
-    hw_.dispatch();
-    // std::cout << "valr " << valr << std::endl;
-    unsigned int havedata = (valr.value() > 5);   // Wait for a complete event - 6 words TODO: Not hardwired length
+    // We send goodness/badness every go round of the getNext_()
+    // loop. Wes says this is fine (no need to only send on
+    // change). Also, we're safe from rapidly oscillating between warn
+    // and not-warn because the register in the timing board has some
+    // hysteresis
+    if(master_partition().readROBWarningOverflow()){
+        // Tell the InhibitMaster that we want to stop triggers, then
+        // carry on with this iteration of the loop
+        DAQLogger::LogInfo(instance_name_) << "buf_warn is high. Requesting InhibitMaster to stop triggers";
+        status_publisher_->PublishBadStatus();
+    }
+    else{
+        status_publisher_->PublishGoodStatus();
+    }
+
+    unsigned int havedata = (master_partition().numEventsInBuffer()>0);   // Wait for a complete event
     if (havedata) timeout = 1;  // If we have data, we don't wait around in case there is more or a throttle
 
     // TODO: Consider moving throttling check up here; as it is, we could receive a huge rate of events even though we
@@ -306,8 +303,7 @@ bool dune::TimingReceiver::getNext_(artdaq::FragmentPtrs &frags)
         std::unique_ptr<artdaq::Fragment> f = artdaq::Fragment::FragmentBytes( TimingFragment::size()*sizeof(uint32_t));
 
         // Read the data from the hardware
-        ValVector<uint32_t> uwords = hw_.getNode("master.partition.buf.data").readBlock(6);  
-        hw_.dispatch();
+	std::vector<uint32_t> uwords = master_partition().readEvents(1);
 
 #ifdef SEPARATE_DEBUG
         uint32_t word[6];  // Declare like this if we want a local variable instead of putting it straight in the fragmenti
@@ -353,8 +349,16 @@ bool dune::TimingReceiver::getNext_(artdaq::FragmentPtrs &frags)
       }  // end while
     } else if (stopping_state_ > 0) { // We now know there is no more data at the stop
       stopping_state_ = 2;            // This causes return to be false (no more data)
-      hw_.getNode("master.partition.csr.ctrl.buf_en").write(0); //# Disable buffer in partition 0
-      hw_.dispatch();
+      // We used to disable the buffer here, but Dave on slack, 2018-03-08:
+      // """
+      // Likewise, not clear why we’d ever want to run with buf_en
+      // disabled, it’s really there so you can make sure the buffer
+      // is clear at run start
+      //
+      // ie. toggle it low then high before starting a run
+      // """
+      //
+      // So now we don't disable the buffer
       DAQLogger::LogInfo(instance_name_) << "Fragment generator returning clean run stop and end of data";
       break;
     } else {
@@ -387,8 +391,7 @@ bool dune::TimingReceiver::getNext_(artdaq::FragmentPtrs &frags)
                                            << " to trig_en.  [Throttling state was " << throttling_state_
                                            << "] (1 means enabled)\n";
       }
-      hw_.getNode("master.partition.csr.ctrl.trig_en").write(bit);  // Set XOFF or XON as requested
-      hw_.dispatch();
+      master_partition().enableTriggers(bit); // Set XOFF or XON as requested
       throttling_state_ = bit ^ 0x1;       // throttling_state is the opposite of bit
     } while (false);                       // Do loop once only (mainly to have lots of 'break's above)
 
@@ -407,6 +410,33 @@ bool dune::TimingReceiver::getNext_(artdaq::FragmentPtrs &frags)
 bool dune::TimingReceiver::startOfDatataking() { return true; }
 
 // Local "private" methods
+const pdt::PartitionNode& dune::TimingReceiver::master_partition() {
+    std::stringstream ss;
+    ss << "master.partition" << partition_number_;
+    return hw_.getNode<pdt::PartitionNode>(ss.str());
+}
+
+void dune::TimingReceiver::fiddle_trigger_mask()
+{
+    // There is a different fake trigger command for each partition, as follows:
+
+    // Partition        Command
+    // ------------------------
+    //         0            0x8
+    //         1            0x9
+    //         2            0xa
+    //         3            0xb
+
+    // The trigger mask applies starting at 0x8, so eg mask 0x1 turns
+    // on triggers in partition 0 only
+
+    uint32_t old_mask=trigger_mask_;
+    // We modify the trigger mask to always be zero for the _other_ partitions
+    trigger_mask_ &= 0xf0 + (1<<partition_number_);
+    printf("fiddle_trigger_mask partn %d. Old: 0x%x, New: 0x%x\n",
+           partition_number_, old_mask, trigger_mask_);
+}
+
 void dune::TimingReceiver::reset_met_variables(bool onlyspill) {
 
   // If onlyspill, only reset the in-spill variables ...
@@ -439,6 +469,11 @@ void dune::TimingReceiver::update_met_variables(dune::TimingFragment& fo) {
 }
 
 void dune::TimingReceiver::send_met_variables() {
+
+  // When running in standalone mode, there's no metric manager, so just skip this bit
+  if(!artdaq::Globals::metricMan_){
+    return;
+  }
 
 // Metrics:  Parameters to the sendMetric call are:
 //  (1) name, (2) value (string, int, double, float or long uint), (3) units, 

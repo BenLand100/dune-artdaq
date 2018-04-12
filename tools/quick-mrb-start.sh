@@ -232,7 +232,7 @@ demo_version=`grep "parent dune_artdaq" $Base/download/product_deps|awk '{print 
 
 artdaq_version=`grep -E "^artdaq\s+" $Base/download/product_deps | awk '{print $2}'`
 
-if [[ "$artdaq_version" != "v3_00_03a" ]]; then
+if [[ "$artdaq_version" != "v3_00_03a" && "$artdaq_version" != "v3_01_00" ]]; then
     artdaq_manifest_version=$artdaq_version
 else
     artdaq_manifest_version=v3_00_03
@@ -413,6 +413,9 @@ cd $Base
 
         setup dunepdsprce v0_0_4 -q e14:gen:prof
         setup artdaq_mpich_plugin $artdaq_mpich_version -q e14:prof:s50
+
+        source /nfs/sw/artdaq/products/setup                                     
+        setup protodune_timing v4_0_1 -q e14:prof:s50
                                                                     
 # JCF, 11/25/14                                                                                                          
 # Make it easy for users to take a quick look at their output file via "rawEventDump"                                    
@@ -428,11 +431,9 @@ if [[ -n \$USER && \$USER == np04daq ]]; then
         setup artdaq_dim_plugin v0_02_03 -q e14:prof:s50
 fi
 
-echo "Only need to source this file once in the environment; now, to perform clean builds do the following:"
+echo "Only need to source this file once in the environment; now, to perform builds do the following:"
 echo
-echo "  mrb z"
-echo "  mrbsetenv"
-echo "  mrb b -j$nprocessors -i -I $Base/products"
+echo "  mrb b -j$nprocessors "
 echo "  find build_slf7.x86_64/ -type d | xargs -i chmod g+rwx {}"
 echo "  find build_slf7.x86_64/ -type f | xargs -i chmod g+rw {}"
 echo    
@@ -442,38 +443,35 @@ echo
     #
 
 
-# Build artdaq_demo
 cd $MRB_BUILDDIR
 set +u
 source ${dune_repo}/setup
 source mrbSetEnv
 set -u
 export CETPKG_J=$nprocessors
+source /nfs/sw/artdaq/products/setup
 
-setup artdaq_mpich_plugin $artdaq_mpich_version -q e14:prof:s50
 setup dunepdsprce v0_0_4 -q e14:gen:prof
-mrb build    # VERBOSE=1
+setup netio
+setup protodune_timing v4_0_1 -q e14:prof:s50
+
+mrb b -j$nprocessors -i -I $Base/products                              
+
 installStatus=$?
 
-if [ $installStatus -eq 0 ] && [ "x${opt_run_demo-}" != "x" ]; then
-    echo doing the demo
+cd $Base
+find build_slf7.x86_64/ -type d | xargs -i chmod g+rwx {}              
+find build_slf7.x86_64/ -type f | xargs -i chmod g+rw {}               
 
-    toolsdir=${DUNE_ARTDAQ_DIR}/tools
-
-    . $toolsdir/run_demo.sh $Base $toolsdir
-
-elif [ $installStatus -eq 0 ]; then
-    echo "dune-artdaq has been installed correctly."
-    echo
+if [ $installStatus -eq 0 ]; then
+     echo "dune-artdaq has been installed correctly."
+     echo
 else
-    echo "Build error. If all else fails, try (A) logging into a new terminal and (B) creating a new directory out of which to run this script."
-    echo
+     echo "Build error. If all else fails, try (A) logging into a new terminal and (B) creating a new directory out of which to run this script."
+     echo
 fi
 
-cd $Base
-os=`./download/cetpkgsupport/bin/get-directory-name os`
-find build_${os}.x86_64 -type d | xargs -i chmod g+rwx {}
-find build_${os}.x86_64 -type f | xargs -i chmod g+rw {}
+echo                                                               
 
 endtime=`date`
 
