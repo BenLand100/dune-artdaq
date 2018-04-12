@@ -142,6 +142,16 @@ void dune::SSP::ConfigureDevice(fhicl::ParameterSet const& ps){
     this->BuildChannelControlRegisters(channelControl,chControlReg);
   }
   device_interface_->SetRegisterArrayByName("channel_control",chControlReg);
+
+  //JTH: Bit clumsy putting this here, but for now, configure the timing endpoint
+  //and configure and reset dsp clock PLL...
+  //Note this is hardcoding using the timing system clock. Using the internal clock
+  //will be broken until this is cleaned up.
+  device_interface_->SetRegisterByName("dsp_clock_control",0x21);
+  device_interface_->SetRegisterByName("dsp_clock_phase_control",0x4);
+  device_interface_->SetRegisterByName("pdts_control",0x80000000);
+  device_interface_->SetRegisterByName("pdts_control",0x00000000);
+
 }
 
 void dune::SSP::BuildChannelControlRegisters(fhicl::ParameterSet const& ps,std::vector<unsigned int>& reg){
