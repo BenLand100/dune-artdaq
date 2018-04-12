@@ -13,11 +13,11 @@ femb_config_default: {
   fake_word: 0xFEB # 12 bits
   
   # FE gain value select
-  gain: 3 # 0 (4.7 mV/fC), 1 (7.8 mV/fC), 2 (14 mV/fC), 3 (25 mV/fC)
+  gain: 2 # 0 (4.7 mV/fC), 1 (7.8 mV/fC), 2 (14 mV/fC), 3 (25 mV/fC)
   # FE shaping time select
-  shape: 3 # 0 (0.5 us), 1 (1 us), 2 (2 us), 3 (3 us)
+  shape: 2 # 0 (0.5 us), 1 (1 us), 2 (2 us), 3 (3 us)
   # FE baseline select (don't need to change)
-  baselineHigh: 0 # 0 (200 mV), 1 (900 mV)
+  baselineHigh: 2 # 0 (200 mV), 1 (900 mV), 2 (200 mV for collection and 900 mV for induction channels)
   # 1 for 500 pA FE leakage current, 0 for 100 pA (don't need to change)
   leakHigh: 1 # 0 (100 pA), 1 (500 pA)
   # 1 for 10x FE leakage current, 0 for 1x
@@ -76,7 +76,7 @@ wib_config: {
       # Where to get the timing system input from
       DTS_source: 0 # 0 back plane, 1 front panel
       # Which timing system partion or "timing group" to use
-      partition_number: 2
+      partition_number: 0
 
       # if true, power up and configure FEMBs, else power down and don't configure
       enable_FEMBs: [true,true,true,true] # list of 4 bools
@@ -125,8 +125,8 @@ wib902_standard.fragment_receiver.fragment_id: 492
 wib902_standard.fragment_receiver.board_id: 92
 #wib902_standard.fragment_receiver.WIB.address: "np04-wib-902" 
 wib902_standard.fragment_receiver.WIB.address: "192.168.200.2" 
-wib902_standard.fragment_receiver.WIB.config.use_WIB_fake_data: [true,true,true,false]
-wib902_standard.fragment_receiver.WIB.config.enable_FEMBs: [false,false,false,true]
+wib902_standard.fragment_receiver.WIB.config.use_WIB_fake_data: [false,true,true,true]
+wib902_standard.fragment_receiver.WIB.config.enable_FEMBs: [true,false,false,false]
 
 wib903_standard: @local::wib_standard
 wib903_standard.fragment_receiver.fragment_id: 493 
