@@ -99,6 +99,7 @@ class TpcRceReceiver : public artdaq::CommandableFragmentGenerator {
   std::string rce_xml_config_file_;
   std::string rce_daq_mode_;
   bool rce_feb_emulation_;
+  int rce_partition_;
   uint32_t rce_trg_accept_cnt_;
   uint32_t rce_trg_frame_cnt_;
   uint32_t rce_hls_blowoff_;

@@ -85,6 +85,9 @@ dune::TpcRceReceiver::TpcRceReceiver(fhicl::ParameterSet const& ps)
   rce_daq_mode_ = ps.get<std::string>("rce_daq_mode", "External");
   rce_feb_emulation_ = ps.get<bool>("rce_feb_emulation_mode", false);
 
+  // FIXME change default partition to 999
+  rce_partition_ = ps.get<int>("partition_number", 0);
+
   rce_trg_accept_cnt_ = ps.get<uint32_t>("rce_trg_accept_cnt", 20);
   rce_trg_frame_cnt_ = ps.get<uint32_t>("rce_trg_frame_cnt", 2048);
 
@@ -216,6 +219,21 @@ void dune::TpcRceReceiver::start(void) {
         "<DataDpmEmu><Loopback>False</Loopback></DataDpmEmu>"
         "<DataDpmWib><RxPolarity>True</RxPolarity></DataDpmWib>"
         "</DataDpm>";
+    dpm_client_->send_config(cfg.str());
+  }
+
+  // Set partition
+  if (rce_partition_ < 0 || rce_partition_ > 3) {
+     DAQLogger::LogError(instance_name_)
+        << "Invalid partition "
+        << rce_partition_;
+  }
+  else {
+    std::ostringstream cfg;
+    cfg 
+       << "<DataDpm><DataDpmTiming><PdtsEndpointTgrp>"
+       << rce_partition_
+       << "</PdtsEndpointTgrp></DataDpmTiming></DataDpm>";
     dpm_client_->send_config(cfg.str());
   }
 
