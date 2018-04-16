@@ -60,9 +60,9 @@ void SSPDAQ::DeviceInterface::Initialize(){
   this->Stop();
 
   //Reset timing endpoint
-  //  SSPDAQ::RegMap& duneReg=SSPDAQ::RegMap::Get();
-  //fDevice->DeviceWrite(duneReg.pdts_control, 0x80000000);
-  //fDevice->DeviceWrite(duneReg.pdts_control, 0x00000000);
+  SSPDAQ::RegMap& duneReg=SSPDAQ::RegMap::Get();
+  fDevice->DeviceWrite(duneReg.pdts_control, 0x80000000);
+  fDevice->DeviceWrite(duneReg.pdts_control, 0x00000000);
 }
 
 void SSPDAQ::DeviceInterface::Stop(){
@@ -285,7 +285,7 @@ bool SSPDAQ::DeviceInterface::GetTriggerInfo(const SSPDAQ::EventPacket& event,SS
       newTrigger.startTime=currentTriggerTime-fPreTrigLength;
       newTrigger.endTime=currentTriggerTime+fPostTrigLength;
       newTrigger.triggerType=event.header.group1&0xFFFF;
-      auto globalTimestamp = (packetTime + 1057) / 3 ;
+      auto globalTimestamp = (packetTime + fFragmentTimestampOffset) / 3 ;
       dune::DAQLogger::LogInfo("SSP_DeviceInterface")<<"Seen packet containing global trigger, timestamp "<<packetTime<<" / "<<globalTimestamp<<std::endl;
       for(unsigned int i=0;i<12;++i){
 	channelsSeen[i]=false;
@@ -821,7 +821,7 @@ void SSPDAQ::DeviceInterface::Configure(){
 	fDevice->DeviceWrite(duneReg.qi_delay,0x00000000);
 	fDevice->DeviceWrite(duneReg.qi_pulse_width,0x00000000);
 	fDevice->DeviceWrite(duneReg.external_gate_width,0x00008000);
-	fDevice->DeviceWrite(duneReg.dsp_clock_control,0x00000000);
+	//fDevice->DeviceWrite(duneReg.dsp_clock_control,0x00000000);
 
 	// Load the window settings - This MUST be the last operation
 

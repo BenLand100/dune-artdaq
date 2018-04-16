@@ -122,6 +122,8 @@ namespace SSPDAQ{
 
     void SetTriggerMask(unsigned int val){fTriggerMask=val;}
 
+    void SetFragmentTimestampOffset(int val){fFragmentTimestampOffset=val;}
+
     void PrintHardwareState();
 
     std::string GetIdentifier();
@@ -180,6 +182,8 @@ namespace SSPDAQ{
     unsigned long fTriggerWriteDelay;
 
     unsigned int fTriggerMask;
+
+    int fFragmentTimestampOffset;
 
     int fDummyPeriod;
 

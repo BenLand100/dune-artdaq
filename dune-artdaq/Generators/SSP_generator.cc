@@ -147,10 +147,13 @@ void dune::SSP::ConfigureDevice(fhicl::ParameterSet const& ps){
   //and configure and reset dsp clock PLL...
   //Note this is hardcoding using the timing system clock. Using the internal clock
   //will be broken until this is cleaned up.
-  device_interface_->SetRegisterByName("dsp_clock_control",0x21);
-  device_interface_->SetRegisterByName("dsp_clock_phase_control",0x4);
-  device_interface_->SetRegisterByName("pdts_control",0x80000000);
-  device_interface_->SetRegisterByName("pdts_control",0x00000000);
+  //usleep(1000000);
+  //device_interface_->SetRegisterByName("dsp_clock_control",0x31);
+  //device_interface_->SetRegisterByName("dsp_clock_phase_control",0x4);
+  
+  //usleep(1000000);
+  //device_interface_->SetRegisterByName("pdts_control",0x00080000);
+  //device_interface_->SetRegisterByName("pdts_control",0x00000000);
 
 }
 
@@ -284,6 +287,8 @@ void dune::SSP::ConfigureDAQ(fhicl::ParameterSet const& ps){
 
   unsigned int triggerMask=daqConfig.get<unsigned int>("TriggerMask",0);
 
+  fFragmentTimestampOffset=daqConfig.get<int>("FragmentTimestampOffset",0);
+
   device_interface_->SetPreTrigLength(preTrigLength);
   device_interface_->SetPostTrigLength(postTrigLength);
   device_interface_->SetUseExternalTimestamp(useExternalTimestamp);
@@ -291,16 +296,17 @@ void dune::SSP::ConfigureDAQ(fhicl::ParameterSet const& ps){
   device_interface_->SetDummyPeriod(dummyPeriod);
   device_interface_->SetHardwareClockRateInMHz(hardwareClockRate);
   device_interface_->SetTriggerMask(triggerMask);
+  device_interface_->SetFragmentTimestampOffset(fFragmentTimestampOffset);
 }
 
 
   
 void dune::SSP::start(){
-  usleep(10000000);
-  device_interface_->Start();
+  //usleep(10000000);
   fNNoFragments=0;
   fNFragmentsSent=0;
   fNGetNextCalls=0;
+  device_interface_->Start();
 }
 
 void dune::SSP::stop(){
@@ -378,7 +384,9 @@ bool dune::SSP::getNext_(artdaq::FragmentPtrs & frags) {
 							ev_counter(), fragment_id(),
 							fragment_type_, metadata) );
 
-    auto timestamp = (metadata.sliceHeader.triggerTime + 1057) / 3 ;
+    //JTH: Changed offset for V4 timing FW
+    //auto timestamp = (metadata.sliceHeader.triggerTime + 1057) / 3 ;
+    auto timestamp = (metadata.sliceHeader.triggerTime + fFragmentTimestampOffset) / 3 ;
 
 
     DAQLogger::LogInfo("SSP_SSP_generator") << "SSP fragment w/ fragment ID " << frags.back()->fragmentID() << " timestamp is " << timestamp
