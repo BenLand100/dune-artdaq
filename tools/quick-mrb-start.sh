@@ -434,7 +434,6 @@ if [[ -n \$USER && \$USER == np04daq ]]; then
         export DIM_LIB=/nfs/sw/dim/dim_v20r20/linux
         export LD_LIBRARY_PATH=\$DIM_LIB:\$LD_LIBRARY_PATH
 
-        source /nfs/sw/work_dirs/dune-artdaq-dim-dev/localProducts_artdaq_v3_00_03a_e14_prof_s50/setup
         setup artdaq_dim_plugin v0_02_03 -q e14:prof:s50
 fi
 
