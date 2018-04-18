@@ -27,6 +27,15 @@ dune::SSP::SSP(fhicl::ParameterSet const & ps)
 {
   instance_name_for_metrics_ = "SSP " + boost::lexical_cast<std::string>(board_id_);
 
+  unsigned int partitionNumber=ps.get<unsigned int>("partition_number",0);
+
+  if(partitionNumber>3){
+    try {
+      DAQLogger::LogError("SSP_SSP_generator")<<"Error: Invalid partition number set ("<<partitionNumber<<")!"<<std::endl;
+    } catch (...) {}
+      throw SSPDAQ::EDAQConfigError("");
+  }
+
 
   unsigned int interfaceTypeCode(ps.get<unsigned int>("interface_type",999));
 
@@ -58,9 +67,10 @@ dune::SSP::SSP(fhicl::ParameterSet const & ps)
     board_id_=inet_network(ps.get<std::string>("board_ip").c_str());
   }
   device_interface_=new SSPDAQ::DeviceInterface(interface_type_,board_id_);//board_id_);
+  device_interface_->SetPartitionNumber(partitionNumber);
       device_interface_->Initialize();
-  this->ConfigureDevice(ps);
   this->ConfigureDAQ(ps);
+  this->ConfigureDevice(ps);
 }
 
 void dune::SSP::ConfigureDevice(fhicl::ParameterSet const& ps){

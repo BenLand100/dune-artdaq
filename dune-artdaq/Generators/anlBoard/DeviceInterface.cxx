@@ -10,7 +10,7 @@ SSPDAQ::DeviceInterface::DeviceInterface(SSPDAQ::Comm_t commType, unsigned long 
   : fCommType(commType), fDeviceId(deviceId), fState(SSPDAQ::DeviceInterface::kUninitialized),
     fUseExternalTimestamp(false), fHardwareClockRateInMHz(128), fPreTrigLength(1E8), 
     fPostTrigLength(1E7), fTriggerWriteDelay(1000), fTriggerMask(0), fDummyPeriod(-1), 
-    fSlowControlOnly(false), exception_(false), fDataThread(0){
+    fSlowControlOnly(false), fPartitionNumber(0), exception_(false), fDataThread(0){
 }
 
 void SSPDAQ::DeviceInterface::OpenSlowControl(){
@@ -61,8 +61,8 @@ void SSPDAQ::DeviceInterface::Initialize(){
 
   //Reset timing endpoint
   SSPDAQ::RegMap& duneReg=SSPDAQ::RegMap::Get();
-  fDevice->DeviceWrite(duneReg.pdts_control, 0x80000000);
-  fDevice->DeviceWrite(duneReg.pdts_control, 0x00000000);
+  fDevice->DeviceWrite(duneReg.pdts_control, 0x80000000 + fPartitionNumber);
+  fDevice->DeviceWrite(duneReg.pdts_control, 0x00000000 + fPartitionNumber);
 }
 
 void SSPDAQ::DeviceInterface::Stop(){
