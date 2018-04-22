@@ -18,6 +18,7 @@
 #include <iomanip>
 #include <iterator>
 #include <iostream>
+#include <string>
 
 #include <unistd.h>
 
@@ -32,15 +33,22 @@ dune::TriggerBoardReader::TriggerBoardReader(fhicl::ParameterSet const & ps)
 {
 
   //get port and host from the ps files
+  const unsigned int port = ps.get<uint16_t>("control_port", 8991 ) ;
+  
+  const std::string address = ps.get<std::string>( "board_address", "np04-ctb-1" );
 
+  dune::DAQLogger::LogDebug("TriggerBoardGenerator") << "control messages sent to " << address << ":" << port << std::endl;                                                                  
 
   //build the ctb_controller 
+  _run_controller.reset( new CTB_Controller( address, port ) ) ;
 
 }
 
 dune::TriggerBoardReader::~TriggerBoardReader() {
 
   //call destructors for ctb_controller and ctb_receiver
+  _run_controller -> send_stop() ;
+
 }
 
 bool dune::TriggerBoardReader::getNext_(artdaq::FragmentPtrs & frags) {
@@ -113,10 +121,13 @@ bool dune::TriggerBoardReader::getNext_(artdaq::FragmentPtrs & frags) {
 
 void dune::TriggerBoardReader::start() {
 
+  _run_controller -> send_start() ;
+
 }
 
 void dune::TriggerBoardReader::stop() {
 
+  _run_controller -> send_stop() ;
 
 }
 

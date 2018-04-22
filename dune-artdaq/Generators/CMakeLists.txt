@@ -88,7 +88,7 @@ simple_plugin(PennReceiver "generator"
 
 simple_plugin(TriggerBoardReader "generator"
   dune-raw-data_Overlays
-#  dune-artdaq_Generators_TriggerBoardReader
+  dune-artdaq_Generators_TriggerBoard
   artdaq-core_Data
   artdaq_Application
   artdaq_DAQdata
