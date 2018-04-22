@@ -6,13 +6,20 @@
 
 CTB_Controller::CTB_Controller( const std::string & host, const uint16_t & port ) :
   _ios(),
-  _endpoint( boost::asio::ip::address::from_string(host), port),
+  _endpoint(),
   _socket( _ios ) ,
   stop_req_( false ),
   is_running_ (false), 
   is_conf_(false),
   _buf()          
 {
+  
+  boost::asio::ip::tcp::resolver resolver( _ios );
+  
+  boost::asio::ip::tcp::resolver::query query(host, std::to_string(port) ) ; 
+  boost::asio::ip::tcp::resolver::iterator iter = resolver.resolve(query) ;
+ 
+  _endpoint = iter->endpoint() ; 
   
   //shoudl we put this into a try?
   _socket.connect( _endpoint ) ;
@@ -22,7 +29,7 @@ CTB_Controller::CTB_Controller( const std::string & host, const uint16_t & port 
 
 CTB_Controller::~CTB_Controller() { 
 
-  ;
+
   //check if running. and in case stop the run
 
   _socket.close() ;
@@ -99,14 +106,16 @@ void CTB_Controller::send_config( const std::string &host,const uint16_t &port  
 
 void CTB_Controller::send_message( const std::string & msg ) {
 
-  //add error options                                                                                                                                                                         
+  //add error options                                                                                                
   boost::system::error_code error;
   
-  boost::asio::write( _socket, boost::asio::buffer( msg ), error ) ;
+  // boost::asio::write( _socket, boost::asio::buffer( msg ), error ) ;
 
-  _socket.read_some( boost::asio::buffer(_buf), error);
+  // _socket.read_some( boost::asio::buffer(_buf), error);
 
-  dune::DAQLogger::LogInfo("CTB_Controller") << "Received answer: " << std::string(_buf.begin(), _buf.end() ) << std::endl;                                                                                                         
+  //   // dune::DAQLogger::LogInfo("CTB_Controller") << "Received answer: " << std::string(_buf.begin(), _buf.end() ) << std::endl;                                                          
+  dune::DAQLogger::LogDebug("CTB_Controller") << msg ;
+  
   
   //decide what to do with the error
  

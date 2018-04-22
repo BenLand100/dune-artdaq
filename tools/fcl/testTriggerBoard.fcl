@@ -13,7 +13,7 @@ fragment_receiver: {
    		    
    generator: TriggerBoardReader
    fragment_type: TOY2        # Make sure downstream modules know about this fragment_type!
-   board_address: "np04-trig-proto"
+   board_address: "np04-ctb-1"
    nADCcounts: 100
    throttle_usecs: 100000  # Wait this many usecs before creating the next event
    distribution_type: 1
