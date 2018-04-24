@@ -79,6 +79,8 @@ namespace dune {
     unsigned long fNFragmentsSent;
     unsigned long fNGetNextCalls;
 
+    int fFragmentTimestampOffset;
+
     std::string instance_name_for_metrics_;
   };
 }

@@ -122,6 +122,10 @@ namespace SSPDAQ{
 
     void SetTriggerMask(unsigned int val){fTriggerMask=val;}
 
+    void SetFragmentTimestampOffset(int val){fFragmentTimestampOffset=val;}
+
+    void SetPartitionNumber(unsigned int val){fPartitionNumber=val;}
+
     void PrintHardwareState();
 
     std::string GetIdentifier();
@@ -181,11 +185,15 @@ namespace SSPDAQ{
 
     unsigned int fTriggerMask;
 
+    int fFragmentTimestampOffset;
+
     int fDummyPeriod;
 
     bool fSlowControlOnly;
 
     unsigned int fMaxFragsPerRead;
+
+    unsigned int fPartitionNumber;
 
     std::queue<TriggerInfo> fTriggers;
 
