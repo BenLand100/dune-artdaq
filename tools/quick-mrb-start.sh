@@ -332,6 +332,13 @@ fi
 
 if ! $bad_network; then
 
+    mrb gitCheckout -t 9b3c13177bd7b3eef5f6c6fc982e98977ce38fd4 -d artdaq_core http://cdcvs.fnal.gov/projects/artdaq-core
+ 
+    if [[ "$?" != "0" ]]; then
+        echo "Unable to perform checkout of http://cdcvs.fnal.gov/projects/artdaq-core"
+        exit 1
+    fi
+
     mrb gitCheckout -t ${artdaq_utilities_version} -d artdaq_utilities http://cdcvs.fnal.gov/projects/artdaq-utilities
 
     if [[ "$?" != "0" ]]; then
@@ -427,7 +434,6 @@ if [[ -n \$USER && \$USER == np04daq ]]; then
         export DIM_LIB=/nfs/sw/dim/dim_v20r20/linux
         export LD_LIBRARY_PATH=\$DIM_LIB:\$LD_LIBRARY_PATH
 
-        source /nfs/sw/work_dirs/dune-artdaq-dim-dev/localProducts_artdaq_v3_00_03a_e14_prof_s50/setup
         setup artdaq_dim_plugin v0_02_03 -q e14:prof:s50
 fi
 
