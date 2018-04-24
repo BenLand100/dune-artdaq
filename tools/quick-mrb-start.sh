@@ -437,8 +437,10 @@ if [[ -n \$USER && \$USER == np04daq ]]; then
         setup artdaq_dim_plugin v0_02_03 -q e14:prof:s50
 fi
 
-echo "Only need to source this file once in the environment; now, to perform builds do the following:"
+echo "Only need to source this file once in the environment; now, to perform clean builds do the following:"
 echo
+echo "  mrb z"
+echo "  mrbsetenv"
 echo "  mrb b -j$nprocessors "
 echo "  find build_slf7.x86_64/ -type d | xargs -i chmod g+rwx {}"
 echo "  find build_slf7.x86_64/ -type f | xargs -i chmod g+rw {}"
