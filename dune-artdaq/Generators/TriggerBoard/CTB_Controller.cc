@@ -23,6 +23,7 @@ CTB_Controller::CTB_Controller( const std::string & host, const uint16_t & port 
   
   //shoudl we put this into a try?
   _socket.connect( _endpoint ) ;
+
     
 }
 
@@ -52,7 +53,7 @@ void CTB_Controller::send_reset() {
 
 void CTB_Controller::send_start() {
 
-  if (!is_conf_) {
+  if (! is_conf_) {
     dune::DAQLogger::LogError("CTB_Controller") << "ERROR: Can't start a run without configuring first" << std::endl;
     return ;
   }
@@ -109,14 +110,13 @@ void CTB_Controller::send_message( const std::string & msg ) {
   //add error options                                                                                                
   boost::system::error_code error;
   
-  // boost::asio::write( _socket, boost::asio::buffer( msg ), error ) ;
+  boost::asio::write( _socket, boost::asio::buffer( msg ), error ) ;
 
-  // _socket.read_some( boost::asio::buffer(_buf), error);
+  _socket.read_some( boost::asio::buffer(_buf), error);
 
-  //   // dune::DAQLogger::LogInfo("CTB_Controller") << "Received answer: " << std::string(_buf.begin(), _buf.end() ) << std::endl;                                                          
-  dune::DAQLogger::LogDebug("CTB_Controller") << msg ;
-  
-  
+  dune::DAQLogger::LogInfo("CTB_Controller") << "Received answer: " << std::string(_buf.begin(), _buf.end() ) << std::endl;                                                          
+  //dune::DAQLogger::LogDebug("CTB_Controller") << msg ;
+    
   //decide what to do with the error
  
 }

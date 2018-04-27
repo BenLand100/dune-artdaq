@@ -33,14 +33,28 @@ dune::TriggerBoardReader::TriggerBoardReader(fhicl::ParameterSet const & ps)
 {
 
   //get port and host from the ps files
-  const unsigned int port = ps.get<uint16_t>("control_port", 8991 ) ;
-  
+  const unsigned int control_port = ps.get<uint16_t>("control_port", 8991 ) ;
   const std::string address = ps.get<std::string>( "board_address", "np04-ctb-1" );
 
-  dune::DAQLogger::LogDebug("TriggerBoardGenerator") << "control messages sent to " << address << ":" << port << std::endl;                                                                  
+  dune::DAQLogger::LogDebug("TriggerBoardGenerator") << "control messages sent to " << address << ":" << control_port << std::endl; 
 
   //build the ctb_controller 
-  _run_controller.reset( new CTB_Controller( address, port ) ) ;
+  _run_controller.reset( new CTB_Controller( address, control_port ) ) ;
+
+  //build the ctb receiver
+  
+
+  // set it to listen mode to receive contact from ctb 
+  const unsigned int receiver_port = ps.get<uint16_t>("receiver_port", 8992 ) ;
+  const std::string receiver_address = ps.get<std::string>( "receiver_address", boost::asio::ip::host_name() );
+
+  //configure the ctb controller
+  // to instruct it to the receiver
+
+  dune::DAQLogger::LogInfo("TriggerBoardGenerator") << "control messages receved at " << receiver_address << ":" << receiver_port << std::endl; 
+
+  //_run_controller -> send_config( receiver_address, receiver_port ) ;
+
 
 }
 
