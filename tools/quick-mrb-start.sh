@@ -407,6 +407,7 @@ if [[ ${WIB_DIRECTORY:-xx} != "xx" ]]; then
 fi
 
 nprocessors=$( grep -E "processor\s+:" /proc/cpuinfo | wc -l )
+trace_file_label=$( basename $Base )
 
 cd $Base
     cat >setupDUNEARTDAQ <<-EOF
@@ -449,7 +450,25 @@ if [[ -n \$USER && \$USER == np04daq ]]; then
         export LD_LIBRARY_PATH=\$DIM_LIB:\$LD_LIBRARY_PATH
 
         setup artdaq_dim_plugin v0_02_03 -q e14:prof:s50
+
+        setup TRACE v3_13_04
+        export TRACE_FILE=/tmp/trace_$trace_file_label
+        export TRACE_LIMIT_MS="500,1000,2000"
+
+        # Uncomment the "tonM" line for a given TRACE below which you
+        # want to activate. If you don't see the TRACE you want, then
+        # add a toffM / tonM combination for it like you see in the
+        # other examples below. 
+
+        toffM 12 -n RequestSender
+#        tonM 12 -n RequestSender
+ 
+        toffM 10 -n CommandableFragmentGenerator
+        tonM 10 -n CommandableFragmentGenerator
+        
 fi
+
+        
 
         # 26-Apr-2018, KAB: moved the sourcing of mrbSetEnv to *after* all product
         # setups so that we get the right env vars for the source repositories that
