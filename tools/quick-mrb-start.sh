@@ -287,6 +287,17 @@ if ! $bad_network; then
     detectAndPull mrb noarch
 fi
 
+# JCF, Apr-26-2018: Kurt discovered that it's necessary for the $Base/products area to be based on ups v6_0_7
+upsfile=/nfs/home/np04daq/.jcfree/Documents/ups-6.0.7-Linux64bit+3.10-2.17.tar.bz2
+
+if [[ ! -e $upsfile ]]; then
+    echo "Unable to find ${upsfile}; you'll need to restore it from SciSoft" >&2
+    exit 1
+fi
+
+cd $Base/products
+cp -p $upsfile .
+tar xjf $upsfile
 source $Base/products/setup
 setup mrb
 setup git
@@ -296,6 +307,11 @@ export MRB_PROJECT=dune_artdaq
 cd $Base
 mrb newDev -f -v $demo_version -q ${equalifier}:${build_type}
 set +u
+
+
+
+
+
 setup netio
 source $Base/localProducts_dune_artdaq_${demo_version}_${equalifier}_${build_type}/setup
 set -u
@@ -353,14 +369,14 @@ if ! $bad_network; then
     	exit 1
     fi
 
-    mrb gitCheckout -t 36b0f1274156a6f265e61404224fd7b3da293363 -d artdaq_utilities_mpich_plugin http://cdcvs.fnal.gov/projects/artdaq-utilities-mpich-plugin
+    mrb gitCheckout -t 36b0f1274156a6f265e61404224fd7b3da293363 -d artdaq_mpich_plugin http://cdcvs.fnal.gov/projects/artdaq-utilities-mpich-plugin
 
     if [[ "$?" != "0" ]]; then
 	echo "Unable to perform checkout of http://cdcvs.fnal.gov/projects/artdaq-utilities-mpich-plugin"
 	exit 1
     fi
 
-    artdaq_mpich_version=$( grep "parent artdaq_mpich_plugin" artdaq_utilities_mpich_plugin/ups/product_deps|awk '{print $3}' )
+    artdaq_mpich_version=$( grep "parent artdaq_mpich_plugin" artdaq_mpich_plugin/ups/product_deps|awk '{print $3}' )
 
     mrb gitCheckout $dune_raw_data_checkout_arg $dune_raw_data_repo
 
@@ -391,6 +407,7 @@ if [[ ${WIB_DIRECTORY:-xx} != "xx" ]]; then
 fi
 
 nprocessors=$( grep -E "processor\s+:" /proc/cpuinfo | wc -l )
+trace_file_label=$( basename $Base )
 
 cd $Base
     cat >setupDUNEARTDAQ <<-EOF
@@ -403,7 +420,6 @@ cd $Base
         setup mrb
         setup netio
         source $Base/localProducts_dune_artdaq_${demo_version}_${equalifier}_${build_type}/setup
-        source mrbSetEnv       
                                                                                                                   
         export DAQ_INDATA_PATH=$ARTDAQ_DEMO_DIR/test/Generators:$ARTDAQ_DEMO_DIR/inputData                               
                                                                                                                          
@@ -419,7 +435,6 @@ cd $Base
         cd \$returndir
 
         setup dunepdsprce v0_0_4 -q e14:gen:prof
-        setup artdaq_mpich_plugin $artdaq_mpich_version -q e14:prof:s50
 
         source /nfs/sw/artdaq/products/setup                                     
         setup protodune_timing v4_0_1 -q e14:prof:s50
@@ -435,12 +450,33 @@ if [[ -n \$USER && \$USER == np04daq ]]; then
         export LD_LIBRARY_PATH=\$DIM_LIB:\$LD_LIBRARY_PATH
 
         setup artdaq_dim_plugin v0_02_03 -q e14:prof:s50
+
+        setup TRACE v3_13_04
+        export TRACE_FILE=/tmp/trace_$trace_file_label
+        export TRACE_LIMIT_MS="500,1000,2000"
+
+        # Uncomment the "tonM" line for a given TRACE below which you
+        # want to activate. If you don't see the TRACE you want, then
+        # add a toffM / tonM combination for it like you see in the
+        # other examples below. 
+
+        toffM 12 -n RequestSender
+#        tonM 12 -n RequestSender
+ 
+        toffM 10 -n CommandableFragmentGenerator
+        tonM 10 -n CommandableFragmentGenerator
+        
 fi
 
-echo "Only need to source this file once in the environment; now, to perform clean builds do the following:"
+        
+
+        # 26-Apr-2018, KAB: moved the sourcing of mrbSetEnv to *after* all product
+        # setups so that we get the right env vars for the source repositories that
+        # are part of the mrb build area.
+        source mrbSetEnv       
+
+echo "Only need to source this file once in the environment; now, to perform builds do the following (see https://twiki.cern.ch/twiki/bin/view/CENF/Building for more):"
 echo
-echo "  mrb z"
-echo "  mrbsetenv"
 echo "  mrb b -j$nprocessors "
 echo "  find build_slf7.x86_64/ -type d | xargs -i chmod g+rwx {}"
 echo "  find build_slf7.x86_64/ -type f | xargs -i chmod g+rw {}"
@@ -454,7 +490,6 @@ echo
 cd $MRB_BUILDDIR
 set +u
 source ${dune_repo}/setup
-source mrbSetEnv
 set -u
 export CETPKG_J=$nprocessors
 source /nfs/sw/artdaq/products/setup
@@ -463,7 +498,10 @@ setup dunepdsprce v0_0_4 -q e14:gen:prof
 setup netio
 setup protodune_timing v4_0_1 -q e14:prof:s50
 
-mrb b -j$nprocessors -i -I $Base/products                              
+set +u
+source mrbSetEnv
+set -u
+mrb b -j$nprocessors                              
 
 installStatus=$?
 
