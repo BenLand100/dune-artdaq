@@ -29,11 +29,13 @@ ToyHardwareInterface::ToyHardwareInterface(fhicl::ParameterSet const & ps) :
   fragment_type_(dune::toFragmentType(ps.get<std::string>("fragment_type"))), 
   maxADCvalue_(pow(2, NumADCBits() ) - 1), // MUST be after "fragment_type"
   throttle_usecs_(ps.get<size_t>("throttle_usecs", 100000)),
+  usecs_between_sends_(ps.get<size_t>("usecs_between_sends", 0)),
   distribution_type_(static_cast<DistributionType>(ps.get<int>("distribution_type"))),
   engine_(ps.get<int64_t>("random_seed", 314159)),
   uniform_distn_(new std::uniform_int_distribution<data_t>(0, maxADCvalue_)),
   gaussian_distn_(new std::normal_distribution<double>( 0.5*maxADCvalue_, 0.1*maxADCvalue_)),
-  start_time_(std::numeric_limits<decltype(std::chrono::high_resolution_clock::now())>::max())
+  start_time_(std::numeric_limits<decltype(std::chrono::high_resolution_clock::now())>::max()),
+  send_calls_(0)
 {
 
 #pragma GCC diagnostic push
@@ -78,6 +80,7 @@ void ToyHardwareInterface::StartDatataking() {
 
   taking_data_ = true;
   start_time_ = std::chrono::high_resolution_clock::now();
+  send_calls_ = 0;
 }
 
 void ToyHardwareInterface::StopDatataking() {
@@ -92,13 +95,21 @@ void ToyHardwareInterface::FillBuffer(char* buffer, size_t* bytes_read) {
 
     usleep( throttle_usecs_ );
 
-    auto elapsed_secs_since_datataking_start = 
-      std::chrono::duration_cast<std::chrono::seconds>(std::chrono::high_resolution_clock::now()
-						       - start_time_).count();
+    auto elapsed_microsecs_since_datataking_start = 
+      std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now()
+							    - start_time_).count();
+
+    long microseconds_ahead_of_schedule = static_cast<long>(usecs_between_sends_)*send_calls_ - elapsed_microsecs_since_datataking_start;
+
+    if (microseconds_ahead_of_schedule > 0) {
+      usleep( microseconds_ahead_of_schedule );
+    }
+    
+    send_calls_++;
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wsign-compare"
-    if (elapsed_secs_since_datataking_start < change_after_N_seconds_) {
+    if (elapsed_microsecs_since_datataking_start < change_after_N_seconds_*1000000) {
 #pragma GCC diagnostic pop
 
       *bytes_read = sizeof(dune::ToyFragment::Header) + nADCcounts_ * sizeof(data_t);
@@ -172,6 +183,7 @@ void ToyHardwareInterface::FillBuffer(char* buffer, size_t* bytes_read) {
     throw cet::exception("ToyHardwareInterface") <<
       "Attempt to call FillBuffer when not sending data";
   }
+
 }
 
 void ToyHardwareInterface::AllocateReadoutBuffer(char** buffer) {

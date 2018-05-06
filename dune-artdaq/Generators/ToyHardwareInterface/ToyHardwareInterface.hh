@@ -54,6 +54,7 @@ private:
   dune::FragmentType fragment_type_;
   std::size_t maxADCvalue_;
   std::size_t throttle_usecs_;
+  std::size_t usecs_between_sends_;
   DistributionType distribution_type_;
   
 
@@ -64,6 +65,7 @@ private:
   std::unique_ptr<std::normal_distribution<double>> gaussian_distn_;
   
   decltype(std::chrono::high_resolution_clock::now()) start_time_;
+  std::size_t send_calls_;
 };
 
 
