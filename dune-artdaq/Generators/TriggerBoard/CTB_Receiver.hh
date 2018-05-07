@@ -27,13 +27,17 @@
 
 class CTB_Receiver {
 
-  CTB_Receiver( const unsigned int port, const std::chrono::milliseconds & timeout = 500 ) ;
+public:
+  CTB_Receiver( ) = delete ;
+  CTB_Receiver( const unsigned int port, const unsigned int timeout = 100 /*milliseconds*/ ) ;
+
   virtual ~CTB_Receiver() ;
 
   // access methods to the buffer
   // They should return words from the CTB receiver
-  bool pop( ?? & u ) ;
-  bool pop( vector<??> & v ) ;
+
+  // bool pop( ?? & u ) ;
+  // bool pop( vector<??> & v ) ;
   
   bool stop() ; 
 
@@ -49,10 +53,10 @@ private:
 
   const unsigned int _port ;
 
-  std::chrono::milliseconds _timeout = 500 ;
+  std::atomic<std::chrono::milliseconds> _timeout ;
   
-  atomic<bool> _stop_requested = false ;
-  atomic<bool> _timed_out = false ;
+  std::atomic<bool> _stop_requested ;
+  //atomic<bool> _timed_out = false ;
 
 
   

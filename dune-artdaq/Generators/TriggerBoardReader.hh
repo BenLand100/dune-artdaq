@@ -11,6 +11,7 @@
 #include "dune-raw-data/Overlays/FragmentType.hh"
 
 #include "TriggerBoard/CTB_Controller.hh"
+#include "TriggerBoard/CTB_Receiver.hh"
 
 #include <random>
 #include <vector>
@@ -41,6 +42,8 @@ namespace dune {
     void stopNoMutex() override {}
 
     std::unique_ptr<CTB_Controller> _run_controller ; 
+    std::unique_ptr<CTB_Receiver>   _receiver ; 
+
 
     // artdaq::Fragment::timestamp_t timestamp_;
     // int timestampScale_;

@@ -1,9 +1,15 @@
 #include "CTB_Receiver.hh"
 
-CTB_Receiver::CTB_Receiver( const unsigned int port, const std::chrono::milliseconds & timeout ) : 
-  _port ( port ), _timeout( timeout ) {
+#include "dune-artdaq/DAQLogger/DAQLogger.hh"
 
-  _fut = std::async( launch::async, & CTB_Receiver::_receiver, this ) ;
+
+CTB_Receiver::CTB_Receiver( const unsigned int port, const unsigned int timeout ) : 
+
+  _port ( port ), _timeout( std::chrono::milliseconds(timeout) ) {
+
+  _stop_requested = false ;
+
+  _fut = std::async( std::launch::async, & CTB_Receiver::_receiver, this ) ;
 
 }
 
@@ -22,8 +28,9 @@ bool CTB_Receiver::stop() {
 
   _stop_requested = true ; 
 
-  int ret = _fut.get() ;
+  _fut.get() ;
 
+  return true ;
 }
 
 
@@ -31,19 +38,24 @@ int CTB_Receiver::_receiver() {
 
   boost::asio::io_service io_service;
 
-  tcp::acceptor acceptor(io_service, tcp::endpoint(tcp::v6(), port ) );
+  boost::asio::ip::tcp::acceptor acceptor(io_service, boost::asio::ip::tcp::endpoint( boost::asio::ip::tcp::v6(), _port ) );
 
-  tcp::socket socket(io_service);
+  boost::asio::ip::tcp::socket socket(io_service);
 
-  std::future<void> accepting = async( launch::async, & acceptor::accept, acceptor, socket ) ;
-  
+  dune::DAQLogger::LogInfo("CTB_Receiver") << "Watiting for an incoming connection on port " << _port << std::endl;
+
+  //std::future<void> accepting = async( std::launch::async, & boost::asio::ip::tcp::acceptor::accept, & acceptor, socket ) ;
+  std::future<void> accepting = async( std::launch::async, [&]{ acceptor.accept(socket) ; } ) ;
+
   while ( ! _stop_requested ) {
     
-    if ( accepting.wait_for( _timeout ) == future_status::ready ) 
+    if ( accepting.wait_for( _timeout.load() ) == std::future_status::ready ) 
       break ;
     // should this accept be async to avoid long block?
       
   }
+  
+  dune::DAQLogger::LogInfo("CTB_Receiver") << "Connection received: start reading" << std::endl;
   
   constexpr unsigned int max_size = 1024 ;
   uint8_t tcp_data[max_size];
@@ -54,9 +66,9 @@ int CTB_Receiver::_receiver() {
   while ( ! _stop_requested ) {
 
     if ( ! timed_out )  // no workng reading thread, need to create one
-      reading = async( launch::async, asio::read_some, socket,  boost::asio::buffer(tcp_data, max_size)  ) ;
+      reading = async( std::launch::async, [&]{ return socket.read_some( boost::asio::buffer(tcp_data, max_size) ) ; } ) ;
     
-    if ( ! accepting.wait_for( _timeout ) == future_status::ready ) {
+    if ( reading.wait_for( _timeout.load() ) != std::future_status::ready ) {
       timed_out = true ;
       continue ;
     }
