@@ -17,9 +17,9 @@ bindir      fq_dir      bin
 
 #
 product		version		optional
-artdaq		v3_01_00
-dune_raw_data 	v1_17_00
-cetbuildtools	v7_00_02	-	only_for_build
+artdaq		v3_02_00
+dune_raw_data 	v1_17_06
+cetbuildtools	v7_02_01	-	only_for_build
 uhal		v2_6_0
 end_product_list
 
