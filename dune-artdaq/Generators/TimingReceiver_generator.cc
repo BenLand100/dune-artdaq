@@ -101,9 +101,10 @@ dune::TimingReceiver::TimingReceiver(fhicl::ParameterSet const & ps):
 
     // Match Fw version with configuration
     DAQLogger::LogInfo(instance_name_) << "Timing Master firmware version " << std::showbase << std::hex << (uint32_t)lVersion;
-    uint32_t expected_fw_version=0x40006;
-    if ( lVersion != expected_fw_version ) {
-      DAQLogger::LogError(instance_name_) << "Firmware version mismatch! Expected: " << expected_fw_version << " detected: " << (uint32_t)lVersion;
+    uint32_t expected_fw_version=0x40007;
+    uint32_t alternative_fw_version=0x40006;
+    if ( lVersion != expected_fw_version && lVersion != alternative_fw_version ) {
+      DAQLogger::LogError(instance_name_) << "Firmware version mismatch! Expected: " << expected_fw_version << " or " << alternative_fw_version << " detected: " << (uint32_t)lVersion;
     }
 
     // Measure the input clock frequency
