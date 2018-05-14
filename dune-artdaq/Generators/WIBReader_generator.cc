@@ -509,34 +509,8 @@ void WIBReader::stop() {
 
 // Called by BoardReaderMain in a loop between "start" and "stop"
 bool WIBReader::getNext_(artdaq::FragmentPtrs& /*frags*/) {
-  //dune::DAQLogger::LogInfo("WIBReader") <<"getNext_()";
-  if(artdaq::Globals::metricMan_ != nullptr) {
-    //sendMetric(const string&, const int&, const string&,   int,                bool,    const string&,                         bool)
-    //                    name,      value,         units, level, average values=true,        prefix="",   don't apply prefixes=false
-
-    sendRegMetric("SYSTEM.DTS_LOCKED",4);
-    sendRegMetric("SYSTEM.EB_LOCKED",4);
-    sendRegMetric("SYSTEM.FEMB_LOCKED",4);
-    sendRegMetric("SYSTEM.SYS_LOCKED",4);
-
-    sendRegMetric("DTS.CONVERT_CONTROL.STATE",5);
-    sendRegMetric("DTS.CONVERT_CONTROL.SYNC_PERIOD",5);
-    sendRegMetric("DTS.CONVERT_CONTROL.LOCAL_TIMESTAMP",5);
-    sendRegMetric("DTS.PDTS_STATE",5);
-    sendRegMetric("DTS.CONVERT_CONTROL.OOS",5);
-    sendRegMetric("DTS.EVENT_NUMBER",5);
-
-    sendRegMetric("DAQ_LINK_1.EVENT_COUNT",5);
-    sendRegMetric("DAQ_LINK_1.MISMATCH_COUNT",5);
-    sendRegMetric("DAQ_LINK_2.EVENT_COUNT",5);
-    sendRegMetric("DAQ_LINK_2.MISMATCH_COUNT",5);
-    sendRegMetric("DAQ_LINK_3.EVENT_COUNT",5);
-    sendRegMetric("DAQ_LINK_3.MISMATCH_COUNT",5);
-    sendRegMetric("DAQ_LINK_4.EVENT_COUNT",5);
-    sendRegMetric("DAQ_LINK_4.MISMATCH_COUNT",5);
-  }
   std::this_thread::sleep_for(std::chrono::milliseconds(100));
-  return false;
+  return (! should_stop()); // returning false before should_stop makes all other BRs stop
 }
 
 } // namespace
