@@ -62,7 +62,7 @@ wib_config: {
       # FEMB register map
       femb_table: "PDUNE_FEMB_323.adt"
       # this must match the WIB firmware version (hex)
-      expected_wib_fw_version: 0x18032901
+      expected_wib_fw_version: 0x18041701
       # this must match the WIB firmware version
       expected_daq_mode: "any" # "RCE", "FELIX", or "any"
 
