@@ -43,7 +43,12 @@ public:
 
 private:
 
-  boost::lockfree::spsc_queue< uint8_t , boost::lockfree::capacity<4096> > _buffer ;  
+  // the raw buffer can contain 4 times the maximum TCP package size, which is 4 KB 
+  boost::lockfree::spsc_queue< uint8_t , boost::lockfree::capacity<16384> > _raw_buffer ;  
+
+  boost::lockfree::spsc_queue< uint8_t , boost::lockfree::capacity<16384> > _word_buffer ;  
+  
+  
 
   // this is the receiver thread to be called
   // return value to be used to 
