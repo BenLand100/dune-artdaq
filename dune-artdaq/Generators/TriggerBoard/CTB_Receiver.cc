@@ -38,7 +38,7 @@ int CTB_Receiver::_receiver() {
 
   boost::asio::io_service io_service;
 
-  boost::asio::ip::tcp::acceptor acceptor(io_service, boost::asio::ip::tcp::endpoint( boost::asio::ip::tcp::v6(), _port ) );
+  boost::asio::ip::tcp::acceptor acceptor(io_service, boost::asio::ip::tcp::endpoint( boost::asio::ip::tcp::v4(), _port ) );
 
   boost::asio::ip::tcp::socket socket(io_service);
 
@@ -77,7 +77,7 @@ int CTB_Receiver::_receiver() {
     const std::size_t read_bytes = reading.get() ;
     
     if ( read_bytes > 0 ) 
-      _buffer.push( tcp_data, read_bytes ) ;
+      _raw_buffer .push( tcp_data, read_bytes ) ;
 
   }
 

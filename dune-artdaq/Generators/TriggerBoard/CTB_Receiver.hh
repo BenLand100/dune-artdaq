@@ -33,11 +33,7 @@ public:
 
   virtual ~CTB_Receiver() ;
 
-  // access methods to the buffer
-  // They should return words from the CTB receiver
-
-  // bool pop( ?? & u ) ;
-  // bool pop( vector<??> & v ) ;
+  auto & Buffer() { return _word_buffer ; }
   
   bool stop() ; 
 
@@ -46,10 +42,9 @@ private:
   // the raw buffer can contain 4 times the maximum TCP package size, which is 4 KB 
   boost::lockfree::spsc_queue< uint8_t , boost::lockfree::capacity<16384> > _raw_buffer ;  
 
-  boost::lockfree::spsc_queue< uint8_t , boost::lockfree::capacity<16384> > _word_buffer ;  
+  boost::lockfree::spsc_queue< ptb::content::word::word , boost::lockfree::capacity<2048> > _word_buffer ;  
   
   
-
   // this is the receiver thread to be called
   // return value to be used to 
   int _receiver() ;   

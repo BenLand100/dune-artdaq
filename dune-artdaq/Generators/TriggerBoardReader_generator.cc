@@ -7,6 +7,9 @@
 #include "artdaq/Application/GeneratorMacros.hh"
 #include "dune-artdaq/DAQLogger/DAQLogger.hh"
 
+#include "dune_artdaq/dune-artdaq/Generators/TriggerBoard/content.h"
+
+
 #include "artdaq/Application/GeneratorMacros.hh"
 #include "artdaq-core/Utilities/SimpleLookupPolicy.hh"
 
@@ -21,6 +24,7 @@
 #include <string>
 
 #include <unistd.h>
+
 
 
 dune::TriggerBoardReader::TriggerBoardReader(fhicl::ParameterSet const & ps)
@@ -69,7 +73,7 @@ dune::TriggerBoardReader::~TriggerBoardReader() {
 
 bool dune::TriggerBoardReader::getNext_(artdaq::FragmentPtrs & frags) {
 
-  if (should_stop()) {
+  if ( should_stop() ) {
     return false;
   }
 
@@ -84,38 +88,39 @@ bool dune::TriggerBoardReader::getNext_(artdaq::FragmentPtrs & frags) {
   // rather than sticking the data in the location pointed to by your
   // pointer (which is what happens here with readout_buffer_)
 
-  //std::size_t bytes_read = 0;
+  
 
-  //  hardware_interface_->FillBuffer(readout_buffer_ , &bytes_read);
+  std::size_t n_words = _receiver -> Buffer().read_available() ;
 
-  // We'll use the static factory function 
-
-  // artdaq::Fragment::FragmentBytes(std::size_t payload_size_in_bytes, sequence_id_t sequence_id,
-  //  fragment_id_t fragment_id, type_t type, const T & metadata)
-
-  // which will then return a unique_ptr to an artdaq::Fragment
-  // object. 
-
-  std::unique_ptr<artdaq::Fragment> fragptr( artdaq::Fragment::FragmentBytes( 0 ) ) ;
+  if ( n_words == 0 ) return false ;
 
 
-  // std::unique_ptr<artdaq::Fragment> fragptr( artdaq::Fragment::FragmentBytes(bytes_read,  
-  // 									     ev_counter(), fragment_id(),
-  // 									     fragment_type_, 
-  // 									     metadata_,
-  // 									     timestamp_));
 
-  // memcpy(fragptr->dataBeginBytes(), readout_buffer_, bytes_read );
+  std::size_t bytes_read = n_words * 16 ; //  + 4 ; if we need a header, then we add the 4
 
-  frags.emplace_back( std::move(fragptr ));
+  ptb::content::word::word temp_word ;
 
-  // if(artdaq::Globals::metricMan_ != nullptr) {
-  //   artdaq::Globals::metricMan_->sendMetric("Fragments Sent",ev_counter(), "Events", 3, artdaq::MetricMode::Accumulate);
-  // }
+  _receiver -> Buffer().pop( temp_word ) ;
+  uint64_t timestamp = temp_word.frame.timestamp ; 
+  
+  std::unique_ptr<artdaq::Fragment> fragptr( artdaq::Fragment::FragmentBytes( bytes_read ,  
+									      ev_counter(), 
+									      fragment_id(),
+									      1 ,         //fragment_type_ //what is this?!
+									      temp_word,  //metadata, necessary if we need to specify a timestamp
+									      timestamp ) );   //which time stamp? we have loads! 
 
-  // ev_counter_inc();
-  // timestamp_ += timestampScale_;
+  memcpy( fragptr->dataBeginBytes(), temp_word.get_bytes(), 16 ) ;
 
+						      
+  for ( unsigned int i = 1 ; i < n_words ; ++i ) {
+
+    _receiver -> Buffer().pop( temp_word ) ;
+    memcpy( fragptr->dataBeginBytes() + i * 16, temp_word.get_bytes(), 16 ) ;
+    
+  }
+
+  frags.emplace_back( std::move(fragptr) ) ;
 
   // if (ev_counter() % 1 == 0) {
 

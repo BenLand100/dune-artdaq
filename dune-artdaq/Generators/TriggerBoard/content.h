@@ -20,7 +20,7 @@ namespace ptb {
     /// Internal buffer definition
     ///
 
-    static uint8_t format_version = 0x2;
+    //static uint8_t format_version = 0x2;
 
     typedef struct buffer_t {
         int       handle;
