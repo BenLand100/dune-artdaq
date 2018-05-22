@@ -9,7 +9,9 @@ CTB_Receiver::CTB_Receiver( const unsigned int port, const unsigned int timeout 
 
   _stop_requested = false ;
 
-  _fut = std::async( std::launch::async, & CTB_Receiver::_receiver, this ) ;
+  _raw_fut  = std::async( std::launch::async, & CTB_Receiver::_raw_receiver,  this ) ;
+
+  _word_fut = std::async( std::launch::async, & CTB_Receiver::_word_receiver, this ) ;
 
 }
 
@@ -19,22 +21,21 @@ CTB_Receiver::~CTB_Receiver() {
 
 }
 
-// access methods to the buffer
-//bool pop( ?? & u ) ;
-//bool pop( vector<??> & v ) ;
 
 
 bool CTB_Receiver::stop() {
 
   _stop_requested = true ; 
 
-  _fut.get() ;
+  _raw_fut.get() ;
+
+  _word_fut.get() ;
 
   return true ;
 }
 
 
-int CTB_Receiver::_receiver() {
+int CTB_Receiver::_raw_receiver() {
 
   boost::asio::io_service io_service;
 
@@ -57,7 +58,7 @@ int CTB_Receiver::_receiver() {
   
   dune::DAQLogger::LogInfo("CTB_Receiver") << "Connection received: start reading" << std::endl;
   
-  constexpr unsigned int max_size = 1024 ;
+  constexpr unsigned int max_size = 4096 ;
   uint8_t tcp_data[max_size];
 
   std::future<std::size_t> reading ; 
@@ -80,6 +81,61 @@ int CTB_Receiver::_receiver() {
       _raw_buffer .push( tcp_data, read_bytes ) ;
 
   }
+
+  // return because _stop_requested
+  return 0 ;
+}
+
+
+int CTB_Receiver::_word_receiver() {
+
+  std::size_t n_bytes = 0 ;
+  std::size_t n_words = 0 ;
+  
+  const size_t header_size = ptb::content::tcp_header_t::n_bits_size / 8 ;
+  const size_t word_size = ptb::content::word::word_t::size_bytes ;
+
+
+  while ( ! _stop_requested ) {
+    
+    // look for an header 
+    while ( _raw_buffer.read_available() < header_size && ! _stop_requested ) {
+      ; //do nothing
+    }
+
+    ptb::content::tcp_header_t head ;
+    
+    _raw_buffer.pop( reinterpret_cast<uint8_t*>( & head ), header_size );
+
+    n_bytes = head.packet_size ;
+    
+    // extract n_words
+    n_words = n_bytes / word_size ; 
+
+    ptb::content::word::word temp_word ;
+
+    // read n words as requested from the header
+    for ( unsigned int i = 0 ; i < n_words ; ++i ) {
+      
+      
+      while ( _raw_buffer.read_available() < word_size && ! _stop_requested ) {
+	; //do nothing
+      }
+
+      //read a word
+      _raw_buffer.pop( temp_word.get_bytes() , word_size ) ;
+
+      // push the word
+      _word_buffer.push( temp_word ) ;
+
+      if ( _stop_requested ) break ;
+
+    }
+
+   
+
+  }  // stop not required 
+
 
   // return because _stop_requested
   return 0 ;

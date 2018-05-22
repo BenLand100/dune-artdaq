@@ -47,9 +47,11 @@ private:
   
   // this is the receiver thread to be called
   // return value to be used to 
-  int _receiver() ;   
-  std::future<int> _fut ;
+  int _raw_receiver() ;   
+  int _word_receiver() ;
 
+  std::future<int> _raw_fut ;
+  std::future<int> _word_fut ;
 
   const unsigned int _port ;
 
