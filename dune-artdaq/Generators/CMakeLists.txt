@@ -24,20 +24,20 @@ simple_plugin(SSP "generator"
   dune-artdaq_DAQLogger
   )
 
-# simple_plugin(FelixReceiver "generator"
-#   dune-raw-data_Overlays
-#   dune-artdaq_Generators_Felix
-#   dune-artdaq_DAQLogger
-#   artdaq_Application
-#   artdaq_DAQdata
-#   artdaq-core_Utilities
-#   artdaq-core_Data
-#   ${CANVAS}
-#   ${FHICLCPP}
-#   ${CETLIB}
-#   dune-artdaq_DAQLogger
-# )
-# add_subdirectory(Felix)
+simple_plugin(FelixReceiver "generator"
+  dune-raw-data_Overlays
+  dune-artdaq_Generators_Felix
+  dune-artdaq_DAQLogger
+  artdaq_Application
+  artdaq_DAQdata
+  artdaq-core_Utilities
+  artdaq-core_Data
+  ${CANVAS}
+  ${FHICLCPP}
+  ${CETLIB}
+  dune-artdaq_DAQLogger
+)
+add_subdirectory(Felix)
 
 simple_plugin(ToySimulator "generator"
   dune-artdaq_Generators_ToyHardwareInterface
