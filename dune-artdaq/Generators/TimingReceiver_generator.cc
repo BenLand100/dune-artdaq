@@ -13,8 +13,9 @@
 
 #include "artdaq/Application/GeneratorMacros.hh"
 #include "cetlib/exception.h"
-#include "dune-raw-data/Overlays/TimingFragment.hh"
 #include "dune-raw-data/Overlays/FragmentType.hh"
+#include "dune-raw-data/Overlays/TimingFragment.hh"
+
 #include "fhiclcpp/ParameterSet.h"
 
 #include <fstream>
@@ -68,6 +69,8 @@ dune::TimingReceiver::TimingReceiver(fhicl::ParameterSet const & ps):
   ,end_run_wait_(ps.get<uint32_t>("end_run_wait",1000))
   ,zmq_conn_(ps.get<std::string>("zmq_connection","tcp://pddaq-gen05-daq0:5566"))
   ,zmq_conn_out_(ps.get<std::string>("zmq_connection_out","tcp://*:5599"))
+  ,
+zmq_fragment_conn_out_(ps.get<std::string>("zmq_fragment_connection_out","tcp://*:7123"))
 {
 
     // TODO:
@@ -154,6 +157,10 @@ dune::TimingReceiver::TimingReceiver(fhicl::ParameterSet const & ps):
     // broadcast whether we're happy to take triggers
     status_publisher_.reset(new artdaq::StatusPublisher(instance_name_, zmq_conn_out_));
     status_publisher_->BindPublisher();
+
+    fragment_publisher_.reset(new artdaq::FragmentPublisher(zmq_fragment_conn_out_));
+    fragment_publisher_->BindPublisher();
+
     // TODO: Do we really need to sleep here to wait for the socket to bind?
     usleep(2000000);
     DAQLogger::LogInfo(instance_name_) << "Done configure (end of constructor)\n";
@@ -336,6 +343,9 @@ bool dune::TimingReceiver::getNext_(artdaq::FragmentPtrs &frags)
 
         DAQLogger::LogInfo(instance_name_) << "For timing fragment with sequence ID " << ev_counter() << ", setting the timestamp to " << fo.get_tstamp();
         f->setTimestamp(fo.get_tstamp());  // 64-bit number
+
+        // Send the fragment out on ZeroMQ for FELIX and whoever else wants to listen for it
+        fragment_publisher_->PublishFragment(&fo);
 
         frags.emplace_back(std::move(f));
         ev_counter_inc();
