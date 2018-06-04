@@ -26,7 +26,6 @@ private:
   void setupFEMB(size_t iFEMB, fhicl::ParameterSet const& FEMB_config, bool continueOnFEMBRegReadError);
 
   std::unique_ptr<WIB> wib;
-  std::string identification;
 
 };
 
