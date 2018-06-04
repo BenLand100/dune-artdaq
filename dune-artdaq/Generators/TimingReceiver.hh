@@ -17,7 +17,6 @@
 #include "artdaq-core/Data/Fragment.hh" 
 #include "artdaq/Application/CommandableFragmentGenerator.hh"
 
-#include "dune-raw-data/Overlays/TimingFragment.hh"
 #include "dune-raw-data/Overlays/FragmentType.hh"
 
 #include <random>
@@ -30,7 +29,7 @@
 
 #include "uhal/uhal.hpp"   // The real uhal
 #include "timingBoard/StatusPublisher.hh"
-
+#include "timingBoard/FragmentPublisher.hh"
 
 //class testclass : private boost::noncopyable {
 //public:
@@ -49,8 +48,8 @@ namespace dune {
 
 using namespace uhal;
 
-namespace dune {    
-  class TimingFragment;   // Forward definition: trying to not need to include the overlay class header in this .hh file
+namespace dune {
+class TimingFragment;
 }
 
 namespace pdt {
@@ -142,8 +141,9 @@ namespace dune {
 
     std::string zmq_conn_;  // String specifying the zmq connection to subscribe for inhibit information
     std::string zmq_conn_out_;  // String specifying the zmq connection we will send our inhibit information to
+    std::string zmq_fragment_conn_out_; // String specifying the zmq connection we publish fragments on
 
-// Things for metrics (need to use int because the metrics send class signature uses 'int')
+    // Things for metrics (need to use int because the metrics send class signature uses 'int')
     int met_event_;    // Current event
     uint64_t met_tstamp_;   // Current timestamp (in 64-bit, may need to truncate to 32 bits to post to metrics
     int met_sevent_;   // Number of events this spill
@@ -153,6 +153,8 @@ namespace dune {
     int met_sintmax_;  // Max interval between events this spill
 
     std::unique_ptr<artdaq::StatusPublisher> status_publisher_;
+    std::unique_ptr<artdaq::FragmentPublisher> fragment_publisher_;
+
 // Internal functions
     void reset_met_variables(bool onlyspill=false);   // If onlyspill, only reset the in-spill variables
     void update_met_variables(dune::TimingFragment& fo); // Update variables for met
