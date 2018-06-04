@@ -28,7 +28,7 @@
 #include <type_traits>
 #include <utility>
 #include <new>
-
+#include <iostream>
 #include "Align.h"
 #include "dune-artdaq/DAQLogger/DAQLogger.hh"
 
@@ -74,15 +74,15 @@ struct ProducerConsumerQueue {
     if (!records_) {
       throw std::bad_alloc();
     }
-    dune::DAQLogger::LogInfo("FelixHardwareInterface folly::ProducerConsumerQueue::ProducerConsumerQueue")
-      << "SPSC -> Queue<"<<type_name<T>()<<"> created! "
-      << "Size:" << size << " allocated:" << (sizeof(T)*size)/1024/1024 << "[MBytes] "
-      << sizeof(T)*size << "[Bytes]";
+    //dune::DAQLogger::LogInfo("folly::ProducerConsumerQueue::ProducerConsumerQueue")
+    //  << "SPSC -> Queue<"<<type_name<T>()<<"> created! "
+    //  << "Size:" << size << " allocated:" << (sizeof(T)*size)/1024/1024 << "[MBytes] "
+    //  << sizeof(T)*size << "[Bytes]";
   }
 
   ~ProducerConsumerQueue() {
-    dune::DAQLogger::LogInfo("FelixHardwareInterface folly::ProducerConsumerQueue::~ProducerConsumerQueue")
-      << "SPSC -> Flushing Queue<" <<type_name<T>()<<">! Population: " << sizeGuess();   
+    //dune::DAQLogger::LogInfo("folly::ProducerConsumerQueue::~ProducerConsumerQueue")
+    //  << "SPSC -> Flushing Queue<" <<type_name<T>()<<">! Population: " << sizeGuess();   
     // We need to destruct anything that may still exist in our queue.
     // (No real synchronization needed at destructor time: only one
     // thread can be doing this.)
@@ -105,14 +105,15 @@ struct ProducerConsumerQueue {
     auto const currentWrite = writeIndex_.load(std::memory_order_relaxed);
     auto nextRecord = currentWrite + 1;
     if (nextRecord == size_) {
+      //dune::DAQLogger::LogInfo("folly::ProducerConsumerQueue::write") << "*** write turnaround ***";
       nextRecord = 0;
     }
     //if (nextRecord == readIndex_.load(std::memory_order_acquire)) {
       //std::cout << "SPSC WARNING -> Queue is full! WRITE PASSES READ!!! \n";
     //}    
-    new (&records_[currentWrite]) T(std::forward<Args>(recordArgs)...);
-    writeIndex_.store(nextRecord, std::memory_order_release);
-    return true; 
+    //    new (&records_[currentWrite]) T(std::forward<Args>(recordArgs)...);
+    //writeIndex_.store(nextRecord, std::memory_order_release);
+    //return true; 
 
     //ORIGINAL:
     if (nextRecord != readIndex_.load(std::memory_order_acquire)) {
@@ -160,9 +161,9 @@ struct ProducerConsumerQueue {
 
     auto nextRecord = currentRead + 1;
     if (nextRecord == size_) {
+      //dune::DAQLogger::LogInfo("folly::ProducerConsumerQueue::popFront()") <<"*** popFront turnaround ***" ;
       nextRecord = 0;
     }
-    //std::cout << "Popping at: " << currentRead << " to next record: " << nextRecord << '\n';
 
     records_[currentRead].~T();
     readIndex_.store(nextRecord, std::memory_order_release);

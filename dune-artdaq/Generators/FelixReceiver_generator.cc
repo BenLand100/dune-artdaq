@@ -29,74 +29,99 @@ dune::FelixReceiver::FelixReceiver(fhicl::ParameterSet const & ps)
   CommandableFragmentGenerator(ps),
   timestamp_(0),
   timestampScale_(ps.get<int>("timestamp_scale_factor", 1)),
-  frame_size_(ps.get<size_t>("frame_size", 1024)),
+  frame_size_(ps.get<size_t>("frame_size")),
   //readout_buffer_(nullptr),
   fragment_type_(static_cast<decltype(fragment_type_)>( artdaq::Fragment::InvalidFragmentType ))
 {
-  DAQLogger::LogInfo("FelixReceiver dune::FelixReceiver::FelixReceiver") 
-    << "Preparing HardwareInterface for FELIX.";
+  DAQLogger::LogInfo("dune::FelixReceiver::FelixReceiver")<< "Preparing HardwareInterface for FELIX.";
   netio_hardware_interface_ = std::unique_ptr<FelixHardwareInterface>( new FelixHardwareInterface(ps) );
+  message_size_ = netio_hardware_interface_->MessageSize();
+  trigger_window_size_ = netio_hardware_interface_->TriggerWindowSize();
 
   /* ADDITIONAL METADATA IF NEEDED */
   // RS -> These metadata will be cleared out!
   metadata_.board_serial_number = 999;
   metadata_.num_adc_bits = 12;
   fragment_type_ = toFragmentType("FELIX");
+
+  // Metrics
+  instance_name_for_metrics_ = "FelixReceiver";
+  num_frags_m_ = 0;
 }
 
 dune::FelixReceiver::~FelixReceiver() {
-  DAQLogger::LogInfo("FelixReceiver dune::FelixReceiver::~FelixReceiver") << " Destructing FelixReceiver.";
+  DAQLogger::LogInfo("dune::FelixReceiver::~FelixReceiver") << " Destructing FelixReceiver.";
 }
 
 bool dune::FelixReceiver::getNext_(artdaq::FragmentPtrs & frags) {
   // RS -> On stop signal, busy check.
-  if (should_stop()) {
-    
-    //DAQLogger::LogInfo("FelixReceiver dune::FelixReceiver::getNext_") << "should_stop() issued! Check for busy links...";
+  if (should_stop()) { 
+    DAQLogger::LogInfo("dune::FelixReceiver::getNext_") << "should_stop() issued! Check for busy links...";
     while ( netio_hardware_interface_->Busy() ) {
       std::this_thread::sleep_for(std::chrono::milliseconds(1000));
     }
-    //DAQLogger::LogInfo("FelixReceiver dune::FelixReceiver::getNext_") << "No more busy links, returning...";
-    return true;
+    DAQLogger::LogInfo("dune::FelixReceiver::getNext_") << "No more busy links, returning...";
+    return false;
   } else {
-    std::size_t bytes_read = 512*10000;  
+    // RS -> This shouldn't be here... FelixReceiver is only responsible for ArtDAQ logic.
+    //    -> Move this part to the HWInterface.
+    //std::size_t bytes_to_read = frame_size_ * trigger_window_size_;
+    //eg180601 specify bytes to read in msgsize
+    //GLM: create empty fragment!
     std::unique_ptr<artdaq::Fragment> fragptr(
-      artdaq::Fragment::FragmentBytes(bytes_read, ev_counter(), fragment_id(),
+      artdaq::Fragment::FragmentBytes(0, ev_counter(), fragment_id(),
                                       fragment_type_, metadata_, timestamp_)
     );
-    netio_hardware_interface_->FillFragment( fragptr );
-    uint64_t newTS = *(reinterpret_cast<const uint_fast64_t*>(fragptr->dataBeginBytes()+8));
-    DAQLogger::LogInfo("FelixReceiver dune::FelixReceiver::getNext_") << "Before returning, peak to first timestamp:\n"
-      << " TS: " << std::hex << newTS << std::dec;
+
+    //std::unique_ptr<artdaq::Fragment> fragptr(ev_counter(), fragment_id(),fragment_type_);
+
+
+    // RS -> This will be the logic to check if there are requests or not. 
+    //    -> If FillFragment returns false, it will mean that there are no requests available for some time.
+    //       -> Valid to retry FillFragment, if there is NO should_stop issued!
+    //    -> A bool/enum parameter, passed to the function will indicate that there was a trigger matching problem.
+    //       -> Need to be handled, and understood if it should return false or true from the getNext_
+    bool done = false;
+    unsigned status = 0;
+    while ( !done ){
+      done = netio_hardware_interface_->FillFragment( fragptr, status );
+      if ( status==1 ) { // 1 -> Couldn't fill thanks to no requests...
+        if (should_stop()) { return false; } // check for stop and try again...
+        done = false;
+        status = 0;
+      } else if ( status==2 ){
+        // Internal HWInterface error... 
+        // Log message, but most probably it was already done...
+        DAQLogger::LogWarning("dune::FelixReceiver::getNext_") << "bad status from FillFragment.";
+        //usleep(10000);
+        return true; // GLM: returning false stops data taking!
+      }
+    }
+
+    //uint64_t newTS = *(reinterpret_cast<const uint_fast64_t*>(fragptr->dataBeginBytes()+8));
+    //DAQLogger::LogInfo("dune::FelixReceiver::getNext_") << "Before returning, peek to first timestamp:\n"
+    //  << " TS: " << newTS;
 
     frags.emplace_back( std::move(fragptr) );
+    // RS -> Add metric manager...
+    if(artdaq::Globals::metricMan_ != nullptr) {
+      artdaq::Globals::metricMan_->sendMetric("Fragments Sent", ev_counter(), "fragments", 1, artdaq::MetricMode::Accumulate);
+      //artdaq::Globals::metricMan_->sendMetric("Fragment Count", num_frags_m_, "fragments", 1, artdaq::MetricMode::Accumulate);
+    }
+
+    num_frags_m_++;
     ev_counter_inc();
     return true;
   }
-
-  // RS -> Check for fragment quality for debugging:
-  //std::cout<<"WOOF WOOF -> GENERATOR: getNext() timestamp: "<<std::hex<<"0x"<<timestamp_<<std::dec
-  //         <<" sequence: "<<ev_counter()<<std::endl;
-
-  // RS -> Emplace new fragment to Frag container.
-
-
-  // RS -> Add metric manager...
-  //if(metricMan != nullptr) {
-  //  metricMan->sendMetric("Fragments Sent",ev_counter(), "Events", 3);
-  //}
-
-  //ev_counter_inc();
-  //return true;
 }
 
 void dune::FelixReceiver::start() {
-  DAQLogger::LogInfo("FelixReceiver dune::FelixReceiver::start()") << "Start datatatking for FelixHardwareInterfaces.";
+  DAQLogger::LogInfo("dune::FelixReceiver::start") << "Start datatatking for FelixHardwareInterfaces.";
   netio_hardware_interface_->StartDatataking();
 }
 
 void dune::FelixReceiver::stop() {
-  DAQLogger::LogInfo("FelixReceiver dune::FelixReceiver::stop()") << "Stop datataking for FelixHardwareInterfaces.";
+  DAQLogger::LogInfo("dune::FelixReceiver::stop") << "Stop datataking for FelixHardwareInterfaces.";
   if (should_stop()){
     netio_hardware_interface_->StopDatataking();
   }
