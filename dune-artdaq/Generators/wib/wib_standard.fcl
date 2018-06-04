@@ -62,7 +62,7 @@ wib_config: {
       # FEMB register map
       femb_table: "PDUNE_FEMB_323.adt"
       # this must match the WIB firmware version (hex)
-      expected_wib_fw_version: 0x18032901
+      expected_wib_fw_version: 0x18041701
       # this must match the WIB firmware version
       expected_daq_mode: "any" # "RCE", "FELIX", or "any"
 
@@ -111,6 +111,18 @@ wib_standard: {
     destinations: {}
     sends_no_fragments: true 
   }
+  metrics: {
+    dim: {
+      metricPluginType: dim 
+      level: 5 
+      reporting_interval: 5.0 
+      Verbose: false 
+      DNSPort: 2505 
+      DNSNode: "np04-srv-010.cern.ch" 
+      DIMServerName: WIBReader 
+      IDName: wibdefault
+    }
+  }
 }
 
 ############################
@@ -119,6 +131,7 @@ wib901_standard: @local::wib_standard
 wib901_standard.fragment_receiver.fragment_id: 491 
 wib901_standard.fragment_receiver.board_id: 91
 wib901_standard.fragment_receiver.WIB.address: "np04-wib-901" 
+wib901_standard.metrics.dim.IDName: "wib901"
 
 wib902_standard: @local::wib_standard
 wib902_standard.fragment_receiver.fragment_id: 492 
@@ -127,16 +140,19 @@ wib902_standard.fragment_receiver.board_id: 92
 wib902_standard.fragment_receiver.WIB.address: "192.168.200.2" 
 wib902_standard.fragment_receiver.WIB.config.use_WIB_fake_data: [false,true,true,true]
 wib902_standard.fragment_receiver.WIB.config.enable_FEMBs: [true,false,false,false]
+wib902_standard.metrics.dim.IDName: "wib902"
 
 wib903_standard: @local::wib_standard
 wib903_standard.fragment_receiver.fragment_id: 493 
 wib903_standard.fragment_receiver.board_id: 93
 wib903_standard.fragment_receiver.WIB.address: "np04-wib-903" 
+wib903_standard.metrics.dim.IDName: "wib903"
 
 wib904_standard: @local::wib_standard
 wib904_standard.fragment_receiver.fragment_id: 494 
 wib904_standard.fragment_receiver.board_id: 94
 wib904_standard.fragment_receiver.WIB.address: "np04-wib-904" 
+wib904_standard.metrics.dim.IDName: "wib904"
 
 wib905_standard: @local::wib_standard
 wib905_standard.fragment_receiver.fragment_id: 495
@@ -145,6 +161,7 @@ wib905_standard.fragment_receiver.board_id: 95
 wib905_standard.fragment_receiver.WIB.address: "192.168.200.5" 
 wib905_standard.fragment_receiver.WIB.config.use_WIB_fake_data: [true,true,false,false]
 wib905_standard.fragment_receiver.WIB.config.enable_FEMBs: [false,false,true,true]
+wib905_standard.metrics.dim.IDName: "wib905"
 
 ############################
 
@@ -152,26 +169,31 @@ wib001_standard: @local::wib_standard
 wib001_standard.fragment_receiver.fragment_id: 401 
 wib001_standard.fragment_receiver.board_id: 1 
 wib001_standard.fragment_receiver.WIB.address: "np04-wib-001" 
+wib001_standard.metrics.dim.IDName: "wib001"
 
 wib002_standard: @local::wib_standard 
 wib002_standard.fragment_receiver.fragment_id: 402 
 wib002_standard.fragment_receiver.board_id: 2 
 wib002_standard.fragment_receiver.WIB.address: "np04-wib-002" 
+wib002_standard.metrics.dim.IDName: "wib002"
 
 wib003_standard: @local::wib_standard 
 wib003_standard.fragment_receiver.fragment_id: 403 
 wib003_standard.fragment_receiver.board_id: 3 
 wib003_standard.fragment_receiver.WIB.address: "np04-wib-003" 
+wib003_standard.metrics.dim.IDName: "wib003"
 
 wib004_standard: @local::wib_standard 
 wib004_standard.fragment_receiver.fragment_id: 404 
 wib004_standard.fragment_receiver.board_id: 4 
 wib004_standard.fragment_receiver.WIB.address: "np04-wib-004" 
+wib004_standard.metrics.dim.IDName: "wib004"
 
 wib005_standard: @local::wib_standard 
 wib005_standard.fragment_receiver.fragment_id: 405 
 wib005_standard.fragment_receiver.board_id: 5 
 wib005_standard.fragment_receiver.WIB.address: "np04-wib-005" 
+wib005_standard.metrics.dim.IDName: "wib005"
 
 ############################
 
@@ -179,26 +201,31 @@ wib101_standard: @local::wib_standard
 wib101_standard.fragment_receiver.fragment_id: 411 
 wib101_standard.fragment_receiver.board_id: 11 
 wib101_standard.fragment_receiver.WIB.address: "np04-wib-101" 
+wib101_standard.metrics.dim.IDName: "wib101"
 
 wib102_standard: @local::wib_standard 
 wib102_standard.fragment_receiver.fragment_id: 412 
 wib102_standard.fragment_receiver.board_id: 12 
 wib102_standard.fragment_receiver.WIB.address: "np04-wib-102" 
+wib102_standard.metrics.dim.IDName: "wib102"
 
 wib103_standard: @local::wib_standard 
 wib103_standard.fragment_receiver.fragment_id: 413 
 wib103_standard.fragment_receiver.board_id: 13 
 wib103_standard.fragment_receiver.WIB.address: "np04-wib-103" 
+wib103_standard.metrics.dim.IDName: "wib103"
 
 wib104_standard: @local::wib_standard 
 wib104_standard.fragment_receiver.fragment_id: 414 
 wib104_standard.fragment_receiver.board_id: 14 
 wib104_standard.fragment_receiver.WIB.address: "np04-wib-104" 
+wib104_standard.metrics.dim.IDName: "wib104"
 
 wib105_standard: @local::wib_standard 
 wib105_standard.fragment_receiver.fragment_id: 415 
 wib105_standard.fragment_receiver.board_id: 15 
 wib105_standard.fragment_receiver.WIB.address: "np04-wib-105" 
+wib105_standard.metrics.dim.IDName: "wib105"
 
 ############################
 
@@ -206,26 +233,31 @@ wib201_standard: @local::wib_standard
 wib201_standard.fragment_receiver.fragment_id: 421 
 wib201_standard.fragment_receiver.board_id: 21 
 wib201_standard.fragment_receiver.WIB.address: "np04-wib-201" 
+wib201_standard.metrics.dim.IDName: "wib201"
 
 wib202_standard: @local::wib_standard 
 wib202_standard.fragment_receiver.fragment_id: 422 
 wib202_standard.fragment_receiver.board_id: 22 
 wib202_standard.fragment_receiver.WIB.address: "np04-wib-202" 
+wib202_standard.metrics.dim.IDName: "wib202"
 
 wib203_standard: @local::wib_standard 
 wib203_standard.fragment_receiver.fragment_id: 423 
 wib203_standard.fragment_receiver.board_id: 23 
 wib203_standard.fragment_receiver.WIB.address: "np04-wib-203" 
+wib203_standard.metrics.dim.IDName: "wib203"
 
 wib204_standard: @local::wib_standard 
 wib204_standard.fragment_receiver.fragment_id: 424 
 wib204_standard.fragment_receiver.board_id: 24 
 wib204_standard.fragment_receiver.WIB.address: "np04-wib-204" 
+wib204_standard.metrics.dim.IDName: "wib204"
 
 wib205_standard: @local::wib_standard 
 wib205_standard.fragment_receiver.fragment_id: 425 
 wib205_standard.fragment_receiver.board_id: 25 
 wib205_standard.fragment_receiver.WIB.address: "np04-wib-205" 
+wib205_standard.metrics.dim.IDName: "wib205"
 
 ############################
 
@@ -233,26 +265,31 @@ wib301_standard: @local::wib_standard
 wib301_standard.fragment_receiver.fragment_id: 431 
 wib301_standard.fragment_receiver.board_id: 31 
 wib301_standard.fragment_receiver.WIB.address: "np04-wib-301" 
+wib301_standard.metrics.dim.IDName: "wib301"
 
 wib302_standard: @local::wib_standard 
 wib302_standard.fragment_receiver.fragment_id: 432 
 wib302_standard.fragment_receiver.board_id: 32 
 wib302_standard.fragment_receiver.WIB.address: "np04-wib-302" 
+wib302_standard.metrics.dim.IDName: "wib302"
 
 wib303_standard: @local::wib_standard 
 wib303_standard.fragment_receiver.fragment_id: 433 
 wib303_standard.fragment_receiver.board_id: 33 
 wib303_standard.fragment_receiver.WIB.address: "np04-wib-303" 
+wib303_standard.metrics.dim.IDName: "wib303"
 
 wib304_standard: @local::wib_standard 
 wib304_standard.fragment_receiver.fragment_id: 434 
 wib304_standard.fragment_receiver.board_id: 34 
 wib304_standard.fragment_receiver.WIB.address: "np04-wib-304" 
+wib304_standard.metrics.dim.IDName: "wib304"
 
 wib305_standard: @local::wib_standard 
 wib305_standard.fragment_receiver.fragment_id: 435 
 wib305_standard.fragment_receiver.board_id: 35 
 wib305_standard.fragment_receiver.WIB.address: "np04-wib-305" 
+wib305_standard.metrics.dim.IDName: "wib305"
 
 ############################
 
@@ -260,26 +297,31 @@ wib401_standard: @local::wib_standard
 wib401_standard.fragment_receiver.fragment_id: 441 
 wib401_standard.fragment_receiver.board_id: 41 
 wib401_standard.fragment_receiver.WIB.address: "np04-wib-401" 
+wib401_standard.metrics.dim.IDName: "wib401"
 
 wib402_standard: @local::wib_standard 
 wib402_standard.fragment_receiver.fragment_id: 442 
 wib402_standard.fragment_receiver.board_id: 42 
 wib402_standard.fragment_receiver.WIB.address: "np04-wib-402" 
+wib402_standard.metrics.dim.IDName: "wib402"
 
 wib403_standard: @local::wib_standard 
 wib403_standard.fragment_receiver.fragment_id: 443 
 wib403_standard.fragment_receiver.board_id: 43 
 wib403_standard.fragment_receiver.WIB.address: "np04-wib-403" 
+wib403_standard.metrics.dim.IDName: "wib403"
 
 wib404_standard: @local::wib_standard 
 wib404_standard.fragment_receiver.fragment_id: 444 
 wib404_standard.fragment_receiver.board_id: 44 
 wib404_standard.fragment_receiver.WIB.address: "np04-wib-404" 
+wib404_standard.metrics.dim.IDName: "wib404"
 
 wib405_standard: @local::wib_standard 
 wib405_standard.fragment_receiver.fragment_id: 445 
 wib405_standard.fragment_receiver.board_id: 45 
 wib405_standard.fragment_receiver.WIB.address: "np04-wib-405" 
+wib405_standard.metrics.dim.IDName: "wib405"
 
 ############################
 
@@ -287,26 +329,31 @@ wib501_standard: @local::wib_standard
 wib501_standard.fragment_receiver.fragment_id: 451 
 wib501_standard.fragment_receiver.board_id: 51 
 wib501_standard.fragment_receiver.WIB.address: "np04-wib-501" 
+wib501_standard.metrics.dim.IDName: "wib501"
 
 wib502_standard: @local::wib_standard 
 wib502_standard.fragment_receiver.fragment_id: 452 
 wib502_standard.fragment_receiver.board_id: 52 
 wib502_standard.fragment_receiver.WIB.address: "np04-wib-502" 
+wib502_standard.metrics.dim.IDName: "wib502"
 
 wib503_standard: @local::wib_standard 
 wib503_standard.fragment_receiver.fragment_id: 453 
 wib503_standard.fragment_receiver.board_id: 53 
 wib503_standard.fragment_receiver.WIB.address: "np04-wib-503" 
+wib503_standard.metrics.dim.IDName: "wib503"
 
 wib504_standard: @local::wib_standard 
 wib504_standard.fragment_receiver.fragment_id: 454 
 wib504_standard.fragment_receiver.board_id: 54 
 wib504_standard.fragment_receiver.WIB.address: "np04-wib-504" 
+wib504_standard.metrics.dim.IDName: "wib504"
 
 wib505_standard: @local::wib_standard 
 wib505_standard.fragment_receiver.fragment_id: 455 
 wib505_standard.fragment_receiver.board_id: 55 
 wib505_standard.fragment_receiver.WIB.address: "np04-wib-505" 
+wib505_standard.metrics.dim.IDName: "wib505"
 
 ############################
 
@@ -314,25 +361,30 @@ wib601_standard: @local::wib_standard
 wib601_standard.fragment_receiver.fragment_id: 461 
 wib601_standard.fragment_receiver.board_id: 61 
 wib601_standard.fragment_receiver.WIB.address: "np04-wib-601" 
+wib601_standard.metrics.dim.IDName: "wib601"
 
 wib602_standard: @local::wib_standard 
 wib602_standard.fragment_receiver.fragment_id: 462 
 wib602_standard.fragment_receiver.board_id: 62 
 wib602_standard.fragment_receiver.WIB.address: "np04-wib-602" 
+wib602_standard.metrics.dim.IDName: "wib602"
 
 wib603_standard: @local::wib_standard 
 wib603_standard.fragment_receiver.fragment_id: 463 
 wib603_standard.fragment_receiver.board_id: 63 
 wib603_standard.fragment_receiver.WIB.address: "np04-wib-603" 
+wib603_standard.metrics.dim.IDName: "wib603"
 
 wib604_standard: @local::wib_standard 
 wib604_standard.fragment_receiver.fragment_id: 464 
 wib604_standard.fragment_receiver.board_id: 64 
 wib604_standard.fragment_receiver.WIB.address: "np04-wib-604" 
+wib604_standard.metrics.dim.IDName: "wib604"
 
 wib605_standard: @local::wib_standard 
 wib605_standard.fragment_receiver.fragment_id: 465 
 wib605_standard.fragment_receiver.board_id: 65 
 wib605_standard.fragment_receiver.WIB.address: "np04-wib-605" 
+wib605_standard.metrics.dim.IDName: "wib605"
 
 END_PROLOG

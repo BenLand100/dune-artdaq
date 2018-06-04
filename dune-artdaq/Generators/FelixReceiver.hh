@@ -38,6 +38,11 @@ namespace dune {
     explicit FelixReceiver(fhicl::ParameterSet const & ps);
     ~FelixReceiver();
 
+  protected:
+    std::string metricsReportingInstanceName() const {
+      return instance_name_for_metrics_;
+    }
+
   private:
 
     // The "getNext_" function is used to implement user-specific
@@ -54,10 +59,11 @@ namespace dune {
     void stop() override;
     void stopNoMutex() override {}
 
+    // Configurable HWInterface. Can take care of multiple links.
     std::unique_ptr<FelixHardwareInterface> netio_hardware_interface_;
-    // 1 HWInterface / each link / half WIB
-    
-    //std::vector<std::unique_ptr<FelixHardwareInterface> > netio_hardware_interfaces_;
+    // Exposed infos from HWInterace to pre-allocate ArtDAQ fragment with correct size.
+    unsigned message_size_;
+    unsigned trigger_window_size_;
 
     artdaq::Fragment::timestamp_t timestamp_;
     int timestampScale_;
@@ -73,6 +79,12 @@ namespace dune {
     //char* readout_buffer_;
 
     FragmentType fragment_type_;
+
+    // Metrics
+    std::string instance_name_for_metrics_;
+    unsigned metrics_report_time_;
+    size_t num_frags_m_;
+    
 
   };
 }

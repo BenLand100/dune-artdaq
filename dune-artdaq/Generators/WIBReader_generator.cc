@@ -22,6 +22,8 @@ namespace wibdaq {
 WIBReader::WIBReader(fhicl::ParameterSet const& ps) :
     CommandableFragmentGenerator(ps) {
 
+  const std::string identification = "wibdaq::WIBReader::WIBReader";
+
   auto wib_address = ps.get<std::string>("WIB.address");
 
   auto wib_table = ps.get<std::string>("WIB.config.wib_table");
@@ -45,9 +47,6 @@ WIBReader::WIBReader(fhicl::ParameterSet const& ps) :
 
   auto enable_FEMBs = ps.get<std::vector<bool> >("WIB.config.enable_FEMBs");
   auto FEMB_configs = ps.get<std::vector<fhicl::ParameterSet> >("WIB.config.FEMBs");
-
-  identification = "WIB ";
-  identification.append(wib_address);
 
   if (use_WIB_fake_data.size() != 4)
   {
@@ -230,6 +229,8 @@ WIBReader::WIBReader(fhicl::ParameterSet const& ps) :
 
 void WIBReader::setupFEMBFakeData(size_t iFEMB, fhicl::ParameterSet const& FEMB_config, bool continueOnFEMBRegReadError) {
   // Don't forget to disable WIB fake data
+
+  const std::string identification = "wibdaq::WIBReader::setupFEMBFakeData";
   
   wib->FEMBPower(iFEMB,1);
   sleep(1);
@@ -314,6 +315,8 @@ void WIBReader::setupFEMBFakeData(size_t iFEMB, fhicl::ParameterSet const& FEMB_
 void WIBReader::setupFEMB(size_t iFEMB, fhicl::ParameterSet const& FEMB_config, bool continueOnFEMBRegReadError){
   // Don't forget to disable WIB fake data
 
+  const std::string identification = "wibdaq::WIBReader::setupFEMB";
+  
   const auto gain = FEMB_config.get<uint32_t>("gain");
   const auto shape = FEMB_config.get<uint32_t>("shape");
   const auto baselineHigh = FEMB_config.get<uint32_t>("baselineHigh");
@@ -509,34 +512,8 @@ void WIBReader::stop() {
 
 // Called by BoardReaderMain in a loop between "start" and "stop"
 bool WIBReader::getNext_(artdaq::FragmentPtrs& /*frags*/) {
-  //dune::DAQLogger::LogInfo("WIBReader") <<"getNext_()";
-  if(artdaq::Globals::metricMan_ != nullptr) {
-    //sendMetric(const string&, const int&, const string&,   int,                bool,    const string&,                         bool)
-    //                    name,      value,         units, level, average values=true,        prefix="",   don't apply prefixes=false
-
-    sendRegMetric("SYSTEM.DTS_LOCKED",4);
-    sendRegMetric("SYSTEM.EB_LOCKED",4);
-    sendRegMetric("SYSTEM.FEMB_LOCKED",4);
-    sendRegMetric("SYSTEM.SYS_LOCKED",4);
-
-    sendRegMetric("DTS.CONVERT_CONTROL.STATE",5);
-    sendRegMetric("DTS.CONVERT_CONTROL.SYNC_PERIOD",5);
-    sendRegMetric("DTS.CONVERT_CONTROL.LOCAL_TIMESTAMP",5);
-    sendRegMetric("DTS.PDTS_STATE",5);
-    sendRegMetric("DTS.CONVERT_CONTROL.OOS",5);
-    sendRegMetric("DTS.EVENT_NUMBER",5);
-
-    sendRegMetric("DAQ_LINK_1.EVENT_COUNT",5);
-    sendRegMetric("DAQ_LINK_1.MISMATCH_COUNT",5);
-    sendRegMetric("DAQ_LINK_2.EVENT_COUNT",5);
-    sendRegMetric("DAQ_LINK_2.MISMATCH_COUNT",5);
-    sendRegMetric("DAQ_LINK_3.EVENT_COUNT",5);
-    sendRegMetric("DAQ_LINK_3.MISMATCH_COUNT",5);
-    sendRegMetric("DAQ_LINK_4.EVENT_COUNT",5);
-    sendRegMetric("DAQ_LINK_4.MISMATCH_COUNT",5);
-  }
   std::this_thread::sleep_for(std::chrono::milliseconds(100));
-  return false;
+  return (! should_stop()); // returning false before should_stop makes all other BRs stop
 }
 
 } // namespace

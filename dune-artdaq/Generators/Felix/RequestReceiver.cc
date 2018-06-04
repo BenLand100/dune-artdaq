@@ -36,6 +36,10 @@ bool RequestReceiver::setup(const std::string& listenAddress,
   m_max_requests = requestSize;
   m_req = std::make_unique<RequestQueue_t>(m_max_requests);
 
+  dune::DAQLogger::LogInfo("RequestReceiver::setup")
+      << "Attempt to setup. ListenAddress:" << listenAddress 
+      << " MulticastAddress:" << multicastAddress << " MulticastPort:" << multicastPort;
+
   // Create the socket
   try {
     ip::udp::endpoint listen_endpoint( ip::udp::v4(), m_multicastPort );
@@ -49,11 +53,11 @@ bool RequestReceiver::setup(const std::string& listenAddress,
       ip::address::from_string(m_multicastAddress).to_v4(),
       ip::address::from_string(m_listenAddress).to_v4())
     );
-    dune::DAQLogger::LogInfo("FelixHardwareInterface RequestReceiver::setup")
+    dune::DAQLogger::LogInfo("RequestReceiver::setup")
       << "Successfully joined to multicast group!";
     return true;
   } catch (...) {
-    dune::DAQLogger::LogError("FelixHardwareInterface RequestReceiver::setup")
+    dune::DAQLogger::LogError("RequestReceiver::setup")
       << "Failed joined to multicast group!";
     return false;
   }
@@ -63,7 +67,7 @@ void RequestReceiver::start() {
   m_stop_thread = false;
   m_receiver = std::thread(&RequestReceiver::thread, this);
   set_thread_name(m_receiver, "req-recv", 1);
-  dune::DAQLogger::LogInfo("FelixHardwareInterface RequestReceiver::start")
+  dune::DAQLogger::LogInfo("RequestReceiver::start")
       << "Request receiver thread started!";
 }
 
@@ -74,7 +78,7 @@ void RequestReceiver::stop() {
   } else {
     std::cout << " PANIC! Receiver thread is not joinable!\n";
   }
-  dune::DAQLogger::LogInfo("FelixHardwareInterface RequestReceiver::stop")
+  dune::DAQLogger::LogInfo("RequestReceiver::stop")
       << "Request receiver thread joined! Request queue flushed.";
 }
 
@@ -84,8 +88,12 @@ bool RequestReceiver::requestAvailable() {
 
 bool RequestReceiver::getNextRequest(artdaq::detail::RequestPacket& request) {
   // Based on queue check, return true or false, and set request.
-  m_req->read( std::ref(request) );
-  return true;
+  if ( m_req->isEmpty() ) {
+    return false; 
+  } else {
+    m_req->read( std::ref(request) );
+    return true;
+  }
 }
 
 void RequestReceiver::thread(){
@@ -98,15 +106,14 @@ void RequestReceiver::thread(){
 
   // Spin while stop issued.
   while(!m_stop_thread){
+
     int received = m_socket.receive_from(boost::asio::buffer(dataBuff, 1500), m_remote_endpoint);
     bytes += received;
 
     if( isHeader ){ // header
 
       artdaq::detail::RequestHeader* reqMess = reinterpret_cast<artdaq::detail::RequestHeader*>(dataBuff);
-      // std::cout<<"BLA  -> is Header valid? "<<pReqMess_->isValid()<<std::endl;
       if(reqMess->isValid()){
-        // std::cout<<"BLA  -> ReqMess size "<<pReqMess_->packet_count<<std::endl;
         packets = reqMess->packet_count;
         isHeader=false;
       }
@@ -114,10 +121,7 @@ void RequestReceiver::thread(){
       for( unsigned i=0; i<packets; i++ ) {
         artdaq::detail::RequestPacket* reqPack = reinterpret_cast<artdaq::detail::RequestPacket*>(
           dataBuff+i*sizeof(artdaq::detail::RequestPacket));
-        // std::cout<<"BLA  -> is Packet valid? "<<ReqPack->isValid()<<std::endl;
         if( reqPack->isValid() ) {
-          // std::cout<<"BLA  -> Timestamp of request "<<ReqPack->timestamp<<std::endl;
-          // std::cout<<"     -> sequence ID of request "<<ReqPack->sequence_id<<std::endl;
           if( lastSequence < reqPack->sequence_id ) { 
             lastSequence = reqPack->sequence_id;
             m_req->write( artdaq::detail::RequestPacket(*reqPack) );
@@ -128,7 +132,7 @@ void RequestReceiver::thread(){
     }
 
   }
-  std::cout << "Joining RequestReceiver worker thread!\n";
+
   // RS -> FREE UP STUFF!!!!
   delete dataBuff;
 }
