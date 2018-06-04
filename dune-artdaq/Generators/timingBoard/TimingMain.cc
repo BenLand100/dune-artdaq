@@ -106,8 +106,8 @@ int main(int argn, char** argv) {
   ps.put<int>("fragment_id", 5);
   ps.put<int>("debug_print", 3);
   ps.put<int>("partition_number", partition);
-  ps.put<std::string>("connections_file", "/nfs/home/phrodrig/protodune/timing/upsify/timing-board-software/tests/etc/connections.xml");
-  ps.put<std::string>("hardware_select", "DUNE_FMC_SECONDARY");
+  ps.put<std::string>("connections_file", "/nfs/sw/timing/dev/software/v4a3/timing-board-software/tests/etc/connections.xml");
+  ps.put<std::string>("hardware_select", "PDTS_TERTIARY");
   ps.put<std::string>("zmq_connection", "tcp://localhost:5601");
   dune::TimingReceiver trg(ps);       // (1) This does the configure step
   trgp = &trg;                        // Set this global variable to complete the fiddle at the start

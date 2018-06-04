@@ -2,9 +2,9 @@
 #define dune_artdaq_Generators_Felix_FelixHardwareInterface_hh
 
 #include "dune-raw-data/Overlays/FragmentType.hh"
+#include "artdaq/DAQrate/RequestReceiver.hh"
 #include "fhiclcpp/fwd.h"
 
-#include "ProducerConsumerQueue.h"
 #include "NetioHandler.hh"
 #include "RequestReceiver.hh"
 
@@ -35,11 +35,13 @@ public:
   // Functionalities
   void StartDatataking();
   void StopDatataking();
-  void FillFragment( std::unique_ptr<artdaq::Fragment>& frag );
+  bool FillFragment( std::unique_ptr<artdaq::Fragment>& frag, unsigned& report );
 
   // Info
   int SerialNumber() const;
   int BoardType() const;
+  unsigned MessageSize() const;
+  unsigned TriggerWindowSize() const;
 
   // Inner structures
   struct LinkParameters
@@ -63,19 +65,23 @@ public:
 private:
   // Configuration
   bool fake_triggers_;
-  unsigned int message_size_; //480
+  bool extract_;
+  unsigned queue_size_; // be careful with IOVEC messages -> 236640 byte per message!
+  unsigned message_size_; //480
   std::string backend_; // posix or fi_verbs
+  bool zerocopy_;
   unsigned offset_;
   unsigned window_;
   std::string requester_address_;
-  std::string multicast_address_;
-  unsigned short multicast_port_;
+  std::string request_address_;
+  unsigned short request_port_;
   unsigned short requests_size_;
 
   // NETIO & NIOH & RequestReceiver
   std::vector<LinkParameters> link_parameters_;
   NetioHandler& nioh_;
   RequestReceiver request_receiver_;
+  //artdaq::RequestReceiver artdaq_request_receiver_;
 
   // Statistics and internals
   std::atomic<unsigned long long> messages_received_;

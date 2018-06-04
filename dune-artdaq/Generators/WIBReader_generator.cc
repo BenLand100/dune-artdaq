@@ -22,6 +22,8 @@ namespace wibdaq {
 WIBReader::WIBReader(fhicl::ParameterSet const& ps) :
     CommandableFragmentGenerator(ps) {
 
+  const std::string identification = "wibdaq::WIBReader::WIBReader";
+
   auto wib_address = ps.get<std::string>("WIB.address");
 
   auto wib_table = ps.get<std::string>("WIB.config.wib_table");
@@ -45,9 +47,6 @@ WIBReader::WIBReader(fhicl::ParameterSet const& ps) :
 
   auto enable_FEMBs = ps.get<std::vector<bool> >("WIB.config.enable_FEMBs");
   auto FEMB_configs = ps.get<std::vector<fhicl::ParameterSet> >("WIB.config.FEMBs");
-
-  identification = "WIB ";
-  identification.append(wib_address);
 
   if (use_WIB_fake_data.size() != 4)
   {
@@ -230,6 +229,8 @@ WIBReader::WIBReader(fhicl::ParameterSet const& ps) :
 
 void WIBReader::setupFEMBFakeData(size_t iFEMB, fhicl::ParameterSet const& FEMB_config, bool continueOnFEMBRegReadError) {
   // Don't forget to disable WIB fake data
+
+  const std::string identification = "wibdaq::WIBReader::setupFEMBFakeData";
   
   wib->FEMBPower(iFEMB,1);
   sleep(1);
@@ -314,6 +315,8 @@ void WIBReader::setupFEMBFakeData(size_t iFEMB, fhicl::ParameterSet const& FEMB_
 void WIBReader::setupFEMB(size_t iFEMB, fhicl::ParameterSet const& FEMB_config, bool continueOnFEMBRegReadError){
   // Don't forget to disable WIB fake data
 
+  const std::string identification = "wibdaq::WIBReader::setupFEMB";
+  
   const auto gain = FEMB_config.get<uint32_t>("gain");
   const auto shape = FEMB_config.get<uint32_t>("shape");
   const auto baselineHigh = FEMB_config.get<uint32_t>("baselineHigh");
