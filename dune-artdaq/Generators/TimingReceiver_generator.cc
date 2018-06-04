@@ -69,8 +69,7 @@ dune::TimingReceiver::TimingReceiver(fhicl::ParameterSet const & ps):
   ,end_run_wait_(ps.get<uint32_t>("end_run_wait",1000))
   ,zmq_conn_(ps.get<std::string>("zmq_connection","tcp://pddaq-gen05-daq0:5566"))
   ,zmq_conn_out_(ps.get<std::string>("zmq_connection_out","tcp://*:5599"))
-  ,
-zmq_fragment_conn_out_(ps.get<std::string>("zmq_fragment_connection_out","tcp://*:7123"))
+  ,zmq_fragment_conn_out_(ps.get<std::string>("zmq_fragment_connection_out","tcp://*:7123"))
 {
 
     // TODO:
