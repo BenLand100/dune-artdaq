@@ -6,10 +6,13 @@ simple_plugin(TPCMilliSliceSimulatorWithCopy "generator"
   artdaq_DAQdata
   artdaq-core_Data
   artdaq-core_Utilities
+  artdaq-utilities_Plugins
   ${CANVAS}
   ${FHICLCPP}
   ${MF_MESSAGELOGGER}
   ${CETLIB}
+  boost_system
+  ${CETLIB_EXCEPT}
   )
 
 simple_plugin(SSP "generator"
@@ -18,12 +21,15 @@ simple_plugin(SSP "generator"
   artdaq_Application
   artdaq_DAQdata
   artdaq-core_Utilities
+  artdaq-utilities_Plugins
   ${CANVAS}
   ${FHICLCPP} 
   ${CETLIB} 
   dune-artdaq_DAQLogger
+  ${CETLIB_EXCEPT}
   )
 
+add_subdirectory(Felix)
 simple_plugin(FelixReceiver "generator"
   dune-raw-data_Overlays
   dune-artdaq_Generators_Felix
@@ -32,13 +38,15 @@ simple_plugin(FelixReceiver "generator"
   artdaq_DAQdata
   artdaq-core_Utilities
   artdaq-core_Data
+  artdaq-utilities_Plugins
   ${CANVAS}
   ${FHICLCPP}
   ${CETLIB}
+  ${CETLIB_EXCEPT}
   dune-artdaq_DAQLogger
 )
-add_subdirectory(Felix)
 
+  add_subdirectory(ToyHardwareInterface)
 simple_plugin(ToySimulator "generator"
   dune-artdaq_Generators_ToyHardwareInterface
   dune-raw-data_Overlays
@@ -47,15 +55,19 @@ simple_plugin(ToySimulator "generator"
   artdaq_DAQdata
   artdaq-core_Utilities
   artdaq-core_Data
+  artdaq-utilities_Plugins
   ${CANVAS}
   ${FHICLCPP}
   ${MF_MESSAGELOGGER}
   ${MF_UTILITIES}
   ${CETLIB}
+  ${CETLIB_EXCEPT}
+  boost_system
   )
 
   add_subdirectory(anlBoard)
   
+  add_subdirectory(RceSupportLib)
 simple_plugin(TpcRceReceiver "generator"
   dune-raw-data_Overlays
   dune-artdaq_Generators_RceSupportLib
@@ -63,13 +75,17 @@ simple_plugin(TpcRceReceiver "generator"
   artdaq_Application
   artdaq_DAQdata
   artdaq-core_Utilities
+  artdaq-utilities_Plugins
   ${CANVAS}
   ${FHICLCPP}
   ${CETLIB}
+  ${CETLIB_EXCEPT}
   dune-artdaq_DAQLogger
   )
   
-  add_subdirectory(RceSupportLib)
+
+  add_subdirectory(pennBoard)
+  add_subdirectory(TriggerBoard)
 
 simple_plugin(PennReceiver "generator"
   dune-raw-data_Overlays
@@ -78,10 +94,12 @@ simple_plugin(PennReceiver "generator"
   artdaq_Application
   artdaq_DAQdata
   artdaq-core_Utilities
+  artdaq-utilities_Plugins
   ${CANVAS}
   ${FHICLCPP}
   ${MF_MESSAGELOGGER}
   ${CETLIB}
+  ${CETLIB_EXCEPT}
   dune-artdaq_DAQLogger
   )
 
@@ -93,17 +111,16 @@ simple_plugin(TriggerBoardReader "generator"
   artdaq_Application
   artdaq_DAQdata
   artdaq-core_Utilities
+  artdaq-utilities_Plugins
   ${CANVAS}
   ${FHICLCPP}
   ${MF_MESSAGELOGGER}
   ${CETLIB}
+  ${CETLIB_EXCEPT}
   dune-artdaq_DAQLogger
   )
 
 
-  add_subdirectory(pennBoard)
-  add_subdirectory(TriggerBoard)
-  add_subdirectory(ToyHardwareInterface)
 
 
 add_subdirectory(timingBoard)
@@ -115,10 +132,12 @@ simple_plugin(TimingReceiver "generator"
   artdaq_Application
   artdaq_DAQdata
   artdaq-core_Utilities
+  artdaq-utilities_Plugins
   ${CANVAS}
   ${FHICLCPP}
   ${MF_MESSAGELOGGER}
   ${CETLIB}
+  ${CETLIB_EXCEPT}
   dune-artdaq_DAQLogger
   ${UHAL_UHAL}
   ${UHAL_LOG}
@@ -140,6 +159,10 @@ simple_plugin(WIBReader "generator"
          $ENV{WIB_DIRECTORY}/exception/lib/libToolException.so
          artdaq_Application
 	 dune-artdaq_DAQLogger
+  	 ${CETLIB_EXCEPT}
+  	 ${CETLIB}
+  	 ${FHICLCPP}
+	 boost_system
 )
 
 else()
