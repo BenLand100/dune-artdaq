@@ -2,10 +2,12 @@
 #define NETIO_HANDLER_HH_
 
 #include "dune-raw-data/Overlays/FragmentType.hh"
-#include "ProducerConsumerQueue.h"
+#include "ProducerConsumerQueue.hh"
 #include "ReusableThread.hh"
-#include "NetioWIBRecords.h"
-#include "Utilities.h"
+#include "NetioSubscriber.hh"
+#include "NetioWIBRecords.hh"
+#include "Utilities.hh"
+#include "Types.hh"
 
 #include "netio/netio.hpp"
 
@@ -14,6 +16,9 @@
 #include <thread>
 #include <mutex>
 #include <algorithm>
+
+//#define MSGQ
+//#define QACHECK
 
 /*
  * NetioHandler
@@ -28,9 +33,7 @@ public:
   // Singleton
   static NetioHandler& getInstance(){
     static NetioHandler myInstance;
-    // Return a reference to our instance.
     return myInstance;
-
   }
 
   // Prevent copying and moving.
@@ -40,9 +43,14 @@ public:
   NetioHandler& operator=(NetioHandler &&) = delete;      // Move assign 
 
   // Custom types
-  typedef folly::ProducerConsumerQueue<WIB_CHAR_STRUCT> FrameQueue;
-  typedef std::unique_ptr<FrameQueue> UniqueFrameQueue;
+  //typedef folly::ProducerConsumerQueue<IOVEC_CHAR_STRUCT> FrameQueue;
+  //typedef std::unique_ptr<FrameQueue> UniqueFrameQueue;
+  //typedef std::unique_ptr<FrameQueue>& 
 
+  //typedef folly::ProducerConsumerQueue<netio::message> MessageQueue;
+  //typedef std::unique_ptr<MessageQueue> UniqueMessageQueue; 
+ 
+  void setFrameSize(size_t frameSize) { m_framesize = frameSize; }
   void setTimeWindow(size_t timeWindow) { m_timeWindow = timeWindow; }
   void setMessageSize(size_t messageSize) { m_msgsize = messageSize; }
   void setExtract(bool extract) { m_extract = extract; }
@@ -53,22 +61,19 @@ public:
   bool setupContext(std::string contextStr);
   bool stopContext();
   // Enable an elink (prepare a queue, socket-pairs and sub to elink.
-  bool addChannel(uint64_t chn, uint16_t tag, std::string host, uint16_t port, size_t queueSize);   
+  bool addChannel(uint64_t chn, uint16_t tag, std::string host, uint16_t port, size_t queueSize, bool zerocopy);   
   bool busy(); // are trigger matchers busy
   void startTriggerMatchers(); // Starts trigger matcher threads.
   void stopTriggerMatchers();  // Stops trigger matcher threads.
   void startSubscribers(); // Starts the subscriber threads.
   void stopSubscribers();  // Stops the subscriber threads.
-  void lockSubsToCPUs(); // Lock subscriber threads to CPUset.
+  void lockSubsToCPUs(uint32_t offset); // Lock subscriber threads to CPUset.
   
   // ArtDAQ specific
-  void setReadoutBuffer(char* buffPtr, size_t* bytePtr) { m_bufferPtr=&buffPtr; m_bytesReadPtr=&bytePtr; };
+  //void setReadoutBuffer(char* buffPtr, size_t* bytePtr) { m_bufferPtr=&buffPtr; m_bytesReadPtr=&bytePtr; };
   bool triggerWorkers(uint64_t timestamp, uint64_t sequence_id, std::unique_ptr<artdaq::Fragment>& frag);
 
-  // Queue utils
-  //RS -> It's rly not a good idea to expose queues... Removed getQueues.
-  //std::vector<uint32_t> pushOut(uint64_t chn); // Push out every records from channel queue.
-  //SharedQueue& getQueue(uint64_t chn){ return m_pcqs[chn]; } // Access for elink's queue.  
+  // Queue utils if needed
   size_t getNumOfChannels() { return m_activeChannels; } // Get the number of active channels.
 
 protected:
@@ -93,18 +98,32 @@ private:
   //Configuration:
   std::vector<uint64_t> m_channels;
   std::atomic<unsigned long> m_nmessages;
+  size_t m_framesize;
   size_t m_msgsize;
   size_t m_timeWindow;
   bool m_extract;
   bool m_verbose;
 
-  // Queues
-  std::map<uint64_t, UniqueFrameQueue> m_pcqs; // Queues for elink RX.
+  // Custom types from Types.h
+
+  // Queues 
+#ifdef MSGQ
+  std::map<uint64_t, UniqueMessageQueue> m_pcqs; // Queues for elink RX.
+#else 
+  std::map<uint64_t, UniqueFrameQueue> m_pcqs;
+#endif
 
   // Threads
   std::vector<std::thread> m_netioSubscribers;
-  std::vector<std::unique_ptr<ReusableThread>> m_extractors;
+  std::vector<std::unique_ptr<NetioSubscriber>> m_subscribers;
+  std::vector<std::unique_ptr<ReusableThread>>  m_extractors;
   std::vector<std::function<void()>> m_functors; 
+
+  // Trigger bookeeping
+  bool m_turnaround;
+  uint_fast64_t m_positionDepth; 
+  char* m_lastPosition; 
+  uint_fast64_t m_lastTimestamp;
 
   // ArtDAQ specific
   uint64_t m_triggerTimestamp;
@@ -116,11 +135,12 @@ private:
   std::atomic<bool> m_stop_subs;
   std::atomic<bool> m_cpu_lock; 
 
-
-  char** m_bufferPtr;
-  size_t** m_bytesReadPtr;
+  //char** m_bufferPtr;
+  //size_t** m_bytesReadPtr;
 
   std::mutex m_mutex;
+  std::mutex m_mtx_cleaning ;
+  
 };
 
 #endif

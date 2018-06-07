@@ -27,11 +27,17 @@ struct FromFELIXHeader
 static_assert(sizeof(struct FromFELIXHeader) == 8, "Check your assumptions on FromFELIXHeader!");
 
 // Buffer for Netio messages that are WIB specific.
-const size_t WIB_FRAME_SIZE=512;
+const size_t WIB_FRAME_SIZE=464;
 struct WIB_CHAR_STRUCT {
   char fragments[WIB_FRAME_SIZE];
 };
-static_assert(sizeof(struct WIB_CHAR_STRUCT) == 512, "Check your assumptions on WIB_CHAR_STRUCT!");
+static_assert(sizeof(struct WIB_CHAR_STRUCT) == 464, "Check your assumptions on WIB_CHAR_STRUCT!");
+
+static const size_t IOVEC_FRAME_SIZE = 236640;
+struct IOVEC_CHAR_STRUCT {
+  char fragments[IOVEC_FRAME_SIZE];
+};
+static_assert(sizeof(struct IOVEC_CHAR_STRUCT) == 236640, "Check your assumptions on IOVEC_CHAR_STRUCT");
 
 
 /*
@@ -258,5 +264,5 @@ void print() const {
   }
 };
 
-#endif //  NETIOFEI4RECORDS_H
+#endif //  NETIO_WIB_RECORDS_H
 
