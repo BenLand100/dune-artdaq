@@ -122,6 +122,7 @@ bool dune::ToySimulator::getNext_(artdaq::FragmentPtrs & frags) {
 
 void dune::ToySimulator::start() {
   hardware_interface_->StartDatataking();
+  timestamp_ = 0;
 }
 
 void dune::ToySimulator::stop() {
