@@ -344,7 +344,7 @@ bool dune::TimingReceiver::getNext_(artdaq::FragmentPtrs &frags)
         f->setTimestamp(fo.get_tstamp());  // 64-bit number
 
         // Send the fragment out on ZeroMQ for FELIX and whoever else wants to listen for it
-        fragment_publisher_->PublishFragment(&fo);
+        fragment_publisher_->PublishFragment(f.get(), &fo);
 
         frags.emplace_back(std::move(f));
         ev_counter_inc();

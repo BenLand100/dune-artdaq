@@ -20,10 +20,10 @@ bool rcvMore(void* socket)
     return rcvmore;
 }
 
-std::vector<uint32_t> getVals(void* socket)
+std::vector<uint64_t> getVals(void* socket)
 {
-    std::vector<uint32_t> ret;
-    uint32_t val;
+    std::vector<uint64_t> ret;
+    uint64_t val;
     int rc=zmq_recv(socket, &val, sizeof(val), ZMQ_DONTWAIT);
     // Did we get anything on the socket?
     if(rc==-1 && errno==EAGAIN){
@@ -39,7 +39,7 @@ std::vector<uint32_t> getVals(void* socket)
         // Yes, so receive the whole message
         ret.push_back(val);
         while(rcvMore(socket)){
-            zmq_recv(socket, &val, sizeof(val), ZMQ_RCVMORE);
+            zmq_recv(socket, &val, sizeof(val), 0);
             ret.push_back(val);
         }
         return ret;
@@ -75,7 +75,7 @@ int main(int argc, char** argv)
         }
 
         // Get the list of values from the socket. Returns empty vector if nothing available
-        std::vector<uint32_t> vals=getVals(socket);
+        std::vector<uint64_t> vals=getVals(socket);
 
         if(vals.empty()){
             // There was no message waiting.
@@ -83,13 +83,14 @@ int main(int argc, char** argv)
         }
         else{
             std::cout << "Got fragment: " << std::endl;
-            std::cout << "cookie :"   << vals[0] << std::endl;
-            std::cout << "scmd :"     << vals[1] << std::endl;
-            std::cout << "tcmd :"     << vals[2] << std::endl;
-            std::cout << "tstampl :"  << vals[3] << std::endl;
-            std::cout << "tstamph :"  << vals[4] << std::endl;
-            std::cout << "evtctr :"   << vals[5] << std::endl;
-            std::cout << "cksum :"    << vals[6] << std::endl;
+            std::cout << "sequenceID :" << vals[0] << std::endl;
+            std::cout << "fragmentID :" << vals[1] << std::endl;
+            std::cout << "cookie :"     << vals[2] << std::endl;
+            std::cout << "scmd :"       << vals[3] << std::endl;
+            std::cout << "tcmd :"       << vals[4] << std::endl;
+            std::cout << "tstamp :"     << vals[5] << std::endl;
+            std::cout << "evtctr :"     << vals[6] << std::endl;
+            std::cout << "cksum :"      << vals[7] << std::endl;
         }
     }
 

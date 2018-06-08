@@ -6,6 +6,7 @@
 #include <sys/time.h>
 #include <unistd.h>
 
+
 #include "fhiclcpp/fwd.h"
 
 #include "dune-raw-data/Overlays/TimingFragment.hh"
@@ -20,11 +21,11 @@ namespace artdaq {
 
     int  BindPublisher();
 
-    bool PublishFragment(dune::TimingFragment* frag);
+    bool PublishFragment(artdaq::Fragment* frag, dune::TimingFragment* timingFrag);
     
   private:
     
-    bool SendVal(uint32_t val, bool sendmore);
+    bool SendVal(uint64_t val, bool sendmore);
 
     void *fZMQContextPtr;      // = zmq_ctx_new ();
     void *fZMQPublisherPtr;    // = zmq_socket (context, ZMQ_PUB);
