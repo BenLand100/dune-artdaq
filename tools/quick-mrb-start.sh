@@ -113,7 +113,7 @@ if [[ ! -e $uhal_products_dir ]]; then
 fi
 
 . $uhal_products_dir/setup
-uhal_setup_cmd="setup uhal v2_6_0 -q e14:prof:s50"
+uhal_setup_cmd="setup uhal v2_6_0 -q e15:prof:s64"
 $uhal_setup_cmd
 
 if [[ "$?" != "0" ]]; then
@@ -232,7 +232,7 @@ demo_version=`grep "parent dune_artdaq" $Base/download/product_deps|awk '{print 
 
 artdaq_version=`grep -E "^artdaq\s+" $Base/download/product_deps | awk '{print $2}'`
 
-if [[ "$artdaq_version" != "v3_00_03a" && "$artdaq_version" != "v3_01_00" ]]; then
+if [[ "$artdaq_version" != "v3_00_03a" ]]; then
     artdaq_manifest_version=$artdaq_version
 else
     artdaq_manifest_version=v3_00_03
@@ -241,28 +241,10 @@ fi
 
 coredemo_version=`grep -E "^dune_raw_data\s+" $Base/download/product_deps | awk '{print $2}'`
 
-artdaq_utilities_version=v1_04_04
 
-default_quals_cmd="sed -r -n 's/.*(e[0-9]+):(s[0-9]+).*/\1 \2/p' $Base/download/product_deps | uniq"
+equalifier=e15
+squalifier=s64
 
-if [[ $(eval $default_quals_cmd | wc -l) -gt 1 ]]; then
-    echo "More than one build qualifier combination found in download/product_deps; please contact John Freeman at jcfree@fnal.gov" >&2
-    exit 1
-fi
-
-defaultE=$( eval $default_quals_cmd | awk '{print $1}' )
-defaultS=$( eval $default_quals_cmd | awk '{print $2}' )
-
-if [ -n "${equalifier-}" ]; then 
-    equalifier="e${equalifier}";
-else
-    equalifier=$defaultE
-fi
-if [ -n "${squalifier-}" ]; then
-    squalifier="s${squalifier}"
-else
-    squalifier=$defaultS
-fi
 if [[ -n "${opt_debug:-}" ]] ; then
     build_type="debug"
 else
@@ -312,7 +294,7 @@ set +u
 
 
 
-setup netio
+#setup netio
 source $Base/localProducts_dune_artdaq_${demo_version}_${equalifier}_${build_type}/setup
 set -u
 
@@ -321,7 +303,8 @@ cd $MRB_SOURCE
 if [[ $opt_lrd_develop -eq 1 ]]; then
     dune_raw_data_checkout_arg="-d dune_raw_data"
 else
-    dune_raw_data_checkout_arg="-t ${coredemo_version} -d dune_raw_data"
+#    dune_raw_data_checkout_arg="-t ${coredemo_version} -d dune_raw_data"
+    dune_raw_data_checkout_arg="-b feature/artdaq_v3_02 -d dune_raw_data"
 fi
 
 
@@ -334,7 +317,8 @@ fi
 if [[ $tag == "develop" ]]; then
     dune_artdaq_checkout_arg="-d dune_artdaq"
 else
-    dune_artdaq_checkout_arg="-t $tag -d dune_artdaq"
+#    dune_artdaq_checkout_arg="-t $tag -d dune_artdaq"
+    dune_artdaq_checkout_arg="-b develop -d dune_artdaq"
 fi
 
 
@@ -348,35 +332,21 @@ fi
 
 if ! $bad_network; then
 
-    mrb gitCheckout -t 9b3c13177bd7b3eef5f6c6fc982e98977ce38fd4 -d artdaq_core http://cdcvs.fnal.gov/projects/artdaq-core
+    # mrb gitCheckout -t v3_02_01 -d artdaq_core http://cdcvs.fnal.gov/projects/artdaq-core
  
-    if [[ "$?" != "0" ]]; then
-        echo "Unable to perform checkout of http://cdcvs.fnal.gov/projects/artdaq-core"
-        exit 1
-    fi
+    # if [[ "$?" != "0" ]]; then
+    #     echo "Unable to perform checkout of http://cdcvs.fnal.gov/projects/artdaq-core"
+    #     exit 1
+    # fi
 
-    mrb gitCheckout -t ${artdaq_utilities_version} -d artdaq_utilities http://cdcvs.fnal.gov/projects/artdaq-utilities
 
-    if [[ "$?" != "0" ]]; then
-    	echo "Unable to perform checkout of http://cdcvs.fnal.gov/projects/artdaq-utilities"
-    	exit 1
-    fi
-
-    mrb gitCheckout -t 854943d1010efb55594a29324f98ed68e667237d -d artdaq http://cdcvs.fnal.gov/projects/artdaq
+    mrb gitCheckout -b feature/pdune_from_v3_02_00a -d artdaq http://cdcvs.fnal.gov/projects/artdaq
 
     if [[ "$?" != "0" ]]; then
     	echo "Unable to perform checkout of http://cdcvs.fnal.gov/projects/artdaq"
     	exit 1
     fi
 
-    mrb gitCheckout -t 36b0f1274156a6f265e61404224fd7b3da293363 -d artdaq_mpich_plugin http://cdcvs.fnal.gov/projects/artdaq-utilities-mpich-plugin
-
-    if [[ "$?" != "0" ]]; then
-	echo "Unable to perform checkout of http://cdcvs.fnal.gov/projects/artdaq-utilities-mpich-plugin"
-	exit 1
-    fi
-
-    artdaq_mpich_version=$( grep "parent artdaq_mpich_plugin" artdaq_mpich_plugin/ups/product_deps|awk '{print $3}' )
 
     mrb gitCheckout $dune_raw_data_checkout_arg $dune_raw_data_repo
 
@@ -416,9 +386,8 @@ cd $Base
         sh -c "[ \`ps \$\$ | grep bash | wc -l\` -gt 0 ] || { echo 'Please switch to the bash shell before running dune-artdaq.'; exit; }" || exit                                                                                           
         source ${uhal_products_dir}/setup                                      
         source ${dune_repo}/setup
-        source $Base/products/setup                                                                                   
+
         setup mrb
-        setup netio
         source $Base/localProducts_dune_artdaq_${demo_version}_${equalifier}_${build_type}/setup
                                                                                                                   
         export DAQ_INDATA_PATH=$ARTDAQ_DEMO_DIR/test/Generators:$ARTDAQ_DEMO_DIR/inputData                               
@@ -426,7 +395,7 @@ cd $Base
         export DUNEARTDAQ_BUILD=$MRB_BUILDDIR/dune_artdaq                                                            
         export DUNEARTDAQ_REPO="$ARTDAQ_DEMO_DIR"                                                                        
         export FHICL_FILE_PATH=.:\$DUNEARTDAQ_REPO/tools/fcl:\$FHICL_FILE_PATH                                           
-        ${wibcmd}
+        export WIB_DIRECTORY=$WIB_DIRECTORY
         ${uhal_setup_cmd}                                                      
 
         returndir=\$PWD
@@ -434,24 +403,24 @@ cd $Base
         source ./env.sh
         cd \$returndir
 
-        setup dunepdsprce v0_0_4 -q e14:gen:prof
-
         source /nfs/sw/artdaq/products/setup                                     
-        setup protodune_timing v4_0_1 -q e14:prof:s50
+        setup dunepdsprce v0_0_4 -q e15:gen:prof
+        setup protodune_timing v4_0_2 -q e15:prof:s64
+        setup artdaq_mpich_plugin v1_00_01 -q e15:eth:prof:s64
                                                                     
 # JCF, 11/25/14                                                                                                          
 # Make it easy for users to take a quick look at their output file via "rawEventDump"                                    
                                                                                                                          
-alias rawEventDump="art -c \$DUNEARTDAQ_REPO/tools/fcl/rawEventDump.fcl "                                                    
+alias rawEventDump="if [[ -n \\\$SETUP_TRACE ]]; then unsetup TRACE ; echo Disabling TRACE; sleep 1; fi; art -c \$DUNEARTDAQ_REPO/tools/fcl/rawEventDump.fcl "                                                    
 
 if [[ -n \$USER && \$USER == np04daq ]]; then
         export DIM_INC=/nfs/sw/dim/dim_v20r20
         export DIM_LIB=/nfs/sw/dim/dim_v20r20/linux
         export LD_LIBRARY_PATH=\$DIM_LIB:\$LD_LIBRARY_PATH
 
-        setup artdaq_dim_plugin v0_02_03 -q e14:prof:s50
+        setup artdaq_dim_plugin v0_02_05 -q e15:prof:s64
 
-        setup TRACE v3_13_04
+        setup TRACE v3_13_07
         export TRACE_FILE=/tmp/trace_$trace_file_label
         export TRACE_LIMIT_MS="500,1000,2000"
 
@@ -494,9 +463,15 @@ set -u
 export CETPKG_J=$nprocessors
 source /nfs/sw/artdaq/products/setup
 
-setup dunepdsprce v0_0_4 -q e14:gen:prof
-setup netio
-setup protodune_timing v4_0_1 -q e14:prof:s50
+returndir=$PWD
+cd $WIB_DIRECTORY
+source ./env.sh
+cd $returndir
+
+
+setup dunepdsprce v0_0_4 -q e15:gen:prof
+#setup netio
+setup protodune_timing v4_0_2 -q e15:prof:s64
 
 set +u
 source mrbSetEnv
