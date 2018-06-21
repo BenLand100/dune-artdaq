@@ -2,9 +2,11 @@
 #define DUNE_ARTDAQ_CTB_RECEIVER_HH
 
 #include <string>
+#include <fstream>
 #include <atomic>
 #include <chrono>
 #include <future>
+#include <ratio>
 
 #include <boost/asio.hpp>
 #include <boost/array.hpp>
@@ -29,12 +31,15 @@ class CTB_Receiver {
 
 public:
   CTB_Receiver( ) = delete ;
-  CTB_Receiver( const unsigned int port, const unsigned int timeout = 100 /*milliseconds*/ ) ;
+  CTB_Receiver( const unsigned int port, const unsigned int timeout = 10 /*microseconds*/ ) ;
 
   virtual ~CTB_Receiver() ;
 
   auto & Buffer() { return _word_buffer ; }
   
+  bool SetCalibrationStream( const std::string & string_dir, 
+			     const   std::chrono::duration<double, std::ratio<60,1> > & interval ) ; 
+
   bool stop() ; 
 
 private:
@@ -50,18 +55,27 @@ private:
   int _raw_receiver() ;   
   int _word_receiver() ;
 
+  void _update_calibration_file() ;
+  void _init_calibration_file() ;
+
   std::future<int> _raw_fut ;
   std::future<int> _word_fut ;
 
   const unsigned int _port ;
 
-  std::atomic<std::chrono::milliseconds> _timeout ;
+  std::atomic<std::chrono::microseconds> _timeout ;
   
   std::atomic<bool> _stop_requested ;
   //atomic<bool> _timed_out = false ;
 
+  // members related to calibration stream
+  bool _has_calibration_stream ; 
+  std::string _calibration_dir ; 
+  std::chrono::duration<double, std::ratio<60,1> > _calibration_file_interval ;  
+  std::ofstream _calibration_file   ;
+  std::chrono::steady_clock::time_point _last_calibration_file_update ;
 
-  
+
 };
 
 

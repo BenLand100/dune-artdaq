@@ -2,10 +2,12 @@
 
 #include "dune-artdaq/DAQLogger/DAQLogger.hh"
 
+#include <ctime>
+
 
 CTB_Receiver::CTB_Receiver( const unsigned int port, const unsigned int timeout ) : 
 
-  _port ( port ), _timeout( std::chrono::milliseconds(timeout) ) {
+  _port ( port ), _timeout( std::chrono::microseconds(timeout) ), _has_calibration_stream( false )  {
 
   _stop_requested = false ;
 
@@ -98,6 +100,8 @@ int CTB_Receiver::_word_receiver() {
 
   while ( ! _stop_requested ) {
     
+    _update_calibration_file() ;
+
     // look for an header 
     while ( _raw_buffer.read_available() < header_size && ! _stop_requested ) {
       ; //do nothing
@@ -117,6 +121,7 @@ int CTB_Receiver::_word_receiver() {
     // read n words as requested from the header
     for ( unsigned int i = 0 ; i < n_words ; ++i ) {
       
+      _update_calibration_file() ;
       
       while ( _raw_buffer.read_available() < word_size && ! _stop_requested ) {
 	; //do nothing
@@ -125,6 +130,18 @@ int CTB_Receiver::_word_receiver() {
       //read a word
       _raw_buffer.pop( temp_word.get_bytes() , word_size ) ;
 
+
+      // put it in the caliration stream
+      if ( _has_calibration_stream ) { 
+	
+	for ( unsigned int k = 0 ; k < word_size; ++k ) {
+
+	  _calibration_file << temp_word.get_bytes()[k] << " ";
+	}
+
+	_calibration_file << std::endl ; 
+      }  // word printing in calibration stream
+      
       // push the word
       _word_buffer.push( temp_word ) ;
 
@@ -132,13 +149,67 @@ int CTB_Receiver::_word_receiver() {
 
     }
 
-   
-
   }  // stop not required 
 
 
   // return because _stop_requested
   return 0 ;
 }
+
+
+bool CTB_Receiver::SetCalibrationStream( const std::string & string_dir,                                                                                                                                                              const std::chrono::duration<double, std::ratio<60,1> > & interval ) {
+
+  _calibration_dir = string_dir ;
+  if ( _calibration_dir.back() != '/' ) _calibration_dir += '/' ;
+
+  _calibration_file_interval = interval ;
+
+  // possibly we could check here if the directory is valid and  writable before assuming the calibration stream is valid
+  return _has_calibration_stream = true ;
+
+}
+
+
+void CTB_Receiver::_init_calibration_file() {
+
+  if ( ! _has_calibration_stream ) return ; 
+  
+  char file_name[200] = "" ;
+  
+  time_t rawtime;
+  struct tm * timeinfo = localtime( & rawtime ) ;
+
+  strftime( file_name, sizeof(file_name), "%F.%T.calib.txt", timeinfo );
+  
+  std::string global_name = _calibration_dir + file_name ;
+
+  _calibration_file.open( global_name ) ;
+
+  _last_calibration_file_update = std::chrono::steady_clock::now();
+
+  _calibration_file.setf ( std::ios::hex, std::ios::basefield );  
+  _calibration_file.unsetf ( std::ios::showbase );          
+
+  dune::DAQLogger::LogDebug("CTB_Receiver") << "New Calibration Stream file: " << global_name << std::endl ;
+
+}
+
+
+
+
+void CTB_Receiver::_update_calibration_file() {
+
+  if ( ! _has_calibration_stream ) return ; 
+
+  std::chrono::steady_clock::time_point check_point = std::chrono::steady_clock::now();
+
+  if ( check_point - _last_calibration_file_update < _calibration_file_interval ) return ; 
+
+  _calibration_file.close() ;
+
+  _init_calibration_file() ;
+
+}
+
 
 

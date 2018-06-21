@@ -16,6 +16,19 @@ fragment_receiver: {
    board_address: "np04-trig-proto"
    # board_address: "np04-ctb-1"
    receiver_port : 8992 
+   # calibration_stream_output : /nfs/sw/work_dirs/dune-artdaq_trigger_fragment_generator  ## this is the string that points to a writable directory if 
+                                                                                         ## if this option is not there, there won't be a calibration str
+   # calibration_update : 5. ## minimum amont of minutes that before updating the calibration stream file. Default 5 minutes
+
+   group_size : 50    ## this sets how many pakages from the board should be grouped to form a fragment. Default 1 
+   rollover :  50000  ## maximum number of board clock cycles before sending a package. Default 50000 
+
+   
+
+   # request_window_offset: 2 # Request message contains tzero. Window will be from tzero - offset to tz-o + width
+   # request_window_width: 5 # These settings correspond to "two before, two after"
+
+											
    nADCcounts: 100
    throttle_usecs: 100000  # Wait this many usecs before creating the next event
    distribution_type: 1
