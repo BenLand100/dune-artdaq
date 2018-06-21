@@ -16,5 +16,6 @@ art_make(
         ${netio_LIBRARY_DIR}/libnetio.so
         pthread
         tbb
+        zmq
 )
 
