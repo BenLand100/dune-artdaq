@@ -82,25 +82,14 @@ bool dune::FelixReceiver::getNext_(artdaq::FragmentPtrs & frags) {
     //    -> A bool/enum parameter, passed to the function will indicate that there was a trigger matching problem.
     //       -> Need to be handled, and understood if it should return false or true from the getNext_
     bool done = false;
-    unsigned status = 0;
     while ( !done ){
-      done = netio_hardware_interface_->FillFragment( fragptr, status );
-      if ( status==1 ) { // 1 -> Couldn't fill thanks to no requests...
-        if (should_stop()) { return false; } // check for stop and try again...
-        done = false;
-        status = 0;
-      } else if ( status==2 ){
-        // Internal HWInterface error... 
-        // Log message, but most probably it was already done...
-        DAQLogger::LogWarning("dune::FelixReceiver::getNext_") << "bad status from FillFragment.";
-        //usleep(10000);
-        return true; // GLM: returning false stops data taking!
-      }
+      done = netio_hardware_interface_->FillFragment( fragptr );
+      if (should_stop()) { return false; } // check for stop and try again...
     }
 
     //uint64_t newTS = *(reinterpret_cast<const uint_fast64_t*>(fragptr->dataBeginBytes()+8));
-    //DAQLogger::LogInfo("dune::FelixReceiver::getNext_") << "Before returning, peek to first timestamp:\n"
-    //  << " TS: " << newTS;
+    DAQLogger::LogInfo("dune::FelixReceiver::getNext_") << "Passing frag ID " << fragptr->sequenceID()
+      << " TS: " << fragptr->timestamp();
 
     frags.emplace_back( std::move(fragptr) );
     // RS -> Add metric manager...

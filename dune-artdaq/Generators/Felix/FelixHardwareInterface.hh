@@ -35,7 +35,7 @@ public:
   // Functionalities
   void StartDatataking();
   void StopDatataking();
-  bool FillFragment( std::unique_ptr<artdaq::Fragment>& frag, unsigned& report );
+  bool FillFragment( std::unique_ptr<artdaq::Fragment>& frag );
 
   // Info
   int SerialNumber() const;
@@ -80,7 +80,7 @@ private:
   // NETIO & NIOH & RequestReceiver
   std::vector<LinkParameters> link_parameters_;
   NetioHandler& nioh_;
-  RequestReceiver request_receiver_;
+  RequestReceiver* request_receiver_;
   //artdaq::RequestReceiver artdaq_request_receiver_;
 
   // Statistics and internals

@@ -14,11 +14,10 @@ NetioHandler::NetioHandler()
   m_activeChannels=0;
 
   m_nmessages=0;
-  //GLM try complete IOV size
   m_msgsize = 236640;
   m_stop_subs=false;
   m_cpu_lock=false;
-
+  m_extract = true;
   //m_bufferPtr=nullptr;
   //m_bytesReadPtr=nullptr;
 
@@ -110,7 +109,13 @@ void NetioHandler::startTriggerMatchers(){
 
 	// GLM: if Timestamp is 0, check if the queue is filling up and throw away oldest data
 	if (m_triggerTimestamp == 0) {
-	  if (m_pcqs[tid]->sizeGuess() > 0.7 * m_pcqs[tid]->capacity()) {
+          /*
+          size_t queuedElements = m_pcqs[tid]->sizeGuess() - 2; 
+          DAQLogger::LogInfo("NetioHandler::startTriggerMatchers") << "Remove " << queuedElements << " old fragments.";
+          while(queuedElements) {
+            --queuedElements;
+	  */
+          if (m_pcqs[tid]->sizeGuess() > 0.7 * m_pcqs[tid]->capacity()) {
 	    DAQLogger::LogInfo("NetioHandler::startTriggerMatchers") << "Removing old non requested data";
 	    m_pcqs[tid]->popXFront(m_pcqs[tid]->capacity()/2);
 	  }
@@ -158,9 +163,14 @@ void NetioHandler::startTriggerMatchers(){
           m_pcqs[tid]->popFront();
         }        
       } else {
-        DAQLogger::LogInfo("NetioHandler::startTriggerMatchers")
-          << "Dry run, won't extract... simulate some work.. (sleep for 100ms)\n";
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        if (m_triggerTimestamp == 0) {
+          DAQLogger::LogInfo("NetioHandler::startTriggerMatchers") << "no trigger ";
+          return;
+        } else {
+          m_fragmentPtr->resizeBytes(m_msgsize*(2 + m_timeWindow/framesPerMsg));
+          char *buf = new char[m_msgsize*(2 + m_timeWindow/framesPerMsg)];
+          memcpy(m_fragmentPtr->dataBeginBytes(), buf, 2 + m_timeWindow/framesPerMsg);
+        }
       }
     });
   }
@@ -200,9 +210,6 @@ bool NetioHandler::triggerWorkers(uint64_t timestamp, uint64_t sequence_id, std:
   m_triggerTimestamp = timestamp;
   m_triggerSequenceId = sequence_id;
   m_fragmentPtr = frag.get();
-  //DAQLogger::LogInfo("NetioHandler::triggerWorkers")
-  //  << "Trigger workers for timestamp:" << m_triggerTimestamp 
-  //  << " seqId:" << m_triggerSequenceId ;
 
   // Set functors for extractors.
   for (uint32_t i=0; i<m_activeChannels; ++i){
@@ -211,20 +218,15 @@ bool NetioHandler::triggerWorkers(uint64_t timestamp, uint64_t sequence_id, std:
   while (busy()){
     std::this_thread::sleep_for(std::chrono::microseconds(50));
   }
-  return true;
-/* Single link approach
-  while ( m_extractors[0]->get_readiness() == false ) { // while we wait, do some other stuff if needed...
-    std::this_thread::sleep_for(std::chrono::microseconds(50));
-  }
-  if ( m_extractors[0]->get_readiness() == true ) {
-    return true;
-  } else {
+  if (m_triggerTimestamp == 0) {
     return false;
   }
-*/
+  return true;
 }
 
 void NetioHandler::startSubscribers(){
+  if (!m_extract) return;
+
   for (uint32_t i=0; i<m_activeChannels; ++i) {
     uint32_t chn = i; 
     m_netioSubscribers.push_back(
@@ -234,7 +236,7 @@ void NetioHandler::startSubscribers(){
         netio::message msg;
         size_t goodOnes=0;
         size_t badOnes=0;
-        uint32_t lostData=0;
+        size_t lostData=0;
 
         std::vector<size_t> badSizes;
         std::vector<size_t> badFrags;
@@ -325,13 +327,16 @@ void NetioHandler::lockSubsToCPUs(uint32_t offset) {
 bool NetioHandler::addChannel(uint64_t chn, uint16_t tag, std::string host, uint16_t port, size_t queueSize, bool zerocopy){
   m_channels.push_back(chn);
   m_pcqs[chn] = std::make_unique<FrameQueue>(queueSize);
+  if (m_extract) {
   try {
     netio::sockcfg cfg = netio::sockcfg::cfg(); 
     if (zerocopy) cfg(netio::sockcfg::ZERO_COPY);
     m_sub_sockets[chn] = new netio::subscribe_socket(m_context, cfg);
-    netio::tag elink = chn; //*2;
+    netio::tag elink = tag;
     m_sub_sockets[chn]->subscribe(elink, netio::endpoint(host, port));
-    std::this_thread::sleep_for(std::chrono::microseconds(10000)); // This is needed... :/
+    std::this_thread::sleep_for(std::chrono::microseconds(10000)); // This is needed... Why? :/
+    DAQLogger::LogInfo("NetioHandler::addChannel") 
+      << "Added channel chn:" << chn << " tag:" << tag << " host:" << host << " port:" << port;
   } catch(...) {
     DAQLogger::LogError("NetioHandler::addChannel") 
       << "Failed to add channel! chn:" << chn << " tag:" << tag << " host:" << host << " port:" << port;
@@ -340,6 +345,7 @@ bool NetioHandler::addChannel(uint64_t chn, uint16_t tag, std::string host, uint
   if (m_verbose) { 
     DAQLogger::LogInfo("NetioHandler::addChannel") 
       << "Activated channel in NIOH. chn:" << chn << " tag:" << tag << " host:" << host << " port:" << port;
+  }
   }
   m_activeChannels++;
   return true;

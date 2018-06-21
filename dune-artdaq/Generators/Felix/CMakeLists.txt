@@ -18,6 +18,7 @@ art_make(LIBRARY_NAME dune-artdaq_Generators_Felix
         ${netio_LIBRARY_DIR}/libnetio.so
         pthread
         tbb
+        zmq
 )
 
 install_headers()
