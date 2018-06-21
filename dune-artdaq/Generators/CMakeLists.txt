@@ -51,6 +51,7 @@ simple_plugin(ToySimulator "generator"
   dune-artdaq_Generators_ToyHardwareInterface
   dune-raw-data_Overlays
   dune-artdaq_DAQLogger
+  InhibitMaster_CommonTools
   artdaq_Application
   artdaq_DAQdata
   artdaq-core_Utilities

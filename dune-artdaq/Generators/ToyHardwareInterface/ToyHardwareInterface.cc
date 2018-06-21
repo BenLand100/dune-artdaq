@@ -88,7 +88,6 @@ void ToyHardwareInterface::StopDatataking() {
   start_time_ = std::numeric_limits<decltype(std::chrono::high_resolution_clock::now())>::max();
 }
 
-
 void ToyHardwareInterface::FillBuffer(char* buffer, size_t* bytes_read) {
 
   if (taking_data_) {
