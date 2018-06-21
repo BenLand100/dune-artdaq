@@ -1,4 +1,4 @@
-art_make(
+art_make( LIBRARY_NAME dune-artdaq_Generators_CRTInterface
   LIB_LIBRARIES
   art_Utilities
   ${FHICLCPP}

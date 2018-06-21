@@ -173,6 +173,7 @@ message( FATAL_ERROR "You need an environment variable called WIB_DIRECTORY whos
 endif()
 
 
+add_subdirectory(CRTInterface)
 simple_plugin(CRTFragGen "generator"
   dune-artdaq_Generators_CRTInterface
   dune-raw-data_Overlays
@@ -189,4 +190,3 @@ simple_plugin(CRTFragGen "generator"
   ${CETLIB_EXCEPT}
   )
  
-add_subdirectory(CRTInterface)
