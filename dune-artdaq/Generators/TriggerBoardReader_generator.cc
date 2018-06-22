@@ -57,7 +57,12 @@ dune::TriggerBoardReader::TriggerBoardReader(fhicl::ParameterSet const & ps)
 
   //build the ctb receiver and set its connecting port
   _receiver.reset( new CTB_Receiver( receiver_port, timeout ) ) ;
-  
+ 
+  if ( ps.has_key( "calibration_stream_output") ) {
+    _receiver -> SetCalibrationStream( ps.get<std::string>( "calibration_stream_output"), 
+				       std::chrono::minutes( ps.get<unsigned int>( "calibration_update", 5 )  ) ) ;
+  }
+    
   //configure the ctb controller
   // to instruct it to the receiver
   _run_controller -> send_config( receiver_address, receiver_port ) ;

@@ -157,7 +157,7 @@ int CTB_Receiver::_word_receiver() {
 }
 
 
-bool CTB_Receiver::SetCalibrationStream( const std::string & string_dir,                                                                                                                                                              const std::chrono::duration<double, std::ratio<60,1> > & interval ) {
+bool CTB_Receiver::SetCalibrationStream( const std::string & string_dir,                                                                                                                                                              const std::chrono::minutes & interval ) {
 
   _calibration_dir = string_dir ;
   if ( _calibration_dir.back() != '/' ) _calibration_dir += '/' ;
@@ -195,20 +195,18 @@ void CTB_Receiver::_init_calibration_file() {
 }
 
 
-
-
 void CTB_Receiver::_update_calibration_file() {
 
   if ( ! _has_calibration_stream ) return ; 
 
   std::chrono::steady_clock::time_point check_point = std::chrono::steady_clock::now();
-
+  
   if ( check_point - _last_calibration_file_update < _calibration_file_interval ) return ; 
 
   _calibration_file.close() ;
-
+  
   _init_calibration_file() ;
-
+  
 }
 
 

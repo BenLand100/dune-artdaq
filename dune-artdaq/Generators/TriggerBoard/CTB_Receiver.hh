@@ -38,7 +38,7 @@ public:
   auto & Buffer() { return _word_buffer ; }
   
   bool SetCalibrationStream( const std::string & string_dir, 
-			     const   std::chrono::duration<double, std::ratio<60,1> > & interval ) ; 
+			     const std::chrono::minutes & interval ) ; 
 
   bool stop() ; 
 
@@ -71,7 +71,7 @@ private:
   // members related to calibration stream
   bool _has_calibration_stream ; 
   std::string _calibration_dir ; 
-  std::chrono::duration<double, std::ratio<60,1> > _calibration_file_interval ;  
+  std::chrono::minutes _calibration_file_interval ;  
   std::ofstream _calibration_file   ;
   std::chrono::steady_clock::time_point _last_calibration_file_update ;
 
