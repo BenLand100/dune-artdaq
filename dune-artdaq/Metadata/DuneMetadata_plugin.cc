@@ -10,6 +10,7 @@
 #include "art/Framework/Core/FileCatalogMetadataPlugin.h"
 #include "art/Framework/Principal/Event.h"
 #include "art/Framework/Principal/SubRun.h"
+#include "fhiclcpp/ParameterSetRegistry.h"
 #include "dune-artdaq/Metadata/MetadataManager.h"
 
 #include <sstream>
@@ -148,6 +149,13 @@ namespace meta {
 
   void DUNEMetadata::beginJob()
   {
+
+    std::cout << "Beginning job! Let's try accessing some FHICL parameter sets." << std::endl;
+    auto psets = fhicl::ParameterSetRegistry::get();
+    for (auto it = psets.begin(); it != psets.end(); ++it) {
+      std::cout << "Contents of this parameter set is:" << std::endl;
+      std::cout << it->second.to_string() << std::endl << std::endl;
+    }
 
   } // function DUNEMetadata::beginJob
 
