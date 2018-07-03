@@ -11,7 +11,7 @@ CTB_Controller::CTB_Controller( const std::string & host, const uint16_t & port 
   stop_req_( false ),
   is_running_ (false), 
   is_conf_(false),
-  _buf()          
+  _buf{" "}          
 {
   
   boost::asio::ip::tcp::resolver resolver( _ios );
@@ -82,7 +82,7 @@ void CTB_Controller::send_stop() {
   stop_req_.store( true ) ;
 }
 
-void CTB_Controller::send_config( const std::string &host,const uint16_t &port  )  {
+void CTB_Controller::send_config( const std::string & host, const uint16_t & port, const unsigned long rollover  )  {
   
   dune::DAQLogger::LogInfo("CTB_Controller") << "Sending config" << std::endl;
   
@@ -93,10 +93,11 @@ void CTB_Controller::send_config( const std::string &host,const uint16_t &port  
 
   static const std::string g_config_1 = "{\"ctb\":{\"sockets\":{\"receiver\":{\"host\":\"";
   static const std::string g_config_2 = "\",\"port\":" ; 
-  static const std::string g_config_3 = ",\"rollover\":50000}},\"subsystems\":{\"ssp\":{\"dac_thresholds\":[2018,2018,2018,2018,2018,2018,2018,2018,2018,2018,2018,2018,2018,2018,2018,2018,2018,2018,2018,2018,2018,2018,2018,2018]}}}}" ; 
+  static const std::string g_config_3 = ",\"rollover\":" ; 
+  static const std::string g_config_4 = "}},\"subsystems\":{\"ssp\":{\"dac_thresholds\":[2018,2018,2018,2018,2018,2018,2018,2018,2018,2018,2018,2018,2018,2018,2018,2018,2018,2018,2018,2018,2018,2018,2018,2018]}}}}" ; 
 
   std::stringstream s;
-  s << g_config_1 << host << g_config_2 << port << g_config_3 ;
+  s << g_config_1 << host << g_config_2 << port << g_config_3 << rollover << g_config_4 ;
   const std::string g_config = s.str() ;
   
   send_message( g_config ) ;

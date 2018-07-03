@@ -86,7 +86,8 @@ namespace ptb {
 
         ts_size_t timestamp;
         pad_size_t payload : 61;
-        word_type_t word_type : 3;
+        //word_type_t word_type : 3;
+	pad_size_t  word_type : 3;
 
         static size_t const size_bytes = 4*sizeof(uint32_t);
         static size_t const size_u32 = 4*sizeof(uint32_t)/sizeof(uint32_t);

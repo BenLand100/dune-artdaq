@@ -5,7 +5,7 @@
 events_to_generate: 2
 run_number: 101
 transition_timeout: 30
-debug_cout: false
+debug_cout: true 
 
 fragment_receiver: {
 
@@ -13,24 +13,33 @@ fragment_receiver: {
    		    
    generator: TriggerBoardReader
    fragment_type: TOY2        # Make sure downstream modules know about this fragment_type!
-   board_address: "np04-trig-proto"
+
+   ##------------------------------------------------------------------------------
+   ## Variable of interest for the new CTB Fragment Generator
+   ##------------------------------------------------------------------------------
+
+   board_address: "np04-trig-proto"                   ## Default np04-ctb-1 
    # board_address: "np04-ctb-1"
+   control_port  : 8991                               ## Default 8991 
    receiver_port : 8992 
-   # calibration_stream_output : /nfs/sw/work_dirs/dune-artdaq_trigger_fragment_generator  ## this is the string that points to a writable directory if 
-                                                                                         ## if this option is not there, there won't be a calibration str
+   calibration_stream_output : "/nfs/home/maroda"     ## this is the string that points to a writable directory if 
+                                                      ## if this option is not there, there won't be a calibration str
    # calibration_update : 5. ## minimum amont of minutes that before updating the calibration stream file. Default 5 minutes
 
    group_size : 50    ## this sets how many pakages from the board should be grouped to form a fragment. Default 1 
+   	      	      ## value 0 means that the fragments contains all the word contained in the buffer at the moment of getNext_() call
+                      ## without restriction based on the number of TS words. TS words are removed anyway. 
+
    rollover :  50000  ## maximum number of board clock cycles before sending a package. Default 50000 
-
    
-
+   # request_mode: "Window"   # the other interist possibility which is discussed is the "Buffer" mode
    # request_window_offset: 2 # Request message contains tzero. Window will be from tzero - offset to tz-o + width
-   # request_window_width: 5 # These settings correspond to "two before, two after"
-
-											
+   # request_window_width: 5  # These settings correspond to "two before, two after"
+							
+   ##------------------------------------------------------------------------------
+				
    nADCcounts: 100
-   throttle_usecs: 100000  # Wait this many usecs before creating the next event
+   throttle_usecs: 100  # Wait this many usecs before creating the next event
    distribution_type: 1
 
    # Parameters configuring the fragment generator's parent class

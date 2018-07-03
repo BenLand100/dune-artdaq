@@ -44,18 +44,14 @@ namespace dune {
     std::unique_ptr<CTB_Controller> _run_controller ; 
     std::unique_ptr<CTB_Receiver>   _receiver ; 
 
-
-    // artdaq::Fragment::timestamp_t timestamp_;
-    // int timestampScale_;
-
-    // ToyFragment::Metadata metadata_;
+    unsigned int _group_size ;
+    bool _has_last_TS = false ;
+    artdaq::Fragment::timestamp_t _last_timestamp = artdaq::Fragment::InvalidTimestamp ;
 
     // buffer_ points to the buffer which the hardware interface will
     // fill. Notice that it's a raw pointer rather than a smart
     // pointer as the API to ToyHardwareInterface was chosen to be a
     // C++03-style API for greater realism
-
-    char* readout_buffer_;
 
     FragmentType fragment_type_;
     bool throw_exception_;
