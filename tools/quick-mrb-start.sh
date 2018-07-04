@@ -134,13 +134,6 @@ else
     exit 1
 fi
 
-dune_repo=/cvmfs/dune.opensciencegrid.org/products/dune
-
-if [[ ! -e $dune_repo ]]; then
-    echo "This installation needs access to the CVMFS mount point for the dune repo, ${dune_repo}, in order to obtain the dunepdsprce packages. Aborting..." >&2
-    exit 1
-fi
-
 set -u   # complain about uninitialed shell variables - helps development
 
 test -n "${do_help-}" -o $# -ge 3 && echo "$USAGE" && exit
@@ -332,12 +325,12 @@ fi
 
 if ! $bad_network; then
 
-    # mrb gitCheckout -t v3_02_01 -d artdaq_core http://cdcvs.fnal.gov/projects/artdaq-core
+    mrb gitCheckout -b feature/pdune_from_v3_02_01 -d artdaq_core http://cdcvs.fnal.gov/projects/artdaq-core
  
-    # if [[ "$?" != "0" ]]; then
-    #     echo "Unable to perform checkout of http://cdcvs.fnal.gov/projects/artdaq-core"
-    #     exit 1
-    # fi
+    if [[ "$?" != "0" ]]; then
+        echo "Unable to perform checkout of http://cdcvs.fnal.gov/projects/artdaq-core"
+        exit 1
+    fi
 
 
     mrb gitCheckout -b feature/pdune_from_v3_02_00a -d artdaq http://cdcvs.fnal.gov/projects/artdaq
@@ -385,7 +378,6 @@ cd $Base
                                                                                                                          
         sh -c "[ \`ps \$\$ | grep bash | wc -l\` -gt 0 ] || { echo 'Please switch to the bash shell before running dune-artdaq.'; exit; }" || exit                                                                                           
         source ${uhal_products_dir}/setup                                      
-        source ${dune_repo}/setup
 
         setup mrb
         source $Base/localProducts_dune_artdaq_${demo_version}_${equalifier}_${build_type}/setup
@@ -457,9 +449,7 @@ echo
 
 
 cd $MRB_BUILDDIR
-set +u
-source ${dune_repo}/setup
-set -u
+
 export CETPKG_J=$nprocessors
 source /nfs/sw/artdaq/products/setup
 

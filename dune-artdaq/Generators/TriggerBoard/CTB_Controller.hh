@@ -23,7 +23,7 @@ public:
   void send_reset() ;
   void send_start() ;
   void send_stop() ;
-  void send_config( const std::string &host = "np04-srv-013",const uint16_t &port = 8992 ) ;
+  void send_config( const std::string &host = "np04-srv-013",const uint16_t &port = 8992, unsigned long rollover = 50000 ) ;
   //void process_quit() ;
 
 protected:

@@ -11,7 +11,7 @@ CTB_Controller::CTB_Controller( const std::string & host, const uint16_t & port 
   stop_req_( false ),
   is_running_ (false), 
   is_conf_(false),
-  _buf()          
+  _buf{" "}          
 {
   
   boost::asio::ip::tcp::resolver resolver( _ios );
@@ -32,6 +32,7 @@ CTB_Controller::~CTB_Controller() {
 
 
   //check if running. and in case stop the run
+  send_stop(); 
 
   _socket.close() ;
 
@@ -41,7 +42,7 @@ void CTB_Controller::send_reset() {
 
   dune::DAQLogger::LogInfo("CTB_Controller") << "Sending a reset" << std::endl;
 
-  send_message( "<command>HardReset</command>" ) ;
+  send_message( "{\"command\":\"HardReset\"}" ) ;
 
   // decide what to do with errors
 
@@ -60,7 +61,7 @@ void CTB_Controller::send_start() {
 
   dune::DAQLogger::LogInfo("CTB_Controller") << "Sending a start run" << std::endl;
 
-  send_message( "<command>StartRun</command>" ) ;
+  send_message( "{\"command\":\"StartRun\"}" ) ;
 
   is_running_.store(true);
 
@@ -75,13 +76,13 @@ void CTB_Controller::send_stop() {
 
   dune::DAQLogger::LogInfo("CTB_Controller") << "Sending a stop run" << std::endl;
 
-  send_message( "<command>StopRun</command> " ) ;
+  send_message( "{\"command\":\"StopRun\"}" ) ;
 
   is_running_.store( false ) ;
   stop_req_.store( true ) ;
 }
 
-void CTB_Controller::send_config( const std::string &host,const uint16_t &port  )  {
+void CTB_Controller::send_config( const std::string & host, const uint16_t & port, const unsigned long rollover  )  {
   
   dune::DAQLogger::LogInfo("CTB_Controller") << "Sending config" << std::endl;
   
@@ -90,12 +91,13 @@ void CTB_Controller::send_config( const std::string &host,const uint16_t &port  
     send_reset();
   }							   
 
-  static const std::string g_config_1 = "<config><DataBuffer><DaqHost>" ;
-  static const std::string g_config_2 = "</DaqHost><DaqPort>" ; 
-  static const std::string g_config_3 = "</DaqPort></DataBuffer><RolloverClocks>25000000</RolloverClocks></config>";
+  static const std::string g_config_1 = "{\"ctb\":{\"sockets\":{\"receiver\":{\"host\":\"";
+  static const std::string g_config_2 = "\",\"port\":" ; 
+  static const std::string g_config_3 = ",\"rollover\":" ; 
+  static const std::string g_config_4 = "}},\"subsystems\":{\"ssp\":{\"dac_thresholds\":[2018,2018,2018,2018,2018,2018,2018,2018,2018,2018,2018,2018,2018,2018,2018,2018,2018,2018,2018,2018,2018,2018,2018,2018]}}}}" ; 
 
   std::stringstream s;
-  s << g_config_1 << host << g_config_2 << port << g_config_3 ;
+  s << g_config_1 << host << g_config_2 << port << g_config_3 << rollover << g_config_4 ;
   const std::string g_config = s.str() ;
   
   send_message( g_config ) ;
