@@ -76,6 +76,7 @@ find_ups_product( fhiclcpp v2_16_00 )
 find_ups_product( messagefacility v1_10_00 )
 find_ups_product( cetlib v1_03_00 )
 find_ups_product( netio v0_8_0 )
+find_ups_product( ftd2xx v1_2_7 )
 find_ups_root( v5_34_00 )
 find_ups_boost( v1_50_0 filesystem
                         program_options
@@ -85,8 +86,12 @@ find_ups_product( libxml2 v2_9_1a )
 find_ups_product( TRACE v3_07_00 )
 find_ups_product( protodune_timing v4_0_1 )
 
+find_ups_product( dune_artdaq_InhibitMaster v0_01_00 )
+
 set(netio_INCLUDE_DIR $ENV{NETIO_INC})
 set(netio_LIBRARY_DIR $ENV{NETIO_LIB})
+set(ftd2xx_INCLUDE_DIR $ENV{FTD2XX_INC})
+set(ftd2xx_LIBRARY_DIR $ENV{FTD2XX_LIB})
 
 # JM-A 2017/06/23 ###
 find_ups_product( uhal v2_6_0 ) 
