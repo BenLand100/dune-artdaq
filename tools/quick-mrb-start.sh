@@ -325,12 +325,12 @@ fi
 
 if ! $bad_network; then
 
-    # mrb gitCheckout -t v3_02_01 -d artdaq_core http://cdcvs.fnal.gov/projects/artdaq-core
+    mrb gitCheckout -b feature/pdune_from_v3_02_01 -d artdaq_core http://cdcvs.fnal.gov/projects/artdaq-core
  
-    # if [[ "$?" != "0" ]]; then
-    #     echo "Unable to perform checkout of http://cdcvs.fnal.gov/projects/artdaq-core"
-    #     exit 1
-    # fi
+    if [[ "$?" != "0" ]]; then
+        echo "Unable to perform checkout of http://cdcvs.fnal.gov/projects/artdaq-core"
+        exit 1
+    fi
 
 
     mrb gitCheckout -b feature/pdune_from_v3_02_00a -d artdaq http://cdcvs.fnal.gov/projects/artdaq
