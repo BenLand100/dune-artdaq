@@ -29,7 +29,8 @@ WIBReader::WIBReader(fhicl::ParameterSet const& ps) :
   auto wib_table = ps.get<std::string>("WIB.config.wib_table");
   auto femb_table = ps.get<std::string>("WIB.config.femb_table");
 
-  auto expected_wib_fw_version = ps.get<unsigned>("WIB.config.expected_wib_fw_version");
+  auto expected_wib_fw_version_rce = ps.get<unsigned>("WIB.config.expected_wib_fw_version_rce");
+  auto expected_wib_fw_version_felix = ps.get<unsigned>("WIB.config.expected_wib_fw_version_felix");
   auto expected_daq_mode = ps.get<std::string>("WIB.config.expected_daq_mode");
 
   auto use_WIB_fake_data = ps.get<std::vector<bool> >("WIB.config.use_WIB_fake_data");
@@ -47,6 +48,8 @@ WIBReader::WIBReader(fhicl::ParameterSet const& ps) :
 
   auto enable_FEMBs = ps.get<std::vector<bool> >("WIB.config.enable_FEMBs");
   auto FEMB_configs = ps.get<std::vector<fhicl::ParameterSet> >("WIB.config.FEMBs");
+
+  auto force_full_reset = ps.get<bool>("WIB.config.force_full_reset");
 
   if (use_WIB_fake_data.size() != 4)
   {
@@ -83,6 +86,57 @@ WIBReader::WIBReader(fhicl::ParameterSet const& ps) :
     wib->SetContinueOnFEMBSyncError(continueOnFEMBSyncError);
     wib->SetContinueIfListOfFEMBClockPhasesDontSync(continueIfListOfFEMBClockPhasesDontSync);
   
+    // Check if WIB firmware is for RCE or FELIX DAQ
+    dune::DAQLogger::LogDebug(identification) << "N DAQ Links: "  << wib->Read("SYSTEM.DAQ_LINK_COUNT");
+    dune::DAQLogger::LogDebug(identification) << "N FEMB Ports: "  << wib->Read("SYSTEM.FEMB_COUNT");
+    WIB::WIB_DAQ_t daqMode = wib->GetDAQMode();
+    uint32_t expected_wib_fw_version = 0;
+  
+    if (daqMode == WIB::RCE)
+    {
+      dune::DAQLogger::LogInfo(identification) << "WIB Firmware setup for RCE DAQ Mode";
+      if(expected_daq_mode != "RCE" &&
+         expected_daq_mode != "rce" && 
+         expected_daq_mode != "ANY" && 
+         expected_daq_mode != "any"
+        )
+      {
+          cet::exception excpt(identification);
+          excpt << "WIB Firmware setup in RCE mode, but expect '"<< expected_daq_mode <<"' mode in fcl";
+          throw excpt;
+      }
+      expected_wib_fw_version = expected_wib_fw_version_rce;
+    }
+    else if (daqMode == WIB::FELIX)
+    {
+      dune::DAQLogger::LogInfo(identification) << "WIB Firmware setup for FELIX DAQ Mode";
+      if(expected_daq_mode != "FELIX" && 
+         expected_daq_mode != "felix" &&
+         expected_daq_mode != "ANY" &&
+         expected_daq_mode != "any"
+        )
+      {
+          cet::exception excpt(identification);
+          excpt << "WIB Firmware setup in FELIX mode, but expect '"<< expected_daq_mode <<"' mode in fcl";
+          throw excpt;
+      }
+      expected_wib_fw_version = expected_wib_fw_version_felix;
+    }
+    else if (daqMode == WIB::UNKNOWN)
+    {
+      cet::exception excpt(identification);
+      excpt << "WIB Firmware DAQ setup UNKNOWN";
+      throw excpt;
+      //dune::DAQLogger::LogInfo(identification) << "WIB Firmware DAQ setup UNKNOWN";
+    }
+    else
+    {
+      cet::exception excpt(identification);
+      excpt << "Bogus WIB firmware DAQ mode "<< ((unsigned) daqMode);
+      throw excpt;
+      //dune::DAQLogger::LogInfo(identification) << "Bogus WIB firmware DAQ mode "<< ((unsigned) daqMode);
+    }
+
     // Check and print firmware version
     uint32_t wib_fw_version = wib->Read("SYSTEM.FW_VERSION");
   
@@ -117,57 +171,14 @@ WIBReader::WIBReader(fhicl::ParameterSet const& ps) :
           <<" version in fcl";
       throw excpt;
     }
-  
-    // Check if WIB firmware is for RCE or FELIX DAQ
-    dune::DAQLogger::LogDebug(identification) << "N DAQ Links: "  << wib->Read("SYSTEM.DAQ_LINK_COUNT");
-    dune::DAQLogger::LogDebug(identification) << "N FEMB Ports: "  << wib->Read("SYSTEM.FEMB_COUNT");
-    WIB::WIB_DAQ_t daqMode = wib->GetDAQMode();
-  
-    if (daqMode == WIB::RCE)
-    {
-      dune::DAQLogger::LogInfo(identification) << "WIB Firmware setup for RCE DAQ Mode";
-      if(expected_daq_mode != "RCE" &&
-         expected_daq_mode != "rce" && 
-         expected_daq_mode != "ANY" && 
-         expected_daq_mode != "any"
-        )
-      {
-          cet::exception excpt(identification);
-          excpt << "WIB Firmware setup in RCE mode, but expect '"<< expected_daq_mode <<"' mode in fcl";
-          throw excpt;
-      }
-    }
-    else if (daqMode == WIB::FELIX)
-    {
-      dune::DAQLogger::LogInfo(identification) << "WIB Firmware setup for FELIX DAQ Mode";
-      if(expected_daq_mode != "FELIX" && 
-         expected_daq_mode != "felix" &&
-         expected_daq_mode != "ANY" &&
-         expected_daq_mode != "any"
-        )
-      {
-          cet::exception excpt(identification);
-          excpt << "WIB Firmware setup in FELIX mode, but expect '"<< expected_daq_mode <<"' mode in fcl";
-          throw excpt;
-      }
-    }
-    else if (daqMode == WIB::UNKNOWN)
-    {
-      cet::exception excpt(identification);
-      excpt << "WIB Firmware DAQ setup UNKNOWN";
-      throw excpt;
-      //dune::DAQLogger::LogInfo(identification) << "WIB Firmware DAQ setup UNKNOWN";
-    }
-    else
-    {
-      cet::exception excpt(identification);
-      excpt << "Bogus WIB firmware DAQ mode "<< ((unsigned) daqMode);
-      throw excpt;
-      //dune::DAQLogger::LogInfo(identification) << "Bogus WIB firmware DAQ mode "<< ((unsigned) daqMode);
-    }
 
     // Reset and setup clock
-    wib->ResetWIBAndCfgDTS(local_clock,partition_number,DTS_source);
+    if(force_full_reset){
+      wib->ResetWIBAndCfgDTS(local_clock,partition_number,DTS_source);
+    }
+    else{
+      wib->CheckedResetWIBAndCfgDTS(local_clock,partition_number,DTS_source);    
+    }
     std::this_thread::sleep_for(std::chrono::seconds(1));
   
     // Configure WIB fake data enable and mode
