@@ -85,6 +85,23 @@ simple_plugin(PennReceiver "generator"
   dune-artdaq_DAQLogger
   )
 
+simple_plugin(CRTFragGen "generator"
+  dune-artdaq_Generators_CRTInterface
+  dune-raw-data_Overlays
+  artdaq_Application
+  artdaq_DAQdata
+  artdaq-core_Utilities
+  artdaq-core_Data
+  artdaq-utilities_Plugins
+  ${CANVAS_LIB_LIST}
+  ${FHICLCPP}
+  ${MF_MESSAGELOGGER}
+  ${MF_UTILITIES}
+  ${CETLIB}
+  ${CETLIB_EXCEPT}
+  )
+
+add_subdirectory(CRTInterface)
 
 simple_plugin(TriggerBoardReader "generator"
   dune-raw-data_Overlays
