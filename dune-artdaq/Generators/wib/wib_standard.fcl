@@ -62,7 +62,8 @@ wib_config: {
       # FEMB register map
       femb_table: "PDUNE_FEMB_323.adt"
       # this must match the WIB firmware version (hex)
-      expected_wib_fw_version: 0x18041701
+      expected_wib_fw_version_rce: 0x18041701
+      expected_wib_fw_version_felix: 0x18060501
       # this must match the WIB firmware version
       expected_daq_mode: "any" # "RCE", "FELIX", or "any"
 
@@ -95,6 +96,9 @@ wib_config: {
         # if true, continue on to the next FEMB
         ListOfFEMBClockPhasesDontSync: true # if true, will try to hunt for the proper phase, else error
       }
+
+    #Use full reset over checked
+    force_full_reset: false
 }
 
 # standard wib configuration
