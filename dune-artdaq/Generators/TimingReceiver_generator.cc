@@ -155,10 +155,16 @@ dune::TimingReceiver::TimingReceiver(fhicl::ParameterSet const & ps):
     // Set up outgoing connection to InhibitMaster: this is where we
     // broadcast whether we're happy to take triggers
     status_publisher_.reset(new artdaq::StatusPublisher(instance_name_, zmq_conn_out_));
-    status_publisher_->BindPublisher();
+    int rc=status_publisher_->BindPublisher();
+    if(rc!=0){
+        throw cet::exception(instance_name_) << "StatusPublisher couldn't bind to " << zmq_conn_out_ << ". errno " << errno;
+    }
 
     fragment_publisher_.reset(new artdaq::FragmentPublisher(zmq_fragment_conn_out_));
-    fragment_publisher_->BindPublisher();
+    rc=fragment_publisher_->BindPublisher();
+    if(rc!=0){
+        throw cet::exception(instance_name_) << "FragmentPublisher couldn't bind to " << zmq_fragment_conn_out_ << ". errno " << errno;
+    }
 
     // TODO: Do we really need to sleep here to wait for the socket to bind?
     usleep(2000000);
