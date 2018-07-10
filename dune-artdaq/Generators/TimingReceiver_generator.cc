@@ -26,6 +26,7 @@
 #include <thread>
 #include <chrono>
 #include <vector>
+#include <set>
 
 #include <unistd.h>
 
@@ -103,10 +104,14 @@ dune::TimingReceiver::TimingReceiver(fhicl::ParameterSet const & ps):
 
     // Match Fw version with configuration
     DAQLogger::LogInfo(instance_name_) << "Timing Master firmware version " << std::showbase << std::hex << (uint32_t)lVersion;
-    uint32_t expected_fw_version=0x40007;
-    uint32_t alternative_fw_version=0x40006;
-    if ( lVersion != expected_fw_version && lVersion != alternative_fw_version ) {
-      DAQLogger::LogError(instance_name_) << "Firmware version mismatch! Expected: " << expected_fw_version << " or " << alternative_fw_version << " detected: " << (uint32_t)lVersion;
+    std::set<uint32_t> allowed_fw_versions{0x40009, 0x40007, 0x40006};
+    if ( allowed_fw_versions.find(lVersion)==allowed_fw_versions.end() ) {
+        std::stringstream errormsg;
+        errormsg << "Firmware version mismatch! Got firmware version " << lVersion << " but allowed versions are:";
+        for(auto allowed_ver : allowed_fw_versions){
+            errormsg << allowed_ver << " ";
+        }
+        DAQLogger::LogError(instance_name_) << errormsg.str();
     }
 
     // Measure the input clock frequency
