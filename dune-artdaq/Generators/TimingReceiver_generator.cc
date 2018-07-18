@@ -37,6 +37,8 @@
                                  // partition, from the
                                  // protodune_timing UPS product
 
+#include "artdaq/Application/BoardReaderCore.hh"
+
 using namespace dune;
 
 // SetUHALLog is an attempt at a fiddle.  It is a class that does nothing except that it's
@@ -291,7 +293,11 @@ bool dune::TimingReceiver::getNext_(artdaq::FragmentPtrs &frags)
         // Tell the InhibitMaster that we want to stop triggers, then
         // carry on with this iteration of the loop
         DAQLogger::LogInfo(instance_name_) << "buf_warn is high. Requesting InhibitMaster to stop triggers";
-        status_publisher_->PublishBadStatus();
+        status_publisher_->PublishBadStatus("ROBWarningOverflow");
+    }
+    //check if there are available routing tokens, and if not inhibit
+    else if(artdaq::BoardReaderCore::GetDataSenderManagerPtr()->GetRemainingRoutingTableEntries()<1){
+        status_publisher_->PublishBadStatus("NoAvailableTokens");
     }
     else{
         status_publisher_->PublishGoodStatus();
