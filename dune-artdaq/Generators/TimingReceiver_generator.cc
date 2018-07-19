@@ -106,12 +106,12 @@ dune::TimingReceiver::TimingReceiver(fhicl::ParameterSet const & ps):
     // AT: Ensure that the hardware is up and running.
     // Check that the board is reachable
     // Read configuration version
-    ValWord<uint32_t> lVersion = hw_.getNode("master.global.version").read();
+    ValWord<uint32_t> lVersion = hw_.getNode("master_top.master.global.version").read();
     hw_.dispatch();
 
     // Match Fw version with configuration
     DAQLogger::LogInfo(instance_name_) << "Timing Master firmware version " << std::showbase << std::hex << (uint32_t)lVersion;
-    std::set<uint32_t> allowed_fw_versions{0x4000a, 0x40009, 0x40007, 0x40006};
+    std::set<uint32_t> allowed_fw_versions{0x40100};
     if ( allowed_fw_versions.find(lVersion)==allowed_fw_versions.end() ) {
         std::stringstream errormsg;
         errormsg << "Firmware version mismatch! Got firmware version " << lVersion << " but allowed versions are:";
@@ -478,7 +478,7 @@ bool dune::TimingReceiver::startOfDatataking() { return true; }
 // Local "private" methods
 const pdt::PartitionNode& dune::TimingReceiver::master_partition() {
     std::stringstream ss;
-    ss << "master.partition" << partition_number_;
+    ss << "master_top.master.partition" << partition_number_;
     return hw_.getNode<pdt::PartitionNode>(ss.str());
 }
 
