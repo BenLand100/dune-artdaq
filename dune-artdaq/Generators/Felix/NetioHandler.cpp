@@ -14,7 +14,7 @@ NetioHandler::NetioHandler()
   m_activeChannels=0;
 
   m_nmessages=0;
-  m_msgsize = 236640;
+  m_msgsize = 2784;
   m_stop_subs=false;
   m_cpu_lock=false;
   m_extract = true;
@@ -162,7 +162,7 @@ void NetioHandler::startTriggerMatchers(){
           memcpy(m_fragmentPtr->dataBeginBytes()+m_msgsize*i,(char*)m_pcqs[tid]->frontPtr(), m_msgsize);
           m_pcqs[tid]->popFront();
         }        
-      } else {
+      } else { // generate fake fragment for emulation
         if (m_triggerTimestamp == 0) {
           DAQLogger::LogInfo("NetioHandler::startTriggerMatchers") << "no trigger ";
           return;
@@ -242,6 +242,7 @@ void NetioHandler::startSubscribers(){
         std::vector<size_t> badFrags;
 	uint64_t expDist = (m_msgsize/m_framesize)*m_tickdist;
         std::vector<std::pair<uint_fast64_t, uint_fast64_t>> distFails;
+	uint64_t lostLogger=1;
         while (!m_stop_subs) {
           m_sub_sockets[m_channels[chn]]->recv(ep, std::ref(msg));
           m_nmessages++;
@@ -249,21 +250,24 @@ void NetioHandler::startSubscribers(){
             badOnes++;
             badSizes.push_back(msg.size());
             badFrags.push_back(msg.num_fragments());
-            DAQLogger::LogWarning("NetioHandler::subscriber")
-              << " Received message with non-expected size! Bad omen!"
-              << " -> Trigger matching is unreliable until next queue turnaround!\n";
+            //DAQLogger::LogWarning("NetioHandler::subscriber")
+            //  << " Received message with non-expected size! Bad omen!"
+            //  << " -> Trigger matching is unreliable until next queue turnaround!\n";
           }          
 	  else {
-	    IOVEC_CHAR_STRUCT ics;
+	    SUPERCHUNK_CHAR_STRUCT ics;
 	    msg.serialize_to_usr_buffer((void*)&ics);
 	    bool storeOk = m_pcqs[m_channels[chn]]->write( std::move(ics) ); // RS -> Add possibility for dry_run! (No push mode.)
 	    if (!storeOk) {
-	      if(lostData%1000 == 0) {
-		DAQLogger::LogWarning("NetioHandler::subscriber") << " Fragments queue is full. Loosing data!";
+	      if(lostData%lostLogger == 0) {
+		DAQLogger::LogWarning("NetioHandler::subscriber") << " Fragments queue is full. Lost: " << lostData;
+		lostLogger*=10;
 	      }
 	      ++lostData;
 	    }
 	    goodOnes++;
+	    if(lostLogger>1) {
+		lostLogger/=10;
 	  }
           
           // RS -> Add more sophisticated quality check.

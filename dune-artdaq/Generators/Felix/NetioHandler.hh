@@ -4,7 +4,7 @@
 #include "dune-raw-data/Overlays/FragmentType.hh"
 #include "ProducerConsumerQueue.hh"
 #include "ReusableThread.hh"
-#include "NetioSubscriber.hh"
+//#include "NetioSubscriber.hh"
 #include "NetioWIBRecords.hh"
 #include "Utilities.hh"
 #include "Types.hh"
@@ -115,7 +115,7 @@ private:
 
   // Threads
   std::vector<std::thread> m_netioSubscribers;
-  std::vector<std::unique_ptr<NetioSubscriber>> m_subscribers;
+  //std::vector<std::unique_ptr<NetioSubscriber>> m_subscribers;
   std::vector<std::unique_ptr<ReusableThread>>  m_extractors;
   std::vector<std::function<void()>> m_functors; 
 

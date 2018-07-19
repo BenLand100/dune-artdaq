@@ -37,7 +37,8 @@ FelixHardwareInterface::FelixHardwareInterface(fhicl::ParameterSet const& ps) :
   offset_ = hps.get<unsigned>("offset");
   window_ = hps.get<unsigned>("window");
 
-  requester_address_ = ps.get<std::string>("requester_address");
+  requester_address_ = ps.get<std::string>("zmq_fragment_connection_out");
+  //requester_address_ = ps.get<std::string>("requester_address");
   //request_address_ = ps.get<std::string>("request_address");
   //request_port_ = ps.get<unsigned short>("request_port");
   //requests_size_ = ps.get<unsigned short>("requests_size");
@@ -61,12 +62,12 @@ FelixHardwareInterface::FelixHardwareInterface(fhicl::ParameterSet const& ps) :
   request_receiver_ = new RequestReceiver(requester_address_);
 
   nioh_.setExtract(extract_);
-  DAQLogger::LogInfo("dune::FelixHardwareInterface::FelixHardwareInterface")
-    << "Setting up NetioHandler (host, port, adding channels, starting subscribers, locking subs to CPUs.)";
-  nioh_.setupContext( backend_ ); // posix or infiniband
-  for ( auto const & link : link_parameters_ ){ // Add channels
-    nioh_.addChannel(link.id_, link.tag_, link.host_, link.port_, queue_size_, zerocopy_); 
-  }
+  //DAQLogger::LogInfo("dune::FelixHardwareInterface::FelixHardwareInterface")
+  //  << "Setting up NetioHandler (host, port, adding channels, starting subscribers, locking subs to CPUs.)";
+  //nioh_.setupContext( backend_ ); // posix or infiniband
+  //for ( auto const & link : link_parameters_ ){ // Add channels
+  //  nioh_.addChannel(link.id_, link.tag_, link.host_, link.port_, queue_size_, zerocopy_); 
+  //}
   nioh_.setVerbosity(true);
   nioh_.setFrameSize( ps.get<unsigned>("frame_size") );
   nioh_.setMessageSize(message_size_);
@@ -85,6 +86,13 @@ FelixHardwareInterface::~FelixHardwareInterface(){
 
 void FelixHardwareInterface::StartDatataking() {
   DAQLogger::LogInfo("dune::FelixHardwareInterface::StartDatataking") << "Start datataking...";
+
+  DAQLogger::LogInfo("dune::FelixHardwareInterface::FelixHardwareInterface")
+    << "Setting up NetioHandler (host, port, adding channels, starting subscribers, locking subs to CPUs.)";
+  nioh_.setupContext( backend_ ); // posix or infiniband
+  for ( auto const & link : link_parameters_ ){ // Add channels
+    nioh_.addChannel(link.id_, link.tag_, link.host_, link.port_, queue_size_, zerocopy_); 
+  }
 
   // GLM: start listening to felix stream here
   nioh_.setExtract(extract_);

@@ -13,7 +13,7 @@
  * Date: May 2018
  */
 
-typedef folly::ProducerConsumerQueue<IOVEC_CHAR_STRUCT> FrameQueue;
+typedef folly::ProducerConsumerQueue<SUPERCHUNK_CHAR_STRUCT> FrameQueue;
 typedef std::unique_ptr<FrameQueue> UniqueFrameQueue;
 
 typedef folly::ProducerConsumerQueue<netio::message> MessageQueue;

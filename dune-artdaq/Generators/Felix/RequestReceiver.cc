@@ -29,7 +29,14 @@ void RequestReceiver::start() {
   m_socket = zmq_socket(m_ctx, ZMQ_SUB);
 
   // Connect the socket to the other end, and subscribe to all the messages on it
-  zmq_connect(m_socket, m_subscribeAddress.c_str());
+  int zrc = zmq_connect(m_socket, m_subscribeAddress.c_str());
+  if (zrc!=0) {
+    dune::DAQLogger::LogWarning("RequestReceiver::start")
+      << "ZMQ connect return code is not zero, but: " << zrc;   
+  } else {
+     dune::DAQLogger::LogInfo("RequestReceiver::start")
+      << "Connected to ZMQ socket successfully!";
+  }
   zmq_setsockopt(m_socket, ZMQ_SUBSCRIBE, "", 0);
 
   m_stop_thread = false;
