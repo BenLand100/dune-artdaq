@@ -8,6 +8,11 @@
 //# */
 //################################################################################
 
+
+#include "artdaq/DAQdata/Globals.hh"
+#define TRACE_NAME (app_name + "_TimingReceiver").c_str()
+#define TLVL_HWSTATUS 20
+
 #include "dune-artdaq/Generators/TimingReceiver.hh"
 #include "dune-artdaq/DAQLogger/DAQLogger.hh"
 
@@ -231,23 +236,26 @@ void dune::TimingReceiver::stopNoMutex(void)
 bool dune::TimingReceiver::checkHWStatus_()
 {
     auto dsmptr = artdaq::BoardReaderCore::GetDataSenderManagerPtr();
+    if(!dsmptr)
+      TLOG(TLVL_HWSTATUS) << "DataSenderManagerPtr not valid.";
 
-    if(dsmptr)
-      DAQLogger::LogInfo(instance_name_) << "AvailableTokens: " 
-					 << artdaq::BoardReaderCore::GetDataSenderManagerPtr()->GetRemainingRoutingTableEntries();
+    auto mp_ovrflw = master_partition().readROBWarningOverflow();
+    int n_remaining_table_entries = dsmptr? dsmptr->GetRemainingRoutingTableEntries() : -1;
+    int n_table_count = dsmptr? dsmptr->GetRoutingTableEntryCount() : -1;
+    TLOG(TLVL_HWSTATUS) << "hwstatus: buf_warn=" << mp_ovrflw
+			<< " table_count=" << n_table_count
+			<< " table_entries_remaining=" << n_remaining_table_entries;
 
-    if(master_partition().readROBWarningOverflow()){
+    if(mp_ovrflw){
         // Tell the InhibitMaster that we want to stop triggers, then
         // carry on with this iteration of the loop
         DAQLogger::LogInfo(instance_name_) << "buf_warn is high. Requesting InhibitMaster to stop triggers";
         status_publisher_->PublishBadStatus("ROBWarningOverflow");
     }
     //check if there are available routing tokens, and if not inhibit
-    else if(dsmptr){
-      if(artdaq::BoardReaderCore::GetDataSenderManagerPtr()->GetRemainingRoutingTableEntries()<1){
-        status_publisher_->PublishBadStatus("NoAvailableTokens");
-        DAQLogger::LogInfo(instance_name_) << "NoAvailableTokens! Requesting InhibitMaster to stop triggers";
-      }
+    else if(n_remaining_table_entries==0){
+      status_publisher_->PublishBadStatus("NoAvailableTokens");
+      DAQLogger::LogInfo(instance_name_) << "NoAvailableTokens! Requesting InhibitMaster to stop triggers";
     }
     else{
         status_publisher_->PublishGoodStatus();
