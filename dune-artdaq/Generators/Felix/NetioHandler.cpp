@@ -230,6 +230,7 @@ void NetioHandler::startSubscribers(){
   for (uint32_t i=0; i<m_activeChannels; ++i) {
     uint32_t chn = i; 
     m_netioSubscribers.push_back(
+
       std::thread([&, chn](){
         DAQLogger::LogInfo("NetioHandler::startSubscribers") << "Subscriber spawned for link " << chn;
         netio::endpoint ep;
@@ -253,7 +254,7 @@ void NetioHandler::startSubscribers(){
             //DAQLogger::LogWarning("NetioHandler::subscriber")
             //  << " Received message with non-expected size! Bad omen!"
             //  << " -> Trigger matching is unreliable until next queue turnaround!\n";
-          }          
+          }     
 	  else {
 	    SUPERCHUNK_CHAR_STRUCT ics;
 	    msg.serialize_to_usr_buffer((void*)&ics);
@@ -268,8 +269,8 @@ void NetioHandler::startSubscribers(){
 	    goodOnes++;
 	    if(lostLogger>1) {
 		lostLogger/=10;
-	  }
-          
+	    }
+          }
           // RS -> Add more sophisticated quality check.
           /*newTs = *(reinterpret_cast<const uint_fast64_t*>((&wcs)+8)); 
           if ( (newTs-ts)!= expDist ){
@@ -293,8 +294,8 @@ void NetioHandler::startSubscribers(){
           << subsummary.str()
           << " -> Failed timestamp distances (expected distance between messages: " << expDist << ")\n";
           //<< distsummary.str();
-      })
-    );
+	})
+				 );
     set_thread_name(m_netioSubscribers[i], "nioh-sub", i);
   }
 }
