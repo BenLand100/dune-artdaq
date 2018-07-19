@@ -405,7 +405,6 @@ cd $Base
                                                                                                                          
 alias rawEventDump="if [[ -n \\\$SETUP_TRACE ]]; then unsetup TRACE ; echo Disabling TRACE; sleep 1; fi; art -c \$DUNEARTDAQ_REPO/tools/fcl/rawEventDump.fcl "                                                    
 
-if [[ -n \$USER && \$USER == np04daq ]]; then
         export DIM_INC=/nfs/sw/dim/dim_v20r20
         export DIM_LIB=/nfs/sw/dim/dim_v20r20/linux
         export LD_LIBRARY_PATH=\$DIM_LIB:\$LD_LIBRARY_PATH
@@ -427,8 +426,6 @@ if [[ -n \$USER && \$USER == np04daq ]]; then
         toffM 10 -n CommandableFragmentGenerator
         tonM 10 -n CommandableFragmentGenerator
         
-fi
-
         
 
         # 26-Apr-2018, KAB: moved the sourcing of mrbSetEnv to *after* all product
