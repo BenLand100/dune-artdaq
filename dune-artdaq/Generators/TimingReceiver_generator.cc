@@ -8,6 +8,11 @@
 //# */
 //################################################################################
 
+
+#include "artdaq/DAQdata/Globals.hh"
+#define TRACE_NAME (app_name + "_TimingReceiver").c_str()
+#define TLVL_HWSTATUS 20
+
 #include "dune-artdaq/Generators/TimingReceiver.hh"
 #include "dune-artdaq/DAQLogger/DAQLogger.hh"
 
@@ -37,6 +42,8 @@
 #include "pdt/PartitionNode.hpp" // The interface to a timing system
                                  // partition, from the
                                  // protodune_timing UPS product
+
+#include "artdaq/Application/BoardReaderCore.hh"
 
 using namespace dune;
 
@@ -230,6 +237,39 @@ void dune::TimingReceiver::stopNoMutex(void)
     stopping_flag_ = 1;    // Tells the getNext_() while loop to stop the run
 }
 
+
+bool dune::TimingReceiver::checkHWStatus_()
+{
+    auto dsmptr = artdaq::BoardReaderCore::GetDataSenderManagerPtr();
+    if(!dsmptr)
+      TLOG(TLVL_HWSTATUS) << "DataSenderManagerPtr not valid.";
+
+    auto mp_ovrflw = master_partition().readROBWarningOverflow();
+    int n_remaining_table_entries = dsmptr? dsmptr->GetRemainingRoutingTableEntries() : -1;
+    int n_table_count = dsmptr? dsmptr->GetRoutingTableEntryCount() : -1;
+    TLOG(TLVL_HWSTATUS) << "hwstatus: buf_warn=" << mp_ovrflw
+			<< " table_count=" << n_table_count
+			<< " table_entries_remaining=" << n_remaining_table_entries;
+
+    if(mp_ovrflw){
+        // Tell the InhibitMaster that we want to stop triggers, then
+        // carry on with this iteration of the loop
+        DAQLogger::LogInfo(instance_name_) << "buf_warn is high. Requesting InhibitMaster to stop triggers";
+        status_publisher_->PublishBadStatus("ROBWarningOverflow");
+    }
+    //check if there are available routing tokens, and if not inhibit
+    else if(n_remaining_table_entries==0){
+      status_publisher_->PublishBadStatus("NoAvailableTokens");
+      DAQLogger::LogInfo(instance_name_) << "NoAvailableTokens! Requesting InhibitMaster to stop triggers";
+    }
+    else{
+        status_publisher_->PublishGoodStatus();
+    }
+
+    return true;
+}
+
+
 //#define D(a) a
 #define D(a)
 #define E(a) a
@@ -292,16 +332,26 @@ bool dune::TimingReceiver::getNext_(artdaq::FragmentPtrs &frags)
     // change). Also, we're safe from rapidly oscillating between warn
     // and not-warn because the register in the timing board has some
     // hysteresis
+    /*
+//
+//  Wes testing moving this to checkHWStatus_
+//
+    DAQLogger::LogInfo(instance_name_) << "AvailableTokens: " << artdaq::BoardReaderCore::GetDataSenderManagerPtr()->GetRemainingRoutingTableEntries();
     if(master_partition().readROBWarningOverflow()){
         // Tell the InhibitMaster that we want to stop triggers, then
         // carry on with this iteration of the loop
         DAQLogger::LogInfo(instance_name_) << "buf_warn is high. Requesting InhibitMaster to stop triggers";
-        status_publisher_->PublishBadStatus();
+        status_publisher_->PublishBadStatus("ROBWarningOverflow");
+    }
+    //check if there are available routing tokens, and if not inhibit
+    else if(artdaq::BoardReaderCore::GetDataSenderManagerPtr()->GetRemainingRoutingTableEntries()<1){
+        status_publisher_->PublishBadStatus("NoAvailableTokens");
+        DAQLogger::LogInfo(instance_name_) << "NoAvailableTokens! Requesting InhibitMaster to stop triggers";
     }
     else{
         status_publisher_->PublishGoodStatus();
     }
-
+    */
     unsigned int havedata = (master_partition().numEventsInBuffer()>0);   // Wait for a complete event
     if (havedata) timeout = 1;  // If we have data, we don't wait around in case there is more or a throttle
 

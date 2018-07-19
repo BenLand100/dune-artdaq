@@ -125,7 +125,7 @@ simple_plugin(TriggerBoardReader "generator"
 
 
 add_subdirectory(timingBoard)
-
+include_directories($ENV{SMC_HOME}/lib/C++)
 simple_plugin(TimingReceiver "generator"
   dune-raw-data_Overlays
   dune-artdaq_Generators_timingBoard
