@@ -68,20 +68,23 @@ simple_plugin(ToySimulator "generator"
 
   add_subdirectory(anlBoard)
   
-  add_subdirectory(RceSupportLib)
+include_directories($ENV{ROGUE_INC})
+add_definitions(-DNO_PYTHON)
+add_subdirectory(rce)
 simple_plugin(TpcRceReceiver "generator"
   dune-raw-data_Overlays
-  dune-artdaq_Generators_RceSupportLib
+  dune-artdaq_Generators_rce
   artdaq-core_Data
   artdaq_Application
   artdaq_DAQdata
   artdaq-core_Utilities
-  artdaq-utilities_Plugins
+  dune-artdaq_DAQLogger
+  #artdaq-utilities_Plugins
   ${CANVAS}
   ${FHICLCPP}
   ${CETLIB}
-  ${CETLIB_EXCEPT}
-  dune-artdaq_DAQLogger
+  #${CETLIB_EXCEPT}
+  ${Boost_DATE_TIME_LIBRARY}
   )
   
 
