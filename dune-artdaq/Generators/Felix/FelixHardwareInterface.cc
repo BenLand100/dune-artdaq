@@ -94,10 +94,7 @@ void FelixHardwareInterface::StartDatataking() {
     nioh_.addChannel(link.id_, link.tag_, link.host_, link.port_, queue_size_, zerocopy_); 
   }
 
-  // GLM: start listening to felix stream here
-  nioh_.setExtract(extract_);
-  nioh_.startSubscribers();
-  nioh_.lockSubsToCPUs(offset_);
+  // GLM: start listening to trigger before data stream, else data stream fills up
 
   taking_data_.store( true );
   send_calls_ = 0;
@@ -106,6 +103,12 @@ void FelixHardwareInterface::StartDatataking() {
   nioh_.startTriggerMatchers(); // Start trigger matchers in NIOH.
   
   request_receiver_->start(); // Start request receiver.
+  sleep(1);
+  // GLM: start listening to felix stream here
+  nioh_.setExtract(extract_);
+  nioh_.lockSubsToCPUs(offset_);
+  nioh_.startSubscribers();
+
 
   start_time_ = std::chrono::high_resolution_clock::now();
   DAQLogger::LogInfo("dune::FelixHardwareInterface::StartDatataking")

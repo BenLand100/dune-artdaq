@@ -115,10 +115,12 @@ void NetioHandler::startTriggerMatchers(){
           while(queuedElements) {
             --queuedElements;
 	  */
-          if (m_pcqs[tid]->sizeGuess() > 0.7 * m_pcqs[tid]->capacity()) {
-	    DAQLogger::LogInfo("NetioHandler::startTriggerMatchers") << "Removing old non requested data";
-	    m_pcqs[tid]->popXFront(m_pcqs[tid]->capacity()/2);
-	  }
+
+          //if (m_pcqs[tid]->sizeGuess() > 0.5 * m_pcqs[tid]->capacity()) {
+	     DAQLogger::LogInfo("NetioHandler::startTriggerMatchers") << "Removing old non requested data; (" << m_pcqs[tid]->sizeGuess()<< ") messages in queue.";
+	     m_pcqs[tid]->popXFront(m_pcqs[tid]->sizeGuess());
+	    //m_pcqs[tid]->popXFront(m_pcqs[tid]->capacity()/2);
+	  //}
 	  return;
 	}
 
@@ -243,7 +245,6 @@ void NetioHandler::startSubscribers(){
         std::vector<size_t> badFrags;
 	uint64_t expDist = (m_msgsize/m_framesize)*m_tickdist;
         std::vector<std::pair<uint_fast64_t, uint_fast64_t>> distFails;
-	uint64_t lostLogger=1;
         while (!m_stop_subs) {
           m_sub_sockets[m_channels[chn]]->recv(ep, std::ref(msg));
           m_nmessages++;
@@ -260,16 +261,12 @@ void NetioHandler::startSubscribers(){
 	    msg.serialize_to_usr_buffer((void*)&ics);
 	    bool storeOk = m_pcqs[m_channels[chn]]->write( std::move(ics) ); // RS -> Add possibility for dry_run! (No push mode.)
 	    if (!storeOk) {
-	      if(lostData%lostLogger == 0) {
+	      if(lostData%10000 == 0) {
 		DAQLogger::LogWarning("NetioHandler::subscriber") << " Fragments queue is full. Lost: " << lostData;
-		lostLogger*=10;
 	      }
 	      ++lostData;
 	    }
 	    goodOnes++;
-	    if(lostLogger>1) {
-		lostLogger/=10;
-	    }
           }
           // RS -> Add more sophisticated quality check.
           /*newTs = *(reinterpret_cast<const uint_fast64_t*>((&wcs)+8)); 
