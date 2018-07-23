@@ -8,16 +8,6 @@
 
 namespace CRT{
 
-// The raw data stream occasionally has packets that tell the Unix time of the
-// upstream CRT DAQ.  Once we get one of these, copy the latest Unix time into
-// the output events.  Before this point, we'll write zeros, and probably
-// discard that data.  Only a problem if data runs are verys short.
-//
-// XXX If the DAQ is stopped and then restarted, the Unix timestamp might be
-// stale, which would be bad.  It depends how stopping and starting are
-// implemented.
-uint16_t unix_time_hi = 0, unix_time_lo = 0;
-
 // A hit after decoding.
 struct decoded_hit {
   uint8_t channel;
@@ -30,12 +20,10 @@ struct decoded_packet {
   decoded_packet()
   {
     module = 0;
-    timeunix = 0;
     time16ns = 0;
   }
 
   uint16_t module;
-  uint32_t timeunix;
   uint32_t time16ns;
   std::vector<decoded_hit> hits;
 };
@@ -63,19 +51,6 @@ bool is_unix_time_word(const uint32_t wordin)
   return control == 0xc8 || control == 0xc9;
 }
 
-/*
-  Sets the global variables for the upper or lower half of the Unix time,
-  as per the 24-bit word 'wordin'.
-*/
-void set_unix_time(const uint32_t wordin)
-{
-  const uint8_t control = (wordin >> 16) & 0xff;
-  const uint16_t payload = wordin & 0xffff;
-  if     (control == 0xc8) unix_time_hi = payload;
-  else if(control == 0xc9) unix_time_lo = payload;
-  else fprintf(stderr, "CRT: Not reached in set_unix_time()\n");
-}
-
 // Convert a 24-bit word from upstream to a 16-bit word by stripping off the
 // leading control octet.  Returns true and puts the result on the end of
 // 'raw16bitdata' if a conversion was performed.  Returns false if we found
@@ -89,10 +64,8 @@ bool raw24bit_to_raw16bit(std::deque<uint16_t> & raw16bitdata,
   // than 11b, but we just ignore them.
   if(((in24bitword >> 22) & 3) != 3) return false;
 
-  if(is_unix_time_word(in24bitword)){
-    set_unix_time(in24bitword);
-    return false;
-  }
+  // In ProtoDUNE, we have no interest in Unix time stamp packets.
+  if(is_unix_time_word(in24bitword)) return false;
 
   // If it is something other than a Unix time stamp or hit data (see various
   // other codes in the comments above is_unix_time_word()), discard it.
@@ -117,7 +90,7 @@ The serialized format of a module packet is:
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |  Magic number | Count of hits |         Module number         |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |                        Unix time stamp                        |
+   |                            (Zero)                             |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |                   50 MHz counter time stamp                   |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -130,24 +103,11 @@ The serialized format of a module packet is:
 
   Module number: Unsigned 16 bit integer.
 
-  Unix time stamp: Signed 32 bit integer.
+  Zero:
 
-    Has the standard meaning: Number of seconds since 0:00 Jan 1,
-    1970 UTC, with leap seconds ignored.  That is, it is always a
-    multiple of 60 at the top of each minute.  To dig it in further:
-    does *not* advance during positive leap seconds.  Advances by two
-    around a negative leap second, should there ever be such a thing.
-    Actual behavior of the system clock around a leap second may further
-    complicate this.
-
-    Comes from the system time of the upstream DAQ and does not tick
-    over with perfect precision, but should be accurate to much better
-    than half a second.
-
-    Since we will only be taking data after 1970, you can probably
-    get away with treating negative numbers as times after Jan 2038
-    when positive numbers run out.  I hope this code is not still in
-    use at that point, though.
+    These 32 bits are left as all zeros.  Downstream they will get filled
+    in by the upper 32 bits of the 64 bit ProtoDUNE timestamp, which the
+    CRT hardware doesn't know about.
 
   Time stamp: Unsigned 32 bit integer
 
@@ -186,7 +146,8 @@ unsigned int serialize(char * cooked, const decoded_packet & packet,
 
   const unsigned int size_needed = 2 /* magic number 'M' (1) +
     count of hits (1) */ + sizeof packet.module
-    + sizeof packet.timeunix + sizeof packet.time16ns
+    + 4 /* Upper 32 bits will be filled in downstream */
+    + sizeof packet.time16ns
     + packet.hits.size() *
       (1 /* magic number 'H' */
        + sizeof packet.hits[0].charge + sizeof packet.hits[0].channel);
@@ -202,8 +163,8 @@ unsigned int serialize(char * cooked, const decoded_packet & packet,
   cooked[bytes++] = packet.hits.size();
   memcpy(cooked+bytes, &packet.module, sizeof packet.module);
   bytes += sizeof packet.module;
-  memcpy(cooked+bytes, &packet.timeunix, sizeof packet.timeunix);
-  bytes += sizeof packet.timeunix;
+  memset(cooked+bytes, 0, 4);
+  bytes += 4;
   memcpy(cooked+bytes, &packet.time16ns, sizeof packet.time16ns);
   bytes += sizeof packet.time16ns;
 
@@ -284,7 +245,6 @@ unsigned int make_a_packet(char * cooked, std::deque<uint16_t> & raw,
   unsigned int parity = 0;
 
   decoded_packet packet;
-  packet.timeunix = ((uint32_t)unix_time_hi << 16) + unix_time_lo;
   packet.module = (raw[ADC_WIDX_MODLEN] >> 8) & 0x7f;
 
   for(unsigned int wordi = ADC_WIDX_MODLEN; wordi < len; wordi++){
@@ -314,17 +274,6 @@ unsigned int make_a_packet(char * cooked, std::deque<uint16_t> & raw,
 
   if(!goodparity){
     printf("CRT: Parity error.  Dropping packet.\n");
-    return 0;
-  }
-
-  // Before we get the first Unix timestamp packet, discard all data.
-  // This relieves everything downstream from having to deal with zero
-  // to one seconds of data at the beginning of each run that's
-  // theoretically useful, but almost certainly more trouble than it's
-  // worth.  If you want to try to deal with these events downstream
-  // after all, simply delete this block.
-  if(unix_time_hi == 0){
-    printf("CRT: waiting for first Unix time stamp before returning data.\n");
     return 0;
   }
 

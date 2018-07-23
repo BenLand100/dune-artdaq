@@ -19,6 +19,11 @@ namespace CRT
   {
     public:
 
+    /**
+      \brief Initialize the CRT DAQ.
+      In fact, start the whole backend DAQ up, but do not start
+      passing data to artdaq yet.
+    */
     explicit FragGen(fhicl::ParameterSet const& ps);
     virtual ~FragGen();
 
@@ -33,28 +38,37 @@ namespace CRT
      */
     bool getNext_(std::list< std::unique_ptr<artdaq::Fragment> > & output) override;
 
-    // The start, stop and stopNoMutex methods are declared pure
-    // virtual in CommandableFragmentGenerator and therefore MUST be
-    // overridden; note that stopNoMutex() doesn't do anything here
-
     /**
      * \brief Perform start actions
-     * Override of pure virtual function in CommandableFragmentGenerator.
      */
     void start() override;
 
-    /** \brief Perform stop actions
-    * Override of pure virtual function in CommandableFragmentGenerator.  */
+    /** \brief Perform stop actions */
     void stop() override;
 
-    /** \brief Override of pure virtual function in CommandableFragmentGenerator.
-    * stopNoMutex does not do anything in CRT::FragGen */
     void stopNoMutex() override {}
+
+    // Gets the full 64-bit run start time from a timing board and puts
+    // it in runstarttime.
+    void getRunStartTime();
 
     std::unique_ptr<CRTInterface> hardware_interface_;
 
-    // I don't know what kind of a time this is, except that it is a uint64_t
+    // uint64_t (after unwinding a few layers of typedefs) for the
+    // global clock.  For the CRT, we assemble this out of the 32-bit
+    // timestamp directly kept by the CRT hardware and the timestamp of
+    // the beginning of the run, keeping track of rollovers of the lower
+    // 32 bits.
     artdaq::Fragment::timestamp_t timestamp_;
+
+    // The upper 32-bits of the timestamp
+    uint32_t uppertime;
+
+    // The previous 32-bit timestamp received (or the run start time if
+    // no events yet), so we can determine if we rolled over
+    uint32_t oldlowertime;
+
+    uint64_t runstarttime;
 
     // Written to by the hardware interface
     char* readout_buffer_;

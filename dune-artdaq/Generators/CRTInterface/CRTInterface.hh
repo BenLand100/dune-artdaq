@@ -74,8 +74,6 @@ private:
   // bitmask of CRT_* defined above
   unsigned int state;
 
-	bool taking_data_;
-
   // File descriptor associated with the inotify event queue, which is
   // used to find out when there is new data to read.
   int inotifyfd = -1;

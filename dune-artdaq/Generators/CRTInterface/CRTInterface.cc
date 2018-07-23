@@ -32,23 +32,15 @@ static char * next_raw_byte = rawfromhardware;
 
 CRTInterface::CRTInterface(fhicl::ParameterSet const& ps) :
   indir(ps.get<std::string>("indir")),
-  state(CRT_WAIT),
-  taking_data_(false)
+  state(CRT_WAIT)
 {
 }
 
-// XXX Should this function do a system() call (or something less awful)
-// to start the backend DAQ program?  Is it ok to spend several seconds
-// in this function waiting for that program to start up and figuring out
-// where it is putting its output?
 void CRTInterface::StartDatataking()
 {
-  taking_data_ = true;
-
-  // Already initialized by call for another board (?)
   if(inotifyfd != -1){
-    fprintf(stderr, "inotify already init'd.  Maybe this is ok if we\n"
-                    "stopped and restarted data taking...?\n");
+    fprintf(stderr, "inotify already init'd. Ok if we\n"
+                    "stopped and restarted data taking.\n");
     return;
   }
 
@@ -64,16 +56,16 @@ void CRTInterface::StartDatataking()
 
 void CRTInterface::StopDatataking()
 {
-  taking_data_ = false;
   if(-1 == inotify_rm_watch(inotifyfd, inotify_watchfd)){
     perror("CRTInterface::StopDatataking");
     _exit(1); // maybe not necessary
   }
 }
 
-// NOTE: probably want to skip forward to the file named after the current
-// second in case Camillo's DAQ was started up a long time ago.
-char * find_wr_file(const std::string & indir)
+// Return the name of the most recent file that we can read, without the
+// directory path.  If the backend DAQ started up a long time ago, there
+// will be a pile of files we never read, but that is OK.
+std::string find_wr_file(const std::string & indir)
 {
   DIR * dp = NULL;
   errno = 0;
@@ -92,6 +84,9 @@ char * find_wr_file(const std::string & indir)
       _exit(1);
     }
   }
+
+  time_t most_recent_time = 0;
+  std::string most_recent_file = "";
 
   struct dirent * de = NULL;
   while(errno = 0, (de = readdir(dp)) != NULL){
@@ -115,9 +110,17 @@ char * find_wr_file(const std::string & indir)
       closedir(dp);
       if(errno) perror("find_wr_file closedir");
 
-      // As per readdir(3), this pointer is good until readdir() is called
-      // again on this directory.
-      return de->d_name;
+      struct stat thestat;
+
+      if(-1 == stat((indir + de->d_name).c_str(), &thestat)){
+        perror("find_wr_file stat");
+        _exit(1);
+      }
+
+      if(thestat.st_mtime > most_recent_time){
+        most_recent_time = thestat.st_mtime;
+        most_recent_file = de->d_name;
+      }
     }
   }
 
@@ -130,7 +133,7 @@ char * find_wr_file(const std::string & indir)
   closedir(dp);
   if(errno) perror("find_wr_file closedir");
 
-  return NULL;
+  return most_recent_file; // even if it is "", which means none
 }
 
 /*
@@ -140,9 +143,9 @@ char * find_wr_file(const std::string & indir)
 */
 bool CRTInterface::try_open_file()
 {
-  const char * const filename = find_wr_file(indir);
+  const char * const filename = find_wr_file(indir).c_str();
 
-  if(filename == NULL) return false;
+  if(strlen(filename) == 0) return false;
 
   const std::string fullfilename = indir + "/" + filename;
 
@@ -242,8 +245,9 @@ bool CRTInterface::check_events()
     if(state == CRT_READ_ACTIVE){
       close(datafile_fd);
 
-      // XXX Is this desired?
-      //unlink(datafile_fd);
+      // XXX Is this desired?  I think so?
+      unlink(datafile_fd);
+      printf("Deleted data file after reading it.\n");
 
       state = CRT_WAIT;
       return true;
@@ -263,9 +267,10 @@ size_t CRTInterface::read_everything_from_file(char * cooked_data)
   // Oh boy!  Since we're here, it means we have a new file, or that the file
   // has changed.  Hopefully that means *appended to*, in which case we're
   // going to read the new bytes.  At the moment, let's ponderously read one at
-  // a time.  (XXX fix this.)  If by "changed", in fact the file was truncated
+  // a time.  (Dumb, but maybe if it works, we should just keep it
+  // that way.)  If by "changed", in fact the file was truncated
   // or that some contents prior to our current position were changed, we'll
-  // get nothing here, which will signal that such shenanigans occured.
+  // get nothing here, which will signal that such shenanigans occurred.
 
   ssize_t read_bread = 0;
 
