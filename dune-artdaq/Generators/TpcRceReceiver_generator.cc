@@ -116,12 +116,14 @@ bool TpcRceReceiver::getNext_(artdaq::FragmentPtrs& frags)
       _debug_ss
          << "[" << _instance_name << "] "
          << "size:"      << frag->dataSizeBytes() << ", "
-         << "seq id:"    << frag->sequenceID()      << ", "
          << "frag id:"   << frag->fragmentID()    << ", "
+         << "seq id:"    << frag->sequenceID()      << ", "
          << std::hex
          << "timestamp:" << frag->timestamp()     << ", "
          << "header:"    << *header
          << std::dec;
+
+      DAQLogger::LogInfo(_instance_name) << _debug_ss.str();
 
       // add the fragment to the list
       frags.emplace_back(std::move(frag));
@@ -147,7 +149,8 @@ bool TpcRceReceiver::getNext_(artdaq::FragmentPtrs& frags)
       _stats_prev = _stats;
    }
 
-  return true;
+  bool is_stop = should_stop() && _receiver->read_available() == 0;
+  return !is_stop;
 }
 
 // JCF, Dec-12-2015
