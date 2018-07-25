@@ -174,10 +174,16 @@ WIBReader::WIBReader(fhicl::ParameterSet const& ps) :
 
     // Reset and setup clock
     if(force_full_reset){
+      dune::DAQLogger::LogInfo(identification) << "Running Full Reset on the WIB";
       wib->ResetWIBAndCfgDTS(local_clock,partition_number,DTS_source);
     }
     else{
+      dune::DAQLogger::LogInfo(identification) << "Running Checked Reset on the WIB";
       wib->CheckedResetWIBAndCfgDTS(local_clock,partition_number,DTS_source);    
+      dune::DAQLogger::LogInfo(identification) << "Finished Checked Reset on the WIB";
+      if (daqMode == WIB::FELIX){                                                  
+        dune::DAQLogger::LogInfo(identification) << "SI5342 Status: " << wib->Read("DAQ.SI5342.ENABLE");
+      }                                               
     }
     std::this_thread::sleep_for(std::chrono::seconds(1));
   
@@ -244,7 +250,7 @@ void WIBReader::setupFEMBFakeData(size_t iFEMB, fhicl::ParameterSet const& FEMB_
   const std::string identification = "wibdaq::WIBReader::setupFEMBFakeData";
   
   wib->FEMBPower(iFEMB,1);
-  sleep(1);
+  sleep(5);
 
   if(wib->ReadFEMB(iFEMB,"VERSION_ID") == wib->ReadFEMB(iFEMB,"SYS_RESET")) { // can't read register if equal
     if(continueOnFEMBRegReadError){
@@ -469,7 +475,7 @@ void WIBReader::setupFEMB(size_t iFEMB, fhicl::ParameterSet const& FEMB_config, 
   ///////////////////////////////////////
 
   wib->FEMBPower(iFEMB,1);
-  sleep(1);
+  sleep(5);
 
   if(wib->ReadFEMB(iFEMB,"VERSION_ID") == wib->ReadFEMB(iFEMB,"SYS_RESET")) { // can't read register if equal
     if(continueOnFEMBRegReadError){
