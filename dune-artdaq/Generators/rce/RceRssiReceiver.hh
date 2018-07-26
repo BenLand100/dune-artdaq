@@ -70,6 +70,8 @@ namespace rce {
          size_t set_buffer_bytes   (size_t bytes  );
          size_t set_buffer_timeout (size_t timeout);
 
+         size_t read_available() const { return _buffers.read_available(); };
+
       private:
          // RSSI connection
          rogue::protocols::udp::ClientPtr       _udp;
