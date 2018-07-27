@@ -45,6 +45,7 @@ public:
   bool stop() ; 
 
   static bool IsTSWord( const ptb::content::word::word & w ) noexcept ;
+  static bool IsFeedbackWord( const ptb::content::word::word & w ) noexcept ;
 
 private:
 

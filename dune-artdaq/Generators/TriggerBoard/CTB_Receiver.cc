@@ -153,6 +153,15 @@ int CTB_Receiver::_word_receiver() {
       if ( CTB_Receiver::IsTSWord( temp_word ) ) {
 	_n_TS_words++ ;
       }
+      else if ( CTB_Receiver::IsFeedbackWord( temp_word ) ) {
+
+	ptb::content::word::feedback_t * feedback = reinterpret_cast<ptb::content::word::feedback_t*>( & temp_word.frame ) ;
+	dune::DAQLogger::LogWarning("CTB_Receiver") << "Feedback word: " << std::endl 
+						    << " \t TS -> " << feedback -> timestamp << std::endl 
+						    << " \t Code -> " << feedback -> code << std::endl 
+						    << " \t Source -> " << feedback -> source << std::endl 	  
+						    << " \t Padding -> " << feedback -> padding << std::endl ;     
+      }
 
 
       // push the word
@@ -190,7 +199,6 @@ bool CTB_Receiver::IsTSWord( const ptb::content::word::word & w ) noexcept {
 
   if ( w.frame.word_type == 0x7 ) { 
 
-    dune::DAQLogger::LogDebug("CTB_Receiver") << "TS word identified" << std::endl ;
     return true ;
     
   }
@@ -198,6 +206,20 @@ bool CTB_Receiver::IsTSWord( const ptb::content::word::word & w ) noexcept {
   return false ;
   
 }
+
+
+bool CTB_Receiver::IsFeedbackWord( const ptb::content::word::word & w ) noexcept {
+  
+  if ( w.frame.word_type == 0x0 ) {
+
+    return true ;
+
+  }
+
+  return false ;
+
+}
+
 
 
 

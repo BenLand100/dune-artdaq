@@ -1,5 +1,4 @@
 
-
 simple_plugin(TPCMilliSliceSimulatorWithCopy "generator"
   dune-raw-data_Overlays
   artdaq_Application
@@ -118,11 +117,8 @@ simple_plugin(TriggerBoardReader "generator"
   ${MF_MESSAGELOGGER}
   ${CETLIB}
   ${CETLIB_EXCEPT}
-  dune-artdaq_DAQLogger
+  jsoncpp
   )
-
-
-
 
 add_subdirectory(timingBoard)
 

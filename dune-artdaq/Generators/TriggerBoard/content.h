@@ -177,11 +177,12 @@ namespace ptb {
        typedef struct timestamp_t {
            typedef uint64_t ts_size_t;
            typedef uint64_t pad_size_t;
-           typedef uint8_t wtype_size_t;
+	 //typedef uint8_t wtype_size_t;
+	   typedef uint64_t wtype_size_t;
 
            ts_size_t    timestamp;
            pad_size_t   padding   : 61;
-           wtype_size_t word_type : 3;
+	   wtype_size_t word_type : 3;
 
            static size_t const size_bytes = 2*sizeof(uint64_t);
            static size_t const size_u32 = size_bytes/sizeof(uint32_t);

@@ -4,14 +4,17 @@
 
 #include "dune-artdaq/DAQLogger/DAQLogger.hh"
 
+#include "json/json.h"
+#include "json/reader.h"
+
+
 CTB_Controller::CTB_Controller( const std::string & host, const uint16_t & port ) :
   _ios(),
   _endpoint(),
   _socket( _ios ) ,
   stop_req_( false ),
   is_running_ (false), 
-  is_conf_(false),
-  _buf{" "}          
+  is_conf_(false)
 {
   
   boost::asio::ip::tcp::resolver resolver( _ios );
@@ -82,41 +85,71 @@ void CTB_Controller::send_stop() {
   stop_req_.store( true ) ;
 }
 
-void CTB_Controller::send_config( const std::string & host, const uint16_t & port, const unsigned long rollover  )  {
-  
-  dune::DAQLogger::LogInfo("CTB_Controller") << "Sending config" << std::endl;
+
+
+void CTB_Controller::send_config( const std::string & config ) {
   
   if ( is_conf_ ) {
     dune::DAQLogger::LogInfo("CTB_Controller") << "Resetting before configuring" << std::endl;
     send_reset();
-  }							   
+  }
 
-  static const std::string g_config_1 = "{\"ctb\":{\"sockets\":{\"receiver\":{\"host\":\"";
-  static const std::string g_config_2 = "\",\"port\":" ; 
-  static const std::string g_config_3 = ",\"rollover\":" ; 
-  static const std::string g_config_4 = "}},\"subsystems\":{\"ssp\":{\"dac_thresholds\":[2018,2018,2018,2018,2018,2018,2018,2018,2018,2018,2018,2018,2018,2018,2018,2018,2018,2018,2018,2018,2018,2018,2018,2018]}}}}" ; 
+  dune::DAQLogger::LogInfo("CTB_Controller") << "Sending config" << std::endl;
 
-  std::stringstream s;
-  s << g_config_1 << host << g_config_2 << port << g_config_3 << rollover << g_config_4 ;
-  const std::string g_config = s.str() ;
-  
-  send_message( g_config ) ;
+  send_message( config ) ;
 
   is_conf_ = true ;
-
+  
 }
+
 
 
 void CTB_Controller::send_message( const std::string & msg ) {
 
   //add error options                                                                                                
   boost::system::error_code error;
+
+  dune::DAQLogger::LogInfo("CTB_Controller") << "Sending message: " << msg << std::endl;
   
   boost::asio::write( _socket, boost::asio::buffer( msg ), error ) ;
 
-  _socket.read_some( boost::asio::buffer(_buf), error);
+  boost::array<char, 1024> reply_buf{" "} ;
 
-  dune::DAQLogger::LogInfo("CTB_Controller") << "Received answer: " << std::string(_buf.begin(), _buf.end() ) << std::endl;                                                          
+  _socket.read_some( boost::asio::buffer(reply_buf ), error);
+
+  std::stringstream raw_answer( std::string(reply_buf .begin(), reply_buf .end() ) ) ;
+
+  dune::DAQLogger::LogDebug("CTB_Controller") << "Unformatted answer: " << std::endl << raw_answer.str() << std::endl; 
+
+  Json::Value answer ;
+  raw_answer >> answer ;
+
+  Json::Value & messages = answer["feedback"] ;
+
+  dune::DAQLogger::LogInfo("CTB_Controller") << "Received messages: " << messages.size() << std::endl;
+
+
+  for ( Json::Value::ArrayIndex i = 0; i != messages.size(); ++i ) {
+
+    std::string type = messages[i]["type"].asString() ;
+    
+    if ( type.find("error") != std::string::npos || type.find("Error") != std::string::npos || type.find("ERROR") != std::string::npos ) {
+      dune::DAQLogger::LogError("CTB_Controller") << "Error from the Board: " << messages[i]["message"].asString() << std::endl ;
+    }
+    else if ( type.find("warning") != std::string::npos || type.find("Warning") != std::string::npos || type.find("WARNING") != std::string::npos ) {
+      dune::DAQLogger::LogWarning("CTB_Controller") << "Warning from the Board: " << messages[i]["message"].asString() << std::endl;
+    }
+    else if ( type.find("info") != std::string::npos || type.find("Info") != std::string::npos || type.find("INFO") != std::string::npos) {
+      dune::DAQLogger::LogInfo("CTB_Controller") << "Info from the board: " << messages[i]["message"].asString() << std::endl;
+    }
+    else {
+      std::stringstream blob;
+      blob << messages[i] ;
+      dune::DAQLogger::LogInfo("CTB_Controller") << "Unformatted from the board: " << blob.str() << std::endl;
+    }
+  }
+  
+
   //dune::DAQLogger::LogDebug("CTB_Controller") << msg ;
     
   //decide what to do with the error
