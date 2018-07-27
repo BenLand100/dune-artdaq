@@ -136,7 +136,7 @@ bool dune::TriggerBoardReader::getNext_(artdaq::FragmentPtrs & frags) {
   if(artdaq::Globals::metricMan_ != nullptr) {
     artdaq::Globals::metricMan_->sendMetric("Fragments Sent",ev_counter(), "Fragments", 0, artdaq::MetricMode::Accumulate);
   }
-  *7
+  */
   
   //   if (throw_exception_) {
   //     DAQLogger::LogError("TriggerBoardReader") << "On fragment " << ev_counter() << ", this is a test of the DAQLogger's LogError function";
