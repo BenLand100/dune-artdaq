@@ -77,6 +77,7 @@ find_ups_product( messagefacility v1_10_00 )
 find_ups_product( cetlib v1_03_00 )
 find_ups_product( netio v0_8_0 )
 find_ups_product( ftd2xx v1_2_7 )
+find_ups_product( jsoncpp v1_8_0 )
 find_ups_root( v5_34_00 )
 find_ups_boost( v1_50_0 filesystem
                         program_options

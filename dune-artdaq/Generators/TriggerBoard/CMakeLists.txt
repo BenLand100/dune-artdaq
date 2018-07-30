@@ -13,6 +13,7 @@ art_make( LIBRARY_NAME dune-artdaq_Generators_TriggerBoard
 	-lpthread
 	dune-raw-data_Overlays
 	dune-artdaq_DAQLogger
+	jsoncpp
 	)
 
 install_headers()
