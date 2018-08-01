@@ -21,8 +21,8 @@ CRT::FragGen::FragGen(fhicl::ParameterSet const& ps) :
     CommandableFragmentGenerator(ps)
   , hardware_interface_(new CRTInterface(ps))
   , timestamp_(0)
-  , oldlowertime(0)
   , uppertime(0)
+  , oldlowertime(0)
   , runstarttime(0)
   , readout_buffer_(nullptr)
 {
@@ -91,7 +91,7 @@ bool CRT::FragGen::getNext_(
 
   if(lowertime < oldlowertime) uppertime++;
 
-  timestamp_ += uppertime << 32;
+  timestamp_ += (uint64_t)uppertime << 32;
 
   // And also copy the upper bits into the buffer itself.  Not sure
   // which timestamp code downstream is going to read (timestamp_ or
@@ -130,7 +130,7 @@ bool CRT::FragGen::getNext_(
   return true;
 }
 
-void CRT::getRunStartTime()
+void CRT::FragGen::getRunStartTime()
 {
   // TODO: Do what's necessary to get the run start time.
 }

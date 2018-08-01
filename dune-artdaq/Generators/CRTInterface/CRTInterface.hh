@@ -84,6 +84,9 @@ private:
   // File descriptor for the data file we are reading
   int datafile_fd = -1;
 
+  // Name of the data file we are reading
+  std::string datafile_name;
+
   // Private functions documented in the implementation.
   bool try_open_file();
   bool check_events();

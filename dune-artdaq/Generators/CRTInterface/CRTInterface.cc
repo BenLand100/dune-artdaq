@@ -184,6 +184,7 @@ bool CRTInterface::try_open_file()
   }
 
   state = CRT_READ_ACTIVE;
+  datafile_name = filename;
 
   return true;
 }
@@ -245,8 +246,8 @@ bool CRTInterface::check_events()
     if(state == CRT_READ_ACTIVE){
       close(datafile_fd);
 
-      // XXX Is this desired?  I think so?
-      unlink(datafile_fd);
+      // Is this desired?  I think so.
+      unlink(datafile_name.c_str());
       printf("Deleted data file after reading it.\n");
 
       state = CRT_WAIT;
