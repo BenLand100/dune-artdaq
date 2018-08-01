@@ -21,16 +21,14 @@
 
 CRT::FragGen::FragGen(fhicl::ParameterSet const& ps) :
     CommandableFragmentGenerator(ps)
+  , readout_buffer_(nullptr)
   , hardware_interface_(new CRTInterface(ps))
   , timestamp_(0)
   , uppertime(0)
   , oldlowertime(0)
   , runstarttime(0)
-  , readout_buffer_(nullptr)
-  , timingXMLfile(ps.get<std::string>("connections_file",
-    "/nfs/sw/timing/dev/software/v4a3/timing-board-software/tests/etc/connections.xml"))
-  , timinghw(connectionManager.getDevice(ps.get<std::string>("hardware_select",
-    "PDTS_SECONDARY")));
+  , timingXMLfilename(ps.get<std::string>("connections_file", "/nfs/sw/timing/dev/software/v4a3/timing-board-software/tests/etc/connections.xml"))
+  , hardwarename(ps.get<std::string>("hardware_select", "PDTS_SECONDARY"))
 {
   hardware_interface_->AllocateReadoutBuffer(&readout_buffer_);
 
@@ -138,8 +136,9 @@ bool CRT::FragGen::getNext_(
 
 void CRT::FragGen::getRunStartTime()
 {
-  std::string filepath("file://" + connectionsFile);
-  connectionManager(filepath);
+  std::string filepath = "file://" + timingXMLfilename;
+  uhal::ConnectionManager timeConnMan(filepath);
+  uhal::HwInterface timinghw(timeConnMan.getDevice(hardwarename));
 
   uhal::ValWord<uint32_t> starthi =
     timinghw.getNode("master.global.version" /* TODO: read right two registers */).read();
@@ -148,7 +147,7 @@ void CRT::FragGen::getRunStartTime()
     timinghw.getNode("master.global.version").read();
   timinghw.dispatch();
 
-  runstarttime = (uint64_t)starthi << 32 + startlo;
+  runstarttime = ((uint64_t)starthi << 32) + startlo;
 }
 
 void CRT::FragGen::start()

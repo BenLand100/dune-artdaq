@@ -99,6 +99,7 @@ simple_plugin(CRTFragGen "generator"
   ${MF_UTILITIES}
   ${CETLIB}
   ${CETLIB_EXCEPT}
+  ${UHAL_UHAL}
   )
 
 add_subdirectory(CRTInterface)

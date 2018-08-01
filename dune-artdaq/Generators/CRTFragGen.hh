@@ -13,6 +13,8 @@
 #include <vector>
 #include <atomic>
 
+#include "uhal/uhal.hpp"
+
 namespace CRT
 {
   class FragGen : public artdaq::CommandableFragmentGenerator
@@ -83,8 +85,8 @@ namespace CRT
     // retrieve and store this to repair the CRT's internal 32-bit time.
     uint64_t runstarttime;
 
-    uhal::ConnectionManager timeConnMan;
-    uhal::HwInterface timinghw;
+    std::string timingXMLfilename;
+    std::string hardwarename;
   };
 }
 
