@@ -1,0 +1,70 @@
+# FHiCL document used to run the "driver" executable. To learn more
+# about the FHiCL language, please look at
+# cdcvs.fnal.gov/redmine/documents/327 , the "FHiCL Quick Start Guide"
+
+events_to_generate: 100
+number_of_microslices_per_millislice: 100
+run_number: 101
+
+
+# Parameters defining and configuring the fragment generator to be used
+
+fragment_receiver: {
+  generator: CRT
+  fragment_type: 8 # Probably the wrong number
+  fragment_id: 1
+  board_id: 0
+  interface_type: 1
+}
+
+
+event_builder: {
+  expected_fragments_per_event: 1
+  use_art: true
+  print_event_store_stats: false
+  verbose: false
+  events_expected_in_SimpleQueueReader: @local::events_to_generate
+}
+
+######################################################################
+# The ART code
+######################################################################
+
+physics:
+{
+  analyzers:
+  {
+    evtDump:
+    {
+      module_type: CRTDump
+      raw_data_label: "daq"
+      raw_data_name: "CRT"
+      frag_type: @local::fragment_receiver.fragment_type
+    }       
+  }
+
+  a1: [ evtDump ]
+  e1: [ out1 ]
+  end_paths: [ e1 , a1 ]
+}
+
+outputs:
+{
+  out1:
+  {
+    module_type: evtDump
+    wantProductFriendlyClassName: true
+  }
+}
+
+source:
+{
+  module_type: RawInput
+  waiting_time: 900
+  resume_after_timeout: true
+
+  # Probably the wrong number
+  fragment_type_map: [[8, "CRT"] ]
+}
+
+process_name: Driver
