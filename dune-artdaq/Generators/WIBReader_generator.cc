@@ -41,6 +41,11 @@ WIBReader::WIBReader(fhicl::ParameterSet const& ps) :
       dune::DAQLogger::LogWarning(identification) << "WIB communication error: "
           << exc.what();
     }
+    catch (const BUException::WIB_DTS_ERROR & exc)
+    {
+      dune::DAQLogger::LogWarning(identification) << "WIB timing config error: "
+          << exc.what();
+    }
     catch (const BUException::exBase & exc)
     {
       cet::exception excpt(identification);
@@ -239,6 +244,14 @@ void WIBReader::setupWIB(fhicl::ParameterSet const& ps) {
     }                                               
   }
   std::this_thread::sleep_for(std::chrono::seconds(1));
+
+  // Check DAQ link copy mode
+  if (wib->Read("FEMB_REPLACE_FEMB_3_N_5_WITH_1_N_2"))
+  {
+    cet::exception excpt(identification);
+    excpt << "WIB is set to duplicate data from links 1 and 2 to 3 and 4. This shouldn't happen!";
+    throw excpt;
+  }
   
   // Configure WIB fake data enable and mode
   dune::DAQLogger::LogInfo(identification) << "Configuring WIB Fake Data";

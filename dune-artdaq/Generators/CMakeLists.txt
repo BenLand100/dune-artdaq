@@ -149,14 +149,13 @@ simple_plugin(TimingReceiver "generator"
 
 target_compile_options("dune-artdaq_Generators_TimingReceiver_generator" PRIVATE -Wno-error )
 
-if ( DEFINED ENV{WIB_DIRECTORY} )
+if ( (DEFINED ENV{PROTODUNE_WIBSOFT_LIB}) AND (DEFINED ENV{PROTODUNE_WIBSOFT_INC}) )
 
-include_directories( $ENV{WIB_DIRECTORY}/WIB/include )
-include_directories( $ENV{WIB_DIRECTORY}/exception/include )
+include_directories( $ENV{PROTODUNE_WIBSOFT_INC} )
 
 simple_plugin(WIBReader "generator"
-         $ENV{WIB_DIRECTORY}/WIB/lib/libWIB.so
-         $ENV{WIB_DIRECTORY}/exception/lib/libToolException.so
+         $ENV{PROTODUNE_WIBSOFT_LIB}/libWIB.so
+         $ENV{PROTODUNE_WIBSOFT_LIB}/libToolException.so
          artdaq_Application
 	 dune-artdaq_DAQLogger
   	 ${CETLIB_EXCEPT}
@@ -167,7 +166,7 @@ simple_plugin(WIBReader "generator"
 
 else()
 
-message( FATAL_ERROR "You need an environment variable called WIB_DIRECTORY whose value is the directory of the WIB code installation" )
+message( FATAL_ERROR "You need environment variables called PROTODUNE_WIBSOFT_LIB and PROTODUNE_WIBSOFT_INC that are set by the protodune_wibsoft product" )
 
 endif()
 
