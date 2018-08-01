@@ -50,6 +50,10 @@ namespace CRT
 
     void stopNoMutex() override {}
 
+    // Name of CRT database table that gives the information about the set of modules
+    // we will read from.
+    std::string sqltable;
+
     // Written to by the hardware interface
     char* readout_buffer_;
 

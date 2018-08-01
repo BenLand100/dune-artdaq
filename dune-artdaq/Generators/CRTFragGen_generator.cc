@@ -29,27 +29,33 @@ CRT::FragGen::FragGen(fhicl::ParameterSet const& ps) :
   , runstarttime(0)
   , timingXMLfilename(ps.get<std::string>("connections_file", "/nfs/sw/timing/dev/software/v4a3/timing-board-software/tests/etc/connections.xml"))
   , hardwarename(ps.get<std::string>("hardware_select", "PDTS_SECONDARY"))
+  , sqltable(ps.get<std::string>("sqltable", ""))
 {
   hardware_interface_->AllocateReadoutBuffer(&readout_buffer_);
 
-  // TODO: start up Camillo's DAQ here once he gives me the required
-  // magic words.  A 5-10s startup time is acceptable here since the
-  // rest of the ProtoDUNE DAQ takes more than that.  Once we start
+  // Start up Camillo's DAQ here. A 5-10s startup time is acceptable here since
+  // the rest of the ProtoDUNE DAQ takes more than that.  Once we start
   // up the backend, files will start piling up, but that's ok since
   // we will have a cron job to clean them up, and we will always read
   // only from the latest file when data is requested.
   //
+  // Yes, a call to system() is awful.  We could improve this.
+  system(("/nfs/home/np04daq/crt/readout_linux/macro/startallboards.pl "
+         + sqltable + "&").c_str());
+
   // We might even take baselines here and process them so that we can
   // do pedestal subtraction online if that is desired.
 
-  // TODO: Start up the timing "butler" here once Dave gives me the
+  // TODO: Start up the timing "pdtbutler" here once Dave gives me the
   // required magic words.
 }
 
 CRT::FragGen::~FragGen()
 {
-  // TODO: Stop the backend DAQ here once Camillo gives me the required
-  // magic words.
+  // Stop the backend DAQ.
+  system(("/nfs/home/np04daq/crt/readout_linux/macro/startallboards.pl "
+         + sqltable + "&").c_str());
+
   hardware_interface_->FreeReadoutBuffer(readout_buffer_);
 }
 
