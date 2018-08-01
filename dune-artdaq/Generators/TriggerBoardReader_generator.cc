@@ -167,11 +167,7 @@ artdaq::FragmentPtr dune::TriggerBoardReader::CreateFragment() {
   unsigned int word_counter = 0 ;
   unsigned int group_counter = 0 ;
 
-  artdaq::FragmentPtr fragptr( artdaq::Fragment::FragmentBytes( initial_bytes ,  
-								ev_counter(), 
-								fragment_id(),
-								1 ,         //fragment_type_ //what is this?!
-								temp_word )  );
+  artdaq::FragmentPtr fragptr( artdaq::Fragment::FragmentBytes( initial_bytes ) ) ; 
 
   for ( word_counter = 0 ; word_counter < n_words ; ++word_counter ) {
 
@@ -183,12 +179,14 @@ artdaq::FragmentPtr dune::TriggerBoardReader::CreateFragment() {
       --(_receiver -> N_TS_Words()) ;
       ++group_counter ;
 
-      _last_timestamp = temp_word.frame.timestamp ;
-      _has_last_TS = true ;
+      if ( temp_word.frame.timestamp != 0 ) {
+	_last_timestamp = temp_word.frame.timestamp ;
+	_has_last_TS = true ;
 
-      if ( ! has_TS ) {
-	has_TS = true ;
-	timestamp = _last_timestamp ;
+	if ( ! has_TS ) {
+	  has_TS = true ;
+	  timestamp = _last_timestamp ;
+	}
       }
 
       if ( _group_size > 0 ) {
@@ -203,6 +201,9 @@ artdaq::FragmentPtr dune::TriggerBoardReader::CreateFragment() {
   }
   
   fragptr -> resizeBytes( word_counter * word_bytes ) ;
+
+  fragptr -> setSequenceID( ev_counter() ) ; 
+  fragptr -> setFragmentID( fragment_id() ) ; 
 
   fragptr -> setTimestamp( timestamp ) ;
   TLOG( 20, "TriggerBoardReader") << "fragment created with TS " << timestamp << " containing " << word_counter << " words" << std::endl ;

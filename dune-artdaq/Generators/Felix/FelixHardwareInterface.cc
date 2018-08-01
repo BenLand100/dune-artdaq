@@ -106,9 +106,9 @@ void FelixHardwareInterface::StartDatataking() {
   sleep(1);
   // GLM: start listening to felix stream here
   nioh_.setExtract(extract_);
-  nioh_.lockSubsToCPUs(offset_);
   nioh_.startSubscribers();
-
+  // This should be after startSubs!!!
+  nioh_.lockSubsToCPUs(offset_);
 
   start_time_ = std::chrono::high_resolution_clock::now();
   DAQLogger::LogInfo("dune::FelixHardwareInterface::StartDatataking")

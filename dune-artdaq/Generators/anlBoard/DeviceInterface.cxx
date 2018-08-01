@@ -63,12 +63,30 @@ void SSPDAQ::DeviceInterface::Initialize(){
   SSPDAQ::RegMap& duneReg=SSPDAQ::RegMap::Get();
 
   //  unsigned int nTries=0;
-  //unsigned int pdts_status=0;
+  unsigned int pdts_status=0;
   
   dune::DAQLogger::LogInfo("SSP_DeviceInterface")<<"Resetting SSP timing endpoint..."<<std::endl;
 
   fDevice->DeviceWrite(duneReg.pdts_control, 0x80000000 + fPartitionNumber);
   fDevice->DeviceWrite(duneReg.pdts_control, 0x00000000 + fPartitionNumber);
+
+  fDevice->DeviceRead(duneReg.pdts_status, &pdts_status);
+  dune::DAQLogger::LogInfo("SSP_DeviceInterface")<<"pdts_status is "<<std::hex<<pdts_status<<std::dec<<std::endl;
+
+  usleep(2000000);
+  fDevice->DeviceRead(duneReg.pdts_status, &pdts_status);
+  dune::DAQLogger::LogInfo("SSP_DeviceInterface")<<"After 2s, pdts_status is "<<std::hex<<pdts_status<<std::dec<<std::endl;
+
+  dune::DAQLogger::LogInfo("SSP_DeviceInterface")<<"Configuring DSP to use PDTS clock..."<<std::endl;
+  fDevice->DeviceWrite(duneReg.dsp_clock_control,0x431);
+
+  fDevice->DeviceRead(duneReg.pdts_status, &pdts_status);
+  dune::DAQLogger::LogInfo("SSP_DeviceInterface")<<"pdts_status is "<<std::hex<<pdts_status<<std::dec<<std::endl;
+
+  usleep(2000000);
+  fDevice->DeviceRead(duneReg.pdts_status, &pdts_status);
+  dune::DAQLogger::LogInfo("SSP_DeviceInterface")<<"After 2s, pdts_status is "<<std::hex<<pdts_status<<std::dec<<std::endl;
+
   /*
   while(nTries<5){
     fDevice->DeviceWrite(duneReg.pdts_control, 0x80000000 + fPartitionNumber);
