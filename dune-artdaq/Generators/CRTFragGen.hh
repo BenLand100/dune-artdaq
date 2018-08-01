@@ -48,6 +48,14 @@ namespace CRT
 
     void stopNoMutex() override {}
 
+    // Written to by the hardware interface
+    char* readout_buffer_;
+
+    /*********************************************************************
+       And then all the rest of the members are here to deal with fixing
+       the CRT hardware's 32-bit time stamp.
+    *********************************************************************/
+
     // Gets the full 64-bit run start time from a timing board and puts
     // it in runstarttime.
     void getRunStartTime();
@@ -61,17 +69,22 @@ namespace CRT
     // 32 bits.
     artdaq::Fragment::timestamp_t timestamp_;
 
-    // The upper 32-bits of the timestamp
+    // The upper 32 bits of the timestamp. We keep track of this in the
+    // fragment generator because the CRT hardware only keeps the lower
+    // 32 bits.
     uint32_t uppertime;
 
-    // The previous 32-bit timestamp received (or the run start time if
-    // no events yet), so we can determine if we rolled over
+    // The previous 32-bit timestamp received from the CRT hardware (or
+    // the run start time if no events yet), so we can determine if we
+    // rolled over and need to increment uppertime.
     uint32_t oldlowertime;
 
+    // The 64-bit global timestamp of the start of the run. We need to
+    // retrieve and store this to repair the CRT's internal 32-bit time.
     uint64_t runstarttime;
 
-    // Written to by the hardware interface
-    char* readout_buffer_;
+    uhal::ConnectionManager timeConnMan;
+    uhal::HwInterface timinghw;
   };
 }
 
