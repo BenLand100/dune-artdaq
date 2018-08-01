@@ -17,6 +17,8 @@
 #include <unistd.h>
 #include "cetlib_except/exception.h"
 
+#include "uhal/uhal.hpp"
+
 CRT::FragGen::FragGen(fhicl::ParameterSet const& ps) :
     CommandableFragmentGenerator(ps)
   , hardware_interface_(new CRTInterface(ps))
@@ -25,6 +27,10 @@ CRT::FragGen::FragGen(fhicl::ParameterSet const& ps) :
   , uppertime(0)
   , runstarttime(0)
   , readout_buffer_(nullptr)
+  , timingXMLfile(ps.get<std::string>("connections_file",
+    "/nfs/sw/timing/dev/software/v4a3/timing-board-software/tests/etc/connections.xml"))
+  , timinghw(connectionManager.getDevice(ps.get<std::string>("hardware_select",
+    "PDTS_SECONDARY")));
 {
   hardware_interface_->AllocateReadoutBuffer(&readout_buffer_);
 
@@ -122,7 +128,7 @@ bool CRT::FragGen::getNext_(
   memcpy(frags.back()->dataBeginBytes(), readout_buffer_, bytes_read);
 
   if (metricMan /* What is this? */ != nullptr)
-    metricMan->sendMetric("Fragments Sent", ev_counter(), "Events", 3,
+    metricMan->sendMetric("Fragments Sent", ev_counter(), "Events", 3 /* ? */,
         artdaq::MetricMode::LastPoint);
 
   ev_counter_inc(); // from base CommandableFragmentGenerator
@@ -132,7 +138,17 @@ bool CRT::FragGen::getNext_(
 
 void CRT::getRunStartTime()
 {
-  // TODO: Do what's necessary to get the run start time.
+  std::string filepath("file://" + connectionsFile);
+  connectionManager(filepath);
+
+  uhal::ValWord<uint32_t> starthi =
+    timinghw.getNode("master.global.version" /* TODO: read right two registers */).read();
+  timinghw.dispatch();
+  uhal::ValWord<uint32_t> startlo =
+    timinghw.getNode("master.global.version").read();
+  timinghw.dispatch();
+
+  runstarttime = (uint64_t)starthi << 32 + startlo;
 }
 
 void CRT::FragGen::start()
