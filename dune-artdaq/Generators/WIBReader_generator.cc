@@ -48,6 +48,16 @@ WIBReader::WIBReader(fhicl::ParameterSet const& ps) :
     }
     catch (const BUException::exBase & exc)
     {
+      // Try to un-set DIM do-not-disturb no matter what happened
+      try
+      {
+        if (wib) wib->Write("SYSTEM.SLOW_CONTROL_DND",0);
+      }
+      catch (const BUException::exBase & exc)
+      {
+        // best effort, don't care if it doesn't succeed
+      }
+
       cet::exception excpt(identification);
       excpt << "Unhandled BUException: "
           << exc.what()
