@@ -5,6 +5,7 @@
 #include "artdaq/Application/GeneratorMacros.hh"
 #include "dune-artdaq/DAQLogger/DAQLogger.hh"
 #include "artdaq/DAQdata/Globals.hh"
+#include "dune-raw-data/Overlays/FragmentType.hh"
 
 #include "dune_artdaq/dune-artdaq/Generators/TriggerBoard/content.h"
 
@@ -201,7 +202,7 @@ artdaq::FragmentPtr dune::TriggerBoardReader::CreateFragment() {
   }
   
   fragptr -> resizeBytes( word_counter * word_bytes ) ;
-
+  fragptr -> setUserType( detail::FragmentType::CTB ) ;
   fragptr -> setSequenceID( ev_counter() ) ; 
   fragptr -> setFragmentID( fragment_id() ) ; 
 
