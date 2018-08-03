@@ -1,3 +1,5 @@
+#include <stdexcept>
+
 #include "json/json.h"
 #include "json/reader.h"
 
@@ -30,7 +32,7 @@ dune::TriggerBoardReader::TriggerBoardReader(fhicl::ParameterSet const & ps)
   CommandableFragmentGenerator(ps),
   _run_controller(),
   fragment_type_(static_cast<decltype(fragment_type_)>( artdaq::Fragment::InvalidFragmentType ) ),
-  throw_exception_(ps.get<bool>("throw_exception",false) )
+  throw_exception_(ps.get<bool>("throw_exception",true) )
 {
 
   //get board address and control port from the fhicl file
@@ -92,7 +94,13 @@ dune::TriggerBoardReader::TriggerBoardReader(fhicl::ParameterSet const & ps)
   std::string config = json_stream.str() ;
 
   // send the configuration
-  _run_controller -> send_config( config ) ;
+  bool config_status = _run_controller -> send_config( config ) ;
+
+  if ( throw_exception_ ) {
+    if ( ! config_status ) {
+      throw std::runtime_error("CTB failed to configure") ;
+    }
+  }
   
 }
 
