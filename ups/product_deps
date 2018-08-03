@@ -22,6 +22,7 @@ dune_raw_data 	v1_17_06
 cetbuildtools	v7_02_01	-	only_for_build
 uhal		v2_6_0
 dune_artdaq_InhibitMaster v0_01_01
+protodune_wibsoft v337
 end_product_list
 
 # e10 - with gcc 4.9.3a and -std=c++14
@@ -32,11 +33,11 @@ end_product_list
 
 # -nq- here means there is no qualifier
 # a "-" here means the dependent product is not required by the parent and will not be setup
-qualifier    	       	artdaq                  	dune_raw_data  	   	uhal	       dune_artdaq_InhibitMaster
-e14:prof 		e14:s50:prof   			online:e14:s50:prof	e14:prof:s50   e14:prof
-e14:debug 		e14:s50:debug   		online:e14:s50:debug    e14:debug:s50  e14:prof
-e15:prof 		e15:s64:prof   			online:e15:s64:prof	e15:prof:s64   e15:prof
-e15:debug 		e15:s64:debug   		online:e15:s64:debug    e15:debug:s64  e15:prof
+qualifier    	       	artdaq                  	dune_raw_data  	   	uhal	       dune_artdaq_InhibitMaster protodune_wibsoft
+e14:prof 		e14:s50:prof   			online:e14:s50:prof	e14:prof:s50   e14:prof			 e14:s50
+e14:debug 		e14:s50:debug   		online:e14:s50:debug    e14:debug:s50  e14:prof			 e14:s50
+e15:prof 		e15:s64:prof   			online:e15:s64:prof	e15:prof:s64   e15:prof			 e15:s64
+e15:debug 		e15:s64:debug   		online:e15:s64:debug    e15:debug:s64  e15:prof			 e15:s64
 end_qualifier_list
 
 # Preserve tabs and formatting in emacs and vi / vim:
