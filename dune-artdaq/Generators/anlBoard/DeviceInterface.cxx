@@ -62,17 +62,14 @@ void SSPDAQ::DeviceInterface::Initialize(){
   //Reset timing endpoint
   SSPDAQ::RegMap& duneReg=SSPDAQ::RegMap::Get();
 
-  //  unsigned int nTries=0;
-  //unsigned int pdts_status=0;
-  
-  dune::DAQLogger::LogInfo("SSP_DeviceInterface")<<"Resetting SSP timing endpoint..."<<std::endl;
+  unsigned int nTries=0;
+  unsigned int pdts_status=0;
 
-  fDevice->DeviceWrite(duneReg.pdts_control, 0x80000000 + fPartitionNumber);
-  fDevice->DeviceWrite(duneReg.pdts_control, 0x00000000 + fPartitionNumber);
-  /*
   while(nTries<5){
     fDevice->DeviceWrite(duneReg.pdts_control, 0x80000000 + fPartitionNumber);
     fDevice->DeviceWrite(duneReg.pdts_control, 0x00000000 + fPartitionNumber);
+    usleep(2000000);
+    fDevice->DeviceWrite(duneReg.dsp_clock_control,0x431);
     usleep(2000000);
     fDevice->DeviceRead(duneReg.pdts_status, &pdts_status);
     if((pdts_status&0xF)==0x8) break;
@@ -83,9 +80,10 @@ void SSPDAQ::DeviceInterface::Initialize(){
     dune::DAQLogger::LogInfo("SSP_DeviceInterface")<<"Timing endpoint synced!"<<std::endl;
   }
   else{
-    dune::DAQLogger::LogError("SSP_DeviceInterface")<<"Giving up on endpoint sync after 5 tries."<<std::endl;
-    }*/
-
+    dune::DAQLogger::LogError("SSP_DeviceInterface")<<"Giving up on endpoint sync after 5 tries. Value of pdts_status register was "
+						    <<std::hex<<pdts_status<<std::dec<<std::endl;
+  }
+ 
 }
 
 void SSPDAQ::DeviceInterface::Stop(){
