@@ -123,14 +123,18 @@ bool dune::TriggerBoardReader::getNext_(artdaq::FragmentPtrs & frags) {
     return true ;
   }
 
+  long unsigned int sent_bytes = 0 ;
+
   while ( ( _group_size > 0  && _receiver -> N_TS_Words().load() >= _group_size ) ||
 	  ( _group_size <= 0 && n_words > 0 )                                     || 
 	  ( n_words >= _max_words_per_frag ) ) {
 
     std::unique_ptr<artdaq::Fragment> fragptr( CreateFragment() );
 
+    sent_bytes += fragptr -> dataSizeBytes() ;
+
     frags.emplace_back( std::move( fragptr ) ) ;
-    
+
     if ( frags.size() >= _max_frags_per_call ) break ;
 
     if ( should_stop() ) break ;    
@@ -141,16 +145,11 @@ bool dune::TriggerBoardReader::getNext_(artdaq::FragmentPtrs & frags) {
 
   TLOG( 20, "TriggerBoardReader") << "Sending " << frags.size() <<  " fragments" << std::endl ;
 
-  /*
   if(artdaq::Globals::metricMan_ != nullptr) {
-    artdaq::Globals::metricMan_->sendMetric("Fragments Sent",ev_counter(), "Fragments", 0, artdaq::MetricMode::Accumulate);
+    artdaq::Globals::metricMan_->sendMetric("Fragments Sent", frags.size(), "Fragments", 0, artdaq::MetricMode::LastPoint) ;
+    artdaq::Globals::metricMan_->sendMetric("Bytes Sent",     sent_bytes,   "Bytes",     0, artdaq::MetricMode::LastPoint) ;
   }
-  */
   
-  //   if (throw_exception_) {
-  //     DAQLogger::LogError("TriggerBoardReader") << "On fragment " << ev_counter() << ", this is a test of the DAQLogger's LogError function";
-  //   }
-
   return true;
 }
 
