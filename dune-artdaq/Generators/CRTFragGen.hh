@@ -50,10 +50,6 @@ namespace CRT
 
     void stopNoMutex() override {}
 
-    // Name of CRT database table that gives the information about the set of modules
-    // we will read from.
-    std::string sqltable;
-
     // Written to by the hardware interface
     char* readout_buffer_;
 
@@ -88,6 +84,10 @@ namespace CRT
     // The 64-bit global timestamp of the start of the run. We need to
     // retrieve and store this to repair the CRT's internal 32-bit time.
     uint64_t runstarttime;
+
+    // Name of CRT database table that gives the information about the set of modules
+    // we will read from.
+    std::string sqltable;
 
     std::string timingXMLfilename;
     std::string hardwarename;

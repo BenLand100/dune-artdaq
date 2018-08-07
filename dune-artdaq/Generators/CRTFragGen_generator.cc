@@ -21,6 +21,7 @@
 
 CRT::FragGen::FragGen(fhicl::ParameterSet const& ps) :
     CommandableFragmentGenerator(ps)
+  , sqltable(ps.get<std::string>("sqltable", ""))
   , readout_buffer_(nullptr)
   , hardware_interface_(new CRTInterface(ps))
   , timestamp_(0)
@@ -29,7 +30,6 @@ CRT::FragGen::FragGen(fhicl::ParameterSet const& ps) :
   , runstarttime(0)
   , timingXMLfilename(ps.get<std::string>("connections_file", "/nfs/sw/timing/dev/software/v4a3/timing-board-software/tests/etc/connections.xml"))
   , hardwarename(ps.get<std::string>("hardware_select", "PDTS_SECONDARY"))
-  , sqltable(ps.get<std::string>("sqltable", ""))
 {
   hardware_interface_->AllocateReadoutBuffer(&readout_buffer_);
 
