@@ -10,11 +10,15 @@ run_number: 101
 # Parameters defining and configuring the fragment generator to be used
 
 fragment_receiver: {
-  generator: CRT
+  generator: CRTFragGen
   fragment_type: 8 # Probably the wrong number
   fragment_id: 1
   board_id: 0
   interface_type: 1
+  indir: "/nfs/home/np04daq/crt/readout_linux/DataFolder/binary/"
+
+  # Options are "crt_upstream", "crt_downstream", "online_normal_running"
+  sqltable: "crt_upstream"
 }
 
 
@@ -24,6 +28,12 @@ event_builder: {
   print_event_store_stats: false
   verbose: false
   events_expected_in_SimpleQueueReader: @local::events_to_generate
+
+  # I guess?  This is the size that the module limits events to internally anyway.
+  max_fragment_size_bytes: 0x10000
+
+  # XXX I don't know what this is for, but if not defined, artdaq errors out
+  buffer_count: 1
 }
 
 ######################################################################

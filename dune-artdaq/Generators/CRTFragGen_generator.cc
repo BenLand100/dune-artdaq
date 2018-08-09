@@ -40,8 +40,12 @@ CRT::FragGen::FragGen(fhicl::ParameterSet const& ps) :
   // only from the latest file when data is requested.
   //
   // Yes, a call to system() is awful.  We could improve this.
-  system(("/nfs/home/np04daq/crt/readout_linux/macro/startallboards.pl "
-         + sqltable + "&").c_str());
+  if(!system(("source /nfs/sw/crt/readout_linux/script/setup.sh; "
+              "/nfs/home/np04daq/crt/readout_linux/macro/startallboards.pl "
+             + sqltable).c_str())){
+    fprintf(stderr, "Failed to start up CRT backend\n");
+    exit(1);
+  }
 
   // We might even take baselines here and process them so that we can
   // do pedestal subtraction online if that is desired.
@@ -53,8 +57,9 @@ CRT::FragGen::FragGen(fhicl::ParameterSet const& ps) :
 CRT::FragGen::~FragGen()
 {
   // Stop the backend DAQ.
-  system(("/nfs/home/np04daq/crt/readout_linux/macro/startallboards.pl "
-         + sqltable + "&").c_str());
+  system(("source /nfs/sw/crt/readout_linux/script/setup.sh; "
+          "/nfs/home/np04daq/crt/readout_linux/macro/stopallboards.pl "
+         + sqltable).c_str());
 
   hardware_interface_->FreeReadoutBuffer(readout_buffer_);
 }
