@@ -42,6 +42,7 @@ public:
   int BoardType() const;
   unsigned MessageSize() const;
   unsigned TriggerWindowSize() const;
+  unsigned TriggerWindowOffset() const;
 
   // Inner structures
   struct LinkParameters
@@ -72,6 +73,7 @@ private:
   bool zerocopy_;
   unsigned offset_;
   unsigned window_;
+  unsigned window_offset_;
   std::string requester_address_;
   std::string request_address_;
   unsigned short request_port_;

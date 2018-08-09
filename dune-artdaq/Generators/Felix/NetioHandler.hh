@@ -52,6 +52,7 @@ public:
  
   void setFrameSize(size_t frameSize) { m_framesize = frameSize; }
   void setTimeWindow(size_t timeWindow) { m_timeWindow = timeWindow; }
+  void setWindowOffset(size_t windowOffset) { m_windowOffset = windowOffset; }
   void setMessageSize(size_t messageSize) { m_msgsize = messageSize; }
   void setExtract(bool extract) { m_extract = extract; }
   void setVerbosity(bool v){ m_verbose = v; }
@@ -90,6 +91,8 @@ private:
   const uint_fast64_t m_tickdist=25; 
 
   // NETIO
+  std::string m_host;
+  uint16_t m_port;
   netio::context * m_context; // context
   std::thread m_netio_bg_thread; 
   std::map<uint64_t, netio::subscribe_socket*> m_sub_sockets; // subscribe sockets.
@@ -101,8 +104,11 @@ private:
   size_t m_framesize;
   size_t m_msgsize;
   size_t m_timeWindow;
+  size_t m_windowOffset;
   bool m_extract;
   bool m_verbose;
+  bool m_do_reorder = false;
+  bool m_do_compress = false;
 
   // Custom types from Types.h
 

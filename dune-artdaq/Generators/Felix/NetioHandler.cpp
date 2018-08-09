@@ -127,18 +127,20 @@ void NetioHandler::startTriggerMatchers(){
         // GLM: Try this simplistic approach: do trigger matching and empty the queue until that point
         //      Requires time ordered trigger requests!!
 
+
+        uint_fast64_t startWindowTimestamp = m_triggerTimestamp - (uint_fast64_t)(m_windowOffset * m_tickdist);
         WIBHeader wh = *(reinterpret_cast<const WIBHeader*>( m_pcqs[tid]->frontPtr() ));
         m_lastTimestamp = wh.timestamp();
         m_positionDepth = 0;
 	//GLM: Check if there is such a delay in trigger requests that data have gone already...
-	if (m_lastTimestamp > m_triggerTimestamp ) {
+	if (m_lastTimestamp > startWindowTimestamp ) {
 	  DAQLogger::LogWarning("NetioHandler::startTriggerMatchers") 
 	    << "Requested data are so old that they were dropped. Trigger request TS = " 
 	    << m_triggerTimestamp << ", oldest TS in queue = "  << m_lastTimestamp;
 	  return;
 	}
 
-        uint_fast64_t timeTickDiff = (m_triggerTimestamp-m_lastTimestamp)/(uint_fast64_t)m_tickdist;
+        uint_fast64_t timeTickDiff = (startWindowTimestamp-m_lastTimestamp)/(uint_fast64_t)m_tickdist;
         // wait to have enough stuff in the queue
 	uint_fast64_t minQueueSize = (timeTickDiff + m_timeWindow)/framesPerMsg + 10 ; // make sure we don't overtake the write ptr
         size_t qsize = m_pcqs[tid]->sizeGuess();
@@ -275,6 +277,11 @@ void NetioHandler::startSubscribers(){
           }
           ts = newTs;*/
         }
+
+        // unsubscriber from publisher
+        //m_sub_sockets[chn]->unsubscribe(chn, netio::endpoint(m_host, m_port));
+        //DAQLogger::LogInfo("NetioHandler::subscriber") << "Joining... Unsubscribed from channel[" << chn << "]";
+        
         // Joining subscriber...
         std::ostringstream subsummary;
         for (unsigned i=0; i<badSizes.size(); ++i){
@@ -301,6 +308,7 @@ void NetioHandler::stopSubscribers(){
   m_stop_subs=true;
   for (uint32_t i=0; i<m_netioSubscribers.size(); ++i) {
     m_netioSubscribers[i].join();
+    DAQLogger::LogInfo("NetioHandler::stopSubscriber") << "Subscriber[" << i << "] joined."; 
   }
   m_netioSubscribers.clear();
 }
@@ -312,6 +320,8 @@ void NetioHandler::lockSubsToCPUs(uint32_t offset) {
   unsigned short cpuid = offset;
   for (unsigned i=0; i< m_netioSubscribers.size(); ++i) {
     CPU_SET(cpuid, &cpuset);
+    // RS : Not a good attempt.
+    //CPU_SET(cpuid+16, &cpuset);
     int ret = pthread_setaffinity_np(m_netioSubscribers[i].native_handle(), sizeof(cpu_set_t), &cpuset);
     if (ret!=0) {
       DAQLogger::LogError("NetioHandler::lockSubsToCPUs") 
@@ -327,6 +337,8 @@ void NetioHandler::lockSubsToCPUs(uint32_t offset) {
 }
 
 bool NetioHandler::addChannel(uint64_t chn, uint16_t tag, std::string host, uint16_t port, size_t queueSize, bool zerocopy){
+  m_host=host;
+  m_port=port;
   m_channels.push_back(chn);
   m_pcqs[chn] = std::make_unique<FrameQueue>(queueSize);
   if (m_extract) {

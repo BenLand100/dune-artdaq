@@ -8,6 +8,7 @@
 #include "fhiclcpp/ParameterSet.h"
 
 #include <random>
+#include <chrono>
 #include <unistd.h>
 #include <iostream>
 
@@ -35,7 +36,8 @@ FelixHardwareInterface::FelixHardwareInterface(fhicl::ParameterSet const& ps) :
   backend_ = hps.get<std::string>("backend");
   zerocopy_ = hps.get<bool>("zerocopy");
   offset_ = hps.get<unsigned>("offset");
-  window_ = hps.get<unsigned>("window");
+  window_ = hps.get<unsigned>("trigger_matching_window_ticks");
+  window_offset_ = hps.get<unsigned>("trigger_matching_offset_ticks");
 
   requester_address_ = ps.get<std::string>("zmq_fragment_connection_out");
   //requester_address_ = ps.get<std::string>("requester_address");
@@ -72,6 +74,7 @@ FelixHardwareInterface::FelixHardwareInterface(fhicl::ParameterSet const& ps) :
   nioh_.setFrameSize( ps.get<unsigned>("frame_size") );
   nioh_.setMessageSize(message_size_);
   nioh_.setTimeWindow(window_);
+  nioh_.setWindowOffset(window_offset_);
   DAQLogger::LogInfo("dune::FelixHardwareInterface::FelixHardwareInterface")
     << "FelixHardwareInterface is ready.";
 }
@@ -106,6 +109,12 @@ void FelixHardwareInterface::StartDatataking() {
   sleep(1);
   // GLM: start listening to felix stream here
   nioh_.setExtract(extract_);
+
+  // random sleep
+  std::mt19937_64 eng{std::random_device{}()};
+  std::uniform_int_distribution<> dist{1, 10};
+  std::this_thread::sleep_for(std::chrono::seconds{dist(eng)});
+
   nioh_.startSubscribers();
   // This should be after startSubs!!!
   nioh_.lockSubsToCPUs(offset_);
@@ -191,8 +200,11 @@ bool FelixHardwareInterface::FillFragment( std::unique_ptr<artdaq::Fragment>& fr
 	    << "Returning empty fragment for TS = " << requestTimestamp << ", seqID = " << requestSeqId;
 	}  
 	else {
+          std::ostringstream oss;
+          frag->print(oss); 
 	  DAQLogger::LogInfo("dune::FelixHardwareInterface::FillFragment") 
-	    << " NIOH returned OK for trigger TS " << requestTimestamp << " and seqID " << requestSeqId <<".";	  
+	    << " NIOH returned OK for trigger TS " << requestTimestamp << " and seqID " << requestSeqId <<"."
+            << " Size:" << frag->dataSizeBytes() << " Brief:" << oss.str(); 
 	}
         //artdaq_request_receiver_.RemoveRequest(requestSeqId);
       } else {
@@ -224,6 +236,10 @@ unsigned FelixHardwareInterface::MessageSize() const {
 
 unsigned FelixHardwareInterface::TriggerWindowSize() const {
   return window_;
+}
+
+unsigned FelixHardwareInterface::TriggerWindowOffset() const {
+  return window_offset_;
 }
 
 
