@@ -40,10 +40,11 @@ CRT::FragGen::FragGen(fhicl::ParameterSet const& ps) :
   // only from the latest file when data is requested.
   //
   // Yes, a call to system() is awful.  We could improve this.
-  if(!system(("source /nfs/sw/crt/readout_linux/script/setup.sh; "
-              "/nfs/home/np04daq/crt/readout_linux/macro/startallboards.pl "
-             + sqltable).c_str())){
+  if(system(("source /nfs/sw/crt/readout_linux/script/setup.sh; "
+              "startallboards_shortbaseline.pl " + sqltable).c_str())){
     fprintf(stderr, "Failed to start up CRT backend\n");
+    // Maybe instead of exiting here, I'm supposed to set a flag that
+    // causes the next call to getNext_ to return false.
     exit(1);
   }
 
@@ -57,9 +58,11 @@ CRT::FragGen::FragGen(fhicl::ParameterSet const& ps) :
 CRT::FragGen::~FragGen()
 {
   // Stop the backend DAQ.
-  system(("source /nfs/sw/crt/readout_linux/script/setup.sh; "
-          "/nfs/home/np04daq/crt/readout_linux/macro/stopallboards.pl "
-         + sqltable).c_str());
+  if(system(("source /nfs/sw/crt/readout_linux/script/setup.sh; "
+              "stopallboards.pl " + sqltable).c_str())){
+    fprintf(stderr, "Failed to start up CRT backend\n");
+    exit(1);
+  }
 
   hardware_interface_->FreeReadoutBuffer(readout_buffer_);
 }
