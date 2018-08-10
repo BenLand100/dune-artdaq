@@ -9,6 +9,9 @@
 #include "Utilities.hh"
 #include "Types.hh"
 
+#define AVX
+#include "FelixReordererFacility.hh"
+
 #include "netio/netio.hpp"
 
 #include <map>
@@ -50,10 +53,13 @@ public:
   //typedef folly::ProducerConsumerQueue<netio::message> MessageQueue;
   //typedef std::unique_ptr<MessageQueue> UniqueMessageQueue; 
  
-  void setFrameSize(size_t frameSize) { m_framesize = frameSize; }
-  void setTimeWindow(size_t timeWindow) { m_timeWindow = timeWindow; }
+  //Add recalculators - Thijs
+  void recalculateByteSizes();
+
+  void setFrameSize(size_t frameSize) { m_framesize = frameSize; recalculateByteSizes(); }
+  void setTimeWindow(size_t timeWindow) { m_timeWindow = timeWindow; recalculateByteSizes(); }
   void setWindowOffset(size_t windowOffset) { m_windowOffset = windowOffset; }
-  void setMessageSize(size_t messageSize) { m_msgsize = messageSize; }
+  void setMessageSize(size_t messageSize) { m_msgsize = messageSize; recalculateByteSizes(); }
   void setExtract(bool extract) { m_extract = extract; }
   void setVerbosity(bool v){ m_verbose = v; }
 
@@ -109,6 +115,15 @@ private:
   bool m_verbose;
   bool m_do_reorder = false;
   bool m_do_compress = false;
+
+  //Precomputed bytesizes - Thijs
+  size_t m_timeWindowByteSizeIn;
+  size_t m_timeWindowByteSizeOut;
+  size_t m_timeWindowNumFrames;
+  size_t m_timeWindowNumMessages;
+
+  //Reordering type - Thijs
+  ReordererType m_reord_type = ReordererType::TypeAVX2;
 
   // Custom types from Types.h
 

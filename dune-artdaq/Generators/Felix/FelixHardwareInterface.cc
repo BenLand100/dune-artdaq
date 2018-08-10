@@ -111,9 +111,9 @@ void FelixHardwareInterface::StartDatataking() {
   nioh_.setExtract(extract_);
 
   // random sleep
-  std::mt19937_64 eng{std::random_device{}()};
-  std::uniform_int_distribution<> dist{1, 10};
-  std::this_thread::sleep_for(std::chrono::seconds{dist(eng)});
+  //std::mt19937_64 eng{std::random_device{}()};
+  //std::uniform_int_distribution<> dist{1, 10};
+  //std::this_thread::sleep_for(std::chrono::seconds{dist(eng)});
 
   nioh_.startSubscribers();
   // This should be after startSubs!!!

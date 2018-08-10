@@ -39,11 +39,11 @@ struct IOVEC_CHAR_STRUCT {
 };
 static_assert(sizeof(struct IOVEC_CHAR_STRUCT) == 236640, "Check your assumptions on IOVEC_CHAR_STRUCT");
 
-static const size_t SUPERCHUNK_FRAME_SIZE = 2784;
+static const size_t SUPERCHUNK_FRAME_SIZE = 5568; // for 12: 5568  for 6: 2784
 struct SUPERCHUNK_CHAR_STRUCT {
   char fragments[SUPERCHUNK_FRAME_SIZE];
 };
-static_assert(sizeof(struct SUPERCHUNK_CHAR_STRUCT) == 2784, "Check your assumptions on SUPERCHUNK_CHAR_STRUCT");
+static_assert(sizeof(struct SUPERCHUNK_CHAR_STRUCT) == 5568, "Check your assumptions on SUPERCHUNK_CHAR_STRUCT");
 
 /*
 static void printHexChars(const WIB_CHAR_STRUCT& wct){
