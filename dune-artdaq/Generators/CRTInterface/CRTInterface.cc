@@ -106,10 +106,6 @@ std::string find_wr_file(const std::string & indir)
        strstr(de->d_name, "baseline") == NULL &&
        strstr(de->d_name, ".wr") != NULL &&
        strlen(strstr(de->d_name, ".wr")) == strlen(".wr")){
-      errno = 0;
-      closedir(dp);
-      if(errno) perror("find_wr_file closedir");
-
       struct stat thestat;
 
       if(-1 == stat((indir + de->d_name).c_str(), &thestat)){
@@ -133,6 +129,9 @@ std::string find_wr_file(const std::string & indir)
   closedir(dp);
   if(errno) perror("find_wr_file closedir");
 
+  // slow down if the directory is there, but the file isn't yet
+  if(most_recent_file == "") usleep(100000);
+
   return most_recent_file; // even if it is "", which means none
 }
 
@@ -143,7 +142,13 @@ std::string find_wr_file(const std::string & indir)
 */
 bool CRTInterface::try_open_file()
 {
-  const char * const filename = find_wr_file(indir).c_str();
+  // I am sure it used to work to do find_wr_file().c_str() but now C++ is so
+  // complicated that no one can understand it.  Apparently if you use the old
+  // approach after C++11 or C++14 or thereabouts, the std::string destructor
+  // is immediately called because the scope of a return value is only the
+  // right hand side of the expression.
+  const std::string cplusplusiscrazy = find_wr_file(indir);
+  const char * filename = cplusplusiscrazy.c_str();
 
   if(strlen(filename) == 0) return false;
 
