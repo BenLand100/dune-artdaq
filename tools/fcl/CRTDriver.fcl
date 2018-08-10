@@ -18,7 +18,7 @@ fragment_receiver: {
   indir: "/nfs/home/np04daq/crt/readout_linux/DataFolder/binary/"
 
   # Options are "crt_upstream", "crt_downstream", "online_normal_running"
-  sqltable: "crt_upstream"
+  sqltable: "board_6_debug"
 }
 
 

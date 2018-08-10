@@ -63,7 +63,14 @@ public:
 	 */
 	void FreeReadoutBuffer(char* buffer);
 
+  void SetBaselines();
+
 private:
+
+  // Baselines, a.k.a. pedestals, for all of the channels in the run,
+  // to be subtracted from the raw data before sending to artdaq.  These
+  // are determined for each run as part of the run startup.
+  int baselines[64 /*maxModules*/][64 /*numChannels*/];
 
   // The directory in which to look for input files.  This is probably
   // something like Run_0000123/binary/. It can be an absolute or relative

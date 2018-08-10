@@ -303,8 +303,11 @@ size_t CRTInterface::read_everything_from_file(char * cooked_data)
 
   if(bytesleft > 0) state |= CRT_DRAIN_BUFFER;
 
+  // TODO pass actual baselines in here
+  int baselines[64 /*maxModules*/][64 /*numChannels*/] = { { 0 } };
+
   return CRT::raw2cook(cooked_data, COOKEDBUFSIZE,
-                       rawfromhardware, next_raw_byte);
+                       rawfromhardware, next_raw_byte, baselines);
 }
 
 void CRTInterface::FillBuffer(char* cooked_data, size_t* bytes_ret)
@@ -316,8 +319,11 @@ void CRTInterface::FillBuffer(char* cooked_data, size_t* bytes_ret)
   if(state & CRT_DRAIN_BUFFER){
     printf("%ld bytes in raw buffer before read.\n",
            next_raw_byte - rawfromhardware);
+
+    // TODO pass actual baselines in here
+    int baselines[64 /*maxModules*/][64 /*numChannels*/] = { { 0 } };
     if((*bytes_ret = CRT::raw2cook(cooked_data, COOKEDBUFSIZE,
-                                   rawfromhardware, next_raw_byte)))
+                                   rawfromhardware, next_raw_byte, baselines)))
       return;
     else
       state &= ~CRT_DRAIN_BUFFER;

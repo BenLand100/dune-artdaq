@@ -8,6 +8,10 @@
 
 namespace CRT{
 
+const int numChannels=64; // Number of channels in M64
+const int maxModules=64; // Maximum number of modules PER USB
+                         // (okay if less than total number of modules)
+
 // A hit after decoding.
 struct decoded_hit {
   uint8_t channel;
@@ -193,7 +197,8 @@ unsigned int serialize(char * cooked, const decoded_packet & packet,
   of which is a collection of hits from a single module sharing a time stamp.
 */
 unsigned int make_a_packet(char * cooked, std::deque<uint16_t> & raw,
-                           const unsigned int max_cooked)
+                           const unsigned int max_cooked,
+                           const int baselines[maxModules][numChannels])
 {
   // ADC packet word indices.  As per Toups thesis:
   //
@@ -262,6 +267,13 @@ unsigned int make_a_packet(char * cooked, std::deque<uint16_t> & raw,
         decoded_hit hit;
         hit.channel = raw[wordi+1];
         hit.charge  = raw[wordi];
+
+        if(hit.channel < numChannels && packet.module < maxModules)
+          hit.charge -= baselines[packet.module][hit.channel];
+        else
+          fprintf(stderr, "Not applying baseline to bad module/channel "
+                  "number %d/%d\n", packet.module, hit.channel);
+
         packet.hits.push_back(hit);
       }
     }
@@ -283,7 +295,8 @@ unsigned int make_a_packet(char * cooked, std::deque<uint16_t> & raw,
 unsigned int raw2cook(char * const cooked_data,
                       const unsigned int max_cooked,
                       char * rawfromhardware,
-                      char * & next_raw_byte)
+                      char * & next_raw_byte,
+                      const int baselines[maxModules][numChannels])
 {
   /*
     Undocumented input file format is revealed by inspection to be
@@ -328,7 +341,8 @@ unsigned int raw2cook(char * const cooked_data,
         if(raw24bit_to_raw16bit(raw16bitdata, word) &&
            (newcookedbytes = make_a_packet(cooked_data + cooked_bytes,
                                            raw16bitdata,
-                                           max_cooked - cooked_bytes))){
+                                           max_cooked - cooked_bytes,
+                                           baselines))){
           used_raw_bytes = readptr - rawfromhardware + 1;
           cooked_bytes += newcookedbytes;
 
