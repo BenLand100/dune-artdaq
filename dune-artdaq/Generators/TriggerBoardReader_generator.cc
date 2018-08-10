@@ -96,10 +96,11 @@ dune::TriggerBoardReader::TriggerBoardReader(fhicl::ParameterSet const & ps)
   // send the configuration
   bool config_status = _run_controller -> send_config( config ) ;
 
-  if ( throw_exception_ ) {
-    if ( ! config_status ) {
-      dune::DAQLogger::LogError("TriggerBoardGenerator") << "CTB failed to configure" << std::endl ;
-      throw std::runtime_error("CTB failed to configure") ;
+ if ( ! config_status ) {
+   dune::DAQLogger::LogError("TriggerBoardGenerator") << "CTB failed to configure" << std::endl ;
+
+   if ( throw_exception_ ) {
+     throw std::runtime_error("CTB failed to configure") ;
     }
   }
   
@@ -184,9 +185,10 @@ artdaq::FragmentPtr dune::TriggerBoardReader::CreateFragment() {
     memcpy( fragptr->dataBeginBytes() + word_counter * word_bytes, temp_word.get_bytes(), 16 ) ;
 
     if ( CTB_Receiver::IsFeedbackWord( temp_word ) ) {
-
       dune::DAQLogger::LogError("TriggerBoardGenerator") << "CTB issued a feedback word" << std::endl ;
-      throw std::runtime_error("CTB sent a feedback word") ;
+      if ( throw_exception_ ) {
+	throw std::runtime_error("CTB sent a feedback word") ;
+      }
     }
       
     else if ( CTB_Receiver::IsTSWord( temp_word ) ) {
