@@ -9,7 +9,7 @@
 #include "artdaq/DAQdata/Globals.hh"
 #include "dune-raw-data/Overlays/FragmentType.hh"
 
-#include "dune_artdaq/dune-artdaq/Generators/TriggerBoard/content.h"
+#include "dune-raw-data/Overlays/CTB_content.h"
 
 #include "artdaq/Application/GeneratorMacros.hh"
 #include "artdaq-core/Utilities/SimpleLookupPolicy.hh"

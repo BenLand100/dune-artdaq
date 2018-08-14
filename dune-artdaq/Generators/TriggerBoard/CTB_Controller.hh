@@ -8,7 +8,7 @@
 #include <boost/array.hpp>
 
 #include "fhiclcpp/fwd.h"
-#include "dune-artdaq/Generators/TriggerBoard/content.h"
+#include "dune-raw-data/Overlays/CTB_content.h"
 
 
 
