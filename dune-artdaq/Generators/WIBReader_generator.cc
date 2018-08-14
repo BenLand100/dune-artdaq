@@ -301,8 +301,10 @@ void WIBReader::setupWIB(fhicl::ParameterSet const& ps) {
     }
   }
 
-  dune::DAQLogger::LogInfo(identification) << "Enabling DAQ links";
-  wib->StartStreamToDAQ();
+  if (daqMode != WIB::FELIX){// don't enable links yet if FELIX, do it in start
+    dune::DAQLogger::LogInfo(identification) << "Enabling DAQ links";
+    wib->StartStreamToDAQ();
+  }
   
   // Un-set DIM do-not-disturb
   wib->Write("SYSTEM.SLOW_CONTROL_DND",0);
@@ -585,11 +587,141 @@ WIBReader::~WIBReader() {
 
 // "start" transition
 void WIBReader::start() {
+  const std::string identification = "wibdaq::WIBReader::start";
+  if (!wib) 
+  {
+    cet::exception excpt(identification);
+    excpt << "WIB object pointer NULL";
+    throw excpt;
+  }
+  if (wib->GetDAQMode() == WIB::FELIX){// otherwise we did this during configure
+    dune::DAQLogger::LogInfo(identification) << "Enabling DAQ links";
 
+    unsigned start_run_tries = 5;
+    bool success = false;
+    for (unsigned iTry=1; iTry <= start_run_tries; iTry++) {
+      try
+      {
+        wib->Write("SYSTEM.SLOW_CONTROL_DND",1);
+        wib->StartStreamToDAQ();
+        success = true;
+        break;
+      }
+      catch (const BUException::BAD_REPLY & exc)
+      {
+        dune::DAQLogger::LogWarning(identification) << "WIB communication error: "
+            << exc.what();
+      }
+      catch (const BUException::exBase & exc)
+      {
+        // Try to un-set DIM do-not-disturb no matter what happened
+        try
+        {
+          if (wib) wib->Write("SYSTEM.SLOW_CONTROL_DND",0);
+        }
+        catch (const BUException::exBase & exc)
+        {
+          // best effort, don't care if it doesn't succeed
+        }
+
+        cet::exception excpt(identification);
+        excpt << "Unhandled BUException: "
+            << exc.what()
+            << ": "
+            << exc.Description();
+        throw excpt;
+      }
+      dune::DAQLogger::LogInfo(identification) << "Run start try  " << iTry << " failed. Trying again...";
+    } // for iRetry
+
+    // Try to un-set DIM do-not-disturb no matter what happened
+    try
+    {
+      if (wib) wib->Write("SYSTEM.SLOW_CONTROL_DND",0);
+    }
+    catch (const BUException::exBase & exc)
+    {
+      // best effort, don't care if it doesn't succeed
+    }
+
+    if (!success)
+    {
+      cet::exception excpt(identification);
+      excpt << "Failed to start run after " << start_run_tries << " tries";
+      throw excpt;
+    }
+  } // if felix
 }
 
 // "stop" transition
 void WIBReader::stop() {
+  const std::string identification = "wibdaq::WIBReader::stop";
+  if (!wib) 
+  {
+    cet::exception excpt(identification);
+    excpt << "WIB object pointer NULL";
+    throw excpt;
+  }
+  if (wib->GetDAQMode() == WIB::FELIX){// otherwise don't need to do this
+    dune::DAQLogger::LogInfo(identification) << "Disabling DAQ links";
+
+    unsigned stop_run_tries = 5;
+    bool success = false;
+    for (unsigned iTry=1; iTry <= stop_run_tries; iTry++) {
+      try
+      {
+        wib->Write("SYSTEM.SLOW_CONTROL_DND",1);
+        wib->Write("DAQ_LINK_1.CONTROL.ENABLE",0);
+        wib->Write("DAQ_LINK_2.CONTROL.ENABLE",0);
+        //wib->Write("DAQ_LINK_1.CONTROL.ENABLE_CDA_STREAM",0);
+        //wib->Write("DAQ_LINK_2.CONTROL.ENABLE_CDA_STREAM",0);
+        success = true;
+        break;
+      }
+      catch (const BUException::BAD_REPLY & exc)
+      {
+        dune::DAQLogger::LogWarning(identification) << "WIB communication error: "
+            << exc.what();
+      }
+      catch (const BUException::exBase & exc)
+      {
+        // Try to un-set DIM do-not-disturb no matter what happened
+        try
+        {
+          if (wib) wib->Write("SYSTEM.SLOW_CONTROL_DND",0);
+        }
+        catch (const BUException::exBase & exc)
+        {
+          // best effort, don't care if it doesn't succeed
+        }
+
+        cet::exception excpt(identification);
+        excpt << "Unhandled BUException: "
+            << exc.what()
+            << ": "
+            << exc.Description();
+        throw excpt;
+      }
+      dune::DAQLogger::LogInfo(identification) << "Run stop try  " << iTry << " failed. Trying again...";
+    } // for iRetry
+
+    // Try to un-set DIM do-not-disturb no matter what happened
+    try
+    {
+      if (wib) wib->Write("SYSTEM.SLOW_CONTROL_DND",0);
+    }
+    catch (const BUException::exBase & exc)
+    {
+      // best effort, don't care if it doesn't succeed
+    }
+
+    if (!success)
+    {
+      cet::exception excpt(identification);
+      excpt << "Failed to stop run after " << stop_run_tries << " tries";
+      throw excpt;
+    }
+  } // if felix
 
 }
 
