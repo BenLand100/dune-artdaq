@@ -62,7 +62,6 @@ void RequestReceiver::stop() {
 }
 
 TriggerInfo RequestReceiver::getNextRequest() {
-
   TriggerInfo request;
   // Based on queue check; return a request if there is a valid one, else return a dummy request if 2 seconds have elapsed.
   auto startTime=std::chrono::system_clock::now();
@@ -77,10 +76,15 @@ TriggerInfo RequestReceiver::getNextRequest() {
   }
   else {
     m_req->read( std::ref(request));
+    if ( request.seqID != m_prevTrigger.seqID+1 )
+    {
+      dune::DAQLogger::LogWarning("RequestReceiver::getNextRequest") << "Received a sequence id in not the right order! Previous:" << m_prevTrigger.seqID << " new:" << request.seqID;
+    }
+    m_prevTrigger.seqID = request.seqID;
   }
-
   return request;
 }
+
 // Are there more message parts waiting on the socket?
 bool RequestReceiver::rcvMore()
 {

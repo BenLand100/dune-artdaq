@@ -16,6 +16,7 @@
 
 using namespace dune;
 
+
 FelixHardwareInterface::FelixHardwareInterface(fhicl::ParameterSet const& ps) :
   nioh_{ NetioHandler::getInstance() },
   //artdaq_request_receiver_{ ps }, // This automatically setups requestReceiver!
@@ -75,6 +76,11 @@ FelixHardwareInterface::FelixHardwareInterface(fhicl::ParameterSet const& ps) :
   nioh_.setMessageSize(message_size_);
   nioh_.setTimeWindow(window_);
   nioh_.setWindowOffset(window_offset_);
+
+  // reorder and compression configs:
+  nioh_.doReorder(false);
+  nioh_.doCompress(false);
+
   DAQLogger::LogInfo("dune::FelixHardwareInterface::FelixHardwareInterface")
     << "FelixHardwareInterface is ready.";
 }
@@ -110,21 +116,14 @@ void FelixHardwareInterface::StartDatataking() {
   // GLM: start listening to felix stream here
   nioh_.setExtract(extract_);
 
-  // random sleep
-  //std::mt19937_64 eng{std::random_device{}()};
-  //std::uniform_int_distribution<> dist{1, 10};
-  //std::this_thread::sleep_for(std::chrono::seconds{dist(eng)});
-
+  DAQLogger::LogInfo("dune::FelixHardwareInterface::FelixHardwareInterface")
+    << "Starting subscribers and locking to CPUs...";
   nioh_.startSubscribers();
-  // This should be after startSubs!!!
-  nioh_.lockSubsToCPUs(offset_);
+  nioh_.lockSubsToCPUs(offset_);// This should be always after startSubs!!!
 
   start_time_ = std::chrono::high_resolution_clock::now();
   DAQLogger::LogInfo("dune::FelixHardwareInterface::StartDatataking")
     << "Request listener and trigger matcher threads created.";
-
-  //artdaq::Globals::metricMan_->sendMetric("TestMetrics", 1, "Events", 3, artdaq::MetricMode::Accumulate);
-
 }
 
 void FelixHardwareInterface::StopDatataking() {

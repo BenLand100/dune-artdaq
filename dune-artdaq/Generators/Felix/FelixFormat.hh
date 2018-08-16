@@ -1,8 +1,5 @@
-// FelixFormat.hpp
-// Milo Vermeulen 2018
-
-#ifndef FelixFormat_hh
-#define FelixFormat_hh
+#ifndef FELIXFORMAT_HH
+#define FELIXFORMAT_HH
 
 // Set these if you have a header and/or a trailer in your frames.
 //#define FELIXHEAD
@@ -11,6 +8,14 @@
 #include <bitset>
 #include <iostream>
 #include <vector>
+
+
+/*
+ * NetioHandler
+ * Author: Milo.Vermeulen@cern.ch
+ * Description: FELIX data format from the WIBs. 
+ * Date: November 2018
+*/
 
 typedef uint32_t word_t;
 typedef uint16_t adc_t;
@@ -578,3 +583,4 @@ class ReorderedFelixFrames {
 };
 
 #endif /* FelixFormat_hh */
+

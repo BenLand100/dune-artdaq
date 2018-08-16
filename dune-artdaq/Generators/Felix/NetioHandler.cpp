@@ -4,6 +4,8 @@
 #include "ReusableThread.hh"
 #include "FelixReorderer.hh"
 
+//#include <libxmlrpc.h>
+
 #include <ctime>
 #include <iomanip>
 #include <pthread.h>
@@ -380,7 +382,7 @@ void NetioHandler::recalculateByteSizes()
     m_timeWindowNumMessages = (m_timeWindow / framesPerMsg) + 2;
 
     m_timeWindowByteSizeIn = m_msgsize * m_timeWindowNumMessages;
-    m_timeWindowNumFrames = m_timeWindowByteSizeIn / FelixReorderer::num_bytes_per_frame;
+    m_timeWindowNumFrames = m_timeWindowByteSizeIn / FelixReorderer::m_num_bytes_per_frame;
 
     //if (m_do_reorder)
     //    m_timeWindowByteSizeOut = m_timeWindowByteSizeIn 
