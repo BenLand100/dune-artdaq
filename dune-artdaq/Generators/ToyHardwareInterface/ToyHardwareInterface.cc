@@ -88,7 +88,6 @@ void ToyHardwareInterface::StopDatataking() {
   start_time_ = std::numeric_limits<decltype(std::chrono::high_resolution_clock::now())>::max();
 }
 
-
 void ToyHardwareInterface::FillBuffer(char* buffer, size_t* bytes_read) {
 
   if (taking_data_) {
@@ -169,15 +168,21 @@ void ToyHardwareInterface::FillBuffer(char* buffer, size_t* bytes_read) {
       }
       break;
 
+    case DistributionType::uninitialized:
+      break;
+
     default:
       throw cet::exception("HardwareInterface") <<
 	"Unknown distribution type specified";
     }
 
-    std::generate_n(reinterpret_cast<data_t*>( reinterpret_cast<dune::ToyFragment::Header*>(buffer) + 1 ), 
-		    nADCcounts_,
-		    generator
-		    );
+    if (distribution_type_ != DistributionType::uninitialized)
+    {
+      std::generate_n(reinterpret_cast<data_t*>( reinterpret_cast<dune::ToyFragment::Header*>(buffer) + 1 ), 
+                      nADCcounts_,
+                      generator
+                      );
+    }
 
   } else {
     throw cet::exception("ToyHardwareInterface") <<

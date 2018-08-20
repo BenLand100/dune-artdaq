@@ -8,12 +8,14 @@
 #include "fhiclcpp/ParameterSet.h"
 
 #include <random>
+#include <chrono>
 #include <unistd.h>
 #include <iostream>
 
 #define __FILENAME__ (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
 
 using namespace dune;
+
 
 FelixHardwareInterface::FelixHardwareInterface(fhicl::ParameterSet const& ps) :
   nioh_{ NetioHandler::getInstance() },
@@ -35,12 +37,14 @@ FelixHardwareInterface::FelixHardwareInterface(fhicl::ParameterSet const& ps) :
   backend_ = hps.get<std::string>("backend");
   zerocopy_ = hps.get<bool>("zerocopy");
   offset_ = hps.get<unsigned>("offset");
-  window_ = hps.get<unsigned>("window");
+  window_ = hps.get<unsigned>("trigger_matching_window_ticks");
+  window_offset_ = hps.get<unsigned>("trigger_matching_offset_ticks");
 
-  requester_address_ = ps.get<std::string>("requester_address");
-  request_address_ = ps.get<std::string>("request_address");
-  request_port_ = ps.get<unsigned short>("request_port");
-  requests_size_ = ps.get<unsigned short>("requests_size");
+  requester_address_ = ps.get<std::string>("zmq_fragment_connection_out");
+  //requester_address_ = ps.get<std::string>("requester_address");
+  //request_address_ = ps.get<std::string>("request_address");
+  //request_port_ = ps.get<unsigned short>("request_port");
+  //requests_size_ = ps.get<unsigned short>("requests_size");
 
   DAQLogger::LogInfo("dune::FelixHardwareInterface::FelixHardwareInterface")
     << "Configuration for Links from FHiCL."; 
@@ -58,23 +62,25 @@ FelixHardwareInterface::FelixHardwareInterface(fhicl::ParameterSet const& ps) :
 
   DAQLogger::LogInfo("dune::FelixHardwareInterface::FelixHardwareInterface")
     << "Setting up RequestReceiver.";
-  request_receiver_.setup(requester_address_, request_address_, request_port_, requests_size_);
+  request_receiver_ = new RequestReceiver(requester_address_);
 
-  // This is done by the RequestReceiver's constructor! Could it duplicate requests?
+  nioh_.setExtract(extract_);
   //DAQLogger::LogInfo("dune::FelixHardwareInterface::FelixHardwareInterface")
-  //  << "Setting up ArtDAQ's RequestReceiver.";
-  //artdaq_request_receiver_.setupRequestListener();
-
-  DAQLogger::LogInfo("dune::FelixHardwareInterface::FelixHardwareInterface")
-    << "Setting up NetioHandler (host, port, adding channels, starting subscribers, locking subs to CPUs.)";
-  nioh_.setupContext( backend_ ); // posix or infiniband
-  for ( auto const & link : link_parameters_ ){ // Add channels
-    nioh_.addChannel(link.id_, link.tag_, link.host_, link.port_, queue_size_, zerocopy_); 
-  }
+  //  << "Setting up NetioHandler (host, port, adding channels, starting subscribers, locking subs to CPUs.)";
+  //nioh_.setupContext( backend_ ); // posix or infiniband
+  //for ( auto const & link : link_parameters_ ){ // Add channels
+  //  nioh_.addChannel(link.id_, link.tag_, link.host_, link.port_, queue_size_, zerocopy_); 
+  //}
   nioh_.setVerbosity(true);
   nioh_.setFrameSize( ps.get<unsigned>("frame_size") );
   nioh_.setMessageSize(message_size_);
   nioh_.setTimeWindow(window_);
+  nioh_.setWindowOffset(window_offset_);
+
+  // reorder and compression configs:
+  nioh_.doReorder(false);
+  nioh_.doCompress(false);
+
   DAQLogger::LogInfo("dune::FelixHardwareInterface::FelixHardwareInterface")
     << "FelixHardwareInterface is ready.";
 }
@@ -83,18 +89,21 @@ FelixHardwareInterface::~FelixHardwareInterface(){
   DAQLogger::LogInfo("dune::FelixHardwareInterface::FelixHardwareInterface")
     << "Destructing FelixHardwareInterface. Joining request thread.";
   nioh_.stopContext();
+  delete request_receiver_;
 }
 
 
 void FelixHardwareInterface::StartDatataking() {
   DAQLogger::LogInfo("dune::FelixHardwareInterface::StartDatataking") << "Start datataking...";
 
-  // GLM: start listening to felix stream here
-  nioh_.startSubscribers();
-  nioh_.lockSubsToCPUs(offset_);
-  nioh_.setExtract(extract_);
+  DAQLogger::LogInfo("dune::FelixHardwareInterface::FelixHardwareInterface")
+    << "Setting up NetioHandler (host, port, adding channels, starting subscribers, locking subs to CPUs.)";
+  nioh_.setupContext( backend_ ); // posix or infiniband
+  for ( auto const & link : link_parameters_ ){ // Add channels
+    nioh_.addChannel(link.id_, link.tag_, link.host_, link.port_, queue_size_, zerocopy_); 
+  }
 
-
+  // GLM: start listening to trigger before data stream, else data stream fills up
 
   taking_data_.store( true );
   send_calls_ = 0;
@@ -102,41 +111,33 @@ void FelixHardwareInterface::StartDatataking() {
   fake_trigger_attempts_ = 0;
   nioh_.startTriggerMatchers(); // Start trigger matchers in NIOH.
   
-  request_receiver_.start(); // Start request receiver.
+  request_receiver_->start(); // Start request receiver.
+  sleep(1);
+  // GLM: start listening to felix stream here
+  nioh_.setExtract(extract_);
 
-  //artdaq_request_receiver_.ClearRequests();
-  //artdaq_request_receiver_.startRequestReceiverThread(); // Start artdaq's request receiver.
-  //DAQLogger::LogInfo("dune::FelixHardwareInterface::StartDatataking")
-  //  << "ArtDAQ's Request listener is running? -> " << artdaq_request_receiver_.isRunning();
+  DAQLogger::LogInfo("dune::FelixHardwareInterface::FelixHardwareInterface")
+    << "Starting subscribers and locking to CPUs...";
+  nioh_.startSubscribers();
+  nioh_.lockSubsToCPUs(offset_);// This should be always after startSubs!!!
+
   start_time_ = std::chrono::high_resolution_clock::now();
   DAQLogger::LogInfo("dune::FelixHardwareInterface::StartDatataking")
     << "Request listener and trigger matcher threads created.";
-
-  //artdaq::Globals::metricMan_->sendMetric("TestMetrics", 1, "Events", 3, artdaq::MetricMode::Accumulate);
-
 }
 
 void FelixHardwareInterface::StopDatataking() {
   DAQLogger::LogInfo("dune::FelixHardwareInterface::StopDatataking") << "Stop datataking...";
 
+  taking_data_.store( false );
+
+  // GLM: stop listening to trigger requests
+  request_receiver_->stop();
+  DAQLogger::LogInfo("dune::FelixHardwareInterface::StopDatataking") << "Request thread joined...";
+
   // GLM: stop listening to FELIX stream here
   nioh_.stopSubscribers();
 
-  taking_data_.store( false );
-
-  // Request receiver stop.
-  request_receiver_.stop();
-  DAQLogger::LogInfo("dune::FelixHardwareInterface::StopDatataking") << "Request thread joined...";
-
-  //std::ostringstream l1str;
-  //l1str << "ARTDAQ'S L1RECEIVER STOPDATATAKING. Requests still in map: -> \n";
-  //auto reqMap = artdaq_request_receiver_.GetRequests();
-  //for(auto it = reqMap.cbegin(); it != reqMap.cend(); ++it) {
-  //  l1str << " SEQID:" << std::hex << it->first << " TS:" << it->second << "\n";
-  //}
-  //DAQLogger::LogInfo("dune::FelixHardwareInterface::StopDatataking") << l1str.str(); 
-  
-  //artdaq_request_receiver_.ClearRequests();
 
   // Netio busy check.
   while (nioh_.busy()) {
@@ -154,7 +155,7 @@ void FelixHardwareInterface::StopDatataking() {
     << "Datataking stopped.";
 }
 
-bool FelixHardwareInterface::FillFragment( std::unique_ptr<artdaq::Fragment>& frag , unsigned& report ){
+bool FelixHardwareInterface::FillFragment( std::unique_ptr<artdaq::Fragment>& frag ){
   if (taking_data_) {
     //DAQLogger::LogInfo("dune::FelixHardwareInterface::FillFragment") << "Fill fragment at: " << &frag;
 
@@ -174,37 +175,11 @@ bool FelixHardwareInterface::FillFragment( std::unique_ptr<artdaq::Fragment>& fr
       fake_trigger_attempts_++;
       return true; // either we hit the limit, or not taking data anymore.
 
-    } else {
-      // Check if there are requests available...
-      // Safety spin to avoid waiting infinitely.
-      unsigned triescount=0;
-      while ( taking_data_.load() && !request_receiver_.requestAvailable() ) { // artdaq_request_receiver_.size()==0 ) { // !request_receiver_.requestAvailable() ){
-        std::this_thread::sleep_for( std::chrono::microseconds(500) ); // waiting for requests to arrive...
-        if (triescount>1000) {
-          //DAQLogger::LogInfo("dune::FelixHardwareInterface::FillFragment") 
-          //  << " Didn't receive requests for some time...\n";
-	  //GLM: clean data queue a bit if it's getting full
-	  nioh_.triggerWorkers(0, 0, frag);
-          triescount = 0;
-          report = 1;
-          return false;
-        } else {
-          triescount++;
-        }
-      }
+    } 
+    else {
 
-      //std::ostringstream l1str;
-      //l1str << "ARTDAQ'S L1RECEIVER -> \n";
-      //auto reqMap = artdaq_request_receiver_.GetRequests();
-      //for(auto it = reqMap.cbegin(); it != reqMap.cend(); ++it) {
-      //  l1str << " SEQID:" << std::hex << it->first << " TS:" << it->second << "\n";
-      //}
-      //DAQLogger::LogInfo("dune::FelixHardwareInterface::FillFragment") << l1str.str();
-
-      // There are requests queued in...
-      artdaq::detail::RequestPacket request;
-      request_receiver_.getNextRequest( request );
-      uint64_t requestSeqId = request.sequence_id;
+      TriggerInfo request = request_receiver_->getNextRequest();
+      uint64_t requestSeqId = request.seqID;
       uint64_t requestTimestamp = request.timestamp;
 
       //auto reqMap = artdaq_request_receiver_.GetRequests();
@@ -224,43 +199,22 @@ bool FelixHardwareInterface::FillFragment( std::unique_ptr<artdaq::Fragment>& fr
 	    << "Returning empty fragment for TS = " << requestTimestamp << ", seqID = " << requestSeqId;
 	}  
 	else {
+          std::ostringstream oss;
+          frag->print(oss); 
 	  DAQLogger::LogInfo("dune::FelixHardwareInterface::FillFragment") 
-	    << " NIOH returned OK for trigger TS " << requestTimestamp << " and seqID " << requestSeqId <<".";	  
+	    << " NIOH returned OK for trigger TS " << requestTimestamp << " and seqID " << requestSeqId <<"."
+            << " Size:" << frag->dataSizeBytes() << " Brief:" << oss.str(); 
 	}
         //artdaq_request_receiver_.RemoveRequest(requestSeqId);
       } else {
-        DAQLogger::LogError("dune::FelixHardwareInterface::FillFragment") 
-          << " Couldn't fullfil request for TS " << requestTimestamp << "!";
-        report = 2;
         return false;
       }
-
-      //if ( to_be_reordered_ ) {
-      //  bool reordered = reorder_thread_.reorderFragment( frag );
-      //  if ( reordered ) ...
 
       ++send_calls_;
       return true;
     }  
-
-/*
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wsign-compare"
-        auto usecs_since_start =
-      std::chrono::duration_cast<std::chrono::microseconds>(
-        std::chrono::high_resolution_clock::now() - start_time_).count();
-
-        long delta = (long)(usecs_between_sends_*send_calls_) - usecs_since_start;
-        TRACE( 15, "FelixHardwareInterface::FillBuffer send_calls=%d usecs_since_start=%ld delta=%ld"
-              , send_calls_, usecs_since_start, delta );
-    if (delta > 0)
-                usleep( delta );
-
-#pragma GCC diagnostic pop
-*/
   }
   return true; // should never reach this
-
 }
 
 // Pretend that the "BoardType" is some vendor-defined integer which
@@ -281,6 +235,10 @@ unsigned FelixHardwareInterface::MessageSize() const {
 
 unsigned FelixHardwareInterface::TriggerWindowSize() const {
   return window_;
+}
+
+unsigned FelixHardwareInterface::TriggerWindowOffset() const {
+  return window_offset_;
 }
 
 

@@ -74,6 +74,12 @@ namespace dune {
 
     bool getNext_(artdaq::FragmentPtrs & output) override;
 
+    // Wes, 18 July 2018
+    // Use a checkHWStatus_ function to run a thread on the side to
+    // check buffers and issue inhibits.
+    bool checkHWStatus_() override;
+
+
     // JCF, Dec-11-2015
 
     // startOfDatataking will determine whether or not we've begun

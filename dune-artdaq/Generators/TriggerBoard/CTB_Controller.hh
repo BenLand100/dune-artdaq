@@ -8,7 +8,7 @@
 #include <boost/array.hpp>
 
 #include "fhiclcpp/fwd.h"
-#include "dune_artdaq/dune-artdaq/Generators/TriggerBoard/content.h"
+#include "dune-raw-data/Overlays/CTB_content.h"
 
 
 
@@ -20,15 +20,19 @@ public:
   //  CTB_Controller( fhicl::ParameterSet const & ps ) ;
   virtual ~CTB_Controller() ;
 
-  void send_reset() ;
-  void send_start() ;
-  void send_stop() ;
-  void send_config( const std::string &host = "np04-srv-013",const uint16_t &port = 8992, unsigned long rollover = 50000 ) ;
+  // the methods rely on the return of send_message()
+  bool send_reset() ;
+  bool send_start() ;
+  bool send_stop() ;
+  bool send_config( const std::string & config ) ;
+  //void send_config( const std::string &host = "np04-srv-013",const uint16_t &port = 8992, unsigned long rollover = 50000 ) ;
   //void process_quit() ;
 
 protected:
 
-  void send_message( const std::string & msg ) ;
+  // this returns false if an error is detected in the response to the message.
+  // otherwise it returns true
+  bool send_message( const std::string & msg ) ;
 
 
 private:
@@ -41,10 +45,10 @@ private:
   std::atomic<bool> stop_req_;
   std::atomic<bool> is_running_;
   bool is_conf_;
-  //std::thread::id receiver_id_;
+
 
   // Aux vars
-  boost::array<char, 1024> _buf; 
+  
 
 };
 

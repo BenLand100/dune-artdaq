@@ -35,13 +35,14 @@ public:
   // Functionalities
   void StartDatataking();
   void StopDatataking();
-  bool FillFragment( std::unique_ptr<artdaq::Fragment>& frag, unsigned& report );
+  bool FillFragment( std::unique_ptr<artdaq::Fragment>& frag );
 
   // Info
   int SerialNumber() const;
   int BoardType() const;
   unsigned MessageSize() const;
   unsigned TriggerWindowSize() const;
+  unsigned TriggerWindowOffset() const;
 
   // Inner structures
   struct LinkParameters
@@ -72,6 +73,7 @@ private:
   bool zerocopy_;
   unsigned offset_;
   unsigned window_;
+  unsigned window_offset_;
   std::string requester_address_;
   std::string request_address_;
   unsigned short request_port_;
@@ -80,7 +82,7 @@ private:
   // NETIO & NIOH & RequestReceiver
   std::vector<LinkParameters> link_parameters_;
   NetioHandler& nioh_;
-  RequestReceiver request_receiver_;
+  RequestReceiver* request_receiver_;
   //artdaq::RequestReceiver artdaq_request_receiver_;
 
   // Statistics and internals
