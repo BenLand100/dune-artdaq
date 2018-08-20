@@ -58,7 +58,7 @@ bool dune::FelixReceiver::getNext_(artdaq::FragmentPtrs & frags) {
   if (should_stop()) { 
     DAQLogger::LogInfo("dune::FelixReceiver::getNext_") << "should_stop() issued! Check for busy links...";
     while ( netio_hardware_interface_->Busy() ) {
-      std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+      std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
     DAQLogger::LogInfo("dune::FelixReceiver::getNext_") << "No more busy links, returning...";
     return false;
@@ -84,7 +84,7 @@ bool dune::FelixReceiver::getNext_(artdaq::FragmentPtrs & frags) {
     bool done = false;
     while ( !done ){
       done = netio_hardware_interface_->FillFragment( fragptr );
-      if (should_stop()) { return false; } // check for stop and try again...
+      if (should_stop()) { return true; } // interrupt data capture and return; at next getNext stopping will be done
     }
 
     //uint64_t newTS = *(reinterpret_cast<const uint_fast64_t*>(fragptr->dataBeginBytes()+8));
@@ -92,11 +92,13 @@ bool dune::FelixReceiver::getNext_(artdaq::FragmentPtrs & frags) {
       << " TS: " << fragptr->timestamp();
 
     frags.emplace_back( std::move(fragptr) );
-    // RS -> Add metric manager...
+    /* RS -> Add metric manager...
     if(artdaq::Globals::metricMan_ != nullptr) {
       artdaq::Globals::metricMan_->sendMetric("Fragments Sent", ev_counter(), "fragments", 1, artdaq::MetricMode::Accumulate);
+      // artdaq::Globals::metricMan_->sendMetric("PTB Empty Buffer Low Water Mark", empty_buffer_low_mark_, "buffers", 1, artdaq::MetricMode::Accumulate);
       //artdaq::Globals::metricMan_->sendMetric("Fragment Count", num_frags_m_, "fragments", 1, artdaq::MetricMode::Accumulate);
     }
+    */
 
     num_frags_m_++;
     ev_counter_inc();

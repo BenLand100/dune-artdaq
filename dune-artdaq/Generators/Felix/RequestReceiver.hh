@@ -46,6 +46,8 @@ private:
   // Configuration
   std::string m_subscribeAddress;
 
+  TriggerInfo m_prevTrigger;
+
   // Request queue and thread
   RequestQueuePtr_t m_req;
   std::thread m_receiver;

@@ -9,6 +9,8 @@
 #include "Utilities.hh"
 #include "Types.hh"
 
+#include "ReordererFacility.hh"
+
 #include "netio/netio.hpp"
 
 #include <map>
@@ -50,12 +52,19 @@ public:
   //typedef folly::ProducerConsumerQueue<netio::message> MessageQueue;
   //typedef std::unique_ptr<MessageQueue> UniqueMessageQueue; 
  
-  void setFrameSize(size_t frameSize) { m_framesize = frameSize; }
-  void setTimeWindow(size_t timeWindow) { m_timeWindow = timeWindow; }
+  //Add recalculators - Thijs
+  void recalculateByteSizes();
+
+  void setFrameSize(size_t frameSize) { m_framesize = frameSize; recalculateByteSizes(); }
+  void setTimeWindow(size_t timeWindow) { m_timeWindow = timeWindow; recalculateByteSizes(); }
   void setWindowOffset(size_t windowOffset) { m_windowOffset = windowOffset; }
-  void setMessageSize(size_t messageSize) { m_msgsize = messageSize; }
+  void setMessageSize(size_t messageSize) { m_msgsize = messageSize; recalculateByteSizes(); }
   void setExtract(bool extract) { m_extract = extract; }
   void setVerbosity(bool v){ m_verbose = v; }
+
+  // Compression and reordering
+  void doReorder(bool doIt) { m_do_reorder = doIt; }
+  void doCompress(bool doIt) { m_do_compress = doIt; }
 
   // Functionalities
   // Setup context:
@@ -107,8 +116,19 @@ private:
   size_t m_windowOffset;
   bool m_extract;
   bool m_verbose;
-  bool m_do_reorder = false;
-  bool m_do_compress = false;
+
+  bool m_do_reorder;
+  bool m_do_compress;
+
+  //Precomputed bytesizes - Thijs
+  size_t m_timeWindowByteSizeIn;
+  size_t m_timeWindowByteSizeOut;
+  size_t m_timeWindowNumFrames;
+  size_t m_timeWindowNumMessages;
+
+  //Reordering type - Thijs - Doesn't exist anymore!
+  //ReordererType m_reord_type = ReordererType::TypeAVX2;
+  //ReordererFacility m_reorder_facility;
 
   // Custom types from Types.h
 

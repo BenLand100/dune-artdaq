@@ -2,6 +2,9 @@
 #include "NetioHandler.hh"
 #include "NetioWIBRecords.hh"
 #include "ReusableThread.hh"
+#include "FelixReorderer.hh"
+
+//#include <libxmlrpc.h>
 
 #include <ctime>
 #include <iomanip>
@@ -32,6 +35,8 @@ NetioHandler::NetioHandler()
     DAQLogger::LogInfo("NetioHandler::NetioHandler")
       << "NIOH setup complete. Background thread spawned.";
   }
+
+  //recalculateByteSizes();
 }
 
 NetioHandler::~NetioHandler() {
@@ -157,15 +162,21 @@ void NetioHandler::startTriggerMatchers(){
         }
         // read everything that is older than the TS
 	//DAQLogger::LogInfo("NetioHandler::startTriggerMatchers")
-	//  << "Jumping by " << timeTickDiff/framesPerMsg << " elements in data queue. Queue size is " << m_pcqs[tid]->sizeGuess();
-	m_pcqs[tid]->popXFront(timeTickDiff/framesPerMsg);
-
-	m_fragmentPtr->resizeBytes(m_msgsize*(2 + m_timeWindow/framesPerMsg));
+	//  << "Jumping by " << timeTickDiff/framesPerMsg << " elements in data queue. Queue size is " << m_pcqs[tid]->sizeGuess();       
+        m_pcqs[tid]->popXFront(timeTickDiff/framesPerMsg);
+         
+        m_fragmentPtr->resizeBytes( m_msgsize*(2 + m_timeWindow/framesPerMsg) );
         for(unsigned i=0; i<(m_timeWindow/framesPerMsg)+2; i++) //read out 21 messages
         {
           memcpy(m_fragmentPtr->dataBeginBytes()+m_msgsize*i,(char*)m_pcqs[tid]->frontPtr(), m_msgsize);
           m_pcqs[tid]->popFront();
-        }        
+        }
+
+        // Thijs -> Man whaaaaaaaaat!?!?!?!?!?!
+        //memcpy(m_fragmentPtr->dataBeginBytes(), (uint8_t*)m_pcqs[tid]->frontPtr(), m_timeWindowByteSizeIn);
+        //m_pcqs[tid]->popXFront(m_timeWindowNumMessages);        
+
+
       } else { // generate fake fragment for emulation
         if (m_triggerTimestamp == 0) {
           DAQLogger::LogInfo("NetioHandler::startTriggerMatchers") << "no trigger ";
@@ -364,5 +375,20 @@ bool NetioHandler::addChannel(uint64_t chn, uint16_t tag, std::string host, uint
   m_activeChannels++;
   return true;
 } 
+
+void NetioHandler::recalculateByteSizes()
+{
+    size_t framesPerMsg = m_msgsize / m_framesize;
+    m_timeWindowNumMessages = (m_timeWindow / framesPerMsg) + 2;
+
+    m_timeWindowByteSizeIn = m_msgsize * m_timeWindowNumMessages;
+    m_timeWindowNumFrames = m_timeWindowByteSizeIn / FelixReorderer::m_num_bytes_per_frame;
+
+    //if (m_do_reorder)
+    //    m_timeWindowByteSizeOut = m_timeWindowByteSizeIn 
+    //        * FelixReorderer::num_bytes_per_reord_frame / FelixReorderer::num_bytes_per_frame;
+    //else
+        m_timeWindowByteSizeOut = m_timeWindowByteSizeIn;
+}
 
 
