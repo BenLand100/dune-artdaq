@@ -88,6 +88,10 @@ int CTB_Receiver::_raw_receiver() {
     
     if ( read_bytes > 0 ) {
       
+      while (  _raw_buffer.write_available() < read_bytes && ! _stop_requested ) {
+	; // wait for the buffer to be have enoguh space
+      }
+
       _raw_buffer.push( tcp_data, read_bytes ) ;
       
     }
@@ -156,7 +160,7 @@ int CTB_Receiver::_word_receiver() {
       else if ( CTB_Receiver::IsFeedbackWord( temp_word ) ) {
 
 	ptb::content::word::feedback_t * feedback = reinterpret_cast<ptb::content::word::feedback_t*>( & temp_word.frame ) ;
-	dune::DAQLogger::LogWarning("CTB_Receiver") << "Feedback word: " << std::endl 
+	dune::DAQLogger::LogError("CTB_Receiver") << "Feedback word: " << std::endl 
 						    << " \t TS -> " << feedback -> timestamp << std::endl 
 						    << " \t Code -> " << feedback -> code << std::endl 
 						    << " \t Source -> " << feedback -> source << std::endl 	  
@@ -165,7 +169,9 @@ int CTB_Receiver::_word_receiver() {
 
 
       // push the word
-      _word_buffer.push( temp_word ) ;
+      while ( ! _word_buffer.push( temp_word ) && ! _stop_requested ) {
+	;  // try the push until success
+      }
       
       if ( _stop_requested ) break ;
       

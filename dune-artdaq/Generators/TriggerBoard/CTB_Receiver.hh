@@ -50,7 +50,7 @@ public:
 private:
 
   // the raw buffer can contain 4 times the maximum TCP package size, which is 4 KB 
-  boost::lockfree::spsc_queue< uint8_t , boost::lockfree::capacity<16384> > _raw_buffer ;  
+  boost::lockfree::spsc_queue< uint8_t , boost::lockfree::capacity<65536> > _raw_buffer ;  
 
   boost::lockfree::spsc_queue< ptb::content::word::word , boost::lockfree::capacity<4096> > _word_buffer ;  
   
