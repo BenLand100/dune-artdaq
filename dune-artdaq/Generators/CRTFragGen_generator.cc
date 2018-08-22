@@ -50,8 +50,9 @@ CRT::FragGen::FragGen(fhicl::ParameterSet const& ps) :
     exit(1);
   }
 
-  // TODO: read in baseline text file here.  (How do we know when it is
-  // ready if we aren't the process that runs the above command?)
+  // If we aren't the process that starts the backend, this will block
+  // until the baselines are available.
+  hardware_interface_->SetBaselines();
 
   // TODO: Start up the timing "pdtbutler" here once Dave gives me the
   // required magic words.

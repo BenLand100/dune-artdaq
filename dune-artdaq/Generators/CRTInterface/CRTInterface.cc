@@ -151,12 +151,13 @@ bool CRTInterface::try_open_file()
   // approach after C++11 or C++14 or thereabouts, the std::string destructor
   // is immediately called because the scope of a return value is only the
   // right hand side of the expression.
-  const std::string cplusplusiscrazy = find_wr_file(indir, usbnumber);
+  const std::string cplusplusiscrazy =
+    find_wr_file(indir + "/binary", usbnumber);
   const char * filename = cplusplusiscrazy.c_str();
 
   if(strlen(filename) == 0) return false;
 
-  const std::string fullfilename = indir + "/" + filename;
+  const std::string fullfilename = indir + "/binary/" + filename;
 
   printf("Found input file: %s\n", filename);
 
@@ -307,9 +308,6 @@ size_t CRTInterface::read_everything_from_file(char * cooked_data)
 
   if(bytesleft > 0) state |= CRT_DRAIN_BUFFER;
 
-  // TODO pass actual baselines in here
-  int baselines[64 /*maxModules*/][64 /*numChannels*/] = { { 0 } };
-
   return CRT::raw2cook(cooked_data, COOKEDBUFSIZE,
                        rawfromhardware, next_raw_byte, baselines);
 }
@@ -324,8 +322,6 @@ void CRTInterface::FillBuffer(char* cooked_data, size_t* bytes_ret)
     printf("%ld bytes in raw buffer before read.\n",
            next_raw_byte - rawfromhardware);
 
-    // TODO pass actual baselines in here
-    int baselines[64 /*maxModules*/][64 /*numChannels*/] = { { 0 } };
     if((*bytes_ret = CRT::raw2cook(cooked_data, COOKEDBUFSIZE,
                                    rawfromhardware, next_raw_byte, baselines)))
       return;
@@ -367,6 +363,78 @@ void CRTInterface::FillBuffer(char* cooked_data, size_t* bytes_ret)
   if(state != CRT_READ_ACTIVE && !try_open_file()) return;
 
   *bytes_ret = read_everything_from_file(cooked_data);
+}
+
+void CRTInterface::SetBaselines()
+{
+  FILE * in = NULL;
+  while(true){
+    errno = 0;
+    if(NULL == (in = fopen((indir + "/baselines.dat").c_str(), "r"))){
+      if(errno == ENOENT){
+        // File isn't there.  This probably means that we are not the process
+        // that started up the backend. We'll just wait for the backend to
+        // finish starting and the file to appear.
+        printf("Waiting for baseline file to appear\n");
+        sleep(1);
+      }
+      else{
+        perror("Can't open CRT baseline file");
+        _exit(1);
+      }
+    }
+  }
+
+  // Note that there is no check below that all channels are assigned a
+  // baseline.  Indeed, since we have fewer than 64 modules, not all elements
+  // of the array will be filled.  The check will be done in online monitoring.
+  // If a channel has no baseline set, nothing will be subtracted and the ADC
+  // values will be obviously shifted upwards from what's expected.
+  memset(baselines, 0, sizeof(baselines));
+
+  int module = 0, channel = 0, nhit = 0;
+  float fbaseline = 0, stddev = 0;
+  int nconverted = 0;
+  int line = 0;
+  while(EOF != (nconverted = fscanf(in, "%d,%d,%f,%f,%d",
+        &module, &channel, &fbaseline, &stddev, &nhit))){
+
+    line++; // This somewhat erroneously assumes that we consume
+            // one line per scanf.  In a pathological file with the right
+            // format, but bad data, and with fewer line breaks than expected,
+            // the reported line number will be wrong.
+
+    if(nconverted != 5){
+      fprintf(stderr, "Warning: skipping invalid line %d in baseline file",
+              line);
+      continue;
+    }
+
+    if(module >= 64){
+      fprintf(stderr, "Warning: skipping baseline with invalid module "
+              "number %d.  Valid range is 0-63\n", module);
+      continue;
+    }
+
+    if(channel >= 64){
+      fprintf(stderr, "Warning: skipping baseline with invalid channel "
+              "number %d.  Valid range is 0-63\n", module);
+      continue;
+    }
+
+    if(nhit < 100)
+      fprintf(stderr, "Warning: using baseline based on only %d hits\n", nhit);
+
+    if(stddev > 5.0)
+      fprintf(stderr, "Warning: using baseline with large error: "
+              "%f ADC counts\n", stddev);
+
+    baselines[module][channel] = int(fbaseline + 0.5);
+  }
+
+  errno = 0;
+  fclose(in);
+  perror("Can't close CRT baseline file");
 }
 
 void CRTInterface::AllocateReadoutBuffer(char** cooked_data)
