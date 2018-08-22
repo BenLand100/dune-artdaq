@@ -28,19 +28,21 @@ CRT::FragGen::FragGen(fhicl::ParameterSet const& ps) :
   , uppertime(0)
   , oldlowertime(0)
   , runstarttime(0)
+  , startbackend(ps.get<bool>("startbackend"))
   , timingXMLfilename(ps.get<std::string>("connections_file", "/nfs/sw/timing/dev/software/v4a3/timing-board-software/tests/etc/connections.xml"))
   , hardwarename(ps.get<std::string>("hardware_select", "PDTS_SECONDARY"))
 {
   hardware_interface_->AllocateReadoutBuffer(&readout_buffer_);
 
-  // Start up Camillo's DAQ here. A 5-10s startup time is acceptable here since
-  // the rest of the ProtoDUNE DAQ takes more than that.  Once we start
-  // up the backend, files will start piling up, but that's ok since
-  // we will have a cron job to clean them up, and we will always read
-  // only from the latest file when data is requested.
+  // If we are the designated process to do so, start up Camillo's backend DAQ
+  // here. A 5-10s startup time is acceptable since the rest of the ProtoDUNE
+  // DAQ takes more than that.  Once we start up the backend, files will start
+  // piling up, but that's ok since we will have a cron job to clean them up,
+  // and we will always read only from the latest file when data is requested.
   //
   // Yes, a call to system() is awful.  We could improve this.
-  if(system(("source /nfs/sw/crt/readout_linux/script/setup.sh; "
+  if(startbackend &&
+     system(("source /nfs/sw/crt/readout_linux/script/setup.sh; "
               "startallboards_shortbaseline.pl " + sqltable).c_str())){
     fprintf(stderr, "Failed to start up CRT backend\n");
     // Maybe instead of exiting here, I'm supposed to set a flag that
@@ -48,8 +50,8 @@ CRT::FragGen::FragGen(fhicl::ParameterSet const& ps) :
     exit(1);
   }
 
-  // We might even take baselines here and process them so that we can
-  // do pedestal subtraction online if that is desired.
+  // TODO: read in baseline text file here.  (How do we know when it is
+  // ready if we aren't the process that runs the above command?)
 
   // TODO: Start up the timing "pdtbutler" here once Dave gives me the
   // required magic words.
@@ -102,11 +104,18 @@ bool CRT::FragGen::getNext_(
   // Repair the CRT timestamp.  First get the lower bits that the CRT
   // provides.  Then check if they rolled over and increment our stored
   // upper bits if needed, and finally concatenate the two.
-  // XXX: does the CRT data come strictly in time order?  If not, this
-  // is broken.
+  // This works because the CRT data comes strictly time ordered in
+  // each USB stream [citation: Camillo 2018-08-03].
   uint64_t lowertime = 0;
   memcpy(&lowertime + 4, readout_buffer_ + 8, 4);
 
+  // This only works if the CRT takes data continuously.  If we don't
+  // see data for more than one 32-bit epoch, which is about 86 seconds,
+  // we'll fall out of sync.  With additional work this could be fixed,
+  // since we leave the backend DAQ running during pauses, but at the
+  // moment we skip over intermediate data when we unpause (we start
+  // with the most recent file from the backend, where files are about
+  // 5 seconds long).
   if(lowertime < oldlowertime) uppertime++;
 
   timestamp_ += (uint64_t)uppertime << 32;
@@ -118,7 +127,7 @@ bool CRT::FragGen::getNext_(
   memcpy(readout_buffer_ + 4, &uppertime, 4);
 
   std::unique_ptr<artdaq::Fragment> fragptr(
-    // See $ARTDAQ_DIR/Data/Fragment.hh
+    // See $ARTDAQ_CORE_DIR/artdaq-core/Data/Fragment.hh
     artdaq::Fragment::FragmentBytes(
       bytes_read,
       ev_counter(), // from base CommandableFragmentGenerator

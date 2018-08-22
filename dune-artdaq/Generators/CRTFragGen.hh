@@ -89,6 +89,9 @@ namespace CRT
     // retrieve and store this to repair the CRT's internal 32-bit time.
     uint64_t runstarttime;
 
+    // True if this process is the one designated to start the backend DAQ.
+    bool startbackend;
+
     std::string timingXMLfilename;
     std::string hardwarename;
   };

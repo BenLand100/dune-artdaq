@@ -17,6 +17,13 @@ fragment_receiver: {
   interface_type: 1
   indir: "/nfs/home/np04daq/crt/readout_linux/DataFolder/binary/"
 
+  # Exactly one artdaq process needs to start up the backend, but then
+  # all four can read the results
+  startbackend: true
+
+  # valid numbers 13, 14 (upstream), 3, 22 (downstream)
+  usbnumber: 13
+
   # Options are "crt_upstream", "crt_downstream", "online_normal_running"
   sqltable: "board_6_debug"
 }

@@ -32,6 +32,7 @@ static char * next_raw_byte = rawfromhardware;
 
 CRTInterface::CRTInterface(fhicl::ParameterSet const& ps) :
   indir(ps.get<std::string>("indir")),
+  usbnumber(ps.get<unsigned int>("usbnumber")),
   state(CRT_WAIT)
 {
 }
@@ -65,7 +66,8 @@ void CRTInterface::StopDatataking()
 // Return the name of the most recent file that we can read, without the
 // directory path.  If the backend DAQ started up a long time ago, there
 // will be a pile of files we never read, but that is OK.
-std::string find_wr_file(const std::string & indir)
+std::string find_wr_file(const std::string & indir,
+                         const unsigned int usbnumber)
 {
   DIR * dp = NULL;
   errno = 0;
@@ -90,13 +92,15 @@ std::string find_wr_file(const std::string & indir)
 
   struct dirent * de = NULL;
   while(errno = 0, (de = readdir(dp)) != NULL){
-    // Does this file name end in ".wr"?  Having ".wr" in the middle somewhere
-    // is not sufficient (and also should never happen).
+    char suffix[7];
+    snprintf(suffix, 7, "_%2d.wr", usbnumber);
+
+    // Does this file name end in "_NN.wr", where NN is the usbnumber?
     //
     // Ignore baseline (a.k.a. pedestal) files, which are also given ".wr"
-    // names while being written.  We could be even more restrictive and require
-    // that the file be named like <unix time stamp>_NN.wr, but it doesn't
-    // seem necessary.
+    // names while being written.  We could be even more restrictive and
+    // require that the file be named like <unix time stamp>_NN.wr, but it
+    // doesn't seem necessary.
     //
     // If somehow there ends up being a directory ending in ".wr", ignore it
     // (and all other directories).  I suppose all other types are fine, even
@@ -104,8 +108,8 @@ std::string find_wr_file(const std::string & indir)
     // to accept a named pipe, etc.
     if(de->d_type != DT_DIR &&
        strstr(de->d_name, "baseline") == NULL &&
-       strstr(de->d_name, ".wr") != NULL &&
-       strlen(strstr(de->d_name, ".wr")) == strlen(".wr")){
+       strstr(de->d_name, suffix) != NULL &&
+       strlen(strstr(de->d_name, suffix)) == strlen(suffix)){
       struct stat thestat;
 
       if(-1 == stat((indir + de->d_name).c_str(), &thestat)){
@@ -147,7 +151,7 @@ bool CRTInterface::try_open_file()
   // approach after C++11 or C++14 or thereabouts, the std::string destructor
   // is immediately called because the scope of a return value is only the
   // right hand side of the expression.
-  const std::string cplusplusiscrazy = find_wr_file(indir);
+  const std::string cplusplusiscrazy = find_wr_file(indir, usbnumber);
   const char * filename = cplusplusiscrazy.c_str();
 
   if(strlen(filename) == 0) return false;

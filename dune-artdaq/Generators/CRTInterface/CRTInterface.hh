@@ -77,6 +77,10 @@ private:
   // path.
   std::string indir;
 
+  // One of {3, 13, 14, 22}, each of which is a USB stream with 8 modules
+  // on it.
+  unsigned int usbnumber;
+
   // State: whether we are reading an input file, waiting for one, etc.
   // bitmask of CRT_* defined above
   unsigned int state;
