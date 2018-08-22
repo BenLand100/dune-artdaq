@@ -4,6 +4,8 @@
 
 #include "canvas/Utilities/Exception.h"
 
+#include "dune-raw-data/Overlays/FragmentType.hh"
+
 #include "artdaq/Application/GeneratorMacros.hh"
 #include "artdaq-core/Utilities/SimpleLookupPolicy.hh"
 
@@ -134,8 +136,7 @@ bool CRT::FragGen::getNext_(
       ev_counter(), // from base CommandableFragmentGenerator
       fragment_id(), // ditto
 
-      // TODO: Needs to be updated to work with the rest of ProtoDUNE-SP
-      artdaq::Fragment::FirstUserFragmentType,
+      dune::detail::CRT,
 
       0, // metadata.  We have none.
 
