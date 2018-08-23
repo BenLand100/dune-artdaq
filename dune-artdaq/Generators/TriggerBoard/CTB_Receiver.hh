@@ -43,6 +43,7 @@ public:
 			     const std::chrono::minutes & interval ) ; 
 
   bool stop() ; 
+  bool start() ;
 
   static bool IsTSWord( const ptb::content::word::word & w ) noexcept ;
   static bool IsFeedbackWord( const ptb::content::word::word & w ) noexcept ;

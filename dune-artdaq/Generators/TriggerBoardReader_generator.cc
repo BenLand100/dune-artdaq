@@ -48,7 +48,7 @@ dune::TriggerBoardReader::TriggerBoardReader(fhicl::ParameterSet const & ps)
 
   _max_words_per_frag = ps.get<unsigned int>( "max_words_per_frag", 3280 ) ;
 
-  _max_frags_per_call = ps.get<unsigned int>( "max_frags_per_call", 10 ) ;
+  _max_frags_per_call = ps.get<unsigned int>( "max_frags_per_call", 1 ) ;
   dune::DAQLogger::LogDebug( "TriggerBoardGenerator") << "Sending at most " << _max_frags_per_call << " fragments per getNext_ call " ;
 
 
@@ -237,11 +237,15 @@ artdaq::FragmentPtr dune::TriggerBoardReader::CreateFragment() {
 
 void dune::TriggerBoardReader::start() {
 
+  _receiver -> start() ;
+
   _run_controller -> send_start() ;
 
 }
 
 void dune::TriggerBoardReader::stop() {
+
+  _receiver -> stop() ;
 
   _run_controller -> send_stop() ;
 
