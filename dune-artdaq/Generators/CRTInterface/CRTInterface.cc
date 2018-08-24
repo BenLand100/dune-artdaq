@@ -114,6 +114,7 @@ std::string find_wr_file(const std::string & indir,
 
       if(-1 == stat((indir + de->d_name).c_str(), &thestat)){
         perror("find_wr_file stat");
+        fprintf(stderr, "Couldn't get timestamp of %s\n", (indir + de->d_name).c_str());
         _exit(1);
       }
 

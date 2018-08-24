@@ -47,8 +47,9 @@ CRT::FragGen::FragGen(fhicl::ParameterSet const& ps) :
      system(("source /nfs/sw/crt/readout_linux/script/setup.sh; "
               "startallboards_shortbaseline.pl " + sqltable).c_str())){
     fprintf(stderr, "Failed to start up CRT backend\n");
-    // Maybe instead of exiting here, I'm supposed to set a flag that
-    // causes the next call to getNext_ to return false.
+    // TODO: Maybe instead of exiting here, I'm supposed to set a flag that
+    // causes the next call to getNext_ to return false.  In general, I don't
+    // know how one is supposed to respond to errors inside artdaq.
     exit(1);
   }
 
