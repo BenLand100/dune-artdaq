@@ -153,7 +153,7 @@ bool CRTInterface::try_open_file()
   // is immediately called because the scope of a return value is only the
   // right hand side of the expression.
   const std::string cplusplusiscrazy =
-    find_wr_file(indir + "/binary", usbnumber);
+    find_wr_file(indir + "/binary/", usbnumber);
   const char * filename = cplusplusiscrazy.c_str();
 
   if(strlen(filename) == 0) return false;
