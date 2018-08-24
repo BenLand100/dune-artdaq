@@ -157,23 +157,30 @@ bool CRT::FragGen::getNext_(
 
   ev_counter_inc(); // from base CommandableFragmentGenerator
 
+  // XXX debugging
+  printf("CRT getNext_ is returning with hits from a module\n");
+
   return true;
 }
 
 void CRT::FragGen::getRunStartTime()
 {
+#if 0
   std::string filepath = "file://" + timingXMLfilename;
   uhal::ConnectionManager timeConnMan(filepath);
   uhal::HwInterface timinghw(timeConnMan.getDevice(hardwarename));
 
   uhal::ValWord<uint32_t> starthi =
-    timinghw.getNode("master.global.version" /* TODO: read right two registers */).read();
+    timinghw.getNode("master_top.master.tstamp.ctr" /* TODO: read right two registers */).read();
   timinghw.dispatch();
   uhal::ValWord<uint32_t> startlo =
-    timinghw.getNode("master.global.version").read();
+    timinghw.getNode("master_top.master.tstamp.ctr").read();
   timinghw.dispatch();
 
   runstarttime = ((uint64_t)starthi << 32) + startlo;
+#endif
+
+  runstarttime = 0;
 }
 
 void CRT::FragGen::start()

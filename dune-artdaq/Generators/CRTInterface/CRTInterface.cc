@@ -368,6 +368,16 @@ void CRTInterface::FillBuffer(char* cooked_data, size_t* bytes_ret)
 
 void CRTInterface::SetBaselines()
 {
+  // Note that there is no check below that all channels are assigned a
+  // baseline.  Indeed, since we have fewer than 64 modules, not all elements
+  // of the array will be filled.  The check will be done in online monitoring.
+  // If a channel has no baseline set, nothing will be subtracted and the ADC
+  // values will be obviously shifted upwards from what's expected.
+  memset(baselines, 0, sizeof(baselines));
+
+  // XXX baseline data file is not yet named or formatted as the below code expects
+  return;
+
   FILE * in = NULL;
   while(true){
     errno = 0;
@@ -385,13 +395,6 @@ void CRTInterface::SetBaselines()
       }
     }
   }
-
-  // Note that there is no check below that all channels are assigned a
-  // baseline.  Indeed, since we have fewer than 64 modules, not all elements
-  // of the array will be filled.  The check will be done in online monitoring.
-  // If a channel has no baseline set, nothing will be subtracted and the ADC
-  // values will be obviously shifted upwards from what's expected.
-  memset(baselines, 0, sizeof(baselines));
 
   int module = 0, channel = 0, nhit = 0;
   float fbaseline = 0, stddev = 0;
