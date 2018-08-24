@@ -41,17 +41,19 @@ namespace dune {
     void stop() override;
     void stopNoMutex() override {}
 
+    // utilities
+    artdaq::FragmentPtr CreateFragment() ;
+
     std::unique_ptr<CTB_Controller> _run_controller ; 
     std::unique_ptr<CTB_Receiver>   _receiver ; 
 
     unsigned int _group_size ;
+    unsigned int _max_words_per_frag ;    
+
+    unsigned int _max_frags_per_call ;
+
     bool _has_last_TS = false ;
     artdaq::Fragment::timestamp_t _last_timestamp = artdaq::Fragment::InvalidTimestamp ;
-
-    // buffer_ points to the buffer which the hardware interface will
-    // fill. Notice that it's a raw pointer rather than a smart
-    // pointer as the API to ToyHardwareInterface was chosen to be a
-    // C++03-style API for greater realism
 
     FragmentType fragment_type_;
     bool throw_exception_;

@@ -4,10 +4,13 @@
 #include "dune-raw-data/Overlays/FragmentType.hh"
 #include "ProducerConsumerQueue.hh"
 #include "ReusableThread.hh"
-#include "NetioSubscriber.hh"
+//#include "NetioSubscriber.hh"
 #include "NetioWIBRecords.hh"
 #include "Utilities.hh"
 #include "Types.hh"
+
+#define AVX
+#include "FelixReordererFacility.hh"
 
 #include "netio/netio.hpp"
 
@@ -50,9 +53,13 @@ public:
   //typedef folly::ProducerConsumerQueue<netio::message> MessageQueue;
   //typedef std::unique_ptr<MessageQueue> UniqueMessageQueue; 
  
-  void setFrameSize(size_t frameSize) { m_framesize = frameSize; }
-  void setTimeWindow(size_t timeWindow) { m_timeWindow = timeWindow; }
-  void setMessageSize(size_t messageSize) { m_msgsize = messageSize; }
+  //Add recalculators - Thijs
+  void recalculateByteSizes();
+
+  void setFrameSize(size_t frameSize) { m_framesize = frameSize; recalculateByteSizes(); }
+  void setTimeWindow(size_t timeWindow) { m_timeWindow = timeWindow; recalculateByteSizes(); }
+  void setWindowOffset(size_t windowOffset) { m_windowOffset = windowOffset; }
+  void setMessageSize(size_t messageSize) { m_msgsize = messageSize; recalculateByteSizes(); }
   void setExtract(bool extract) { m_extract = extract; }
   void setVerbosity(bool v){ m_verbose = v; }
 
@@ -90,6 +97,8 @@ private:
   const uint_fast64_t m_tickdist=25; 
 
   // NETIO
+  std::string m_host;
+  uint16_t m_port;
   netio::context * m_context; // context
   std::thread m_netio_bg_thread; 
   std::map<uint64_t, netio::subscribe_socket*> m_sub_sockets; // subscribe sockets.
@@ -101,8 +110,20 @@ private:
   size_t m_framesize;
   size_t m_msgsize;
   size_t m_timeWindow;
+  size_t m_windowOffset;
   bool m_extract;
   bool m_verbose;
+  bool m_do_reorder = false;
+  bool m_do_compress = false;
+
+  //Precomputed bytesizes - Thijs
+  size_t m_timeWindowByteSizeIn;
+  size_t m_timeWindowByteSizeOut;
+  size_t m_timeWindowNumFrames;
+  size_t m_timeWindowNumMessages;
+
+  //Reordering type - Thijs
+  ReordererType m_reord_type = ReordererType::TypeAVX2;
 
   // Custom types from Types.h
 
@@ -115,7 +136,7 @@ private:
 
   // Threads
   std::vector<std::thread> m_netioSubscribers;
-  std::vector<std::unique_ptr<NetioSubscriber>> m_subscribers;
+  //std::vector<std::unique_ptr<NetioSubscriber>> m_subscribers;
   std::vector<std::unique_ptr<ReusableThread>>  m_extractors;
   std::vector<std::function<void()>> m_functors; 
 

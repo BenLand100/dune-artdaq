@@ -78,12 +78,20 @@ endtime=$( date +%s )
 echo "Copy took "$(( endtime - begintime ))" seconds; will now attempt to rebuild new installation"
 
 cd $new_installation
-sed -r -i 's#'$orig_installation'#'$new_installation'#g' $new_installation/setupDUNEARTDAQ*
 
-#. $new_installation/setupDUNEARTDAQ_forBuilding
+orig_installation_subdir=$( basename $orig_installation )
+new_installation_subdir=$( basename $new_installation )
+sed -r -i 's#'$orig_installation_subdir'#'$new_installation_subdir'#g' $new_installation/setupDUNEARTDAQ*
+
+sed -r -i 's#'$orig_installation'#'$new_installation'#g' $new_installation/setupDUNEARTDAQ*
 
 rm -rf $new_installation/localProducts_*
 rm -rf $new_installation/build_slf7.x86_64
+
+if ! [[ -n $( diff $orig_installation/setupDUNEARTDAQ_forBuilding $new_installation/setupDUNEARTDAQ_forBuilding ) ]] ; then
+    echo "$orig_installation/setupDUNEARTDAQ_forBuilding and $new_installation/setupDUNEARTDAQ_forBuilding are identical, please contact John Freeman (jcfreeman2@gmail.com) if you have any questions. Exiting..." >&2
+    exit 6
+fi
 
 source /nfs/sw/artdaq/products/setup
 
