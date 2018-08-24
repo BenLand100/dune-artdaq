@@ -1,7 +1,7 @@
 #execute_process(COMMAND xml2-config --libs OUTPUT_VARIABLE LIBXML2_LIBS)
 #MESSAGE( STATUS "LIBXML2_LIBS: " ${LIBXML2_LIBS} "<<<")
 
-art_make(
+art_make(LIBRARY_NAME dune-artdaq_Generators_RceSupportLib
 	LIB_LIBRARIES
 	${CANVAS}
 	${FHICLCPP}
@@ -14,4 +14,6 @@ art_make(
 	-lpthread
 	)
 	
+install_headers()
+
  add_subdirectory(tools)

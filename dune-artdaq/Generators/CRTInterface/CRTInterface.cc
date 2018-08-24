@@ -114,6 +114,7 @@ std::string find_wr_file(const std::string & indir,
 
       if(-1 == stat((indir + de->d_name).c_str(), &thestat)){
         perror("find_wr_file stat");
+        fprintf(stderr, "Couldn't get timestamp of %s\n", (indir + de->d_name).c_str());
         _exit(1);
       }
 
@@ -152,7 +153,7 @@ bool CRTInterface::try_open_file()
   // is immediately called because the scope of a return value is only the
   // right hand side of the expression.
   const std::string cplusplusiscrazy =
-    find_wr_file(indir + "/binary", usbnumber);
+    find_wr_file(indir + "/binary/", usbnumber);
   const char * filename = cplusplusiscrazy.c_str();
 
   if(strlen(filename) == 0) return false;
@@ -367,6 +368,16 @@ void CRTInterface::FillBuffer(char* cooked_data, size_t* bytes_ret)
 
 void CRTInterface::SetBaselines()
 {
+  // Note that there is no check below that all channels are assigned a
+  // baseline.  Indeed, since we have fewer than 64 modules, not all elements
+  // of the array will be filled.  The check will be done in online monitoring.
+  // If a channel has no baseline set, nothing will be subtracted and the ADC
+  // values will be obviously shifted upwards from what's expected.
+  memset(baselines, 0, sizeof(baselines));
+
+  // XXX baseline data file is not yet named or formatted as the below code expects
+  return;
+
   FILE * in = NULL;
   while(true){
     errno = 0;
@@ -384,13 +395,6 @@ void CRTInterface::SetBaselines()
       }
     }
   }
-
-  // Note that there is no check below that all channels are assigned a
-  // baseline.  Indeed, since we have fewer than 64 modules, not all elements
-  // of the array will be filled.  The check will be done in online monitoring.
-  // If a channel has no baseline set, nothing will be subtracted and the ADC
-  // values will be obviously shifted upwards from what's expected.
-  memset(baselines, 0, sizeof(baselines));
 
   int module = 0, channel = 0, nhit = 0;
   float fbaseline = 0, stddev = 0;

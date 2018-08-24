@@ -47,8 +47,9 @@ CRT::FragGen::FragGen(fhicl::ParameterSet const& ps) :
      system(("source /nfs/sw/crt/readout_linux/script/setup.sh; "
               "startallboards_shortbaseline.pl " + sqltable).c_str())){
     fprintf(stderr, "Failed to start up CRT backend\n");
-    // Maybe instead of exiting here, I'm supposed to set a flag that
-    // causes the next call to getNext_ to return false.
+    // TODO: Maybe instead of exiting here, I'm supposed to set a flag that
+    // causes the next call to getNext_ to return false.  In general, I don't
+    // know how one is supposed to respond to errors inside artdaq.
     exit(1);
   }
 
@@ -82,7 +83,11 @@ CRT::FragGen::~FragGen()
 bool CRT::FragGen::getNext_(
   std::list< std::unique_ptr<artdaq::Fragment> > & frags)
 {
-  if(should_stop()) return false;
+  if(should_stop()){
+    // XXX debugging
+    printf("CRT getNext_ returning because should_stop() is true\n");
+    return false;
+  }
 
   std::size_t bytes_read = 0;
   hardware_interface_->FillBuffer(readout_buffer_, &bytes_read);
@@ -90,6 +95,9 @@ bool CRT::FragGen::getNext_(
   if(bytes_read == 0){
     // Pause for a little bit if we didn't get anything to keep load down.
     usleep(1000);
+
+    // XXX debugging
+    printf("CRT getNext_ is returning with no data\n");
     return true; // this means "keep taking data"
   }
 
@@ -150,17 +158,32 @@ bool CRT::FragGen::getNext_(
 
   memcpy(frags.back()->dataBeginBytes(), readout_buffer_, bytes_read);
 
+  // JCF, Aug-24-2018: "dumb_fragment", below, was my attempt to
+  // create a very basic artdaq fragment of type CRT just to determine
+  // if I could get it to go through artdaqDriver. We can probably
+  // delete the dumb_fragment code if it's more than a couple of days
+  // after Aug-24-2018...
+
+  // std::unique_ptr<artdaq::Fragment> dumb_fragment( new artdaq::Fragment(ev_counter(), fragment_id(), 
+  // 									dune::detail::CRT));
+
+  // frags.emplace_back(std::move(dumb_fragment));
+
   if (metricMan /* What is this? */ != nullptr)
     metricMan->sendMetric("Fragments Sent", ev_counter(), "Events", 3 /* ? */,
         artdaq::MetricMode::LastPoint);
 
   ev_counter_inc(); // from base CommandableFragmentGenerator
 
+  // XXX debugging
+  printf("CRT getNext_ is returning with hits from a module\n");
+
   return true;
 }
 
 void CRT::FragGen::getRunStartTime()
 {
+#if 0
   std::string filepath = "file://" + timingXMLfilename;
   uhal::ConnectionManager timeConnMan(filepath);
   uhal::HwInterface timinghw(timeConnMan.getDevice(hardwarename));
@@ -173,6 +196,9 @@ void CRT::FragGen::getRunStartTime()
   timinghw.dispatch();
 
   runstarttime = ((uint64_t)starthi << 32) + startlo;
+#endif
+
+  runstarttime = 0;
 }
 
 void CRT::FragGen::start()

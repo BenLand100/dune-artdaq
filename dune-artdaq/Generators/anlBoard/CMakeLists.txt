@@ -1,6 +1,10 @@
-art_make(
+
+MESSAGE(INFO " ftd2xx_LIBRARY_DIR " ${ftd2xx_LIBRARY_DIR})
+MESSAGE(INFO " ftd2xx_INCLUDE_DIR " ${ftd2xx_INCLUDE_DIR})
+
+art_make(LIBRARY_NAME dune-artdaq_Generators_anlBoard
         LIB_LIBRARIES
-	${CMAKE_CURRENT_SOURCE_DIR}/lib/libftd2xx.so
+	${ftd2xx_LIBRARY_DIR}/libftd2xx.so
 	${CANVAS}
         ${FHICLCPP}
         ${CETLIB}
@@ -8,3 +12,5 @@ art_make(
  	dune-artdaq_DAQLogger
         -lpthread
         )
+
+install_headers()

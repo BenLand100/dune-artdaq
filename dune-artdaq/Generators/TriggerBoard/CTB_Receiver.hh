@@ -13,7 +13,7 @@
 #include <boost/lockfree/spsc_queue.hpp>
 
 #include "fhiclcpp/fwd.h"
-#include "dune_artdaq/dune-artdaq/Generators/TriggerBoard/content.h"
+#include "dune-artdaq/Generators/TriggerBoard/content.h"
 
 /*
 
@@ -45,6 +45,7 @@ public:
   bool stop() ; 
 
   static bool IsTSWord( const ptb::content::word::word & w ) noexcept ;
+  static bool IsFeedbackWord( const ptb::content::word::word & w ) noexcept ;
 
 private:
 

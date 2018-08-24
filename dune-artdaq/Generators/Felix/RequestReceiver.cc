@@ -7,63 +7,38 @@
 
 #include "dune-artdaq/DAQLogger/DAQLogger.hh"
 #include "RequestReceiver.hh"
+#include <cstring>
+//using namespace boost::asio;
 
-using namespace boost::asio;
-
-RequestReceiver::RequestReceiver() : 
-  m_socket(m_io_service),
-  m_listenAddress(""),
-  m_multicastAddress(""),
-  m_multicastPort(0),
-  m_max_requests(0),
+RequestReceiver::RequestReceiver(std::string & addr) : 
+  m_subscribeAddress(addr),
   m_stop_thread{ false }
 {
+m_req = std::make_unique<RequestQueue_t>(200);
 }
+
 
 RequestReceiver::~RequestReceiver() {
   // close socket
   m_req.reset(nullptr);
-  m_socket.close();
-}
-
-bool RequestReceiver::setup(const std::string& listenAddress,
-                            const std::string& multicastAddress,
-                            const unsigned short& multicastPort,
-                            const unsigned short& requestSize ) {
-  m_listenAddress = listenAddress;
-  m_multicastAddress = multicastAddress;
-  m_multicastPort = multicastPort;
-  m_max_requests = requestSize;
-  m_req = std::make_unique<RequestQueue_t>(m_max_requests);
-
-  dune::DAQLogger::LogInfo("RequestReceiver::setup")
-      << "Attempt to setup. ListenAddress:" << listenAddress 
-      << " MulticastAddress:" << multicastAddress << " MulticastPort:" << multicastPort;
-
-  // Create the socket
-  try {
-    ip::udp::endpoint listen_endpoint( ip::udp::v4(), m_multicastPort );
-    m_socket.open(listen_endpoint.protocol());
-    // TODO not sure this is necessary
-    m_socket.set_option(ip::udp::socket::reuse_address(true));
-    m_socket.bind(listen_endpoint);
-
-    // Join the multicast group
-    m_socket.set_option( ip::multicast::join_group(
-      ip::address::from_string(m_multicastAddress).to_v4(),
-      ip::address::from_string(m_listenAddress).to_v4())
-    );
-    dune::DAQLogger::LogInfo("RequestReceiver::setup")
-      << "Successfully joined to multicast group!";
-    return true;
-  } catch (...) {
-    dune::DAQLogger::LogError("RequestReceiver::setup")
-      << "Failed joined to multicast group!";
-    return false;
-  }
 }
 
 void RequestReceiver::start() {
+  // Create the zmq context and socket
+  m_ctx = zmq_ctx_new();
+  m_socket = zmq_socket(m_ctx, ZMQ_SUB);
+
+  // Connect the socket to the other end, and subscribe to all the messages on it
+  int zrc = zmq_connect(m_socket, m_subscribeAddress.c_str());
+  if (zrc!=0) {
+    dune::DAQLogger::LogWarning("RequestReceiver::start")
+      << "ZMQ connect return code is not zero, but: " << zrc;   
+  } else {
+     dune::DAQLogger::LogInfo("RequestReceiver::start")
+      << "Connected to ZMQ socket successfully!";
+  }
+  zmq_setsockopt(m_socket, ZMQ_SUBSCRIBE, "", 0);
+
   m_stop_thread = false;
   m_receiver = std::thread(&RequestReceiver::thread, this);
   set_thread_name(m_receiver, "req-recv", 1);
@@ -80,60 +55,84 @@ void RequestReceiver::stop() {
   }
   dune::DAQLogger::LogInfo("RequestReceiver::stop")
       << "Request receiver thread joined! Request queue flushed.";
+
+  zmq_close(m_socket);
+  zmq_ctx_destroy(m_ctx);
+
 }
 
-bool RequestReceiver::requestAvailable() { 
-  return !m_req->isEmpty();
+TriggerInfo RequestReceiver::getNextRequest() {
+
+  TriggerInfo request;
+  // Based on queue check; return a request if there is a valid one, else return a dummy request if 2 seconds have elapsed.
+  auto startTime=std::chrono::system_clock::now();
+  auto now=std::chrono::system_clock::now();
+  while ( m_req->isEmpty() && (now - startTime) < std::chrono::seconds(2) ) {
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    now=std::chrono::system_clock::now();
+  } 
+  if ( m_req->isEmpty()) {
+    request.seqID = 0;
+    request.timestamp = 0;
+  }
+  else {
+    m_req->read( std::ref(request));
+  }
+
+  return request;
+}
+// Are there more message parts waiting on the socket?
+bool RequestReceiver::rcvMore()
+{
+  int rcvmore;
+  size_t option_len;
+  zmq_getsockopt(m_socket, ZMQ_RCVMORE, &rcvmore, &option_len);
+  return rcvmore;
 }
 
-bool RequestReceiver::getNextRequest(artdaq::detail::RequestPacket& request) {
-  // Based on queue check, return true or false, and set request.
-  if ( m_req->isEmpty() ) {
-    return false; 
-  } else {
-    m_req->read( std::ref(request) );
-    return true;
+std::vector<uint64_t> RequestReceiver::getVals()
+{
+  std::vector<uint64_t> ret;
+  uint64_t val;
+  int rc=zmq_recv(m_socket, &val, sizeof(val), ZMQ_DONTWAIT);
+
+  // Did we get anything on the socket?
+  if(rc==-1 && errno==EAGAIN){
+    // No, so return empty vector
+    return ret;
+  }
+  else if(rc==-1){
+    // Some other error. Print it and return empty vector
+    dune::DAQLogger::LogError("RequestReceiver::getVals") << "Error in zmq_recv(): " << strerror(errno);
+    return ret;
+  }
+  else{
+    // Yes, so receive the whole message
+    ret.push_back(val);
+    while(rcvMore()){
+      zmq_recv(m_socket, &val, sizeof(val), 0);
+      ret.push_back(val);
+    }
+    return ret;
   }
 }
+
 
 void RequestReceiver::thread(){
-  // Thread locals.
-  unsigned bytes=0;
-  char* dataBuff= new char[1512];
-  bool isHeader=true;
-  unsigned packets=0;
-  uint64_t lastSequence=0;
-
+  dune::DAQLogger::LogInfo("RequestReceiver::thread") << "Starting listening loop";
   // Spin while stop issued.
   while(!m_stop_thread){
-
-    int received = m_socket.receive_from(boost::asio::buffer(dataBuff, 1500), m_remote_endpoint);
-    bytes += received;
-
-    if( isHeader ){ // header
-
-      artdaq::detail::RequestHeader* reqMess = reinterpret_cast<artdaq::detail::RequestHeader*>(dataBuff);
-      if(reqMess->isValid()){
-        packets = reqMess->packet_count;
-        isHeader=false;
-      }
-    } else { // not header
-      for( unsigned i=0; i<packets; i++ ) {
-        artdaq::detail::RequestPacket* reqPack = reinterpret_cast<artdaq::detail::RequestPacket*>(
-          dataBuff+i*sizeof(artdaq::detail::RequestPacket));
-        if( reqPack->isValid() ) {
-          if( lastSequence < reqPack->sequence_id ) { 
-            lastSequence = reqPack->sequence_id;
-            m_req->write( artdaq::detail::RequestPacket(*reqPack) );
-          }
-        }
-      }
-      isHeader=true;
+    std::vector<uint64_t> vals=getVals();
+    if(vals.empty()){
+      // There was no message waiting.
+      std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
-
+    else {
+      TriggerInfo t;
+      t.seqID = vals[0];
+      t.timestamp = vals[5];
+      m_req->write(t);
+    }
   }
-
-  // RS -> FREE UP STUFF!!!!
-  delete dataBuff;
 }
 

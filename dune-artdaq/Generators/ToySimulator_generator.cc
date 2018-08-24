@@ -32,7 +32,8 @@ dune::ToySimulator::ToySimulator(fhicl::ParameterSet const & ps)
   timestampScale_(ps.get<int>("timestamp_scale_factor", 1)),
   readout_buffer_(nullptr),
   fragment_type_(static_cast<decltype(fragment_type_)>( artdaq::Fragment::InvalidFragmentType )),
-  throw_exception_(ps.get<bool>("throw_exception",false))
+  throw_exception_(ps.get<bool>("throw_exception",false)),
+  status_pub_(app_name,ps)
 {
   hardware_interface_->AllocateReadoutBuffer(&readout_buffer_);   
 
@@ -49,10 +50,44 @@ dune::ToySimulator::ToySimulator(fhicl::ParameterSet const & ps)
   default:
     throw cet::exception("ToySimulator") << "Unable to determine board type supplied by hardware";
   }
+
+  inhibit_report_freq_ms_ = ps.get<int>("InhibitReportFreq_ms",-1);
+  if(inhibit_report_freq_ms_>0){
+
+    //bind the publisher on configuration
+    status_pub_.BindPublisher();
+    prev_ih_report_time_ = std::chrono::high_resolution_clock::now();
+    inhibit_rndm_mod_ = ps.get<int>("InhibitRandomMod",-1);
+  }
+
 }
 
 dune::ToySimulator::~ToySimulator() {
   hardware_interface_->FreeReadoutBuffer(readout_buffer_);
+}
+
+//hardware status function that will issue inhibits
+bool dune::ToySimulator::checkHWStatus_() {
+
+  if(inhibit_report_freq_ms_>0){
+
+    if(std::chrono::duration_cast<std::chrono::milliseconds>
+       (std::chrono::high_resolution_clock::now() - prev_ih_report_time_).count() 
+       > inhibit_report_freq_ms_)
+      {
+	if(inhibit_rndm_mod_<=0)
+	  status_pub_.PublishGoodStatus("ToyStatus");
+	else if(rd_()%inhibit_rndm_mod_==0)
+	  status_pub_.PublishBadStatus("ToyStatus");
+	else
+	  status_pub_.PublishGoodStatus("ToyStatus");
+	
+	prev_ih_report_time_ = std::chrono::high_resolution_clock::now();
+      }
+  }
+
+  //always return true unless some fatal error
+  return true; 
 }
 
 bool dune::ToySimulator::getNext_(artdaq::FragmentPtrs & frags) {
