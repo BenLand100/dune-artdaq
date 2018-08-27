@@ -145,7 +145,7 @@ bool CRT::FragGen::getNext_(
   std::unique_ptr<artdaq::Fragment> fragptr = std::make_unique<artdaq::Fragment>(bytes_read);
   fragptr->setSequenceID( ev_counter() ); // ev_counter() from base CommandableFragmentGenerator
   fragptr->setFragmentID( fragment_id() ); // Ditto
-  fragptr->setFragmentType( dune::detail::CRT );
+  fragptr->setUserType( dune::detail::CRT );
   fragptr->setTimestamp( timestamp_ );
 
   // NOTE: we are always returning zero or one fragments, but we
