@@ -110,7 +110,7 @@ bool CRT::FragGen::getNext_(
   const std::size_t minsize = 4 + sizeof(timestamp_);
   if(bytes_read < 4 + sizeof(timestamp_)){
     TLOG(TLVL_WARNING, "CRT") << "Bad result with only " << bytes_read << " < " << minsize << " bytes from CRTInterface::FillBuffer.\n";
-    return false; // means "stop taking data"
+    throw cet::exception("CRT") << "Bad result with only " << bytes_read << " < " << minsize << " bytes from CRTInterface::FillBuffer.\n";
   }
 
   // Repair the CRT timestamp.  First get the lower bits that the CRT
@@ -138,19 +138,15 @@ bool CRT::FragGen::getNext_(
   // the same.
   memcpy(readout_buffer_ + 4, &uppertime, 4);
 
-  std::unique_ptr<artdaq::Fragment> fragptr(
-    // See $ARTDAQ_CORE_DIR/artdaq-core/Data/Fragment.hh
-    artdaq::Fragment::FragmentBytes(
-      bytes_read,
-      ev_counter(), // from base CommandableFragmentGenerator
-      fragment_id(), // ditto
+  // See $ARTDAQ_CORE_DIR/artdaq-core/Data/Fragment.hh, also the "The
+  // artdaq::Fragment interface" section of
+  // https://cdcvs.fnal.gov/redmine/projects/artdaq-demo/wiki/How_to_write_an_overlay_class
 
-      dune::detail::CRT,
-
-      0, // metadata.  We have none.
-
-      timestamp_
-  ));
+  std::unique_ptr<artdaq::Fragment> fragptr = std::make_unique<artdaq::Fragment>(bytes_read);
+  fragptr->setSequenceID( ev_counter() ); // ev_counter() from base CommandableFragmentGenerator
+  fragptr->setFragmentID( fragment_id() ); // Ditto
+  fragptr->SetFragmentType( dune::detail::CRT );
+  fragptr->SetTimestamp( timestamp_ );
 
   // NOTE: we are always returning zero or one fragments, but we
   // could return more at the cost of some complexity, maybe getting
@@ -159,16 +155,6 @@ bool CRT::FragGen::getNext_(
 
   memcpy(frags.back()->dataBeginBytes(), readout_buffer_, bytes_read);
 
-  // JCF, Aug-24-2018: "dumb_fragment", below, was my attempt to
-  // create a very basic artdaq fragment of type CRT just to determine
-  // if I could get it to go through artdaqDriver. We can probably
-  // delete the dumb_fragment code if it's more than a couple of days
-  // after Aug-24-2018...
-
-  // std::unique_ptr<artdaq::Fragment> dumb_fragment( new artdaq::Fragment(ev_counter(), fragment_id(), 
-  // 									dune::detail::CRT));
-
-  // frags.emplace_back(std::move(dumb_fragment));
 
   if (metricMan /* What is this? */ != nullptr)
     metricMan->sendMetric("Fragments Sent", ev_counter(), "Events", 3 /* ? */,
