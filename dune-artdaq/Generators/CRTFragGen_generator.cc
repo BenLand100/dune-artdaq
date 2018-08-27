@@ -21,6 +21,8 @@
 
 #include "uhal/uhal.hpp"
 
+#include "artdaq/DAQdata/Globals.hh"
+
 CRT::FragGen::FragGen(fhicl::ParameterSet const& ps) :
     CommandableFragmentGenerator(ps)
   , sqltable(ps.get<std::string>("sqltable", ""))
@@ -46,7 +48,7 @@ CRT::FragGen::FragGen(fhicl::ParameterSet const& ps) :
   if(startbackend &&
      system(("source /nfs/sw/crt/readout_linux/script/setup.sh; "
               "startallboards_shortbaseline.pl " + sqltable).c_str())){
-    fprintf(stderr, "Failed to start up CRT backend\n");
+    TLOG(TLVL_ERROR, "CRT") << "Failed to start up CRT backend\n";
     // TODO: Maybe instead of exiting here, I'm supposed to set a flag that
     // causes the next call to getNext_ to return false.  In general, I don't
     // know how one is supposed to respond to errors inside artdaq.
@@ -66,7 +68,7 @@ CRT::FragGen::~FragGen()
   // Stop the backend DAQ.
   if(system(("source /nfs/sw/crt/readout_linux/script/setup.sh; "
               "stopallboards.pl " + sqltable).c_str())){
-    fprintf(stderr, "Failed to start up CRT backend\n");
+    TLOG(TLVL_ERROR, "CRT") << "Failed to start up CRT backend\n";
     exit(1);
   }
 
@@ -85,7 +87,7 @@ bool CRT::FragGen::getNext_(
 {
   if(should_stop()){
     // XXX debugging
-    printf("CRT getNext_ returning because should_stop() is true\n");
+    TLOG(TLVL_INFO, "CRT") << "CRT getNext_ returning because should_stop() is true\n";
     return false;
   }
 
@@ -97,7 +99,7 @@ bool CRT::FragGen::getNext_(
     usleep(1000);
 
     // XXX debugging
-    printf("CRT getNext_ is returning with no data\n");
+    TLOG(TLVL_INFO, "CRT") << "CRT getNext_ is returning with no data\n";
     return true; // this means "keep taking data"
   }
 
@@ -107,8 +109,7 @@ bool CRT::FragGen::getNext_(
   // (1B), module number (2B) and timestamps (8B).
   const std::size_t minsize = 4 + sizeof(timestamp_);
   if(bytes_read < 4 + sizeof(timestamp_)){
-    fprintf(stderr, "Bad result with only %lu < %lu bytes from "
-            "CRTInterface::FillBuffer.\n", bytes_read, minsize);
+    TLOG(TLVL_WARNING, "CRT") << "Bad result with only " << bytes_read << " < " << minsize << " bytes from CRTInterface::FillBuffer.\n";
     return false; // means "stop taking data"
   }
 
@@ -176,7 +177,7 @@ bool CRT::FragGen::getNext_(
   ev_counter_inc(); // from base CommandableFragmentGenerator
 
   // XXX debugging
-  printf("CRT getNext_ is returning with hits from a module\n");
+  TLOG(TLVL_INFO, "CRT") << "CRT getNext_ is returning with hits from a module\n";
 
   return true;
 }
