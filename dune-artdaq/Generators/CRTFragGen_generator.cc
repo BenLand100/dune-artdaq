@@ -33,6 +33,7 @@ CRT::FragGen::FragGen(fhicl::ParameterSet const& ps) :
   , oldlowertime(0)
   , runstarttime(0)
   , startbackend(ps.get<bool>("startbackend"))
+                                                              // TODO: WRONG.  To be fixed later on 2018-08-27, hopefully
   , timingXMLfilename(ps.get<std::string>("connections_file", "/nfs/sw/timing/dev/software/v4a3/timing-board-software/tests/etc/connections.xml"))
   , hardwarename(ps.get<std::string>("hardware_select", "PDTS_SECONDARY"))
 {
@@ -59,8 +60,8 @@ CRT::FragGen::FragGen(fhicl::ParameterSet const& ps) :
   // until the baselines are available.
   hardware_interface_->SetBaselines();
 
-  // TODO: Start up the timing "pdtbutler" here once Dave gives me the
-  // required magic words.
+  // TODO: Start up the timing "pdtbutler" here once Alessandro gives me the
+  // required magic words later on 2018-08-27, we hope.
 }
 
 CRT::FragGen::~FragGen()
@@ -172,17 +173,25 @@ void CRT::FragGen::getRunStartTime()
 {
 #if 0
   std::string filepath = "file://" + timingXMLfilename;
-  uhal::ConnectionManager timeConnMan(filepath);
-  uhal::HwInterface timinghw(timeConnMan.getDevice(hardwarename));
+  static uhal::ConnectionManager timeConnMan(filepath);
+  static uhal::HwInterface timinghw(timeConnMan.getDevice(hardwarename));
 
-  uhal::ValWord<uint32_t> starthi =
-    timinghw.getNode("master_top.master.tstamp.ctr" /* TODO: read right two registers */).read();
+  uhal::ValWord<uint32_t> status = timinghw.getNode("endpoint0.csr.stat.ep_stat").read();
   timinghw.dispatch();
-  uhal::ValWord<uint32_t> startlo =
-    timinghw.getNode("master_top.master.tstamp.ctr").read();
+  if(status != 8){
+    fprintf(stderr, "CRT timing board in bad state, can't read run start time\n");
+    exit(1);
+  }
+
+  /* readBlock(2) read the register named and the next one that is contiguous
+     in memory, which is non-coincidentally the other bits we need.  The read
+     of both registers together is atomic. */
+  uhal::ValVector<uint32_t> runstarttimev = timinghw
+    .getNode("endpoint0.tstamp.ctr" /* TODO: read right register */)
+    .readBlock(2 /* number of 32-bit words read */);
   timinghw.dispatch();
 
-  runstarttime = ((uint64_t)starthi << 32) + startlo;
+  runstarttime = ((uint64_t)runstarttimev[1] << 32) + runstarttimev[0];
 #endif
 
   runstarttime = 0;
