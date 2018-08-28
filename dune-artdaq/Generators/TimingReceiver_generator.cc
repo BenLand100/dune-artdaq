@@ -134,7 +134,10 @@ dune::TimingReceiver::TimingReceiver(fhicl::ParameterSet const & ps):
     float lFrequency = ((uint32_t)fq) * 119.20928 / 1000000;
     DAQLogger::LogInfo(instance_name_) << "Measured timing master frequency: " << lFrequency << " Hz";
 
-    if ( lFrequency < 240. || lFrequency > 260) {
+    // The TLU has a 50 MHz clock, and other hardware has a 250 MHz
+    // clock. Make sure we're in one of those ranges
+    if ( !( (lFrequency > 240. && lFrequency < 260) ||
+            (lFrequency >  49. && lFrequency <  51) ) ) {
       DAQLogger::LogError(instance_name_) << "Timing master clock out of expected range: " << lFrequency << " Hz. Has it been configured?";
     }
 
