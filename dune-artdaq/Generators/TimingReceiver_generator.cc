@@ -111,12 +111,12 @@ dune::TimingReceiver::TimingReceiver(fhicl::ParameterSet const & ps):
 
     // Match Fw version with configuration
     DAQLogger::LogInfo(instance_name_) << "Timing Master firmware version " << std::showbase << std::hex << (uint32_t)lVersion;
-    std::set<uint32_t> allowed_fw_versions{0x40100, 0x40101};
+    std::set<uint32_t> allowed_fw_versions{0x40100, 0x40101, 0x40102};
     if ( allowed_fw_versions.find(lVersion)==allowed_fw_versions.end() ) {
         std::stringstream errormsg;
-        errormsg << "Firmware version mismatch! Got firmware version " << lVersion << " but allowed versions are:";
+        errormsg << "Firmware version mismatch! Got firmware version " << std::showbase << std::hex << lVersion << " but allowed versions are:";
         for(auto allowed_ver : allowed_fw_versions){
-            errormsg << allowed_ver << " ";
+            errormsg << std::showbase << std::hex << allowed_ver << " ";
         }
         DAQLogger::LogError(instance_name_) << errormsg.str();
     }
