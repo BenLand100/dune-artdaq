@@ -580,13 +580,17 @@ void dune::TimingReceiver::send_met_variables() {
 
   // send the trigger counts
   for(int i=0; i<16; ++i){
-      std::stringstream ss1;
-      ss1 << "TimingSys Accepted " << commandNames.at(i);
-      artdaq::Globals::metricMan_->sendMetric(ss1.str(), (int)met_accepted_trig_count_.at(i), "triggers", 1, artdaq::MetricMode::LastPoint);
+      if (met_accepted_trig_count_.size() > i){
+          std::stringstream ss1;
+          ss1 << "TimingSys Accepted " << commandNames.at(i);
+          artdaq::Globals::metricMan_->sendMetric(ss1.str(), (int)met_accepted_trig_count_.at(i), "triggers", 1, artdaq::MetricMode::LastPoint);
+      }
 
-      std::stringstream ss2;
-      ss2 << "TimingSys Rejected " << commandNames.at(i);
-      artdaq::Globals::metricMan_->sendMetric(ss2.str(), (int)met_rejected_trig_count_.at(i), "triggers", 1, artdaq::MetricMode::LastPoint);
+      if (met_rejected_trig_count_.size() > i){
+          std::stringstream ss2;
+          ss2 << "TimingSys Rejected " << commandNames.at(i);
+          artdaq::Globals::metricMan_->sendMetric(ss2.str(), (int)met_rejected_trig_count_.at(i), "triggers", 1, artdaq::MetricMode::LastPoint);
+      }
   }
 }
 
