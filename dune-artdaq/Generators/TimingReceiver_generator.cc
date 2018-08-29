@@ -114,9 +114,9 @@ dune::TimingReceiver::TimingReceiver(fhicl::ParameterSet const & ps):
     std::set<uint32_t> allowed_fw_versions{0x40100, 0x40101, 0x40102};
     if ( allowed_fw_versions.find(lVersion)==allowed_fw_versions.end() ) {
         std::stringstream errormsg;
-        errormsg << "Firmware version mismatch! Got firmware version " << lVersion << " but allowed versions are:";
+        errormsg << "Firmware version mismatch! Got firmware version " << std::showbase << std::hex << lVersion << " but allowed versions are:";
         for(auto allowed_ver : allowed_fw_versions){
-            errormsg << allowed_ver << " ";
+            errormsg << std::showbase << std::hex << allowed_ver << " ";
         }
         DAQLogger::LogError(instance_name_) << errormsg.str();
     }
@@ -134,7 +134,10 @@ dune::TimingReceiver::TimingReceiver(fhicl::ParameterSet const & ps):
     float lFrequency = ((uint32_t)fq) * 119.20928 / 1000000;
     DAQLogger::LogInfo(instance_name_) << "Measured timing master frequency: " << lFrequency << " Hz";
 
-    if ( lFrequency < 240. || lFrequency > 260) {
+    // The TLU has a 50 MHz clock, and other hardware has a 250 MHz
+    // clock. Make sure we're in one of those ranges
+    if ( !( (lFrequency > 240. && lFrequency < 260) ||
+            (lFrequency >  49. && lFrequency <  51) ) ) {
       DAQLogger::LogError(instance_name_) << "Timing master clock out of expected range: " << lFrequency << " Hz. Has it been configured?";
     }
 
@@ -532,6 +535,10 @@ void dune::TimingReceiver::update_met_variables(dune::TimingFragment& fo) {
   if (met_sintmin_ > diff) met_sintmin_ = diff;
   if (met_rintmax_ < diff) met_rintmax_ = diff;
   if (met_sintmax_ < diff) met_sintmax_ = diff;
+  // Get the accepted and rejected trigger counters
+  pdt::PartitionCounts trigCounts=master_partition().readCommandCounts();
+  met_accepted_trig_count_=trigCounts.accepted;
+  met_rejected_trig_count_=trigCounts.rejected;
 }
 
 void dune::TimingReceiver::send_met_variables() {
@@ -554,6 +561,40 @@ void dune::TimingReceiver::send_met_variables() {
   artdaq::Globals::metricMan_->sendMetric("TimingSys MinInterval spill", met_sintmin_, "ticks", 1, artdaq::MetricMode::LastPoint);
   artdaq::Globals::metricMan_->sendMetric("TimingSys MaxInterval run",   met_rintmax_, "ticks", 1, artdaq::MetricMode::LastPoint);
   artdaq::Globals::metricMan_->sendMetric("TimingSys MaxInterval spill", met_sintmax_, "ticks", 1, artdaq::MetricMode::LastPoint);
+
+  std::vector<std::string> commandNames={
+      "TimeSync",
+      "Echo",
+      "SpillStart",
+      "SpillStop",
+      "RunStart",
+      "RunStop",
+      "WibCalib",
+      "Trig0",
+      "Trig1",
+      "Trig2",
+      "Trig3",
+      "Trig4",
+      "Trig5",
+      "Trig6",
+      "Trig7",
+      "Trig8"
+  };
+
+  // send the trigger counts
+  for(int i=0; i<16; ++i){
+      if (met_accepted_trig_count_.size() > i){
+          std::stringstream ss1;
+          ss1 << "TimingSys Accepted " << commandNames.at(i);
+          artdaq::Globals::metricMan_->sendMetric(ss1.str(), (int)met_accepted_trig_count_.at(i), "triggers", 1, artdaq::MetricMode::LastPoint);
+      }
+
+      if (met_rejected_trig_count_.size() > i){
+          std::stringstream ss2;
+          ss2 << "TimingSys Rejected " << commandNames.at(i);
+          artdaq::Globals::metricMan_->sendMetric(ss2.str(), (int)met_rejected_trig_count_.at(i), "triggers", 1, artdaq::MetricMode::LastPoint);
+      }
+  }
 }
 
 // The following macro is defined in artdaq's GeneratorMacros.hh header
