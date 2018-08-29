@@ -257,7 +257,7 @@ bool dune::TimingReceiver::checkHWStatus_()
     if(mp_ovrflw){
         // Tell the InhibitMaster that we want to stop triggers, then
         // carry on with this iteration of the loop
-        DAQLogger::LogInfo(instance_name_) << "buf_warn is high. Requesting InhibitMaster to stop triggers";
+        DAQLogger::LogInfo(instance_name_) << "buf_warn is high, with " << master_partition().numEventsInBuffer() << " events in buffer. Requesting InhibitMaster to stop triggers";
         status_publisher_->PublishBadStatus("ROBWarningOverflow");
     }
     //check if there are available routing tokens, and if not inhibit
@@ -398,7 +398,7 @@ bool dune::TimingReceiver::getNext_(artdaq::FragmentPtrs &frags)
         f->setUserType( dune::detail::TIMING );
         //  No metadata in this block
 
-        DAQLogger::LogInfo(instance_name_) << "For timing fragment with sequence ID " << ev_counter() << ", setting the timestamp to " << fo.get_tstamp();
+        DAQLogger::LogInfo(instance_name_) << "For timing fragment with sequence ID " << ev_counter() << ", scmd " << std::showbase << std::hex << fo.get_scmd() << std::dec <<  ", setting the timestamp to " << fo.get_tstamp();
         f->setTimestamp(fo.get_tstamp());  // 64-bit number
 
         // Send the fragment out on ZeroMQ for FELIX and whoever else wants to listen for it
@@ -442,9 +442,8 @@ bool dune::TimingReceiver::getNext_(artdaq::FragmentPtrs &frags)
       uint32_t tf = InhibitGet_get();      // Can give 0=No change, 1=OK, 2=Not OK)
       uint32_t bit = 1;                    // If we change, this is the value to set. 1=running 
       if (tf == 0) break;                  // No change, so no need to do anything
-      if (debugprint_ > 2) {
-        DAQLogger::LogDebug(instance_name_) << "Received value " << tf << " from InhibitGet_get()\n";
-      }
+
+      DAQLogger::LogDebug(instance_name_) << "Received value " << tf << " from InhibitGet_get()\n";
       if (tf == 1) {                       // Want to be running
         if (throttling_state_ != 1) break; // No change needed
         bit = 1;                           // To set running (line not needed, bit is set to 1 already)
