@@ -111,12 +111,12 @@ dune::TimingReceiver::TimingReceiver(fhicl::ParameterSet const & ps):
 
     // Match Fw version with configuration
     DAQLogger::LogInfo(instance_name_) << "Timing Master firmware version " << std::showbase << std::hex << (uint32_t)lVersion;
-    std::set<uint32_t> allowed_fw_versions{0x40100, 0x40101};
+    std::set<uint32_t> allowed_fw_versions{0x40100, 0x40101, 0x40102};
     if ( allowed_fw_versions.find(lVersion)==allowed_fw_versions.end() ) {
         std::stringstream errormsg;
-        errormsg << "Firmware version mismatch! Got firmware version " << lVersion << " but allowed versions are:";
+        errormsg << "Firmware version mismatch! Got firmware version " << std::showbase << std::hex << lVersion << " but allowed versions are:";
         for(auto allowed_ver : allowed_fw_versions){
-            errormsg << allowed_ver << " ";
+            errormsg << std::showbase << std::hex << allowed_ver << " ";
         }
         DAQLogger::LogError(instance_name_) << errormsg.str();
     }
@@ -134,7 +134,10 @@ dune::TimingReceiver::TimingReceiver(fhicl::ParameterSet const & ps):
     float lFrequency = ((uint32_t)fq) * 119.20928 / 1000000;
     DAQLogger::LogInfo(instance_name_) << "Measured timing master frequency: " << lFrequency << " Hz";
 
-    if ( lFrequency < 240. || lFrequency > 260) {
+    // The TLU has a 50 MHz clock, and other hardware has a 250 MHz
+    // clock. Make sure we're in one of those ranges
+    if ( !( (lFrequency > 240. && lFrequency < 260) ||
+            (lFrequency >  49. && lFrequency <  51) ) ) {
       DAQLogger::LogError(instance_name_) << "Timing master clock out of expected range: " << lFrequency << " Hz. Has it been configured?";
     }
 
@@ -519,6 +522,7 @@ void dune::TimingReceiver::reset_met_variables(bool onlyspill) {
 }
 
 void dune::TimingReceiver::update_met_variables(dune::TimingFragment& fo) {
+
   // Update variables for met
   met_event_ = fo.get_evtctr();
   uint64_t told = met_tstamp_;   // Previous time stamp
@@ -538,6 +542,7 @@ void dune::TimingReceiver::update_met_variables(dune::TimingFragment& fo) {
 }
 
 void dune::TimingReceiver::send_met_variables() {
+
   // When running in standalone mode, there's no metric manager, so just skip this bit
   if(!artdaq::Globals::metricMan_){
     return;
@@ -578,17 +583,17 @@ void dune::TimingReceiver::send_met_variables() {
 
   // send the trigger counts
   for(int i=0; i<16; ++i){
-    if (met_accepted_trig_count_.size() > i){
-      std::stringstream ss1;
-      ss1 << "TimingSys Accepted " << commandNames.at(i);
-      artdaq::Globals::metricMan_->sendMetric(ss1.str(), (int)met_accepted_trig_count_.at(i), "triggers", 1, artdaq::MetricMode::LastPoint);
-    }
+      if (met_accepted_trig_count_.size() > i){
+          std::stringstream ss1;
+          ss1 << "TimingSys Accepted " << commandNames.at(i);
+          artdaq::Globals::metricMan_->sendMetric(ss1.str(), (int)met_accepted_trig_count_.at(i), "triggers", 1, artdaq::MetricMode::LastPoint);
+      }
 
-    if (met_rejected_trig_count_.size() > i){
-      std::stringstream ss2;
-      ss2 << "TimingSys Rejected " << commandNames.at(i);
-      artdaq::Globals::metricMan_->sendMetric(ss2.str(), (int)met_rejected_trig_count_.at(i), "triggers", 1, artdaq::MetricMode::LastPoint);
-    }
+      if (met_rejected_trig_count_.size() > i){
+          std::stringstream ss2;
+          ss2 << "TimingSys Rejected " << commandNames.at(i);
+          artdaq::Globals::metricMan_->sendMetric(ss2.str(), (int)met_rejected_trig_count_.at(i), "triggers", 1, artdaq::MetricMode::LastPoint);
+      }
   }
 }
 
