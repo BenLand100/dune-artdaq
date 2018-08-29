@@ -9,8 +9,7 @@
 #include "Utilities.hh"
 #include "Types.hh"
 
-#define AVX
-#include "FelixReordererFacility.hh"
+#include "ReordererFacility.hh"
 
 #include "netio/netio.hpp"
 
@@ -63,6 +62,10 @@ public:
   void setExtract(bool extract) { m_extract = extract; }
   void setVerbosity(bool v){ m_verbose = v; }
 
+  // Compression and reordering
+  void doReorder(bool doIt) { m_do_reorder = doIt; }
+  void doCompress(bool doIt) { m_do_compress = doIt; }
+
   // Functionalities
   // Setup context:
   bool setupContext(std::string contextStr);
@@ -113,8 +116,9 @@ private:
   size_t m_windowOffset;
   bool m_extract;
   bool m_verbose;
-  bool m_do_reorder = false;
-  bool m_do_compress = false;
+
+  bool m_do_reorder;
+  bool m_do_compress;
 
   //Precomputed bytesizes - Thijs
   size_t m_timeWindowByteSizeIn;
@@ -122,8 +126,9 @@ private:
   size_t m_timeWindowNumFrames;
   size_t m_timeWindowNumMessages;
 
-  //Reordering type - Thijs
-  ReordererType m_reord_type = ReordererType::TypeAVX2;
+  //Reordering type - Thijs - Doesn't exist anymore!
+  //ReordererType m_reord_type = ReordererType::TypeAVX2;
+  //ReordererFacility m_reorder_facility;
 
   // Custom types from Types.h
 

@@ -157,6 +157,8 @@ namespace dune {
     int met_sintmin_;  // Min interval between events this spill
     int met_rintmax_;  // Max interval between events this run
     int met_sintmax_;  // Max interval between events this spill
+    std::vector<uint32_t> met_accepted_trig_count_;
+    std::vector<uint32_t> met_rejected_trig_count_;
 
     std::unique_ptr<artdaq::StatusPublisher> status_publisher_;
     std::unique_ptr<artdaq::FragmentPublisher> fragment_publisher_;

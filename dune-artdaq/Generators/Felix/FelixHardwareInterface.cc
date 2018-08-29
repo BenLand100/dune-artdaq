@@ -16,6 +16,7 @@
 
 using namespace dune;
 
+
 FelixHardwareInterface::FelixHardwareInterface(fhicl::ParameterSet const& ps) :
   nioh_{ NetioHandler::getInstance() },
   //artdaq_request_receiver_{ ps }, // This automatically setups requestReceiver!
@@ -75,6 +76,11 @@ FelixHardwareInterface::FelixHardwareInterface(fhicl::ParameterSet const& ps) :
   nioh_.setMessageSize(message_size_);
   nioh_.setTimeWindow(window_);
   nioh_.setWindowOffset(window_offset_);
+
+  // reorder and compression configs:
+  nioh_.doReorder(false);
+  nioh_.doCompress(false);
+
   DAQLogger::LogInfo("dune::FelixHardwareInterface::FelixHardwareInterface")
     << "FelixHardwareInterface is ready.";
 }
@@ -110,21 +116,14 @@ void FelixHardwareInterface::StartDatataking() {
   // GLM: start listening to felix stream here
   nioh_.setExtract(extract_);
 
-  // random sleep
-  //std::mt19937_64 eng{std::random_device{}()};
-  //std::uniform_int_distribution<> dist{1, 10};
-  //std::this_thread::sleep_for(std::chrono::seconds{dist(eng)});
-
+  DAQLogger::LogInfo("dune::FelixHardwareInterface::FelixHardwareInterface")
+    << "Starting subscribers and locking to CPUs...";
   nioh_.startSubscribers();
-  // This should be after startSubs!!!
-  nioh_.lockSubsToCPUs(offset_);
+  nioh_.lockSubsToCPUs(offset_);// This should be always after startSubs!!!
 
   start_time_ = std::chrono::high_resolution_clock::now();
   DAQLogger::LogInfo("dune::FelixHardwareInterface::StartDatataking")
     << "Request listener and trigger matcher threads created.";
-
-  //artdaq::Globals::metricMan_->sendMetric("TestMetrics", 1, "Events", 3, artdaq::MetricMode::Accumulate);
-
 }
 
 void FelixHardwareInterface::StopDatataking() {
@@ -160,7 +159,9 @@ bool FelixHardwareInterface::FillFragment( std::unique_ptr<artdaq::Fragment>& fr
   if (taking_data_) {
     //DAQLogger::LogInfo("dune::FelixHardwareInterface::FillFragment") << "Fill fragment at: " << &frag;
 
+// RS: 17.08.2018 -> This will be gone for good soon.
     // Fake trigger mode for debugging purposes. (send 10000 fake triggers.)
+/*
     if (fake_triggers_ && fake_trigger_attempts_ < 1000) {
       DAQLogger::LogInfo("dune::FelixHardwareInterface::FillFragment") 
         << " Faking a trigger -> " << fake_trigger_ << ". trigger";
@@ -178,7 +179,7 @@ bool FelixHardwareInterface::FillFragment( std::unique_ptr<artdaq::Fragment>& fr
 
     } 
     else {
-
+*/
       TriggerInfo request = request_receiver_->getNextRequest();
       uint64_t requestSeqId = request.seqID;
       uint64_t requestTimestamp = request.timestamp;
@@ -186,10 +187,6 @@ bool FelixHardwareInterface::FillFragment( std::unique_ptr<artdaq::Fragment>& fr
       //auto reqMap = artdaq_request_receiver_.GetRequests();
       //uint64_t requestSeqId = reqMap.cbegin()->first;
       //uint64_t requestTimestamp = reqMap.cbegin()->second;
-
-      //DAQLogger::LogInfo("dune::FelixHardwareInterface::FillFragment") 
-      //    << " Requested timestamp is: " << requestTimestamp 
-      //    << " requested sequence_id is: " << requestSeqId ;
 
       bool success = nioh_.triggerWorkers(requestTimestamp, requestSeqId, frag);
       if (success) {
@@ -213,8 +210,11 @@ bool FelixHardwareInterface::FillFragment( std::unique_ptr<artdaq::Fragment>& fr
 
       ++send_calls_;
       return true;
-    }  
-  }
+
+    //} EOF fake trigger check.
+
+  } // EOF if(takingData_)
+
   return true; // should never reach this
 }
 

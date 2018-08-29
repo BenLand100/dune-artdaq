@@ -64,7 +64,7 @@ class TpcRceReceiver : public artdaq::CommandableFragmentGenerator
      std::string report() override { return ""; }
 
      std::string _rce_host_addr;
-     std::string _rce_host_port;
+     int         _rce_host_port;
      std::string _rce_xml_file ;
      std::string _rce_run_mode ;
      bool        _rce_feb_emul ;

@@ -72,6 +72,8 @@ namespace rce {
 
          size_t read_available() const { return _buffers.read_available(); };
 
+         bool   is_open() const { return _rssi->getOpen(); };
+
       private:
          // RSSI connection
          rogue::protocols::udp::ClientPtr       _udp;
@@ -80,13 +82,13 @@ namespace rce {
          boost::shared_ptr<RssiSink>            _sink;
 
          // Ring buffer
-         static const int MAX_BUFFER_SIZE = 256;
+         static const int MAX_BUFFER_SIZE = 512;
          typedef boost::lockfree::spsc_queue<BufferPtr,
                  boost::lockfree::capacity<MAX_BUFFER_SIZE>> BufferQueue;
 
          BufferQueue _buffers;
 
-         size_t _buffer_size       = 128;
+         size_t _buffer_size       = 256;
          size_t _buffer_timeout    = 500; // ms
 
          boost::atomic<bool> _paused;

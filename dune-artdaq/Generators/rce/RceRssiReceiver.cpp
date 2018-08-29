@@ -16,8 +16,8 @@ RssiSink::RssiSink(RssiReceiver *receiver) :
 void RssiSink::
      acceptFrame (boost::shared_ptr<rogue::interfaces::stream::Frame> frame ) 
 {
-   if (_receiver->_paused.load())
-      return;
+   while (_receiver->_paused.load())
+      boost::this_thread::sleep(boost::posix_time::milliseconds(10));
 
    auto stats_local = stats.load();
 

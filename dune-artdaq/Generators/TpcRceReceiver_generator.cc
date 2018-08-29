@@ -28,7 +28,7 @@ TpcRceReceiver::TpcRceReceiver(fhicl::ParameterSet const& ps) :
 
    typedef std::string str;
    _rce_host_addr = ps.get<str>  ("rce_client_host_addr"                );
-   //_rce_host_port = ps.get<str>  ("rce_client_host_addr"  , "8090"      );
+   _rce_host_port = ps.get<int>  ("rce_client_host_port"  , 8090        );
    _rce_run_mode  = ps.get<str>  ("rce_daq_mode"          , "External"  );
    _rce_xml_file  = ps.get<str>  ("rce_xml_config_file"   , ""          );
    _rce_feb_emul  = ps.get<bool> ("rce_feb_emulation_mode", false       );
@@ -47,43 +47,71 @@ TpcRceReceiver::TpcRceReceiver(fhicl::ParameterSet const& ps) :
    _instance_name = ss.str();
 
    // TODO check partition
-   //
 
-   _rce_comm.reset(new rce::RceComm      (_rce_host_addr       ));
-   _receiver.reset(new rce::RssiReceiver (_rce_host_addr, 8192 ));
+   // config RCE
+   try {
+      DAQLogger::LogInfo(_instance_name) <<
+         "Connecting to " << _rce_host_addr << ":" << _rce_host_port;
+      _rce_comm.reset(new rce::RceComm(_rce_host_addr, _rce_host_port));
+
+      DAQLogger::LogInfo(_instance_name) << "Configuring ...";
+      _rce_comm->reset         ( _rce_xml_file  );
+      _rce_comm->blowoff_hls   ( 0x3            );
+      _rce_comm->blowoff_wib   ( true           );
+      _rce_comm->set_run_mode  ( _rce_run_mode  );
+      _rce_comm->set_emul      ( _rce_feb_emul  );
+      _rce_comm->set_partition ( _partition     );
+      _rce_comm->enable_rssi   ( _enable_rssi   );
+      _rce_comm->set_daq_host  ( _daq_host_addr );
+   }
+   catch (const std::exception &e) {
+      DAQLogger::LogError(_instance_name) << e.what();
+   }
 }
 
 void TpcRceReceiver::start(void) 
 {
-   // config rce
-   _rce_comm->reset         ( _rce_xml_file  );
-   _rce_comm->set_run_mode  ( _rce_run_mode  );
-   _rce_comm->set_emul      ( _rce_feb_emul  );
-   _rce_comm->set_partition ( _partition     );
-   _rce_comm->enable_rssi   ( _enable_rssi   );
-   _rce_comm->set_daq_host  ( _daq_host_addr );
-
    // validate config
 
    // connect receiver
-   
+   _receiver.reset(new rce::RssiReceiver (_rce_host_addr, 8192));
+  
    // drain buffer
 
    // send start command
+   _rce_comm->blowoff_wib( false );
+   _rce_comm->blowoff_hls( 0x0   );
+
    _rce_comm->send_cmd("SetRunState", "Enable");
 }
 
 void TpcRceReceiver::stop(void)
 {
-   _rce_comm->send_cmd("SetRunState", "Stopped");
-   DAQLogger::LogInfo(_instance_name) << "stop()\n";
+   DAQLogger::LogInfo(_instance_name) << "stop()";
+   try {
+      _rce_comm->blowoff_hls( 0x3  );
+      _rce_comm->blowoff_wib( true );
+      _rce_comm->send_cmd("SetRunState", "Stopped");
+   }
+   catch (const std::exception &e)
+   {
+      DAQLogger::LogWarning(_instance_name) << e.what();
+   }
    _print_stats();
 }
 
 void TpcRceReceiver::stopNoMutex(void)
 {
-   _rce_comm->send_cmd("SetRunState", "Stopped");
-   DAQLogger::LogInfo(_instance_name) << "stopNoMutex()\n";
+   DAQLogger::LogInfo(_instance_name) << "stopNoMutex()";
+   try {
+      _rce_comm->blowoff_hls( 0x3  );
+      _rce_comm->blowoff_wib( true );
+      _rce_comm->send_cmd("SetRunState", "Stopped");
+   }
+   catch (const std::exception &e)
+   {
+      DAQLogger::LogWarning(_instance_name) << e.what();
+   }
    _print_stats();
 }
 
@@ -142,10 +170,9 @@ bool TpcRceReceiver::getNext_(artdaq::FragmentPtrs& frags)
    // print stats
    auto now = boost::posix_time::second_clock::local_time();
    auto dt  = now - _stats.last_update;
-   if (dt.total_seconds() > 1) {
+   if (dt.total_seconds() > 10) {
       _stats.last_update = now;
       _print_stats();
-
       _stats_prev = _stats;
    }
 

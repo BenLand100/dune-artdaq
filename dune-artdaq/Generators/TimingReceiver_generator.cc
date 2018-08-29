@@ -519,7 +519,6 @@ void dune::TimingReceiver::reset_met_variables(bool onlyspill) {
 }
 
 void dune::TimingReceiver::update_met_variables(dune::TimingFragment& fo) {
-
   // Update variables for met
   met_event_ = fo.get_evtctr();
   uint64_t told = met_tstamp_;   // Previous time stamp
@@ -532,10 +531,13 @@ void dune::TimingReceiver::update_met_variables(dune::TimingFragment& fo) {
   if (met_sintmin_ > diff) met_sintmin_ = diff;
   if (met_rintmax_ < diff) met_rintmax_ = diff;
   if (met_sintmax_ < diff) met_sintmax_ = diff;
+  // Get the accepted and rejected trigger counters
+  pdt::PartitionCounts trigCounts=master_partition().readCommandCounts();
+  met_accepted_trig_count_=trigCounts.accepted;
+  met_rejected_trig_count_=trigCounts.rejected;
 }
 
 void dune::TimingReceiver::send_met_variables() {
-
   // When running in standalone mode, there's no metric manager, so just skip this bit
   if(!artdaq::Globals::metricMan_){
     return;
@@ -554,6 +556,40 @@ void dune::TimingReceiver::send_met_variables() {
   artdaq::Globals::metricMan_->sendMetric("TimingSys MinInterval spill", met_sintmin_, "ticks", 1, artdaq::MetricMode::LastPoint);
   artdaq::Globals::metricMan_->sendMetric("TimingSys MaxInterval run",   met_rintmax_, "ticks", 1, artdaq::MetricMode::LastPoint);
   artdaq::Globals::metricMan_->sendMetric("TimingSys MaxInterval spill", met_sintmax_, "ticks", 1, artdaq::MetricMode::LastPoint);
+
+  std::vector<std::string> commandNames={
+      "TimeSync",
+      "Echo",
+      "SpillStart",
+      "SpillStop",
+      "RunStart",
+      "RunStop",
+      "WibCalib",
+      "Trig0",
+      "Trig1",
+      "Trig2",
+      "Trig3",
+      "Trig4",
+      "Trig5",
+      "Trig6",
+      "Trig7",
+      "Trig8"
+  };
+
+  // send the trigger counts
+  for(int i=0; i<16; ++i){
+    if (met_accepted_trig_count_.size() > i){
+      std::stringstream ss1;
+      ss1 << "TimingSys Accepted " << commandNames.at(i);
+      artdaq::Globals::metricMan_->sendMetric(ss1.str(), (int)met_accepted_trig_count_.at(i), "triggers", 1, artdaq::MetricMode::LastPoint);
+    }
+
+    if (met_rejected_trig_count_.size() > i){
+      std::stringstream ss2;
+      ss2 << "TimingSys Rejected " << commandNames.at(i);
+      artdaq::Globals::metricMan_->sendMetric(ss2.str(), (int)met_rejected_trig_count_.at(i), "triggers", 1, artdaq::MetricMode::LastPoint);
+    }
+  }
 }
 
 // The following macro is defined in artdaq's GeneratorMacros.hh header
