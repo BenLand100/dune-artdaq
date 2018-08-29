@@ -40,14 +40,12 @@ CRTInterface::CRTInterface(fhicl::ParameterSet const& ps) :
 void CRTInterface::StartDatataking()
 {
   if(inotifyfd != -1){
-    fprintf(stderr, "inotify already init'd. Ok if we\n"
-                    "stopped and restarted data taking.\n");
+    TLOG(TLVL_WARNING, "CRTInterface") << "inotify already init'd. Ok if we\nstopped and restarted data taking.\n";
     return;
   }
 
   if(-1 == (inotifyfd = inotify_init())){
-    perror("CRTInterface::StartDatataking");
-    _exit(1);
+    throw cet::exception("CRTInterface") << "CRTInterface::StartDatataking: " << strerror(errno);
   }
 
   // Set the file descriptor to non-blocking so that we can immediately
@@ -58,8 +56,7 @@ void CRTInterface::StartDatataking()
 void CRTInterface::StopDatataking()
 {
   if(-1 == inotify_rm_watch(inotifyfd, inotify_watchfd)){
-    perror("CRTInterface::StopDatataking");
-    _exit(1); // maybe not necessary
+    TLOG(TLVL_WARNING, "CRTInterface") << "CRTInterface::StopDatataking: " << strerror(errno);
   }
 }
 
@@ -73,8 +70,7 @@ std::string find_wr_file(const std::string & indir,
   errno = 0;
   if((dp = opendir(indir.c_str())) == NULL){
     if(errno == ENOENT){
-      fprintf(stderr, "No such directory %s, but will wait for it\n",
-              indir.c_str());
+      TLOG(TLVL_WARNING, "CRTInterface") << "No such directory " << indir << ", but will wait for it\n";
       usleep(100000);
       return NULL;
     }
@@ -82,8 +78,7 @@ std::string find_wr_file(const std::string & indir,
       // Other conditions we are unlikely to recover from: permission denied,
       // too many file descriptors in use, too many files open, out of memory,
       // or the name isn't a directory.
-      perror("find_wr_file opendir");
-      _exit(1);
+      throw cet::exception("CRTInterface") << "find_wr_file opendir: " << strerror(errno);
     }
   }
 
@@ -113,9 +108,7 @@ std::string find_wr_file(const std::string & indir,
       struct stat thestat;
 
       if(-1 == stat((indir + de->d_name).c_str(), &thestat)){
-        perror("find_wr_file stat");
-        fprintf(stderr, "Couldn't get timestamp of %s\n", (indir + de->d_name).c_str());
-        _exit(1);
+	throw cet::exception("CRTInterface") << "find_wr_file stat: Couldn't get timestamp of " << (indir + de->d_name).c_str() << ": " << strerror(errno);
       }
 
       if(thestat.st_mtime > most_recent_time){
@@ -128,11 +121,13 @@ std::string find_wr_file(const std::string & indir,
   // If errno == 0, it just means we got to the end of the directory.
   // Otherwise, something went wrong.  This is unlikely since the only
   // error condition is "EBADF  Invalid directory stream descriptor dirp."
-  if(errno) perror("find_wr_file readdir");
+  if(errno) 
+    throw cet::exception("CRTInterface") << "find_wr_file readdir: " << strerror(errno);
 
   errno = 0;
   closedir(dp);
-  if(errno) perror("find_wr_file closedir");
+  if(errno) 
+    throw cet::exception("CRTInterface") << "find_wr_file closedir: " << strerror(errno);
 
   // slow down if the directory is there, but the file isn't yet
   if(most_recent_file == "") usleep(100000);
@@ -160,7 +155,7 @@ bool CRTInterface::try_open_file()
 
   const std::string fullfilename = indir + "/binary/" + filename;
 
-  printf("Found input file: %s\n", filename);
+  TLOG(TLVL_INFO, "CRTInterface") << "Found input file: " << filename;
 
   if(-1 == (inotify_watchfd =
             inotify_add_watch(inotifyfd, fullfilename.c_str(),
@@ -169,14 +164,12 @@ bool CRTInterface::try_open_file()
       // It's possible that the file we just found has vanished by the time
       // we get here, probably by being renamed without the ".wr".  That's
       // OK, we'll just try again in a moment.
-      fprintf(stderr, "File has vanished. We'll wait for another\n");
+      TLOG(TLVL_WARNING, "CRTInterface") << "File has vanished. We'll wait for another\n";
       return false;
     }
     else{
       // But other inotify_add_watch errors we probably can't recover from
-      fprintf(stderr, "CRTInterface: Could not open %s\n", filename);
-      perror("CRTInterface");
-      _exit(1);
+      throw cet::exception("CRTInterface") << "CRTInterface: Could not open " << filename << ": " << strerror(errno);
     }
   }
 
@@ -188,9 +181,7 @@ bool CRTInterface::try_open_file()
       return false;
     }
     else{
-      // But other errors probably indicate an unrecoverable problem.
-      perror("CRTInterface::StartDatataking");
-      _exit(1);
+      throw cet::exception("CRTInterface") << "CRTInterface::StartDatataking: " << strerror(errno);
     }
   }
 
@@ -220,8 +211,7 @@ bool CRTInterface::check_events()
 
     // Anything else maybe should be a fatal error.  If we can't read from
     // inotify once, we probably won't be able to again.
-    perror("CRTInterface::FillBuffer");
-    return false;
+    throw cet::exception("CRTInterface") << "CRTInterface::FillBuffer: " << strerror(errno);
   }
 
   if(inotify_bread == 0){
@@ -231,9 +221,7 @@ bool CRTInterface::check_events()
   }
 
   if(inotify_bread < (ssize_t)sizeof(struct inotify_event)){
-    fprintf(stderr, "Non-zero, yet wrong number (%ld) of bytes from inotify\n",
-            inotify_bread);
-    _exit(1);
+    throw cet::exception("CRTInterface") << "Non-zero, yet wrong number (" << inotify_bread << ") of bytes from inotify\n";
   }
 
 #pragma GCC diagnostic push
@@ -245,7 +233,7 @@ bool CRTInterface::check_events()
     // Active file has been modified again
     if(state == CRT_READ_ACTIVE) return true;
     else{
-      fprintf(stderr, "File modified, but not watching an open file...\n");
+      TLOG(TLVL_WARNING, "CRTInterface") << "File modified, but not watching an open file...\n";
       return false; // Should be fatal?
     }
   }
@@ -259,13 +247,13 @@ bool CRTInterface::check_events()
 
       // Is this desired?  I think so.
       unlink(datafile_name.c_str());
-      printf("Deleted data file after reading it.\n");
+      TLOG(TLVL_INFO, "CRTInterface") << "Deleted data file after reading it.\n";
 
       state = CRT_WAIT;
       return true;
     }
     else{
-      fprintf(stderr, "Not reached.  Closed file renamed.\n");
+      TLOG(TLVL_WARNING, "CRTInterface") << "Not reached.  Closed file renamed.\n";
       return false; // should be fatal?
     }
   }
@@ -300,12 +288,11 @@ size_t CRTInterface::read_everything_from_file(char * cooked_data)
 
   if(read_bread == -1){
     // All read() errors other than *maybe* EINTR should be fatal.
-    perror("CRTInterface::FillBuffer");
-    _exit(1);
+    throw cet::exception("CRTInterface") << "CRTInterface::FillBuffer: " << strerror(errno);
   }
 
   const int bytesleft = next_raw_byte - rawfromhardware;
-  printf("%d bytes in raw buffer after read.\n", bytesleft);
+  TLOG(TLVL_INFO, "CRTInterface") << bytesleft << " bytes in raw buffer after read.\n";
 
   if(bytesleft > 0) state |= CRT_DRAIN_BUFFER;
 
@@ -320,8 +307,7 @@ void CRTInterface::FillBuffer(char* cooked_data, size_t* bytes_ret)
   // First see if we can decode another module packet out of the data already
   // read from the input files.
   if(state & CRT_DRAIN_BUFFER){
-    printf("%ld bytes in raw buffer before read.\n",
-           next_raw_byte - rawfromhardware);
+    TLOG(TLVL_INFO, "CRTInterface") << (next_raw_byte - rawfromhardware) << " bytes in raw buffer before read.\n";
 
     if((*bytes_ret = CRT::raw2cook(cooked_data, COOKEDBUFSIZE,
                                    rawfromhardware, next_raw_byte, baselines)))
@@ -386,12 +372,11 @@ void CRTInterface::SetBaselines()
         // File isn't there.  This probably means that we are not the process
         // that started up the backend. We'll just wait for the backend to
         // finish starting and the file to appear.
-        printf("Waiting for baseline file to appear\n");
+	TLOG(TLVL_INFO, "CRTInterface") << "Waiting for baseline file to appear\n";
         sleep(1);
       }
       else{
-        perror("Can't open CRT baseline file");
-        _exit(1);
+	throw cet::exception("CRTInterface") << "Can't open CRT baseline file";
       }
     }
   }
@@ -409,36 +394,32 @@ void CRTInterface::SetBaselines()
             // the reported line number will be wrong.
 
     if(nconverted != 5){
-      fprintf(stderr, "Warning: skipping invalid line %d in baseline file",
-              line);
+      TLOG(TLVL_WARNING, "CRTInterface") << "Warning: skipping invalid line " << line << " in baseline file";
       continue;
     }
 
     if(module >= 64){
-      fprintf(stderr, "Warning: skipping baseline with invalid module "
-              "number %d.  Valid range is 0-63\n", module);
+      TLOG(TLVL_WARNING, "CRTInterface") << "Warning: skipping baseline with invalid module number " << module << ".  Valid range is 0-63\n";
       continue;
     }
 
     if(channel >= 64){
-      fprintf(stderr, "Warning: skipping baseline with invalid channel "
-              "number %d.  Valid range is 0-63\n", module);
+      TLOG(TLVL_WARNING, "CRTInterface") << "Warning: skipping baseline with invalid channel number " << module << ".  Valid range is 0-63\n";
       continue;
     }
 
     if(nhit < 100)
-      fprintf(stderr, "Warning: using baseline based on only %d hits\n", nhit);
+      TLOG(TLVL_WARNING, "CRTInterface") << "Warning: using baseline based on only " << nhit << " hits\n";
 
     if(stddev > 5.0)
-      fprintf(stderr, "Warning: using baseline with large error: "
-              "%f ADC counts\n", stddev);
+      TLOG(TLVL_WARNING, "CRTInterface") << "Warning: using baseline with large error: " << stddev << " ADC counts\n";
 
     baselines[module][channel] = int(fbaseline + 0.5);
   }
 
   errno = 0;
   fclose(in);
-  perror("Can't close CRT baseline file");
+  throw cet::exception("CRTInterface") << "Can't close CRT baseline file";
 }
 
 void CRTInterface::AllocateReadoutBuffer(char** cooked_data)

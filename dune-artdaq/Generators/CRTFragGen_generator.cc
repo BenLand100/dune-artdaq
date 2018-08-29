@@ -33,9 +33,8 @@ CRT::FragGen::FragGen(fhicl::ParameterSet const& ps) :
   , oldlowertime(0)
   , runstarttime(0)
   , startbackend(ps.get<bool>("startbackend"))
-                                                              // TODO: WRONG.  To be fixed later on 2018-08-27, hopefully
-  , timingXMLfilename(ps.get<std::string>("connections_file", "/nfs/sw/timing/dev/software/v4a3/timing-board-software/tests/etc/connections.xml"))
-  , hardwarename(ps.get<std::string>("hardware_select", "PDTS_SECONDARY"))
+  , timingXMLfilename(ps.get<std::string>("connections_file", "/nfs/sw/control_files/timing/connections_v4b2.xml"))
+  , hardwarename(ps.get<std::string>("hardware_select", "PRIMARY"))
 {
   hardware_interface_->AllocateReadoutBuffer(&readout_buffer_);
 
@@ -49,11 +48,7 @@ CRT::FragGen::FragGen(fhicl::ParameterSet const& ps) :
   if(startbackend &&
      system(("source /nfs/sw/crt/readout_linux/script/setup.sh; "
               "startallboards_shortbaseline.pl " + sqltable).c_str())){
-    TLOG(TLVL_ERROR, "CRT") << "Failed to start up CRT backend\n";
-    // TODO: Maybe instead of exiting here, I'm supposed to set a flag that
-    // causes the next call to getNext_ to return false.  In general, I don't
-    // know how one is supposed to respond to errors inside artdaq.
-    exit(1);
+    throw cet::exception("CRT") << "Failed to start up CRT backend\n";
   }
 
   // If we aren't the process that starts the backend, this will block
@@ -69,8 +64,7 @@ CRT::FragGen::~FragGen()
   // Stop the backend DAQ.
   if(system(("source /nfs/sw/crt/readout_linux/script/setup.sh; "
               "stopallboards.pl " + sqltable).c_str())){
-    TLOG(TLVL_ERROR, "CRT") << "Failed to start up CRT backend\n";
-    exit(1);
+    TLOG(TLVL_WARNING, "CRT") << "Failed in call to stopallboards.pl\n";
   }
 
   hardware_interface_->FreeReadoutBuffer(readout_buffer_);
@@ -97,7 +91,7 @@ bool CRT::FragGen::getNext_(
 
   if(bytes_read == 0){
     // Pause for a little bit if we didn't get anything to keep load down.
-    usleep(1000);
+    usleep(10000);
 
     // XXX debugging
     TLOG(TLVL_INFO, "CRT") << "CRT getNext_ is returning with no data\n";
@@ -109,8 +103,7 @@ bool CRT::FragGen::getNext_(
   // A module packet must at least have the magic number (1B), hit count
   // (1B), module number (2B) and timestamps (8B).
   const std::size_t minsize = 4 + sizeof(timestamp_);
-  if(bytes_read < 4 + sizeof(timestamp_)){
-    TLOG(TLVL_WARNING, "CRT") << "Bad result with only " << bytes_read << " < " << minsize << " bytes from CRTInterface::FillBuffer.\n";
+  if(bytes_read < minsize){
     throw cet::exception("CRT") << "Bad result with only " << bytes_read << " < " << minsize << " bytes from CRTInterface::FillBuffer.\n";
   }
 
@@ -171,7 +164,7 @@ bool CRT::FragGen::getNext_(
 
 void CRT::FragGen::getRunStartTime()
 {
-#if 0
+#if 1
   std::string filepath = "file://" + timingXMLfilename;
   static uhal::ConnectionManager timeConnMan(filepath);
   static uhal::HwInterface timinghw(timeConnMan.getDevice(hardwarename));
@@ -179,8 +172,8 @@ void CRT::FragGen::getRunStartTime()
   uhal::ValWord<uint32_t> status = timinghw.getNode("endpoint0.csr.stat.ep_stat").read();
   timinghw.dispatch();
   if(status != 8){
-    fprintf(stderr, "CRT timing board in bad state, can't read run start time\n");
-    exit(1);
+    throw cet::exception("CRT") << "CRT timing board in bad state"
+      /*<< (int)status <<*/ ", can't read run start time\n";
   }
 
   /* readBlock(2) read the register named and the next one that is contiguous
@@ -192,9 +185,10 @@ void CRT::FragGen::getRunStartTime()
   timinghw.dispatch();
 
   runstarttime = ((uint64_t)runstarttimev[1] << 32) + runstarttimev[0];
-#endif
 
-  runstarttime = 0;
+  TLOG(TLVL_INFO, "CRT") << "CRT got run start time " << runstarttime << "\n";
+  printf("CRT got run start time 0x%lx\n", runstarttime);
+#endif
 }
 
 void CRT::FragGen::start()
