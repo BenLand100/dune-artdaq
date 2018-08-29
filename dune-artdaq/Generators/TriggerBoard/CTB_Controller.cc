@@ -41,11 +41,11 @@ CTB_Controller::~CTB_Controller() {
 
 }
 
-void CTB_Controller::send_reset() {
+bool CTB_Controller::send_reset() {
 
   dune::DAQLogger::LogInfo("CTB_Controller") << "Sending a reset" << std::endl;
 
-  send_message( "{\"command\":\"HardReset\"}" ) ;
+  bool ret = send_message( "{\"command\":\"HardReset\"}" ) ;
 
   // decide what to do with errors
 
@@ -53,41 +53,48 @@ void CTB_Controller::send_reset() {
   is_running_.store( false ) ;
   is_conf_ = false ;
 
+  return ret ;
 }
 
-void CTB_Controller::send_start() {
+bool CTB_Controller::send_start() {
 
   if (! is_conf_) {
     dune::DAQLogger::LogError("CTB_Controller") << "ERROR: Can't start a run without configuring first" << std::endl;
-    return ;
+    return false ;
   }
 
   dune::DAQLogger::LogInfo("CTB_Controller") << "Sending a start run" << std::endl;
 
-  send_message( "{\"command\":\"StartRun\"}" ) ;
+  if ( send_message( "{\"command\":\"StartRun\"}" )  ) {
+    
+    is_running_.store(true);
+    return true ;
+  }
 
-  is_running_.store(true);
+  return false ;
 
 }
 
-void CTB_Controller::send_stop() {
+bool CTB_Controller::send_stop() {
 
   if ( ! is_running_.load() ) {
     dune::DAQLogger::LogWarning("CTB_Controller") << "Stop requested while not runninng" ;
-    return ;
+    return true ;
   }
 
   dune::DAQLogger::LogInfo("CTB_Controller") << "Sending a stop run" << std::endl;
 
-  send_message( "{\"command\":\"StopRun\"}" ) ;
+  bool ret = send_message( "{\"command\":\"StopRun\"}" ) ;
 
   is_running_.store( false ) ;
   stop_req_.store( true ) ;
+
+  return ret ;
 }
 
 
 
-void CTB_Controller::send_config( const std::string & config ) {
+bool CTB_Controller::send_config( const std::string & config ) {
   
   if ( is_conf_ ) {
     dune::DAQLogger::LogInfo("CTB_Controller") << "Resetting before configuring" << std::endl;
@@ -96,15 +103,19 @@ void CTB_Controller::send_config( const std::string & config ) {
 
   dune::DAQLogger::LogInfo("CTB_Controller") << "Sending config" << std::endl;
 
-  send_message( config ) ;
+  if ( send_message( config ) ) {
 
-  is_conf_ = true ;
+    is_conf_ = true ;
+    return true ;
+  }
+
+  return false ;
   
 }
 
 
 
-void CTB_Controller::send_message( const std::string & msg ) {
+bool CTB_Controller::send_message( const std::string & msg ) {
 
   //add error options                                                                                                
   boost::system::error_code error;
@@ -118,7 +129,7 @@ void CTB_Controller::send_message( const std::string & msg ) {
   _socket.read_some( boost::asio::buffer(reply_buf ), error);
 
   std::stringstream raw_answer( std::string(reply_buf .begin(), reply_buf .end() ) ) ;
-
+  
   dune::DAQLogger::LogDebug("CTB_Controller") << "Unformatted answer: " << std::endl << raw_answer.str() << std::endl; 
 
   Json::Value answer ;
@@ -128,6 +139,7 @@ void CTB_Controller::send_message( const std::string & msg ) {
 
   dune::DAQLogger::LogInfo("CTB_Controller") << "Received messages: " << messages.size() << std::endl;
 
+  bool ret = true ;
 
   for ( Json::Value::ArrayIndex i = 0; i != messages.size(); ++i ) {
 
@@ -135,6 +147,7 @@ void CTB_Controller::send_message( const std::string & msg ) {
     
     if ( type.find("error") != std::string::npos || type.find("Error") != std::string::npos || type.find("ERROR") != std::string::npos ) {
       dune::DAQLogger::LogError("CTB_Controller") << "Error from the Board: " << messages[i]["message"].asString() << std::endl ;
+      ret = false ;
     }
     else if ( type.find("warning") != std::string::npos || type.find("Warning") != std::string::npos || type.find("WARNING") != std::string::npos ) {
       dune::DAQLogger::LogWarning("CTB_Controller") << "Warning from the Board: " << messages[i]["message"].asString() << std::endl;
@@ -149,9 +162,6 @@ void CTB_Controller::send_message( const std::string & msg ) {
     }
   }
   
-
-  //dune::DAQLogger::LogDebug("CTB_Controller") << msg ;
-    
-  //decide what to do with the error
  
+  return ret ;
 }

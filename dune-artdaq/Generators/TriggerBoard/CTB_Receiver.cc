@@ -10,12 +10,6 @@ CTB_Receiver::CTB_Receiver( const unsigned int port, const unsigned int timeout 
 
   _port ( port ), _timeout( std::chrono::microseconds(timeout) ), _n_TS_words( 0 ), _has_calibration_stream( false )  {
 
-  _stop_requested = false ;
-
-  _raw_fut  = std::async( std::launch::async, & CTB_Receiver::_raw_receiver,  this ) ;
-
-  _word_fut = std::async( std::launch::async, & CTB_Receiver::_word_receiver, this ) ;
-
 }
 
 CTB_Receiver::~CTB_Receiver() {
@@ -35,6 +29,23 @@ bool CTB_Receiver::stop() {
   _word_fut.get() ;
 
   return true ;
+
+}
+
+
+bool CTB_Receiver::start() {
+
+  _stop_requested = false ; 
+
+  _raw_buffer.reset() ;
+
+  _word_buffer.reset() ;
+
+  _raw_fut  = std::async( std::launch::async, & CTB_Receiver::_raw_receiver,  this ) ;
+
+  _word_fut = std::async( std::launch::async, & CTB_Receiver::_word_receiver, this ) ;
+
+  return true ;
 }
 
 
@@ -51,7 +62,7 @@ int CTB_Receiver::_raw_receiver() {
   //std::future<void> accepting = async( std::launch::async, & boost::asio::ip::tcp::acceptor::accept, & acceptor, socket ) ;
   std::future<void> accepting = async( std::launch::async, [&]{ acceptor.accept(socket) ; } ) ;
 
-  while ( ! _stop_requested ) {
+  while ( ! _stop_requested.load() ) {
     
     if ( accepting.wait_for( _timeout.load() ) == std::future_status::ready ) 
       break ;
@@ -69,7 +80,7 @@ int CTB_Receiver::_raw_receiver() {
 
   boost::system::error_code receiving_error;
   
-  while ( ! _stop_requested ) {
+  while ( ! _stop_requested.load() ) {
 
     if ( ! timed_out )  // no workng reading thread, need to create one
       reading = async( std::launch::async, [&]{ return socket.read_some( boost::asio::buffer(tcp_data, max_size), receiving_error ) ; } ) ;
@@ -88,6 +99,10 @@ int CTB_Receiver::_raw_receiver() {
     
     if ( read_bytes > 0 ) {
       
+      while (  _raw_buffer.write_available() < read_bytes && ! _stop_requested.load() ) {
+	; // wait for the buffer to be have enoguh space
+      }
+
       _raw_buffer.push( tcp_data, read_bytes ) ;
       
     }
@@ -115,7 +130,7 @@ int CTB_Receiver::_word_receiver() {
     _update_calibration_file() ;
 
     // look for an header 
-    while ( _raw_buffer.read_available() < header_size && ! _stop_requested ) {
+    while ( _raw_buffer.read_available() < header_size && ! _stop_requested.load() ) {
       ; //do nothing
     }
 
@@ -134,7 +149,7 @@ int CTB_Receiver::_word_receiver() {
     // read n words as requested from the header
     for ( unsigned int i = 0 ; i < n_words ; ++i ) {
          
-      while ( _raw_buffer.read_available() < word_size && ! _stop_requested ) {
+      while ( _raw_buffer.read_available() < word_size && ! _stop_requested.load() ) {
 	; //do nothing
       }
 
@@ -156,7 +171,7 @@ int CTB_Receiver::_word_receiver() {
       else if ( CTB_Receiver::IsFeedbackWord( temp_word ) ) {
 
 	ptb::content::word::feedback_t * feedback = reinterpret_cast<ptb::content::word::feedback_t*>( & temp_word.frame ) ;
-	dune::DAQLogger::LogWarning("CTB_Receiver") << "Feedback word: " << std::endl 
+	dune::DAQLogger::LogError("CTB_Receiver") << "Feedback word: " << std::endl 
 						    << " \t TS -> " << feedback -> timestamp << std::endl 
 						    << " \t Code -> " << feedback -> code << std::endl 
 						    << " \t Source -> " << feedback -> source << std::endl 	  
@@ -165,9 +180,11 @@ int CTB_Receiver::_word_receiver() {
 
 
       // push the word
-      _word_buffer.push( temp_word ) ;
+      while ( ! _word_buffer.push( temp_word ) && ! _stop_requested.load() ) {
+	;  // try the push until success
+      }
       
-      if ( _stop_requested ) break ;
+      if ( _stop_requested.load() ) break ;
       
     }
 

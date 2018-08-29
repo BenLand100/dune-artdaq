@@ -1,3 +1,5 @@
+#include <stdexcept>
+
 #include "json/json.h"
 #include "json/reader.h"
 
@@ -5,8 +7,9 @@
 #include "artdaq/Application/GeneratorMacros.hh"
 #include "dune-artdaq/DAQLogger/DAQLogger.hh"
 #include "artdaq/DAQdata/Globals.hh"
+#include "dune-raw-data/Overlays/FragmentType.hh"
 
-#include "dune_artdaq/dune-artdaq/Generators/TriggerBoard/content.h"
+#include "dune-raw-data/Overlays/CTB_content.h"
 
 #include "artdaq/Application/GeneratorMacros.hh"
 #include "artdaq-core/Utilities/SimpleLookupPolicy.hh"
@@ -29,7 +32,7 @@ dune::TriggerBoardReader::TriggerBoardReader(fhicl::ParameterSet const & ps)
   CommandableFragmentGenerator(ps),
   _run_controller(),
   fragment_type_(static_cast<decltype(fragment_type_)>( artdaq::Fragment::InvalidFragmentType ) ),
-  throw_exception_(ps.get<bool>("throw_exception",false) )
+  throw_exception_(ps.get<bool>("throw_exception",true) )
 {
 
   //get board address and control port from the fhicl file
@@ -45,7 +48,7 @@ dune::TriggerBoardReader::TriggerBoardReader(fhicl::ParameterSet const & ps)
 
   _max_words_per_frag = ps.get<unsigned int>( "max_words_per_frag", 3280 ) ;
 
-  _max_frags_per_call = ps.get<unsigned int>( "max_frags_per_call", 10 ) ;
+  _max_frags_per_call = ps.get<unsigned int>( "max_frags_per_call", 1 ) ;
   dune::DAQLogger::LogDebug( "TriggerBoardGenerator") << "Sending at most " << _max_frags_per_call << " fragments per getNext_ call " ;
 
 
@@ -91,7 +94,15 @@ dune::TriggerBoardReader::TriggerBoardReader(fhicl::ParameterSet const & ps)
   std::string config = json_stream.str() ;
 
   // send the configuration
-  _run_controller -> send_config( config ) ;
+  bool config_status = _run_controller -> send_config( config ) ;
+
+ if ( ! config_status ) {
+   dune::DAQLogger::LogError("TriggerBoardGenerator") << "CTB failed to configure" << std::endl ;
+
+   if ( throw_exception_ ) {
+     throw std::runtime_error("CTB failed to configure") ;
+    }
+  }
   
 }
 
@@ -114,14 +125,18 @@ bool dune::TriggerBoardReader::getNext_(artdaq::FragmentPtrs & frags) {
     return true ;
   }
 
+  long unsigned int sent_bytes = 0 ;
+
   while ( ( _group_size > 0  && _receiver -> N_TS_Words().load() >= _group_size ) ||
 	  ( _group_size <= 0 && n_words > 0 )                                     || 
 	  ( n_words >= _max_words_per_frag ) ) {
 
     std::unique_ptr<artdaq::Fragment> fragptr( CreateFragment() );
 
+    sent_bytes += fragptr -> dataSizeBytes() ;
+
     frags.emplace_back( std::move( fragptr ) ) ;
-    
+
     if ( frags.size() >= _max_frags_per_call ) break ;
 
     if ( should_stop() ) break ;    
@@ -132,16 +147,11 @@ bool dune::TriggerBoardReader::getNext_(artdaq::FragmentPtrs & frags) {
 
   TLOG( 20, "TriggerBoardReader") << "Sending " << frags.size() <<  " fragments" << std::endl ;
 
-  /*
   if(artdaq::Globals::metricMan_ != nullptr) {
-    artdaq::Globals::metricMan_->sendMetric("Fragments Sent",ev_counter(), "Fragments", 0, artdaq::MetricMode::Accumulate);
+    artdaq::Globals::metricMan_->sendMetric("Fragments Sent", frags.size(), "Fragments", 0, artdaq::MetricMode::LastPoint) ;
+    artdaq::Globals::metricMan_->sendMetric("Bytes Sent",     sent_bytes,   "Bytes",     0, artdaq::MetricMode::LastPoint) ;
   }
-  */
   
-  //   if (throw_exception_) {
-  //     DAQLogger::LogError("TriggerBoardReader") << "On fragment " << ev_counter() << ", this is a test of the DAQLogger's LogError function";
-  //   }
-
   return true;
 }
 
@@ -167,28 +177,33 @@ artdaq::FragmentPtr dune::TriggerBoardReader::CreateFragment() {
   unsigned int word_counter = 0 ;
   unsigned int group_counter = 0 ;
 
-  artdaq::FragmentPtr fragptr( artdaq::Fragment::FragmentBytes( initial_bytes ,  
-								ev_counter(), 
-								fragment_id(),
-								1 ,         //fragment_type_ //what is this?!
-								temp_word )  );
+  artdaq::FragmentPtr fragptr( artdaq::Fragment::FragmentBytes( initial_bytes ) ) ; 
 
   for ( word_counter = 0 ; word_counter < n_words ; ++word_counter ) {
 
     _receiver -> Buffer().pop( temp_word ) ;
     memcpy( fragptr->dataBeginBytes() + word_counter * word_bytes, temp_word.get_bytes(), 16 ) ;
-    
-    if ( CTB_Receiver::IsTSWord( temp_word ) ) {
+
+    if ( CTB_Receiver::IsFeedbackWord( temp_word ) ) {
+      dune::DAQLogger::LogError("TriggerBoardGenerator") << "CTB issued a feedback word" << std::endl ;
+      if ( throw_exception_ ) {
+	throw std::runtime_error("CTB sent a feedback word") ;
+      }
+    }
+      
+    else if ( CTB_Receiver::IsTSWord( temp_word ) ) {
 
       --(_receiver -> N_TS_Words()) ;
       ++group_counter ;
 
-      _last_timestamp = temp_word.frame.timestamp ;
-      _has_last_TS = true ;
+      if ( temp_word.frame.timestamp != 0 ) {
+	_last_timestamp = temp_word.frame.timestamp ;
+	_has_last_TS = true ;
 
-      if ( ! has_TS ) {
-	has_TS = true ;
-	timestamp = _last_timestamp ;
+	if ( ! has_TS ) {
+	  has_TS = true ;
+	  timestamp = _last_timestamp ;
+	}
       }
 
       if ( _group_size > 0 ) {
@@ -203,6 +218,9 @@ artdaq::FragmentPtr dune::TriggerBoardReader::CreateFragment() {
   }
   
   fragptr -> resizeBytes( word_counter * word_bytes ) ;
+  fragptr -> setUserType( detail::FragmentType::CTB ) ;
+  fragptr -> setSequenceID( ev_counter() ) ; 
+  fragptr -> setFragmentID( fragment_id() ) ; 
 
   fragptr -> setTimestamp( timestamp ) ;
   TLOG( 20, "TriggerBoardReader") << "fragment created with TS " << timestamp << " containing " << word_counter << " words" << std::endl ;
@@ -219,11 +237,15 @@ artdaq::FragmentPtr dune::TriggerBoardReader::CreateFragment() {
 
 void dune::TriggerBoardReader::start() {
 
+  _receiver -> start() ;
+
   _run_controller -> send_start() ;
 
 }
 
 void dune::TriggerBoardReader::stop() {
+
+  _receiver -> stop() ;
 
   _run_controller -> send_stop() ;
 

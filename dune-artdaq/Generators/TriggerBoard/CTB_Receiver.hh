@@ -13,7 +13,7 @@
 #include <boost/lockfree/spsc_queue.hpp>
 
 #include "fhiclcpp/fwd.h"
-#include "dune-artdaq/Generators/TriggerBoard/content.h"
+#include "dune-raw-data/Overlays/CTB_content.h"
 
 /*
 
@@ -43,6 +43,7 @@ public:
 			     const std::chrono::minutes & interval ) ; 
 
   bool stop() ; 
+  bool start() ;
 
   static bool IsTSWord( const ptb::content::word::word & w ) noexcept ;
   static bool IsFeedbackWord( const ptb::content::word::word & w ) noexcept ;
@@ -50,7 +51,7 @@ public:
 private:
 
   // the raw buffer can contain 4 times the maximum TCP package size, which is 4 KB 
-  boost::lockfree::spsc_queue< uint8_t , boost::lockfree::capacity<16384> > _raw_buffer ;  
+  boost::lockfree::spsc_queue< uint8_t , boost::lockfree::capacity<65536> > _raw_buffer ;  
 
   boost::lockfree::spsc_queue< ptb::content::word::word , boost::lockfree::capacity<4096> > _word_buffer ;  
   
