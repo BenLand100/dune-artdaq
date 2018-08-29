@@ -13,19 +13,6 @@
 
 namespace dune {
 
-namespace rce {
-class BRStats
-{
-   public:
-      BRStats();
-
-      boost::posix_time::ptime last_update ;
-      std::string              last_frag   ;
-      uint64_t                 bad_hdrs    ;
-      uint64_t                 nfrags      ;
-};
-} //namespace rce
-
 class TpcRceReceiver : public artdaq::CommandableFragmentGenerator
 {
    public:
@@ -69,6 +56,9 @@ class TpcRceReceiver : public artdaq::CommandableFragmentGenerator
      std::string _rce_run_mode ;
      bool        _rce_feb_emul ;
      int         _partition    ;
+     int         _duration     ;
+     int         _pretrigger   ;
+     int         _hls_mask     ;
 
      std::string _daq_host_addr;
      std::string _daq_host_port;
@@ -81,11 +71,44 @@ class TpcRceReceiver : public artdaq::CommandableFragmentGenerator
      std::unique_ptr<rce::RceComm>      _rce_comm;
      std::unique_ptr<rce::RssiReceiver> _receiver;
 
-     rce::BRStats _stats;
-     rce::BRStats _stats_prev;
+     // stats
+     class Stats
+     {
+        public:
+           Stats();
 
-     void _print_stats();
+           rce::RecvStats prev;
+           float    evt_rate  = 0;
+           float    data_rate = 0;
+           float    avg_size  = 0;
+           float    min_size  = 0;
+           float    max_size  = 0;
+           uint32_t rssi_drop = 0;
+           uint32_t pack_drop = 0;
+           uint32_t bad_hdrs  = 0;
+           uint32_t bad_data  = 0;
+           uint32_t overflow  = 0;
+           bool     is_open   = false;
+           boost::posix_time::ptime last_update;
+
+           void track_size(size_t bytes);
+           void reset_track_size();
+
+        private:
+           bool     _1st_frag  = true;
+           uint32_t _min_size  = 0;
+           uint32_t _max_size  = 0;
+     };
+
+     Stats _stats;
+     void _update_stats();
+     void _send_stats()    const;
+     void _print_stats()   const;
+     void _print_summary(const char*title) const;
+
      std::stringstream _debug_ss;
+     std::string       _last_frag = "";
+     size_t            _frag_cnt  = 0;
 };
 } // namespace dune
 

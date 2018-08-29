@@ -37,7 +37,10 @@ namespace rce {
          uint32_t rx_last;
          uint32_t pack_drop;
          uint32_t rssi_drop;
-         uint32_t buf_overflow;
+         uint32_t overflow;
+         uint32_t bad_hdrs;
+         uint32_t bad_trlr;
+         uint32_t bad_data;
    };
 
    class RssiSink: public rogue::interfaces::stream::Slave 

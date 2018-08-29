@@ -5,21 +5,41 @@
 #include "artdaq/DAQdata/Globals.hh"
 #include "dune-artdaq/Generators/TpcRceReceiver.hh"
 #include "dune-artdaq/DAQLogger/DAQLogger.hh"
-//#include "canvas/Utilities/Exception.h"
 #include "artdaq/Application/GeneratorMacros.hh"
 #include "dune-raw-data/Overlays/FragmentType.hh"
-//#include "cetlib/exception.h"
 #include "fhiclcpp/ParameterSet.h"
 #include "messagefacility/MessageLogger/MessageLogger.h"
 
 namespace dune {
 
-rce::BRStats::BRStats() :
-   last_update(boost::posix_time::second_clock::local_time()),
-   last_frag(""),
-   bad_hdrs(0),
-   nfrags(0)
+TpcRceReceiver::Stats::Stats() : 
+   last_update(boost::posix_time::microsec_clock::local_time())
 {
+}
+
+void TpcRceReceiver::Stats::track_size(size_t bytes)
+{
+   if (_1st_frag) {
+      _min_size = bytes;
+      _max_size = bytes;
+      _1st_frag = false;
+   }
+   else {
+      if (bytes > _max_size)
+         _max_size = bytes;
+
+      if (bytes < _min_size)
+         _min_size = bytes;
+   }
+}
+
+void TpcRceReceiver::Stats::reset_track_size()
+{
+   max_size  = _max_size * 1e-6; // in MB
+   min_size  = _min_size * 1e-6; // in MB
+   _1st_frag = true;
+   _min_size = 0;
+   _max_size = 0;
 }
 
 TpcRceReceiver::TpcRceReceiver(fhicl::ParameterSet const& ps) :
@@ -97,22 +117,13 @@ void TpcRceReceiver::stop(void)
    {
       DAQLogger::LogWarning(_instance_name) << e.what();
    }
-   _print_stats();
+   _print_summary("End of run summary");
 }
 
 void TpcRceReceiver::stopNoMutex(void)
 {
    DAQLogger::LogInfo(_instance_name) << "stopNoMutex()";
-   try {
-      _rce_comm->blowoff_hls( 0x3  );
-      _rce_comm->blowoff_wib( true );
-      _rce_comm->send_cmd("SetRunState", "Stopped");
-   }
-   catch (const std::exception &e)
-   {
-      DAQLogger::LogWarning(_instance_name) << e.what();
-   }
-   _print_stats();
+   stop();
 }
 
 bool TpcRceReceiver::getNext_(artdaq::FragmentPtrs& frags)
@@ -123,58 +134,74 @@ bool TpcRceReceiver::getNext_(artdaq::FragmentPtrs& frags)
       // an unique pointer, take ownership of buf
       artdaq::FragmentPtr frag(buf);
 
-      //auto *data_ptr = reinterpret_cast<uint64_t*>(buf->dataAddress());
-      // FIXME
-      auto *data_ptr = reinterpret_cast<uint64_t*>(buf->dataBeginBytes() + 12);
 
-      auto *header = data_ptr;
-      auto timestamp = *(header + 2);
-      if (*header >> 40 != 0x8b309e)
-         ++_stats.bad_hdrs;
+      auto *data_ptr = buf->dataBeginBytes();
+      // FIXME
+      uint64_t header = *reinterpret_cast<uint64_t *>(data_ptr + 12);
+      
+      // find header
+      /*
+      uint64_t header = *reinterpret_cast<uint64_t *>(data_ptr);
+      size_t n_words = sizeof(uint64_t) / sizeof(artdaq::Fragment::byte_t);
+      for (size_t i = 0; i < n_words; ++i) {
+         if (*data_ptr != 0) {
+            header = *reinterpret_cast<uint64_t *>(data_ptr);
+            break;
+         }
+         ++data_ptr;
+      }
+      */
 
       // Set fragment fields appropriately
       frag->setSequenceID ( ev_counter()      );
       frag->setFragmentID ( _frag_id          );
       frag->setUserType   ( dune::detail::TPC );
-      frag->setTimestamp  ( timestamp         );
 
       // debug info
       //TLOG(50, "RCE")
       _debug_ss.str("");
       _debug_ss
          << "[" << _instance_name << "] "
-         << "size:"      << frag->dataSizeBytes() << ", "
-         << "frag id:"   << frag->fragmentID()    << ", "
-         << "seq id:"    << frag->sequenceID()      << ", "
+         << "frag id:"   << frag->fragmentID()    << " "
+         << "seq id:"    << frag->sequenceID()    << " "
+         << "size:"      << frag->dataSizeBytes() << " "
          << std::hex
-         << "timestamp:" << frag->timestamp()     << ", "
-         << "header:"    << *header
+         << "header:"    << header                << " "
+         << "timestamp:" << frag->timestamp()
          << std::dec;
 
       DAQLogger::LogInfo(_instance_name) << _debug_ss.str();
-
-      // add the fragment to the list
-      frags.emplace_back(std::move(frag));
+      _last_frag = _debug_ss.str();
 
       // increment the event counter
       ev_counter_inc();
+      ++_frag_cnt;
 
-      // update BoardReader stats
-      _stats.last_frag = _debug_ss.str();
-      ++_stats.nfrags;
+      // track fragment size
+      _stats.track_size(frag->dataSizeBytes());
+
+      // add the fragment to the list
+      frags.emplace_back(std::move(frag));
    }
    else {
       boost::this_thread::sleep(boost::posix_time::milliseconds(50));
    }
 
-   // print stats
+   // update / send stats every second
    auto now = boost::posix_time::second_clock::local_time();
    auto dt  = now - _stats.last_update;
-   if (dt.total_seconds() > 10) {
-      _stats.last_update = now;
-      _print_stats();
-      _stats_prev = _stats;
+   auto lapse = dt.total_seconds();
+   if (lapse > 1) {
+      _update_stats();
+      _send_stats();
    }
+
+   // debug
+   if (lapse > 0 && _frag_cnt % 10 == 1)
+      _print_stats();
+
+   if (lapse > 0 && _frag_cnt % 100 == 1)
+      _print_summary("Cum. Stats");
 
   bool is_stop = should_stop() && _receiver->read_available() == 0;
   return !is_stop;
@@ -209,25 +236,72 @@ bool TpcRceReceiver::startOfDatataking()
   return is_start;
 }
 
-void TpcRceReceiver::_print_stats()
+void TpcRceReceiver::_update_stats()
 {
-   auto recv_stat = _receiver->get_stats();
+   auto curr = _receiver->get_stats();
+
+   auto now    = boost::posix_time::microsec_clock::local_time();
+   auto dt     = now - _stats.last_update;
+   float lapse = dt.total_milliseconds() * 1e-3;
+
+   auto rx_count = curr.rx_count - _stats.prev.rx_count;
+   auto rx_bytes = curr.rx_bytes - _stats.prev.rx_bytes;
+
+   _stats.evt_rate  = lapse > 0    ? rx_count / lapse : 0;
+   _stats.data_rate = lapse > 0    ? rx_bytes / lapse * 8e-9 : 0;
+   _stats.avg_size  = rx_count > 0 ? rx_bytes / rx_count * 1e-6 : 0;
+   _stats.rssi_drop = curr.rssi_drop - _stats.prev.rssi_drop;
+   _stats.pack_drop = curr.pack_drop - _stats.prev.pack_drop;
+   _stats.bad_hdrs  = curr.bad_hdrs  - _stats.prev.bad_hdrs;
+   _stats.bad_data  = curr.bad_data  - _stats.prev.bad_data;
+   _stats.overflow  = curr.overflow  - _stats.prev.overflow;
+   _stats.is_open   = _receiver->is_open();
+
+   _stats.reset_track_size();
+
+   _stats.last_update = now;
+   _stats.prev        = curr;
+}
+
+void TpcRceReceiver::_print_stats() const
+{
    auto last_update = to_simple_string(_stats.last_update);
 
-   auto timediff = _stats.last_update  - _stats_prev.last_update;
-   float dt = timediff.total_milliseconds() * 1e-3;
-   float frag_rate = (_stats.nfrags - _stats_prev.nfrags) / dt;
-
    DAQLogger::LogInfo(_instance_name)
-      << "[" << _instance_name << "] "
-      << "Last Update     : " << last_update            << "\n"
-      << "Rate (Hz)       : " << frag_rate              << "\n"
-      << "Fragments Sent  : " << _stats.nfrags          << "\n"
-      << "Bad Headers     : " << _stats.bad_hdrs        << "\n"
-      << "RSSI Drop       : " << recv_stat.rssi_drop    << "\n"
-      << "Pkt. Drop       : " << recv_stat.pack_drop    << "\n"
-      << "Buffer Overflow : " << recv_stat.buf_overflow << "\n"
-      << "Last Fragment   : " << _stats.last_frag;
+      << "=== Stats ===\n"
+      << "Last Update     : " << last_update       << "\n"
+      << "Rate (Hz)       : " << _stats.evt_rate   << "\n"
+      << "Data (Gbps)     : " << _stats.data_rate  << "\n"
+      << "Avg. Size (MB)  : " << _stats.avg_size   << "\n"
+      << "Min. Size (MB)  : " << _stats.min_size   << "\n"
+      << "Max. Size (MB)  : " << _stats.max_size   << "\n"
+      << "RSSI Drop       : " << _stats.rssi_drop  << "\n"
+      << "Pkt. Drop       : " << _stats.pack_drop  << "\n"
+      << "Bad Headers     : " << _stats.bad_hdrs   << "\n"
+      << "Bad Data        : " << _stats.bad_hdrs   << "\n"
+      << "Overflow        : " << _stats.overflow   << "\n"
+      << "IsOpen          : " << _stats.is_open    << "\n"
+      << "Last Fragment   : " << _last_frag
+      ;
+}
+
+void TpcRceReceiver::_print_summary(const char *title) const
+{
+   auto curr = _receiver->get_stats();
+   DAQLogger::LogInfo(_instance_name)
+      << "=== " << title << " ===\n"
+      << "NFrags : "   << curr.rx_count  << "\n"
+      << "RSSI Drop: " << curr.rssi_drop << "\n"
+      << "Pkt. Drop: " << curr.pack_drop << "\n"
+      << "Overflow : " << curr.overflow  << "\n"
+      << "Bad Hdrs : " << curr.bad_hdrs  << "\n"
+      << "Bad Trlr:  " << curr.bad_trlr  << "\n"
+      << "Bad Data : " << curr.bad_data 
+      ;
+}
+
+void TpcRceReceiver::_send_stats() const
+{
 }
 
 } //namespace dune

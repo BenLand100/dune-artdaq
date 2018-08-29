@@ -59,7 +59,7 @@ size_t RceComm::read(std::string& msg)
    std::size_t bytes = 0;
 
    boost::asio::streambuf streambuf;
-   boost::asio::async_read_until(_socket, streambuf, '\n',
+   boost::asio::async_read_until(_socket, streambuf, '\f',
          boost::bind(&RceComm::_handle_rw, _1, _2, &ec, &bytes));
 
    do _io_context.run_one(); while (ec == boost::asio::error::would_block);
@@ -184,6 +184,15 @@ void RceComm::blowoff_hls(unsigned int flag)
 void RceComm::blowoff_wib(bool flag)
 {
    send_cfg("DataDpm.DataDpmWib.Blowoff", flag ? "True" : "False");
+}
+
+void RceComm::set_readout(size_t duration, size_t pretrigger)
+{
+   boost::property_tree::ptree pt;
+   pt.add("DataDpm.DataBuffer.Duration",   duration);
+   pt.add("DataDpm.DataBuffer.PreTrigger", pretrigger);
+   send(pt);
+   read();
 }
 
 }} // namespace dune::rce

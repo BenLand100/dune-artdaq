@@ -39,6 +39,8 @@ class RceComm
       void blowoff_hls   ( unsigned int flag              );
       void blowoff_wib   ( bool         flag              );
       void reset         ( const std::string& xml_file="" );
+      void set_readout   ( size_t duration,  // in microseconds
+                           size_t pretrigger              );
 
    private:
       boost::asio::io_service          _io_context;
