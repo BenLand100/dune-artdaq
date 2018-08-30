@@ -163,6 +163,7 @@ namespace dune {
     std::unique_ptr<artdaq::StatusPublisher> status_publisher_;
     std::unique_ptr<artdaq::FragmentPublisher> fragment_publisher_;
 
+    int want_inhibit_; // Do we want to request a trigger inhibit?
 // Internal functions
     void reset_met_variables(bool onlyspill=false);   // If onlyspill, only reset the in-spill variables
     void update_met_variables(dune::TimingFragment& fo); // Update variables for met

@@ -78,6 +78,7 @@ dune::TimingReceiver::TimingReceiver(fhicl::ParameterSet const & ps):
   ,zmq_conn_(ps.get<std::string>("zmq_connection","tcp://pddaq-gen05-daq0:5566"))
   ,zmq_conn_out_(ps.get<std::string>("zmq_connection_out","tcp://*:5599"))
   ,zmq_fragment_conn_out_(ps.get<std::string>("zmq_fragment_connection_out","tcp://*:7123"))
+  ,want_inhibit_(false)  
 {
 
     // TODO:
@@ -254,20 +255,35 @@ bool dune::TimingReceiver::checkHWStatus_()
 			<< " table_count=" << n_table_count
 			<< " table_entries_remaining=" << n_remaining_table_entries;
 
+    bool new_want_inhibit=false;
+    std::string status_msg="";
+
     if(mp_ovrflw){
         // Tell the InhibitMaster that we want to stop triggers, then
         // carry on with this iteration of the loop
         DAQLogger::LogInfo(instance_name_) << "buf_warn is high, with " << master_partition().numEventsInBuffer() << " events in buffer. Requesting InhibitMaster to stop triggers";
-        status_publisher_->PublishBadStatus("ROBWarningOverflow");
+        status_msg="ROBWarningOverflow";
+        new_want_inhibit=true;
     }
     //check if there are available routing tokens, and if not inhibit
     else if(n_remaining_table_entries==0){
-      status_publisher_->PublishBadStatus("NoAvailableTokens");
-      DAQLogger::LogInfo(instance_name_) << "NoAvailableTokens! Requesting InhibitMaster to stop triggers";
+      new_want_inhibit=true;
+      status_msg="NoAvailableTokens";
     }
     else{
-        status_publisher_->PublishGoodStatus();
+      new_want_inhibit=false;
     }
+
+    if(new_want_inhibit && !want_inhibit_){
+      DAQLogger::LogInfo(instance_name_) << "Want inhibit Status change: Publishing bad status: \"" << status_msg << "\"";
+      status_publisher_->PublishBadStatus(status_msg);
+    }
+    if(want_inhibit_ && !new_want_inhibit){
+      DAQLogger::LogInfo(instance_name_) << "Want inhibit status change: Publishing good status";
+      status_publisher_->PublishGoodStatus();
+    }
+
+    want_inhibit_ = new_want_inhibit;
 
     return true;
 }
