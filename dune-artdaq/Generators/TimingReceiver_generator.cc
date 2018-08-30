@@ -166,8 +166,11 @@ dune::TimingReceiver::TimingReceiver(fhicl::ParameterSet const & ps):
 
     // Set up connection to Inhibit Master. This is the inbound
     // connection (ie, InhibitMaster talks to us to say whether we
-    // should enable triggers)
-    InhibitGet_init(zmq_conn_.c_str(),inhibitget_timer_);
+    // should enable triggers). We'll actually call
+    // InhibitGet_connect() in start(), in order to do so as late as
+    // possible and minimize the chance of reading stale messages from
+    // the InhibitMaster
+    InhibitGet_init(inhibitget_timer_);
 
     // Set up outgoing connection to InhibitMaster: this is where we
     // broadcast whether we're happy to take triggers
@@ -219,6 +222,7 @@ void dune::TimingReceiver::start(void)
         // it's all gone pear-shaped?
     }
 
+    InhibitGet_connect(zmq_conn_.c_str());
     InhibitGet_retime(inhibitget_timer_);
 
     this->reset_met_variables(false);

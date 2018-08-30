@@ -17,15 +17,14 @@ struct InhibitGet_vars {
 
 static struct InhibitGet_vars gIGhandle;
 
-void InhibitGet_init(const char *zmq_conn, uint32_t timetoignore) {
+void InhibitGet_init(uint32_t timetoignore) {
   //  Prepare our context and publisher
   gIGhandle.context = zmq_ctx_new ();
   gIGhandle.subscriber = zmq_socket (gIGhandle.context, ZMQ_SUB);
-  int rc = zmq_connect (gIGhandle.subscriber, zmq_conn);  // "tcp://pddaq-gen05-daq0:5566"
   
   char filter[] = "INHIBITMSG_";
   const int hwm=1;
-  rc = zmq_setsockopt (gIGhandle.subscriber, ZMQ_SUBSCRIBE,
+  int rc = zmq_setsockopt (gIGhandle.subscriber, ZMQ_SUBSCRIBE,
 		       filter, strlen (filter));
   rc = zmq_setsockopt(gIGhandle.subscriber,ZMQ_RCVHWM,&hwm,sizeof(int));
 
@@ -35,6 +34,14 @@ void InhibitGet_init(const char *zmq_conn, uint32_t timetoignore) {
 #else
   if (rc) { }   // Avoid unused variable compiler warning
 #endif
+}
+
+void InhibitGet_connect(const char* zmq_conn)
+{
+  int rc = zmq_connect (gIGhandle.subscriber, zmq_conn);
+  if(rc!=0){
+    printf("zmq_connect failed!\n");
+  }
 }
 
 void InhibitGet_retime(uint32_t timetoignore) {
