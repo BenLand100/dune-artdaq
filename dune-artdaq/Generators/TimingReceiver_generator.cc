@@ -12,6 +12,7 @@
 #include "artdaq/DAQdata/Globals.hh"
 #define TRACE_NAME (app_name + "_TimingReceiver").c_str()
 #define TLVL_HWSTATUS 20
+#define TLVL_TIMING 10
 
 #include "dune-artdaq/Generators/TimingReceiver.hh"
 #include "dune-artdaq/DAQLogger/DAQLogger.hh"
@@ -374,6 +375,7 @@ bool dune::TimingReceiver::getNext_(artdaq::FragmentPtrs &frags)
     unsigned int havedata = (master_partition().numEventsInBuffer()>0);   // Wait for a complete event
     if (havedata) timeout = 1;  // If we have data, we don't wait around in case there is more or a throttle
 
+    TLOG(TLVL_TIMING) << "havedata: " << havedata;
     // TODO: Consider moving throttling check up here; as it is, we could receive a huge rate of events even though we
     // are also being told to throttle, and may not notice that throttling request.
 
@@ -407,6 +409,7 @@ bool dune::TimingReceiver::getNext_(artdaq::FragmentPtrs &frags)
         }
 #endif
 
+        TLOG(TLVL_TIMING) << fo;
         // Fill in the fragment header fields (not some other fragment generators may put these in the
         // constructor for the fragment, but here we push them in one at a time.
         f->setSequenceID( ev_counter() );  // ev_counter is in our base class  // or f->setSequenceID(fo.get_evtctr())
@@ -457,7 +460,7 @@ bool dune::TimingReceiver::getNext_(artdaq::FragmentPtrs &frags)
       if (stopping_flag_ != 0) break;      // throttling change not desired after run stop request.      
       uint32_t tf = InhibitGet_get();      // Can give 0=No change, 1=OK, 2=Not OK)
       uint32_t bit = 1;                    // If we change, this is the value to set. 1=running 
-      DAQLogger::LogDebug(instance_name_) << "Received value " << tf << " from InhibitGet_get()\n";
+      TLOG(TLVL_TIMING) << "Received value " << tf << " from InhibitGet_get()\n";
       if (tf == 0) break;                  // No change, so no need to do anything
 
 
@@ -471,10 +474,13 @@ bool dune::TimingReceiver::getNext_(artdaq::FragmentPtrs &frags)
         DAQLogger::LogWarning(instance_name_) << "TimingReceiver_generator.cc: Logic error should not happen";
         break;                             // Treat as no change
       }
-      if (debugprint_ > 0) { 
-        DAQLogger::LogInfo(instance_name_) << "Throttle state change: Writing " << bit 
+      std::stringstream change_msg;
+      change_msg << "Throttle state change: Writing " << bit 
                                            << " to trig_en.  [Throttling state was " << throttling_state_
-                                           << "] (1 means enabled)\n";
+                                           << "]\n";
+      TLOG(TLVL_TIMING) << change_msg.str();
+      if (debugprint_ > 0) { 
+        DAQLogger::LogInfo(instance_name_) << change_msg.str();
       }
       master_partition().enableTriggers(bit); // Set XOFF or XON as requested
       throttling_state_ = bit ^ 0x1;       // throttling_state is the opposite of bit
@@ -518,8 +524,9 @@ void dune::TimingReceiver::fiddle_trigger_mask()
     uint32_t old_mask=trigger_mask_;
     // We modify the trigger mask to always be zero for the _other_ partitions
     trigger_mask_ &= 0xf0 + (1<<partition_number_);
-    printf("fiddle_trigger_mask partn %d. Old: 0x%x, New: 0x%x\n",
-           partition_number_, old_mask, trigger_mask_);
+    DAQLogger::LogInfo(instance_name_) << "fiddle_trigger_mask partn " << partition_number_
+                                       << " Old: " << std::showbase << std::hex << old_mask
+                                       << " New: " << std::showbase << std::hex << trigger_mask_;
 }
 
 void dune::TimingReceiver::reset_met_variables(bool onlyspill) {
@@ -618,8 +625,8 @@ void dune::TimingReceiver::send_met_variables() {
       }
   }
 
-  DAQLogger::LogInfo(instance_name_) << acc_msg.str();
-  DAQLogger::LogInfo(instance_name_) << rej_msg.str();
+  TLOG(TLVL_TIMING) << acc_msg.str();
+  TLOG(TLVL_TIMING) << rej_msg.str();
 }
 
 // The following macro is defined in artdaq's GeneratorMacros.hh header
