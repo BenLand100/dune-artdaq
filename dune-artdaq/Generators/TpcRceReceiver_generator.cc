@@ -92,6 +92,9 @@ TpcRceReceiver::TpcRceReceiver(fhicl::ParameterSet const& ps) :
    catch (const std::exception &e) {
       DAQLogger::LogError(_instance_name) << e.what();
    }
+
+   // timeout for 0,5s
+   std::this_thread::sleep_for(std::chrono::milliseconds(500));
 }
 
 void TpcRceReceiver::start(void) 
@@ -105,15 +108,26 @@ void TpcRceReceiver::start(void)
   
    // drain buffer
 
-   // send start command
+   // re-enable wib and hls
    try {
       _rce_comm->blowoff_wib( false       );
       _rce_comm->blowoff_hls( _hls_mask   );
+   }
+   catch (const std::exception &e)
+   {
+      DAQLogger::LogWarning(_instance_name) << e.what();
+   }
 
+   // check status
+   _check_status();
+
+   // enable data transfer
+   try {
       _rce_comm->send_cmd("SetRunState", "Enable");
    }
-   catch (const std::exception &e) {
-      DAQLogger::LogError(_instance_name) << e.what();
+   catch (const std::exception &e)
+   {
+      DAQLogger::LogWarning(_instance_name) << e.what();
    }
 }
 
@@ -314,6 +328,27 @@ void TpcRceReceiver::_print_summary(const char *title) const
 
 void TpcRceReceiver::_send_stats() const
 {
+}
+
+void TpcRceReceiver::_check_status() 
+{
+   size_t n_retries  = 0;
+   size_t max_trials = 5;
+   do {
+      ++n_retries;
+
+      // timeout for 0.1s
+      std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+      auto status = _rce_comm->get_status();
+      bool pass = status.check_hls(_hls_mask);
+
+      if (pass)
+         break;
+      else if (n_retries == max_trials) 
+         DAQLogger::LogError(_instance_name) << status.err_msg();
+
+   } while (n_retries < max_trials);
 }
 
 } //namespace dune

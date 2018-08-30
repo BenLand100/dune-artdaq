@@ -106,9 +106,12 @@ class TpcRceReceiver : public artdaq::CommandableFragmentGenerator
      void _print_stats()   const;
      void _print_summary(const char*title) const;
 
+     void _check_status();
+
      std::stringstream _debug_ss;
      std::string       _last_frag = "";
      size_t            _frag_cnt  = 0;
+
 };
 } // namespace dune
 

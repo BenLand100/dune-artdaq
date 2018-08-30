@@ -195,4 +195,14 @@ void RceComm::set_readout(size_t duration, size_t pretrigger)
    read();
 }
 
+RceStatus RceComm::get_status()
+{
+   send("<system><command><ReadStatus/></command></system>\n\f");
+
+   std::string msg;
+   read(msg);
+
+   return RceStatus(msg);
+}
+
 }} // namespace dune::rce

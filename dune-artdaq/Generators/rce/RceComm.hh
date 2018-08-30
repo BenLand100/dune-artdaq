@@ -7,6 +7,8 @@
 #include <boost/asio.hpp>
 #include <boost/property_tree/xml_parser.hpp>
 
+#include "RceStatus.hh"
+
 namespace dune {
 namespace rce {
 
@@ -20,7 +22,7 @@ class RceComm
       size_t read   ( std::string& msg);
       size_t read   ();
       size_t send   (const std::string &msg);
-      size_t send(const boost::property_tree::ptree &pt);
+      size_t send   (const boost::property_tree::ptree &pt);
       void   flush();
 
       template<typename T>
@@ -41,6 +43,8 @@ class RceComm
       void reset         ( const std::string& xml_file="" );
       void set_readout   ( size_t duration,  // in microseconds
                            size_t pretrigger              );
+
+      RceStatus get_status();
 
    private:
       boost::asio::io_service          _io_context;
