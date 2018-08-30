@@ -33,7 +33,12 @@ CRT::FragGen::FragGen(fhicl::ParameterSet const& ps) :
   , oldlowertime(0)
   , runstarttime(0)
   , startbackend(ps.get<bool>("startbackend"))
-  , timingXMLfilename(ps.get<std::string>("connections_file", "/nfs/sw/control_files/timing/connections_v4b2.xml"))
+  // TODO: the fcl file is going to tell us what the partition is (don't know
+  // what the variable name is), and then I will need to write it into the
+  // timing board's endpoint0.csr.ctrl.tgrp before I retrieve the timestamp.
+  // It's ok to do this in all four processes.
+  , timingXMLfilename(ps.get<std::string>("connections_file",
+    "/nfs/sw/control_files/timing/connections_v4b2.xml"))
   , hardwarename(ps.get<std::string>("hardware_select", "PRIMARY"))
 {
   hardware_interface_->AllocateReadoutBuffer(&readout_buffer_);
@@ -166,6 +171,7 @@ void CRT::FragGen::getRunStartTime()
 {
 #if 1
   std::string filepath = "file://" + timingXMLfilename;
+  uhal::setLogLevelTo(uhal::Error());
   static uhal::ConnectionManager timeConnMan(filepath);
   static uhal::HwInterface timinghw(timeConnMan.getDevice(hardwarename));
 
@@ -173,14 +179,14 @@ void CRT::FragGen::getRunStartTime()
   timinghw.dispatch();
   if(status != 8){
     throw cet::exception("CRT") << "CRT timing board in bad state"
-      /*<< (int)status <<*/ ", can't read run start time\n";
+      << (int)status << ", can't read run start time\n";
   }
 
   /* readBlock(2) read the register named and the next one that is contiguous
      in memory, which is non-coincidentally the other bits we need.  The read
      of both registers together is atomic. */
   uhal::ValVector<uint32_t> runstarttimev = timinghw
-    .getNode("endpoint0.tstamp.ctr" /* TODO: read right register */)
+    .getNode("endpoint0.tstamp" /* TODO: read right register. Dave will tell me this soon after 2018-08-29. */)
     .readBlock(2 /* number of 32-bit words read */);
   timinghw.dispatch();
 
