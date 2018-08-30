@@ -120,6 +120,11 @@ bool CRT::FragGen::getNext_(
   uint64_t lowertime = 0;
   memcpy(&lowertime + 4, readout_buffer_ + 8, 4);
 
+  // Store the first non-zero raw hardware timestamp that we see.  This is
+  // only needed for debugging.  If the first timestamp happens to be zero,
+  // in principle we could take that, but it's not important.
+  if(firstlowertime == 0) firstlowertime = lowertime;
+
   // This only works if the CRT takes data continuously.  If we don't
   // see data for more than one 32-bit epoch, which is about 86 seconds,
   // we'll fall out of sync.  With additional work this could be fixed,
@@ -129,13 +134,13 @@ bool CRT::FragGen::getNext_(
   // 5 seconds long).
   if(lowertime < oldlowertime) uppertime++;
 
-  timestamp_ += (uint64_t)uppertime << 32;
+  timestamp_ = ((uint64_t)uppertime << 32) + lowertime + runstarttime;
 
-  // And also copy the upper bits into the buffer itself.  Not sure
+  // And also copy the repaired timestamp into the buffer itself.  Not sure
   // which timestamp code downstream is going to read (timestamp_ or
   // from the raw buffer, a.k.a. the fragment), but both will always be
   // the same.
-  memcpy(readout_buffer_ + 4, &uppertime, 4);
+  memcpy(readout_buffer_ + 4, &timestamp_, sizeof(uint64_t));
 
   // See $ARTDAQ_CORE_DIR/artdaq-core/Data/Fragment.hh, also the "The
   // artdaq::Fragment interface" section of
@@ -203,8 +208,8 @@ void CRT::FragGen::start()
 
   getRunStartTime();
 
-  uppertime = runstarttime >> 32;
-  oldlowertime = runstarttime;
+  uppertime = 0;
+  oldlowertime = 0;
 }
 
 void CRT::FragGen::stop()
