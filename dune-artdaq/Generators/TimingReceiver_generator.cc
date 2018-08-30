@@ -441,9 +441,10 @@ bool dune::TimingReceiver::getNext_(artdaq::FragmentPtrs &frags)
       if (stopping_flag_ != 0) break;      // throttling change not desired after run stop request.      
       uint32_t tf = InhibitGet_get();      // Can give 0=No change, 1=OK, 2=Not OK)
       uint32_t bit = 1;                    // If we change, this is the value to set. 1=running 
+      DAQLogger::LogDebug(instance_name_) << "Received value " << tf << " from InhibitGet_get()\n";
       if (tf == 0) break;                  // No change, so no need to do anything
 
-      DAQLogger::LogDebug(instance_name_) << "Received value " << tf << " from InhibitGet_get()\n";
+
       if (tf == 1) {                       // Want to be running
         if (throttling_state_ != 1) break; // No change needed
         bit = 1;                           // To set running (line not needed, bit is set to 1 already)
