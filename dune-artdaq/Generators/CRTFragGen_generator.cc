@@ -86,8 +86,7 @@ bool CRT::FragGen::getNext_(
   std::list< std::unique_ptr<artdaq::Fragment> > & frags)
 {
   if(should_stop()){
-    // XXX debugging
-    TLOG(TLVL_INFO, "CRT") << "CRT getNext_ returning because should_stop() is true\n";
+    TLOG(TLVL_INFO, "CRT") << "CRT getNext_ returning on should_stop()\n";
     return false;
   }
 
@@ -109,7 +108,8 @@ bool CRT::FragGen::getNext_(
   // (1B), module number (2B) and timestamps (8B).
   const std::size_t minsize = 4 + sizeof(timestamp_);
   if(bytes_read < minsize){
-    throw cet::exception("CRT") << "Bad result with only " << bytes_read << " < " << minsize << " bytes from CRTInterface::FillBuffer.\n";
+    throw cet::exception("CRT") << "Bad result with only " << bytes_read
+       << " < " << minsize << " bytes from CRTInterface::FillBuffer.\n";
   }
 
   // Repair the CRT timestamp.  First get the lower bits that the CRT
@@ -146,8 +146,11 @@ bool CRT::FragGen::getNext_(
   // artdaq::Fragment interface" section of
   // https://cdcvs.fnal.gov/redmine/projects/artdaq-demo/wiki/How_to_write_an_overlay_class
 
-  std::unique_ptr<artdaq::Fragment> fragptr = std::make_unique<artdaq::Fragment>(bytes_read/sizeof(artdaq::Fragment));
-  fragptr->setSequenceID( ev_counter() ); // ev_counter() from base CommandableFragmentGenerator
+  std::unique_ptr<artdaq::Fragment> fragptr
+    = std::make_unique<artdaq::Fragment>(bytes_read/sizeof(artdaq::Fragment));
+
+  // ev_counter() from base CommandableFragmentGenerator
+  fragptr->setSequenceID( ev_counter() );
   fragptr->setFragmentID( fragment_id() ); // Ditto
   fragptr->setUserType( dune::detail::CRT );
   fragptr->setTimestamp( timestamp_ );
@@ -167,7 +170,7 @@ bool CRT::FragGen::getNext_(
   ev_counter_inc(); // from base CommandableFragmentGenerator
 
   // XXX debugging
-  TLOG(TLVL_INFO, "CRT") << "CRT getNext_ is returning with hits from a module\n";
+  TLOG(TLVL_INFO, "CRT") << "CRT getNext_ is returning with hits\n";
 
   return true;
 }
@@ -180,7 +183,8 @@ void CRT::FragGen::getRunStartTime()
   static uhal::ConnectionManager timeConnMan(filepath);
   static uhal::HwInterface timinghw(timeConnMan.getDevice(hardwarename));
 
-  uhal::ValWord<uint32_t> status = timinghw.getNode("endpoint0.csr.stat.ep_stat").read();
+  uhal::ValWord<uint32_t> status
+    = timinghw.getNode("endpoint0.csr.stat.ep_stat").read();
   timinghw.dispatch();
   if(status != 8){
     throw cet::exception("CRT") << "CRT timing board in bad state"
@@ -191,7 +195,8 @@ void CRT::FragGen::getRunStartTime()
      in memory, which is non-coincidentally the other bits we need.  The read
      of both registers together is atomic. */
   uhal::ValVector<uint32_t> runstarttimev = timinghw
-    .getNode("endpoint0.tstamp" /* TODO: read right register. Dave will tell me this soon after 2018-08-29. */)
+    // TODO: read right register. Dave will tell me this soon after 2018-08-29.
+    .getNode("endpoint0.tstamp")
     .readBlock(2 /* number of 32-bit words read */);
   timinghw.dispatch();
 
