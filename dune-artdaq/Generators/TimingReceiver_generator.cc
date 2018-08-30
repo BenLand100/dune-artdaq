@@ -580,20 +580,29 @@ void dune::TimingReceiver::send_met_variables() {
       "Trig8"
   };
 
+  std::stringstream acc_msg, rej_msg;
+  acc_msg << "Acc. counts: ";
+  rej_msg << "Rej. counts: ";
+      
   // send the trigger counts
   for(int i=0; i<16; ++i){
       if (met_accepted_trig_count_.size() > i){
           std::stringstream ss1;
           ss1 << "TimingSys Accepted " << commandNames.at(i);
           artdaq::Globals::metricMan_->sendMetric(ss1.str(), (int)met_accepted_trig_count_.at(i), "triggers", 1, artdaq::MetricMode::LastPoint);
+          acc_msg << ((int)met_accepted_trig_count_.at(i)) << ",";
       }
 
       if (met_rejected_trig_count_.size() > i){
           std::stringstream ss2;
           ss2 << "TimingSys Rejected " << commandNames.at(i);
           artdaq::Globals::metricMan_->sendMetric(ss2.str(), (int)met_rejected_trig_count_.at(i), "triggers", 1, artdaq::MetricMode::LastPoint);
+          rej_msg << ((int)met_rejected_trig_count_.at(i)) << ",";
       }
   }
+
+  DAQLogger::LogInfo(instance_name_) << acc_msg.str();
+  DAQLogger::LogInfo(instance_name_) << rej_msg.str();
 }
 
 // The following macro is defined in artdaq's GeneratorMacros.hh header
