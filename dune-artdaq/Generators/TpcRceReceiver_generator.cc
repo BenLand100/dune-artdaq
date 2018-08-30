@@ -56,6 +56,9 @@ TpcRceReceiver::TpcRceReceiver(fhicl::ParameterSet const& ps) :
    _daq_host_port = ps.get<str>  ("receive_port"          , "7991"      );
    _enable_rssi   = ps.get<bool> ("enable_rssi"           , true        );
    _frag_id       = ps.get<int>  ("fragment_id"                         );
+   _duration      = ps.get<int>  ("duration"              , 5000        );
+   _pretrigger    = ps.get<int>  ("pretrigger"            , 2500        );
+   _hls_mask      = ps.get<int>  ("hls_mask"              , 0           );
 
    _daq_host_addr = boost::asio::ip::host_name();
 
@@ -83,6 +86,8 @@ TpcRceReceiver::TpcRceReceiver(fhicl::ParameterSet const& ps) :
       _rce_comm->set_partition ( _partition     );
       _rce_comm->enable_rssi   ( _enable_rssi   );
       _rce_comm->set_daq_host  ( _daq_host_addr );
+      _rce_comm->set_readout   ( _duration,
+                                 _pretrigger    );
    }
    catch (const std::exception &e) {
       DAQLogger::LogError(_instance_name) << e.what();
@@ -91,6 +96,8 @@ TpcRceReceiver::TpcRceReceiver(fhicl::ParameterSet const& ps) :
 
 void TpcRceReceiver::start(void) 
 {
+   DAQLogger::LogInfo(_instance_name) << "start()";
+
    // validate config
 
    // connect receiver
@@ -99,10 +106,15 @@ void TpcRceReceiver::start(void)
    // drain buffer
 
    // send start command
-   _rce_comm->blowoff_wib( false );
-   _rce_comm->blowoff_hls( 0x0   );
+   try {
+      _rce_comm->blowoff_wib( false       );
+      _rce_comm->blowoff_hls( _hls_mask   );
 
-   _rce_comm->send_cmd("SetRunState", "Enable");
+      _rce_comm->send_cmd("SetRunState", "Enable");
+   }
+   catch (const std::exception &e) {
+      DAQLogger::LogError(_instance_name) << e.what();
+   }
 }
 
 void TpcRceReceiver::stop(void)
