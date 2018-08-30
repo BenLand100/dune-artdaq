@@ -141,7 +141,7 @@ bool CRT::FragGen::getNext_(
   // artdaq::Fragment interface" section of
   // https://cdcvs.fnal.gov/redmine/projects/artdaq-demo/wiki/How_to_write_an_overlay_class
 
-  std::unique_ptr<artdaq::Fragment> fragptr = std::make_unique<artdaq::Fragment>(bytes_read);
+  std::unique_ptr<artdaq::Fragment> fragptr = std::make_unique<artdaq::Fragment>(bytes_read/sizeof(artdaq::Fragment));
   fragptr->setSequenceID( ev_counter() ); // ev_counter() from base CommandableFragmentGenerator
   fragptr->setFragmentID( fragment_id() ); // Ditto
   fragptr->setUserType( dune::detail::CRT );
