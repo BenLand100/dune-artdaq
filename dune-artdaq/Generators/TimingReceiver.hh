@@ -145,6 +145,8 @@ namespace dune {
     uint32_t trigger_mask_;         // Trigger mask (not used yet)
     uint32_t end_run_wait_;         // Number of microsecs to wait at the end of a run before looking for last event
 
+    bool enable_spill_gate_; // Whether to enable the spill gate on the timing board
+
     std::string zmq_conn_;  // String specifying the zmq connection to subscribe for inhibit information
     std::string zmq_conn_out_;  // String specifying the zmq connection we will send our inhibit information to
     std::string zmq_fragment_conn_out_; // String specifying the zmq connection we publish fragments on

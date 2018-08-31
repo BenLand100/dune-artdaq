@@ -76,6 +76,7 @@ dune::TimingReceiver::TimingReceiver(fhicl::ParameterSet const & ps):
   ,debugprint_(ps.get<uint32_t>("debug_print",0))
   ,trigger_mask_(ps.get<uint32_t>("trigger_mask",0xff))
   ,end_run_wait_(ps.get<uint32_t>("end_run_wait",1000))
+  ,enable_spill_gate_(ps.get<bool>("enable_spill_gate", true))
   ,zmq_conn_(ps.get<std::string>("zmq_connection","tcp://pddaq-gen05-daq0:5566"))
   ,zmq_conn_out_(ps.get<std::string>("zmq_connection_out","tcp://*:5599"))
   ,zmq_fragment_conn_out_(ps.get<std::string>("zmq_fragment_connection_out","tcp://*:7123"))
@@ -162,7 +163,7 @@ dune::TimingReceiver::TimingReceiver(fhicl::ParameterSet const & ps):
     master_partition().enable(0, true);
     master_partition().stop();
     master_partition().enable(1, true);
-    master_partition().writeTriggerMask(trigger_mask_);
+    master_partition().configure(trigger_mask_, enable_spill_gate_);
 
     // Set up connection to Inhibit Master. This is the inbound
     // connection (ie, InhibitMaster talks to us to say whether we
@@ -203,7 +204,7 @@ void dune::TimingReceiver::start(void)
 
     // These are the steps taken by pdtbutler's `configure` command
     master_partition().reset();
-    master_partition().writeTriggerMask(trigger_mask_);
+    master_partition().configure(trigger_mask_, enable_spill_gate_);
     master_partition().enable(1);
 
     // Dave N's message part 3
