@@ -374,9 +374,6 @@ void TpcRceReceiver::_check_status()
    do {
       ++n_retries;
 
-      // timeout for 0.1s
-      std::this_thread::sleep_for(std::chrono::milliseconds(500));
-
       auto status = _rce_comm->get_status();
       bool pass = status.check_hls(_hls_mask);
 

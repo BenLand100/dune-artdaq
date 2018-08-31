@@ -188,10 +188,15 @@ void RceComm::blowoff_wib(bool flag)
 
 void RceComm::set_readout(size_t duration, size_t pretrigger)
 {
+
    boost::property_tree::ptree pt;
    pt.add("DataDpm.DataBuffer.Duration",   duration);
    pt.add("DataDpm.DataBuffer.PreTrigger", pretrigger);
-   send(pt);
+   
+   boost::property_tree::ptree cfg;
+   cfg.add_child("system.config", pt);
+
+   send(cfg);
    read();
 }
 
@@ -200,6 +205,7 @@ RceStatus RceComm::get_status()
    send("<system><command><ReadStatus/></command></system>\n\f");
 
    std::string msg;
+   std::this_thread::sleep_for(std::chrono::milliseconds(500));
    read(msg);
 
    return RceStatus(msg);
