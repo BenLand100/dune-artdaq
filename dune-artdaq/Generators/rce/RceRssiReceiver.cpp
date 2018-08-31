@@ -26,7 +26,7 @@ void RssiSink::
    auto nbytes = frame->getPayload();
    stats_local.rx_last = nbytes;
    stats_local.rx_bytes += nbytes;
-   ++stats_local.rx_count;
+   ++stats_local.rx_cnt;
 
    stats_local.rssi_drop = _receiver->_rssi->getDropCount();
    stats_local.pack_drop = _receiver->_pack->getDropCount();
@@ -98,17 +98,17 @@ void RssiSink::
 
       if (*header >> 40 != 0x8b309e) {
          ++stats_local.bad_hdrs;
-         ++stats_local.bad_data;
+         ++stats_local.err_cnt;
       }
       else if (trailer != ~*header) {
          ++stats_local.bad_trlr;
-         ++stats_local.bad_data;
+         ++stats_local.err_cnt;
       }
       else {
          // check TpcStream
          DataFragmentUnpack data(header);
          if (!data.isTpcNormal())
-            ++stats_local.bad_data;
+            ++stats_local.err_cnt;
       }
 
       buffers.push(buf);

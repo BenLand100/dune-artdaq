@@ -42,6 +42,27 @@ void TpcRceReceiver::Stats::reset_track_size()
    _max_size = 0;
 }
 
+TpcRceReceiver::Timer::Timer():
+   _start(boost::posix_time::microsec_clock::local_time())
+{
+}
+
+bool TpcRceReceiver::Timer::lap(
+      const boost::posix_time::ptime now, 
+      float threshold)
+{
+   //auto now = boost::posix_time::microsec_clock::local_time();
+   auto diff = now - _start;
+   _lapse = diff.total_milliseconds() * 1e-3;
+
+   if (_lapse > threshold) {
+      _start = now;
+      return true;
+   }
+
+   return false;
+}
+
 TpcRceReceiver::TpcRceReceiver(fhicl::ParameterSet const& ps) :
    CommandableFragmentGenerator(ps)
 {
@@ -68,6 +89,9 @@ TpcRceReceiver::TpcRceReceiver(fhicl::ParameterSet const& ps) :
    ss << "COB" << board_id / 8 + 1
       << "-RCE" << board_id % 8 + 1;
    _instance_name = ss.str();
+
+   // set name for metrics reporting
+   metricsReportingInstanceName(_instance_name);
 
    // TODO check partition
 
@@ -213,20 +237,19 @@ bool TpcRceReceiver::getNext_(artdaq::FragmentPtrs& frags)
       boost::this_thread::sleep(boost::posix_time::milliseconds(50));
    }
 
+
+   auto now = boost::posix_time::microsec_clock::local_time();
    // update / send stats every second
-   auto now = boost::posix_time::second_clock::local_time();
-   auto dt  = now - _stats.last_update;
-   auto lapse = dt.total_seconds();
-   if (lapse > 1) {
+   if (_timer_send_stats.lap(now, 1)) {
       _update_stats();
       _send_stats();
    }
 
    // debug
-   if (lapse > 0 && _frag_cnt % 10 == 1)
+   if (_timer_print_stats.lap(now, 10))
       _print_stats();
 
-   if (lapse > 0 && _frag_cnt % 100 == 1)
+   if (_timer_print_summary.lap(now, 60))
       _print_summary("Cum. Stats");
 
   bool is_stop = should_stop() && _receiver->read_available() == 0;
@@ -270,18 +293,18 @@ void TpcRceReceiver::_update_stats()
    auto dt     = now - _stats.last_update;
    float lapse = dt.total_milliseconds() * 1e-3;
 
-   auto rx_count = curr.rx_count - _stats.prev.rx_count;
+   auto rx_cnt   = curr.rx_cnt   - _stats.prev.rx_cnt;
    auto rx_bytes = curr.rx_bytes - _stats.prev.rx_bytes;
 
-   _stats.evt_rate  = lapse > 0    ? rx_count / lapse : 0;
+   _stats.evt_rate  = lapse > 0    ? rx_cnt / lapse : 0;
    _stats.data_rate = lapse > 0    ? rx_bytes / lapse * 8e-9 : 0;
-   _stats.avg_size  = rx_count > 0 ? rx_bytes / rx_count * 1e-6 : 0;
+   _stats.avg_size  = rx_cnt > 0 ? rx_bytes / rx_cnt * 1e-6 : 0;
    _stats.rssi_drop = curr.rssi_drop - _stats.prev.rssi_drop;
    _stats.pack_drop = curr.pack_drop - _stats.prev.pack_drop;
    _stats.bad_hdrs  = curr.bad_hdrs  - _stats.prev.bad_hdrs;
-   _stats.bad_data  = curr.bad_data  - _stats.prev.bad_data;
+   _stats.err_cnt   = curr.err_cnt   - _stats.prev.err_cnt;
    _stats.overflow  = curr.overflow  - _stats.prev.overflow;
-   _stats.is_open   = _receiver->is_open();
+   _stats.is_open   = static_cast<int>(_receiver->is_open());
 
    _stats.reset_track_size();
 
@@ -304,7 +327,7 @@ void TpcRceReceiver::_print_stats() const
       << "RSSI Drop       : " << _stats.rssi_drop  << "\n"
       << "Pkt. Drop       : " << _stats.pack_drop  << "\n"
       << "Bad Headers     : " << _stats.bad_hdrs   << "\n"
-      << "Bad Data        : " << _stats.bad_hdrs   << "\n"
+      << "Err Cnt         : " << _stats.err_cnt    << "\n"
       << "Overflow        : " << _stats.overflow   << "\n"
       << "IsOpen          : " << _stats.is_open    << "\n"
       << "Last Fragment   : " << _last_frag
@@ -316,18 +339,32 @@ void TpcRceReceiver::_print_summary(const char *title) const
    auto curr = _receiver->get_stats();
    DAQLogger::LogInfo(_instance_name)
       << "=== " << title << " ===\n"
-      << "NFrags : "   << curr.rx_count  << "\n"
+      << "NFrags   : " << curr.rx_cnt    << "\n"
       << "RSSI Drop: " << curr.rssi_drop << "\n"
       << "Pkt. Drop: " << curr.pack_drop << "\n"
       << "Overflow : " << curr.overflow  << "\n"
       << "Bad Hdrs : " << curr.bad_hdrs  << "\n"
-      << "Bad Trlr:  " << curr.bad_trlr  << "\n"
-      << "Bad Data : " << curr.bad_data 
+      << "Bad Trlr : " << curr.bad_trlr  << "\n"
+      << "Err Cnt  : " << curr.err_cnt 
       ;
 }
 
 void TpcRceReceiver::_send_stats() const
 {
+   auto last = artdaq::MetricMode::LastPoint;
+   auto &mm = artdaq::Globals::metricMan_;
+
+   mm->sendMetric("RceRecv EvtRate",   _stats.evt_rate,  "Hz",   1,  last);
+   mm->sendMetric("RceRecv DataRate",  _stats.data_rate, "Gbps", 1,  last);
+   mm->sendMetric("RceRecv AvgSize",   _stats.avg_size , "MB",   1,  last);
+   mm->sendMetric("RceRecv MinSize",   _stats.min_size , "MB",   1,  last);
+   mm->sendMetric("RceRecv MaxSize",   _stats.max_size , "MB",   1,  last);
+   mm->sendMetric("RceRecv RSSIDrop",  _stats.rssi_drop, "",     1,  last);
+   mm->sendMetric("RceRecv PackDrop",  _stats.pack_drop,  "",    1,  last);
+   mm->sendMetric("RceRecv BadHdrs",   _stats.bad_hdrs,   "",    1,  last);
+   mm->sendMetric("RceRecv ErrCnt",    _stats.err_cnt,    "",    1,  last);
+   mm->sendMetric("RceRecv Overflow",  _stats.overflow,   "",    1,  last);
+   mm->sendMetric("RceRecv IsOpen",    _stats.is_open,    "",    1,  last);
 }
 
 void TpcRceReceiver::_check_status() 
@@ -338,7 +375,7 @@ void TpcRceReceiver::_check_status()
       ++n_retries;
 
       // timeout for 0.1s
-      std::this_thread::sleep_for(std::chrono::milliseconds(100));
+      std::this_thread::sleep_for(std::chrono::milliseconds(500));
 
       auto status = _rce_comm->get_status();
       bool pass = status.check_hls(_hls_mask);

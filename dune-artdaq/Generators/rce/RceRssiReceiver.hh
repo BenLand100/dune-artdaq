@@ -32,15 +32,15 @@ namespace rce {
    class RecvStats
    {
       public:
-         uint32_t rx_count;
-         uint64_t rx_bytes;
-         uint32_t rx_last;
-         uint32_t pack_drop;
-         uint32_t rssi_drop;
-         uint32_t overflow;
-         uint32_t bad_hdrs;
-         uint32_t bad_trlr;
-         uint32_t bad_data;
+         uint32_t rx_cnt    = 0;
+         uint64_t rx_bytes  = 0;
+         uint32_t rx_last   = 0;
+         uint32_t pack_drop = 0;
+         uint32_t rssi_drop = 0;
+         uint32_t overflow  = 0;
+         uint32_t bad_hdrs  = 0;
+         uint32_t bad_trlr  = 0;
+         uint32_t err_cnt   = 0;
    };
 
    class RssiSink: public rogue::interfaces::stream::Slave 

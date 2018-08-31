@@ -75,6 +75,9 @@ class TpcRceReceiver : public artdaq::CommandableFragmentGenerator
      class Stats
      {
         public:
+           // type for metric
+           typedef long unsigned int uint_t;
+
            Stats();
 
            rce::RecvStats prev;
@@ -83,12 +86,12 @@ class TpcRceReceiver : public artdaq::CommandableFragmentGenerator
            float    avg_size  = 0;
            float    min_size  = 0;
            float    max_size  = 0;
-           uint32_t rssi_drop = 0;
-           uint32_t pack_drop = 0;
-           uint32_t bad_hdrs  = 0;
-           uint32_t bad_data  = 0;
-           uint32_t overflow  = 0;
-           bool     is_open   = false;
+           uint_t   rssi_drop = 0;
+           uint_t   pack_drop = 0;
+           uint_t   bad_hdrs  = 0;
+           uint_t   err_cnt   = 0;
+           uint_t   overflow  = 0;
+           int      is_open   = 0;
            boost::posix_time::ptime last_update;
 
            void track_size(size_t bytes);
@@ -102,11 +105,30 @@ class TpcRceReceiver : public artdaq::CommandableFragmentGenerator
 
      Stats _stats;
      void _update_stats();
+
      void _send_stats()    const;
      void _print_stats()   const;
      void _print_summary(const char*title) const;
 
+     // status
      void _check_status();
+
+     // Cheapman Timer
+     class Timer
+     {
+        public:
+           Timer();
+           bool lap(const boost::posix_time::ptime now, float threshold=0);
+           float get_lapse() const { return _lapse; };
+
+        private:
+           boost::posix_time::ptime _start;
+           float                    _lapse = 0;
+     };
+
+     Timer _timer_send_stats;
+     Timer _timer_print_stats;
+     Timer _timer_print_summary;
 
      std::stringstream _debug_ss;
      std::string       _last_frag = "";
