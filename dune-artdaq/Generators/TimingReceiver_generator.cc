@@ -76,7 +76,7 @@ dune::TimingReceiver::TimingReceiver(fhicl::ParameterSet const & ps):
   ,debugprint_(ps.get<uint32_t>("debug_print",0))
   ,trigger_mask_(ps.get<uint32_t>("trigger_mask",0xff))
   ,end_run_wait_(ps.get<uint32_t>("end_run_wait",1000))
-  ,enable_spill_gate_(ps.get<bool>("enable_spill_gate", true))
+  ,enable_spill_gate_(ps.get<bool>("enable_spill_gate", false))
   ,zmq_conn_(ps.get<std::string>("zmq_connection","tcp://pddaq-gen05-daq0:5566"))
   ,zmq_conn_out_(ps.get<std::string>("zmq_connection_out","tcp://*:5599"))
   ,zmq_fragment_conn_out_(ps.get<std::string>("zmq_fragment_connection_out","tcp://*:7123"))
@@ -531,7 +531,7 @@ void dune::TimingReceiver::fiddle_trigger_mask()
 
     uint32_t old_mask=trigger_mask_;
     // We modify the trigger mask to always be zero for the _other_ partitions
-    trigger_mask_ &= 0xf0 + (1<<partition_number_);
+    trigger_mask_ &= 0xf0 | (1<<partition_number_);
     DAQLogger::LogInfo(instance_name_) << "fiddle_trigger_mask partn " << partition_number_
                                        << " Old: " << std::showbase << std::hex << old_mask
                                        << " New: " << std::showbase << std::hex << trigger_mask_;
