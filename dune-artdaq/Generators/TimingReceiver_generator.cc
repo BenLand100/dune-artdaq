@@ -80,7 +80,7 @@ dune::TimingReceiver::TimingReceiver(fhicl::ParameterSet const & ps):
   ,zmq_conn_(ps.get<std::string>("zmq_connection","tcp://pddaq-gen05-daq0:5566"))
   ,zmq_conn_out_(ps.get<std::string>("zmq_connection_out","tcp://*:5599"))
   ,zmq_fragment_conn_out_(ps.get<std::string>("zmq_fragment_connection_out","tcp://*:7123"))
-  ,extra_firmware_versions_(ps.get<std::vector<int>>("extra_firmware_versions", std::vector<int>()))
+  ,extra_firmware_versions_(ps.get<std::vector<int>>("valid_firmware_versions", std::vector<int>()))
   ,want_inhibit_(false)  
 {
 
