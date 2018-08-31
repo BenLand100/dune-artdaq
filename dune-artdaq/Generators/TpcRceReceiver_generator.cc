@@ -157,6 +157,9 @@ void TpcRceReceiver::start(void)
 
 void TpcRceReceiver::stop(void)
 {
+   _print_summary("End of run summary");
+   _send_summary();
+
    DAQLogger::LogInfo(_instance_name) << "stop()";
    try {
       _rce_comm->blowoff_hls( 0x3  );
@@ -167,7 +170,6 @@ void TpcRceReceiver::stop(void)
    {
       DAQLogger::LogWarning(_instance_name) << e.what();
    }
-   _print_summary("End of run summary");
 }
 
 void TpcRceReceiver::stopNoMutex(void)
@@ -240,17 +242,14 @@ bool TpcRceReceiver::getNext_(artdaq::FragmentPtrs& frags)
 
    auto now = boost::posix_time::microsec_clock::local_time();
    // update / send stats every second
-   if (_timer_send_stats.lap(now, 1)) {
+   if (_timer_stats.lap(now, 1)) {
       _update_stats();
       _send_stats();
    }
 
-   // debug
-   if (_timer_print_stats.lap(now, 10))
-      _print_stats();
-
-   if (_timer_print_summary.lap(now, 60))
-      _print_summary("Cum. Stats");
+   if (_timer_summary.lap(now, 10)) {
+      _send_summary();
+   }
 
   bool is_stop = should_stop() && _receiver->read_available() == 0;
   return !is_stop;
@@ -365,6 +364,25 @@ void TpcRceReceiver::_send_stats() const
    mm->sendMetric("RceRecv ErrCnt",    _stats.err_cnt,    "",    1,  last);
    mm->sendMetric("RceRecv Overflow",  _stats.overflow,   "",    1,  last);
    mm->sendMetric("RceRecv IsOpen",    _stats.is_open,    "",    1,  last);
+}
+
+void TpcRceReceiver::_send_summary() const
+{
+   auto send = [](const char* name, uint32_t v)
+   {
+      artdaq::Globals::metricMan_->sendMetric(
+            name, static_cast<long unsigned int>(v), "", 1,
+            artdaq::MetricMode::LastPoint);
+   };
+
+   auto curr = _receiver->get_stats();
+   send("RceRecv NFrags"       , curr.rx_cnt   );
+   send("RceRecv TotalRSSIDrop", curr.rssi_drop);
+   send("RceRecv TotalPackDrop", curr.pack_drop);
+   send("RceRecv TotalOverflow", curr.overflow );
+   send("RceRecv TotalBadHdrs" , curr.bad_hdrs );
+   send("RceRecv TotalBadTrlr" , curr.bad_trlr );
+   send("RceRecv TotalErrCnt"  , curr.err_cnt  );
 }
 
 void TpcRceReceiver::_check_status() 

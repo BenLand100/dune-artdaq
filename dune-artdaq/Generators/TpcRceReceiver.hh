@@ -106,8 +106,10 @@ class TpcRceReceiver : public artdaq::CommandableFragmentGenerator
      Stats _stats;
      void _update_stats();
 
-     void _send_stats()    const;
-     void _print_stats()   const;
+     void _send_stats () const;
+     void _print_stats() const;
+
+     void _send_summary ()                 const;
      void _print_summary(const char*title) const;
 
      // status
@@ -126,9 +128,8 @@ class TpcRceReceiver : public artdaq::CommandableFragmentGenerator
            float                    _lapse = 0;
      };
 
-     Timer _timer_send_stats;
-     Timer _timer_print_stats;
-     Timer _timer_print_summary;
+     Timer _timer_stats;
+     Timer _timer_summary;
 
      std::stringstream _debug_ss;
      std::string       _last_frag = "";
