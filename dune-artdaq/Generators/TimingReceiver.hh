@@ -145,9 +145,12 @@ namespace dune {
     uint32_t trigger_mask_;         // Trigger mask (not used yet)
     uint32_t end_run_wait_;         // Number of microsecs to wait at the end of a run before looking for last event
 
+    bool enable_spill_gate_; // Whether to enable the spill gate on the timing board
+
     std::string zmq_conn_;  // String specifying the zmq connection to subscribe for inhibit information
     std::string zmq_conn_out_;  // String specifying the zmq connection we will send our inhibit information to
     std::string zmq_fragment_conn_out_; // String specifying the zmq connection we publish fragments on
+    std::vector<int> extra_firmware_versions_;
 
     // Things for metrics (need to use int because the metrics send class signature uses 'int')
     int met_event_;    // Current event
@@ -163,6 +166,7 @@ namespace dune {
     std::unique_ptr<artdaq::StatusPublisher> status_publisher_;
     std::unique_ptr<artdaq::FragmentPublisher> fragment_publisher_;
 
+    int want_inhibit_; // Do we want to request a trigger inhibit?
 // Internal functions
     void reset_met_variables(bool onlyspill=false);   // If onlyspill, only reset the in-spill variables
     void update_met_variables(dune::TimingFragment& fo); // Update variables for met

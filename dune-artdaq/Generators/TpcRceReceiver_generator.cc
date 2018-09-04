@@ -77,8 +77,8 @@ TpcRceReceiver::TpcRceReceiver(fhicl::ParameterSet const& ps) :
    _daq_host_port = ps.get<str>  ("receive_port"          , "7991"      );
    _enable_rssi   = ps.get<bool> ("enable_rssi"           , true        );
    _frag_id       = ps.get<int>  ("fragment_id"                         );
-   _duration      = ps.get<int>  ("duration"              , 5000        );
-   _pretrigger    = ps.get<int>  ("pretrigger"            , 2500        );
+   _duration      = ps.get<int>  ("duration"              , 3000        );
+   _pretrigger    = ps.get<int>  ("pretrigger"            , 750         );
    _hls_mask      = ps.get<int>  ("hls_mask"              , 0           );
 
    _daq_host_addr = boost::asio::ip::host_name();
@@ -398,7 +398,8 @@ void TpcRceReceiver::_check_status()
       if (pass)
          break;
       else if (n_retries == max_trials) 
-         DAQLogger::LogWarning(_instance_name) << status.err_msg();
+         //DAQLogger::LogWarning(_instance_name) << status.err_msg();
+         DAQLogger::LogError(_instance_name) << status.err_msg();
 
    } while (n_retries < max_trials);
 }

@@ -205,8 +205,10 @@ RceStatus RceComm::get_status()
    send("<system><command><ReadStatus/></command></system>\n\f");
 
    std::string msg;
-   std::this_thread::sleep_for(std::chrono::milliseconds(500));
+   std::this_thread::sleep_for(std::chrono::milliseconds(300));
+
    read(msg);
+   std::this_thread::sleep_for(std::chrono::milliseconds(300));
 
    return RceStatus(msg);
 }
