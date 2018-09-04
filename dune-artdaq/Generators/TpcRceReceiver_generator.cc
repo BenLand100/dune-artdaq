@@ -398,7 +398,7 @@ void TpcRceReceiver::_check_status()
       if (pass)
          break;
       else if (n_retries == max_trials) 
-         DAQLogger::LogError(_instance_name) << status.err_msg();
+         DAQLogger::LogWarning(_instance_name) << status.err_msg();
 
    } while (n_retries < max_trials);
 }
