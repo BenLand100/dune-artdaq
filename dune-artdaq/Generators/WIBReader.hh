@@ -28,9 +28,6 @@ private:
 
   std::unique_ptr<WIB> wib;
 
-  bool start_links_FELIX_run_start;
-  bool stop_links_FELIX_run_stop;
-
 };
 
 }
