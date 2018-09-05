@@ -150,7 +150,7 @@ namespace dune {
     std::string zmq_conn_;  // String specifying the zmq connection to subscribe for inhibit information
     std::string zmq_conn_out_;  // String specifying the zmq connection we will send our inhibit information to
     std::string zmq_fragment_conn_out_; // String specifying the zmq connection we publish fragments on
-    std::vector<int> extra_firmware_versions_;
+    std::vector<int> valid_firmware_versions_fcl_; // Valid versions of the firmware according to the fcl file. We take the union of these and any versions hardcoded into the board reader as being allowed
 
     // Things for metrics (need to use int because the metrics send class signature uses 'int')
     int met_event_;    // Current event

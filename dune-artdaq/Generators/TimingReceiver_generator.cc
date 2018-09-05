@@ -80,7 +80,7 @@ dune::TimingReceiver::TimingReceiver(fhicl::ParameterSet const & ps):
   ,zmq_conn_(ps.get<std::string>("zmq_connection","tcp://pddaq-gen05-daq0:5566"))
   ,zmq_conn_out_(ps.get<std::string>("zmq_connection_out","tcp://*:5599"))
   ,zmq_fragment_conn_out_(ps.get<std::string>("zmq_fragment_connection_out","tcp://*:7123"))
-  ,extra_firmware_versions_(ps.get<std::vector<int>>("extra_firmware_versions", std::vector<int>()))
+  ,valid_firmware_versions_fcl_(ps.get<std::vector<int>>("valid_firmware_versions", std::vector<int>()))
   ,want_inhibit_(false)  
 {
 
@@ -116,7 +116,7 @@ dune::TimingReceiver::TimingReceiver(fhicl::ParameterSet const & ps):
     // Match Fw version with configuration
     DAQLogger::LogInfo(instance_name_) << "Timing Master firmware version " << std::showbase << std::hex << (uint32_t)lVersion;
     std::set<uint32_t> allowed_fw_versions{0x40100, 0x40101, 0x40102, 0x40103};
-    for(auto const& ver : extra_firmware_versions_) allowed_fw_versions.insert(ver);
+    for(auto const& ver : valid_firmware_versions_fcl_) allowed_fw_versions.insert(ver);
 
     if ( allowed_fw_versions.find(lVersion)==allowed_fw_versions.end() ) {
         std::stringstream errormsg;
