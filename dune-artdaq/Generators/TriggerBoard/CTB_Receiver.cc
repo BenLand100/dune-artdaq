@@ -2,19 +2,19 @@
 #include "CTB_Receiver.hh"
 
 #include "dune-artdaq/DAQLogger/DAQLogger.hh"
+#include "dune-raw-data/Overlays/CTB_content.h"
 
 #include <ctime>
 
+#include <boost/asio/read.hpp>
 
-CTB_Receiver::CTB_Receiver( const unsigned int port, const unsigned int timeout ) : 
 
-  _port ( port ), _timeout( std::chrono::microseconds(timeout) ), _n_TS_words( 0 ), _has_calibration_stream( false )  {
 
-  _stop_requested = false ;
+CTB_Receiver::CTB_Receiver( const unsigned int port, 
+			    const unsigned int timeout, 
+			    const unsigned int buffer_size ) : 
 
-  _raw_fut  = std::async( std::launch::async, & CTB_Receiver::_raw_receiver,  this ) ;
-
-  _word_fut = std::async( std::launch::async, & CTB_Receiver::_word_receiver, this ) ;
+  _word_buffer( buffer_size ), _port ( port ), _timeout(timeout), _n_TS_words( 0 ), _has_calibration_stream( false )  {
 
 }
 
@@ -30,72 +30,26 @@ bool CTB_Receiver::stop() {
 
   _stop_requested = true ; 
 
-  _raw_fut.get() ;
-
-  _word_fut.get() ;
+  if ( _word_fut.valid() ) {
+    _word_fut.get() ;
+  }
 
   return true ;
+
 }
 
 
-int CTB_Receiver::_raw_receiver() {
+bool CTB_Receiver::start() {
 
-  boost::asio::io_service io_service;
+  _stop_requested = false ; 
 
-  boost::asio::ip::tcp::acceptor acceptor(io_service, boost::asio::ip::tcp::endpoint( boost::asio::ip::tcp::v4(), _port ) );
+  _word_buffer.reset() ;
 
-  boost::asio::ip::tcp::socket socket(io_service);
+  _n_TS_words = 0 ;
 
-  dune::DAQLogger::LogInfo("CTB_Receiver") << "Watiting for an incoming connection on port " << _port << std::endl;
+  _word_fut = std::async( std::launch::async, & CTB_Receiver::_word_receiver, this ) ;
 
-  //std::future<void> accepting = async( std::launch::async, & boost::asio::ip::tcp::acceptor::accept, & acceptor, socket ) ;
-  std::future<void> accepting = async( std::launch::async, [&]{ acceptor.accept(socket) ; } ) ;
-
-  while ( ! _stop_requested ) {
-    
-    if ( accepting.wait_for( _timeout.load() ) == std::future_status::ready ) 
-      break ;
-    // should this accept be async to avoid long block?
-      
-  }
-  
-  dune::DAQLogger::LogInfo("CTB_Receiver") << "Connection received: start reading" << std::endl;
-  
-  constexpr unsigned int max_size = 4096 ;
-  uint8_t tcp_data[max_size];
-
-  std::future<std::size_t> reading ; 
-  bool timed_out = false ;
-
-  boost::system::error_code receiving_error;
-  
-  while ( ! _stop_requested ) {
-
-    if ( ! timed_out )  // no workng reading thread, need to create one
-      reading = async( std::launch::async, [&]{ return socket.read_some( boost::asio::buffer(tcp_data, max_size), receiving_error ) ; } ) ;
-    
-    if ( reading.wait_for( _timeout.load() ) != std::future_status::ready ) {
-      timed_out = true ;
-      continue ;
-    }
-    
-    timed_out = false ; 
-
-    if ( receiving_error == boost::asio::error::eof)
-      break; // Connection closed cleanly by the board
-
-    const std::size_t read_bytes = reading.get() ;
-    
-    if ( read_bytes > 0 ) {
-      
-      _raw_buffer.push( tcp_data, read_bytes ) ;
-      
-    }
-
-  }
-
-  // return because _stop_requested
-  return 0 ;
+  return true ;
 }
 
 
@@ -108,20 +62,38 @@ int CTB_Receiver::_word_receiver() {
   const size_t word_size = ptb::content::word::word_t::size_bytes ;
 
   dune::DAQLogger::LogDebug("CTB_Receiver") << "Header size: " << header_size << std::endl
-					   << "Word size: " << word_size << std::endl ;
+					    << "Word size: " << word_size << std::endl ;
   
-  while ( ! _stop_requested ) {
+  //connect to socket
+  boost::asio::io_service io_service;
+  boost::asio::ip::tcp::acceptor acceptor(io_service, boost::asio::ip::tcp::endpoint( boost::asio::ip::tcp::v4(), _port ) );
+  boost::asio::ip::tcp::socket socket(io_service);
+  
+  dune::DAQLogger::LogInfo("CTB_Receiver") << "Watiting for an incoming connection on port " << _port << std::endl;
+
+  std::future<void> accepting = async( std::launch::async, [&]{ acceptor.accept(socket) ; } ) ;
+
+  while ( ! _stop_requested.load() ) {
+    if ( accepting.wait_for( _timeout ) == std::future_status::ready ) 
+      break ;
+  }
+  
+  dune::DAQLogger::LogInfo("CTB_Receiver") << "Connection received: start reading" << std::endl;
+
+  ptb::content::tcp_header_t head ;
+  ptb::content::word::word temp_word ;
+
+  boost::system::error_code receiving_error;
+  bool connection_closed = false ;
+
+  while ( ! _stop_requested.load() ) {
     
     _update_calibration_file() ;
 
-    // look for an header 
-    while ( _raw_buffer.read_available() < header_size && ! _stop_requested ) {
-      ; //do nothing
+    if ( ! _read( head, socket ) ) { 
+      connection_closed = true ;
+      break;
     }
-
-    ptb::content::tcp_header_t head ;
-    
-    _raw_buffer.pop( reinterpret_cast<uint8_t*>( & head ), header_size );
     
     n_bytes = head.packet_size ;
     //    dune::DAQLogger::LogInfo("CTB_Receiver") << "Package size "  << n_bytes << std::endl ;
@@ -129,18 +101,15 @@ int CTB_Receiver::_word_receiver() {
     // extract n_words
     n_words = n_bytes / word_size ; 
 
-    ptb::content::word::word temp_word ;
-
     // read n words as requested from the header
     for ( unsigned int i = 0 ; i < n_words ; ++i ) {
-         
-      while ( _raw_buffer.read_available() < word_size && ! _stop_requested ) {
-	; //do nothing
-      }
 
       //read a word
-      _raw_buffer.pop( temp_word.get_bytes(), word_size ) ;
-
+      if ( ! _read( temp_word, socket ) ) {
+	connection_closed = true ;
+	break ;
+      }
+         
       // put it in the caliration stream
       if ( _has_calibration_stream ) { 
 	
@@ -148,7 +117,7 @@ int CTB_Receiver::_word_receiver() {
 	//dune::DAQLogger::LogInfo("CTB_Receiver") << "Word Type: " << temp_word.frame.word_type << std::endl ;
 
       }  // word printing in calibration stream
-
+      
       //check if it is a TS word and increment the counter
       if ( CTB_Receiver::IsTSWord( temp_word ) ) {
 	_n_TS_words++ ;
@@ -156,24 +125,30 @@ int CTB_Receiver::_word_receiver() {
       else if ( CTB_Receiver::IsFeedbackWord( temp_word ) ) {
 
 	ptb::content::word::feedback_t * feedback = reinterpret_cast<ptb::content::word::feedback_t*>( & temp_word.frame ) ;
-	dune::DAQLogger::LogWarning("CTB_Receiver") << "Feedback word: " << std::endl 
+	dune::DAQLogger::LogError("CTB_Receiver") << "Feedback word: " << std::endl 
 						    << " \t TS -> " << feedback -> timestamp << std::endl 
 						    << " \t Code -> " << feedback -> code << std::endl 
 						    << " \t Source -> " << feedback -> source << std::endl 	  
 						    << " \t Padding -> " << feedback -> padding << std::endl ;     
       }
-
-
+      
+      
       // push the word
-      _word_buffer.push( temp_word ) ;
+      while ( ! _word_buffer.push( temp_word ) && ! _stop_requested.load() ) {
+	dune::DAQLogger::LogWarning("CTB_Receiver") << "Word Buffer full and cannot store more" << std::endl ;	
+      }
       
-      if ( _stop_requested ) break ;
+      if ( _stop_requested.load() ) break ;
       
-    }
+    } // n_words loop
+
+    if ( connection_closed ) 
+      break ;
 
   }  // stop not requested
 
-
+  socket.close() ;
+  dune::DAQLogger::LogInfo("CTB_Receiver") << "Connection closed: stop receiving data from the CTB" << std::endl ;
   // return because _stop_requested
   return 0 ;
 }
@@ -197,7 +172,7 @@ bool CTB_Receiver::IsTSWord( const ptb::content::word::word & w ) noexcept {
 
   //dune::DAQLogger::LogInfo("CTB_Receiver") << "word type " <<  w.frame.word_type  << std::endl ;
 
-  if ( w.frame.word_type == 0x7 ) { 
+  if ( w.frame.word_type == ptb::content::word::t_ts ) { 
 
     return true ;
     
@@ -210,7 +185,7 @@ bool CTB_Receiver::IsTSWord( const ptb::content::word::word & w ) noexcept {
 
 bool CTB_Receiver::IsFeedbackWord( const ptb::content::word::word & w ) noexcept {
   
-  if ( w.frame.word_type == 0x0 ) {
+  if ( w.frame.word_type == ptb::content::word::t_fback ) {
 
     return true ;
 
@@ -265,5 +240,33 @@ void CTB_Receiver::_update_calibration_file() {
 }
 
 
+template<class T>
+bool CTB_Receiver::_read( T & obj , boost::asio::ip::tcp::socket & socket ) {
 
+  boost::system::error_code receiving_error;
+
+  // std::future<std::size_t> reading = async( std::launch::async, 
+  // 					    [&]{ return boost::asio::read( socket, 
+  // 									   boost::asio::buffer( obj, sizeof(T) ),  
+  // 									   receiving_error ) ; } ) ;
+  
+  // while( ! _stop_requested.load() ) {
+    
+  //   if ( reading.wait_for( _timeout ) != std::future_status::ready ) {
+  //     continue ;
+  //   }
+    
+  // }
+
+  boost::asio::read( socket, boost::asio::buffer( & obj, sizeof(T) ), receiving_error ) ;
+
+  if ( receiving_error == boost::asio::error::eof)
+    return false ;
+  else if ( receiving_error )
+    return false ;
+
+  return true ;
+  
+}
+  
 

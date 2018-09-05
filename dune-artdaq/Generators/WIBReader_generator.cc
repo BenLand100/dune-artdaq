@@ -303,10 +303,10 @@ void WIBReader::setupWIB(fhicl::ParameterSet const& ps) {
     }
   }
 
-  if (!((daqMode == WIB::FELIX) && start_links_FELIX_run_start)){// don't enable links yet if FELIX and star_links_FELIX, do it in start
+//  if (daqMode != WIB::FELIX){// don't enable links yet if FELIX, do it in start
     dune::DAQLogger::LogInfo(identification) << "Enabling DAQ links";
     wib->StartStreamToDAQ();
-  }
+//  }
   
   // Un-set DIM do-not-disturb
   wib->Write("SYSTEM.SLOW_CONTROL_DND",0);
@@ -596,7 +596,12 @@ void WIBReader::start() {
     excpt << "WIB object pointer NULL";
     throw excpt;
   }
+<<<<<<< HEAD
   if ((wib->GetDAQMode() == WIB::FELIX) && start_links_FELIX_run_start){// otherwise we did this during configure
+=======
+  /*
+  if (wib->GetDAQMode() == WIB::FELIX){// otherwise we did this during configure
+>>>>>>> feature/dune-artdaq_artdaq_v3_02_01_testing_snapshot
     dune::DAQLogger::LogInfo(identification) << "Enabling DAQ links";
 
     unsigned start_run_tries = 5;
@@ -625,6 +630,7 @@ void WIBReader::start() {
         {
           // best effort, don't care if it doesn't succeed
         }
+<<<<<<< HEAD
 
         cet::exception excpt(identification);
         excpt << "Unhandled BUException: "
@@ -646,6 +652,29 @@ void WIBReader::start() {
       // best effort, don't care if it doesn't succeed
     }
 
+=======
+
+        cet::exception excpt(identification);
+        excpt << "Unhandled BUException: "
+            << exc.what()
+            << ": "
+            << exc.Description();
+        throw excpt;
+      }
+      dune::DAQLogger::LogInfo(identification) << "Run start try  " << iTry << " failed. Trying again...";
+    } // for iRetry
+
+    // Try to un-set DIM do-not-disturb no matter what happened
+    try
+    {
+      if (wib) wib->Write("SYSTEM.SLOW_CONTROL_DND",0);
+    }
+    catch (const BUException::exBase & exc)
+    {
+      // best effort, don't care if it doesn't succeed
+    }
+
+>>>>>>> feature/dune-artdaq_artdaq_v3_02_01_testing_snapshot
     if (!success)
     {
       cet::exception excpt(identification);
@@ -653,6 +682,10 @@ void WIBReader::start() {
       throw excpt;
     }
   } // if felix
+<<<<<<< HEAD
+=======
+*/
+>>>>>>> feature/dune-artdaq_artdaq_v3_02_01_testing_snapshot
 }
 
 // "stop" transition
@@ -664,7 +697,12 @@ void WIBReader::stop() {
     excpt << "WIB object pointer NULL";
     throw excpt;
   }
+<<<<<<< HEAD
   if (wib->GetDAQMode() == WIB::FELIX && stop_links_FELIX_run_stop){// otherwise don't need to do this
+=======
+  /*
+  if (wib->GetDAQMode() == WIB::FELIX){// otherwise don't need to do this
+>>>>>>> feature/dune-artdaq_artdaq_v3_02_01_testing_snapshot
     dune::DAQLogger::LogInfo(identification) << "Disabling DAQ links";
 
     unsigned stop_run_tries = 5;
@@ -696,6 +734,7 @@ void WIBReader::stop() {
         {
           // best effort, don't care if it doesn't succeed
         }
+<<<<<<< HEAD
 
         cet::exception excpt(identification);
         excpt << "Unhandled BUException: "
@@ -724,7 +763,37 @@ void WIBReader::stop() {
       throw excpt;
     }
   } // if felix
+=======
+>>>>>>> feature/dune-artdaq_artdaq_v3_02_01_testing_snapshot
 
+        cet::exception excpt(identification);
+        excpt << "Unhandled BUException: "
+            << exc.what()
+            << ": "
+            << exc.Description();
+        throw excpt;
+      }
+      dune::DAQLogger::LogInfo(identification) << "Run stop try  " << iTry << " failed. Trying again...";
+    } // for iRetry
+
+    // Try to un-set DIM do-not-disturb no matter what happened
+    try
+    {
+      if (wib) wib->Write("SYSTEM.SLOW_CONTROL_DND",0);
+    }
+    catch (const BUException::exBase & exc)
+    {
+      // best effort, don't care if it doesn't succeed
+    }
+
+    if (!success)
+    {
+      cet::exception excpt(identification);
+      excpt << "Failed to stop run after " << stop_run_tries << " tries";
+      throw excpt;
+    }
+  } // if felix
+*/
 }
 
 // Called by BoardReaderMain in a loop between "start" and "stop"
