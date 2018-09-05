@@ -519,7 +519,7 @@ export CETPKG_J=$nprocessors
 source /nfs/sw/artdaq/products/setup
 
 
-        setup protodune_wibsoft v339 -q e15:s64
+        setup protodune_wibsoft v341 -q e15:s64
         setup uhal v2_6_0 -q e15:prof:s64
         setup netio v0_8_0 -q e15:prof:s64
 # RSIPOS 03/07/18 -> Infiniband workaround for FELIX BR build
