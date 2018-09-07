@@ -31,7 +31,9 @@ class CTB_Receiver {
 
 public:
   CTB_Receiver( ) = delete ;
-  CTB_Receiver( const unsigned int port, const unsigned int timeout = 10 /*microseconds*/ ) ;
+
+  // the buffer size is the number of word contained in the buffer
+  CTB_Receiver( const unsigned int port, const unsigned int timeout = 10 /*microseconds*/, const unsigned int buffer_size = 5000 ) ;
 
   virtual ~CTB_Receiver() ;
 
@@ -43,37 +45,35 @@ public:
 			     const std::chrono::minutes & interval ) ; 
 
   bool stop() ; 
+  bool start() ;
 
   static bool IsTSWord( const ptb::content::word::word & w ) noexcept ;
   static bool IsFeedbackWord( const ptb::content::word::word & w ) noexcept ;
 
 private:
 
-  // the raw buffer can contain 4 times the maximum TCP package size, which is 4 KB 
-  boost::lockfree::spsc_queue< uint8_t , boost::lockfree::capacity<16384> > _raw_buffer ;  
-
-  boost::lockfree::spsc_queue< ptb::content::word::word , boost::lockfree::capacity<4096> > _word_buffer ;  
-  
+  // the raw buffer can contain 4 times the maximum TCP package size, which is 4 KB
+  boost::lockfree::spsc_queue< ptb::content::word::word > _word_buffer ;  
   
   // this is the receiver thread to be called
-  // return value to be used to 
-  int _raw_receiver() ;   
   int _word_receiver() ;
 
   void _update_calibration_file() ;
   void _init_calibration_file() ;
 
-  std::future<int> _raw_fut ;
+  template<class T>
+  bool _read( T & obj , boost::asio::ip::tcp::socket & socket ) ;
+
+  //  std::future<int> _raw_fut ;
   std::future<int> _word_fut ;
 
   const unsigned int _port ;
 
-  std::atomic<std::chrono::microseconds> _timeout ;
+  std::chrono::microseconds _timeout ;
 
   std::atomic<unsigned int> _n_TS_words ;
 
   std::atomic<bool> _stop_requested ;
-  //atomic<bool> _timed_out = false ;
 
   // members related to calibration stream
   bool _has_calibration_stream ; 

@@ -27,8 +27,6 @@ WIBReader::WIBReader(fhicl::ParameterSet const& ps) :
   const std::string identification = "wibdaq::WIBReader::WIBReader";
 
   auto configuration_tries = ps.get<unsigned>("WIB.config.configuration_tries");
-  start_links_FELIX_run_start = ps.get<bool>("WIB.config.start_links_FELIX_run_start");
-  stop_links_FELIX_run_stop = ps.get<bool>("WIB.config.stop_links_FELIX_run_stop");
 
   bool success = false;
   for (unsigned iTry=1; iTry <= configuration_tries; iTry++) {
@@ -303,10 +301,10 @@ void WIBReader::setupWIB(fhicl::ParameterSet const& ps) {
     }
   }
 
-  if (!((daqMode == WIB::FELIX) && start_links_FELIX_run_start)){// don't enable links yet if FELIX and star_links_FELIX, do it in start
+//  if (daqMode != WIB::FELIX){// don't enable links yet if FELIX, do it in start
     dune::DAQLogger::LogInfo(identification) << "Enabling DAQ links";
     wib->StartStreamToDAQ();
-  }
+//  }
   
   // Un-set DIM do-not-disturb
   wib->Write("SYSTEM.SLOW_CONTROL_DND",0);
@@ -596,7 +594,8 @@ void WIBReader::start() {
     excpt << "WIB object pointer NULL";
     throw excpt;
   }
-  if ((wib->GetDAQMode() == WIB::FELIX) && start_links_FELIX_run_start){// otherwise we did this during configure
+  /*
+  if (wib->GetDAQMode() == WIB::FELIX){// otherwise we did this during configure
     dune::DAQLogger::LogInfo(identification) << "Enabling DAQ links";
 
     unsigned start_run_tries = 5;
@@ -653,6 +652,7 @@ void WIBReader::start() {
       throw excpt;
     }
   } // if felix
+*/
 }
 
 // "stop" transition
@@ -664,7 +664,8 @@ void WIBReader::stop() {
     excpt << "WIB object pointer NULL";
     throw excpt;
   }
-  if (wib->GetDAQMode() == WIB::FELIX && stop_links_FELIX_run_stop){// otherwise don't need to do this
+  /*
+  if (wib->GetDAQMode() == WIB::FELIX){// otherwise don't need to do this
     dune::DAQLogger::LogInfo(identification) << "Disabling DAQ links";
 
     unsigned stop_run_tries = 5;
@@ -724,7 +725,7 @@ void WIBReader::stop() {
       throw excpt;
     }
   } // if felix
-
+*/
 }
 
 // Called by BoardReaderMain in a loop between "start" and "stop"

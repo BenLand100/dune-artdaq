@@ -159,7 +159,9 @@ bool FelixHardwareInterface::FillFragment( std::unique_ptr<artdaq::Fragment>& fr
   if (taking_data_) {
     //DAQLogger::LogInfo("dune::FelixHardwareInterface::FillFragment") << "Fill fragment at: " << &frag;
 
+// RS: 17.08.2018 -> This will be gone for good soon.
     // Fake trigger mode for debugging purposes. (send 10000 fake triggers.)
+/*
     if (fake_triggers_ && fake_trigger_attempts_ < 1000) {
       DAQLogger::LogInfo("dune::FelixHardwareInterface::FillFragment") 
         << " Faking a trigger -> " << fake_trigger_ << ". trigger";
@@ -177,7 +179,7 @@ bool FelixHardwareInterface::FillFragment( std::unique_ptr<artdaq::Fragment>& fr
 
     } 
     else {
-
+*/
       TriggerInfo request = request_receiver_->getNextRequest();
       uint64_t requestSeqId = request.seqID;
       uint64_t requestTimestamp = request.timestamp;
@@ -185,10 +187,6 @@ bool FelixHardwareInterface::FillFragment( std::unique_ptr<artdaq::Fragment>& fr
       //auto reqMap = artdaq_request_receiver_.GetRequests();
       //uint64_t requestSeqId = reqMap.cbegin()->first;
       //uint64_t requestTimestamp = reqMap.cbegin()->second;
-
-      //DAQLogger::LogInfo("dune::FelixHardwareInterface::FillFragment") 
-      //    << " Requested timestamp is: " << requestTimestamp 
-      //    << " requested sequence_id is: " << requestSeqId ;
 
       bool success = nioh_.triggerWorkers(requestTimestamp, requestSeqId, frag);
       if (success) {
@@ -212,8 +210,11 @@ bool FelixHardwareInterface::FillFragment( std::unique_ptr<artdaq::Fragment>& fr
 
       ++send_calls_;
       return true;
-    }  
-  }
+
+    //} EOF fake trigger check.
+
+  } // EOF if(takingData_)
+
   return true; // should never reach this
 }
 

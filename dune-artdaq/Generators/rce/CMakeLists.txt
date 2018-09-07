@@ -2,6 +2,9 @@ include_directories($ENV{ROGUE_INC})
 cet_find_library(ROGUE_LIB NAMES rogue-core PATHS ENV ROGUE_LIB NO_DEFAULT_PATH)
 message("Rogue Lib: ${ROGUE_LIB}")
 
+include_directories( "$ENV{DUNEPDSPRCE_INC}" )
+cet_find_library( RCEDAMLIB NAMES protodune-dam PATHS ENV DUNEPDSPRCE_LIB NO_DEFAULT_PATH )
+
 add_definitions(-DNO_PYTHON)
 art_make(
 	LIB_LIBRARIES
@@ -17,5 +20,6 @@ art_make(
    ${Boost_THREAD_LIBRARY}
    ${Boost_ATOMIC_LIBRARY}
    ${ROGUE_LIB}
+   ${RCEDAMLIB}
    pthread
 )

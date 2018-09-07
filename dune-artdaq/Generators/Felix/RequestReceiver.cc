@@ -14,8 +14,8 @@ RequestReceiver::RequestReceiver(std::string & addr) :
   m_subscribeAddress(addr),
   m_stop_thread{ false }
 {
-m_req = std::make_unique<RequestQueue_t>(200);
-}
+ m_req = std::make_unique<RequestQueue_t>(200);
+ }
 
 
 RequestReceiver::~RequestReceiver() {
@@ -40,6 +40,7 @@ void RequestReceiver::start() {
   zmq_setsockopt(m_socket, ZMQ_SUBSCRIBE, "", 0);
 
   m_stop_thread = false;
+  m_prevTrigger.seqID = 0;
   m_receiver = std::thread(&RequestReceiver::thread, this);
   set_thread_name(m_receiver, "req-recv", 1);
   dune::DAQLogger::LogInfo("RequestReceiver::start")
@@ -67,7 +68,7 @@ TriggerInfo RequestReceiver::getNextRequest() {
   auto startTime=std::chrono::system_clock::now();
   auto now=std::chrono::system_clock::now();
   while ( m_req->isEmpty() && (now - startTime) < std::chrono::seconds(2) ) {
-    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    std::this_thread::sleep_for(std::chrono::milliseconds(1));
     now=std::chrono::system_clock::now();
   } 
   if ( m_req->isEmpty()) {

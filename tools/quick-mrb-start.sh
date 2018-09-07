@@ -15,7 +15,7 @@ if ! [[ "$HOSTNAME" =~ ^np04-srv ]]; then
 fi
 
 if [[ "$HOSTNAME" == "np04-srv-001" || "$HOSTNAME" == "np04-srv-009" || "$HOSTNAME" == "np04-srv-010" ]]; then
-    echo "Host $HOSTNAME either doesn't have enough processors for a speedy build or is in heavy use for other DAQ purposes; try another host (e.g., np04-srv-014)"
+    echo "Host $HOSTNAME doesn't physically have enough processors for a speedy build; try another host (e.g., np04-srv-014)"
     exit 1
 fi
 
@@ -293,14 +293,14 @@ fi
 
 if ! $bad_network; then
 
-    mrb gitCheckout -t pdune_Aug06A -d artdaq_core http://cdcvs.fnal.gov/projects/artdaq-core
+    mrb gitCheckout -b feature/pdune_ron_Aug01 -d artdaq_core http://cdcvs.fnal.gov/projects/artdaq-core
  
     if [[ "$?" != "0" ]]; then
         echo "Unable to perform checkout of http://cdcvs.fnal.gov/projects/artdaq-core"
         exit 1
     fi
 
-    mrb gitCheckout -t pdune_Aug06A -d artdaq_utilities http://cdcvs.fnal.gov/projects/artdaq-utilities
+    mrb gitCheckout -b feature/pdune_ron_Aug01 -d artdaq_utilities http://cdcvs.fnal.gov/projects/artdaq-utilities
  
     if [[ "$?" != "0" ]]; then
         echo "Unable to perform checkout of http://cdcvs.fnal.gov/projects/artdaq-utilities"
@@ -308,24 +308,17 @@ if ! $bad_network; then
     fi
 
 
-    mrb gitCheckout -t pdune_Aug06A -d artdaq http://cdcvs.fnal.gov/projects/artdaq
+    mrb gitCheckout -b feature/pdune_ron_Aug01 -d artdaq http://cdcvs.fnal.gov/projects/artdaq
 
     if [[ "$?" != "0" ]]; then
     	echo "Unable to perform checkout of http://cdcvs.fnal.gov/projects/artdaq"
     	exit 1
     fi
 
-    mrb gitCheckout -t v1_00_01 -d artdaq_mpich_plugin http://cdcvs.fnal.gov/projects/artdaq-utilities-mpich-plugin
+    mrb gitCheckout -b feature/pdune_ron_Aug01 -d artdaq_mpich_plugin http://cdcvs.fnal.gov/projects/artdaq-utilities-mpich-plugin
 
    if [[ "$?" != "0" ]]; then
     	echo "Unable to perform checkout of http://cdcvs.fnal.gov/projects/artdaq-utilities-mpich_plugin"
-    	exit 1
-    fi
-
-    mrb gitCheckout -t v1_03_02 -d artdaq_mfextensions http://cdcvs.fnal.gov/projects/mf-extensions-git
-
-   if [[ "$?" != "0" ]]; then
-    	echo "Unable to perform checkout of http://cdcvs.fnal.gov/projects/mf-extensions-git"
     	exit 1
     fi
 
@@ -382,7 +375,7 @@ cd $Base
         export DUNEARTDAQ_REPO="$ARTDAQ_DEMO_DIR"                                                                        
         export FHICL_FILE_PATH=.:\$DUNEARTDAQ_REPO/tools/fcl:\$FHICL_FILE_PATH                                           
 
-        setup protodune_wibsoft v339 -q e15:s64
+        setup protodune_wibsoft v341 -q e15:s64
         setup uhal v2_6_0 -q e15:prof:s64
         setup netio v0_8_0 -q e15:prof:s64
 # RSIPOS 03/07/18 -> Infiniband workaround for FELIX BR build
@@ -390,7 +383,7 @@ cd $Base
         setup ftd2xx v1_2_7a
         setup dunepdsprce v0_0_4 -q e15:gen:prof
         setup rogue v2_10_0_3_gfaeedd0 -q e15:prof
-        setup protodune_timing v4_0_2 -q e15:prof:s64
+        setup protodune_timing v4_1_3 -q e15:prof:s64
         setup dune_artdaq_InhibitMaster v0_01_01 -q e15:prof
 
         export DIM_INC=/nfs/sw/dim/dim_v20r20
@@ -432,17 +425,18 @@ EOF
         export DUNEARTDAQ_REPO="$ARTDAQ_DEMO_DIR"                                                                        
         export FHICL_FILE_PATH=.:\$DUNEARTDAQ_REPO/tools/fcl:\$FHICL_FILE_PATH                                           
 
-        setup protodune_wibsoft v339 -q e15:s64
+        setup protodune_wibsoft v341 -q e15:s64
         setup uhal v2_6_0 -q e15:prof:s64
 
         setup netio v0_8_0 -q e15:prof:s64
 # RSIPOS 03/07/18 -> Infiniband workaround for FELIX BR build
-        export LD_LIBRARY_PATH=\$LD_LIBRARY_PATH:/nfs/sw/felix/new-software/multidma/software/external/libfabric/1.4.1.3/x86_64-centos7-gcc62-opt/lib
+#        export LD_LIBRARY_PATH=\$LD_LIBRARY_PATH:/nfs/sw/felix/new-software/multidma/software/external/libfabric/1.4.1.3/x86_64-centos7-gcc62-opt/lib
+        export LD_LIBRARY_PATH=\$LD_LIBRARY_PATH:/nfs/sw/felix/fabric/build/lib
         #source /nfs/sw/felix/HACK-FELIX-BR-BUILD.sh
         setup ftd2xx v1_2_7a
         setup dunepdsprce v0_0_4 -q e15:gen:prof
         setup rogue v2_10_0_3_gfaeedd0 -q e15:prof
-        setup protodune_timing v4_0_2 -q e15:prof:s64
+        setup protodune_timing v4_1_3 -q e15:prof:s64
         setup dune_artdaq_InhibitMaster v0_01_01 -q e15:prof
 export PYTHONUSERBASE=/nfs/sw/work_dirs/dune-artdaq-InhibitMaster/user_python
 
@@ -450,8 +444,8 @@ export PYTHONUSERBASE=/nfs/sw/work_dirs/dune-artdaq-InhibitMaster/user_python
         export DIM_LIB=/nfs/sw/dim/dim_v20r20/linux
         export LD_LIBRARY_PATH=\$DIM_LIB:\$LD_LIBRARY_PATH
 
-       setup -j artdaq_dim_plugin v0_02_05 -q e15:prof:s64
-        setup artdaq_mpich_plugin v1_00_01 -q e15:eth:prof:s64
+       setup -j artdaq_dim_plugin v0_02_06 -q e15:prof:s64
+        setup artdaq_mpich_plugin v1_00_02 -q e15:eth:prof:s64
         
        setup TRACE v3_13_07
         export TRACE_FILE=/tmp/trace_$trace_file_label
@@ -525,7 +519,7 @@ export CETPKG_J=$nprocessors
 source /nfs/sw/artdaq/products/setup
 
 
-        setup protodune_wibsoft v339 -q e15:s64
+        setup protodune_wibsoft v341 -q e15:s64
         setup uhal v2_6_0 -q e15:prof:s64
         setup netio v0_8_0 -q e15:prof:s64
 # RSIPOS 03/07/18 -> Infiniband workaround for FELIX BR build

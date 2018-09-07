@@ -121,11 +121,12 @@ void NetioHandler::startTriggerMatchers(){
             --queuedElements;
 	  */
 
-          //if (m_pcqs[tid]->sizeGuess() > 0.5 * m_pcqs[tid]->capacity()) {
-	     DAQLogger::LogInfo("NetioHandler::startTriggerMatchers") << "Removing old non requested data; (" << m_pcqs[tid]->sizeGuess()<< ") messages in queue.";
-	     m_pcqs[tid]->popXFront(m_pcqs[tid]->sizeGuess());
-	    //m_pcqs[tid]->popXFront(m_pcqs[tid]->capacity()/2);
-	  //}
+          size_t qSize = m_pcqs[tid]->sizeGuess() ;
+          if (qSize > 0.5 * m_pcqs[tid]->capacity()) {
+	     DAQLogger::LogInfo("NetioHandler::startTriggerMatchers") << "Removing old non requested data; (" << qSize << ") messages in queue.";
+	     //m_pcqs[tid]->popXFront(m_pcqs[tid]->sizeGuess());
+	     m_pcqs[tid]->popXFront(0.8 * qSize);
+	  }
 	  return;
 	}
 
@@ -274,10 +275,17 @@ void NetioHandler::startSubscribers(){
 	    msg.serialize_to_usr_buffer((void*)&ics);
 	    bool storeOk = m_pcqs[m_channels[chn]]->write( std::move(ics) ); // RS -> Add possibility for dry_run! (No push mode.)
 	    if (!storeOk) {
-	      if(lostData%10000 == 0) {
-		DAQLogger::LogWarning("NetioHandler::subscriber") << " Fragments queue is full. Lost: " << lostData;
-	      }
-	      ++lostData;
+              DAQLogger::LogWarning("NetioHandler::subscriber") << " Fragments queue is full. Lost: " << lostData;
+              if(!busy()) {
+                m_pcqs[m_channels[chn]]->popXFront(m_pcqs[m_channels[chn]]->capacity()/2);
+                lostData+= m_pcqs[m_channels[chn]]->capacity()/2;
+              }
+              else {
+                ++ lostData;
+              }
+	    //  if(lostData%10000 == 0) {
+		//DAQLogger::LogWarning("NetioHandler::subscriber") << " Fragments queue is full. Lost: " << lostData;
+	      //}
 	    }
 	    goodOnes++;
           }

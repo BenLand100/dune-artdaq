@@ -35,33 +35,10 @@ femb_config_default: {
   pls_mode: 0 # 0 off, 1 internal, 2 FPGA external
   # Calibration pulser amplitude 
   pls_dac_val: 0 # 6 bits in internal mode, 5 bits in external
-  # Calibration pulser phase
-  pls_phase_val: 219 # times 10 ns
-  # Calibration pulser period
-  pls_phase_val: 497 # times 10 ns
   # 1 to make FPGA to WIB header frame as BU WIB expects
   start_frame_mode_sel: 1
   # 1 to swap bytes in header frame
   start_frame_swap: 1
-  # Config for stepping through calibration values
-  calibration_stepping: {
-    # master control for calibration stepping
-    mode: "disabled" # disabled, amplitude, phase
-    # time to run with a given setting
-    step_time: 2.0 # float seconds
-    # Amplitude step min
-    amp_min: 3
-    # Amplitude step max
-    amp_max: 9
-    # How much to step between amplitudes
-    amp_step: 1
-    # Phase step min
-    phase_min: 189
-    # Phase step max
-    phase_max: 249
-    # How much to step between phases
-    phase_step: 1
-  }
 }
 
 # All just to set the fake_word without indexing arrays
@@ -85,7 +62,7 @@ wib_config: {
       # FEMB register map
       femb_table: "PDUNE_FEMB_323.adt"
       # this must match the WIB firmware version (hex)
-      expected_wib_fw_version_rce: 0x18080601
+      expected_wib_fw_version_rce: 0x18072501
       expected_wib_fw_version_felix: 0x18072501
       # this must match the WIB firmware version
       expected_daq_mode: "any" # "RCE", "FELIX", or "any"
@@ -126,10 +103,6 @@ wib_config: {
     dnd_wait_time: 10
     #Number of times to try configuring before giving up
     configuration_tries: 3
-    #Start FELIX links in start transition, else during configure transition
-    start_links_FELIX_run_start: false
-    #Stop FELIX links in stop transition, else don't stop
-    stop_links_FELIX_run_stop: false
 }
 
 # standard wib configuration
@@ -319,7 +292,6 @@ wib304_standard.fragment_receiver.fragment_id: 434
 wib304_standard.fragment_receiver.board_id: 34 
 wib304_standard.fragment_receiver.WIB.address: "np04-wib-304" 
 wib304_standard.metrics.dim.IDName: "wib304"
-wib304_standard.fragment_receiver.WIB.config.enable_FEMBs: [true,false,true,true]
 
 wib305_standard: @local::wib_standard 
 wib305_standard.fragment_receiver.fragment_id: 435 
