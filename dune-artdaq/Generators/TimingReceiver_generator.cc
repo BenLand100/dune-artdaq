@@ -80,8 +80,15 @@ dune::TimingReceiver::TimingReceiver(fhicl::ParameterSet const & ps):
   ,zmq_conn_(ps.get<std::string>("zmq_connection","tcp://pddaq-gen05-daq0:5566"))
   ,zmq_conn_out_(ps.get<std::string>("zmq_connection_out","tcp://*:5599"))
   ,zmq_fragment_conn_out_(ps.get<std::string>("zmq_fragment_connection_out","tcp://*:7123"))
-  ,extra_firmware_versions_(ps.get<std::vector<int>>("valid_firmware_versions", std::vector<int>()))
-  ,want_inhibit_(false)  
+  ,valid_firmware_versions_fcl_(ps.get<std::vector<int>>("valid_firmware_versions", std::vector<int>()))
+  ,want_inhibit_(false)
+  ,last_spillstart_tstampl_(0) // Timestamp of most recent start-of-spill
+  ,last_spillstart_tstamph_(0) // ...
+  ,last_spillend_tstampl_(0)   // Timestamp of most recent end-of-spill
+  ,last_spillend_tstamph_(0)   // ...
+  ,last_runstart_tstampl_(0)   // Timestamp of most recent start-of-run
+  ,last_runstart_tstamph_(0)   // ...
+
 {
 
     // TODO:
@@ -116,7 +123,7 @@ dune::TimingReceiver::TimingReceiver(fhicl::ParameterSet const & ps):
     // Match Fw version with configuration
     DAQLogger::LogInfo(instance_name_) << "Timing Master firmware version " << std::showbase << std::hex << (uint32_t)lVersion;
     std::set<uint32_t> allowed_fw_versions{0x40100, 0x40101, 0x40102, 0x40103};
-    for(auto const& ver : extra_firmware_versions_) allowed_fw_versions.insert(ver);
+    for(auto const& ver : valid_firmware_versions_fcl_) allowed_fw_versions.insert(ver);
 
     if ( allowed_fw_versions.find(lVersion)==allowed_fw_versions.end() ) {
         std::stringstream errormsg;
@@ -390,18 +397,38 @@ bool dune::TimingReceiver::getNext_(artdaq::FragmentPtrs &frags)
     if (havedata) {   // An event or many events have arrived
       while (havedata) {
 
-        // Make a fragment.  Follow the way it is done in the SSP boardreader
+        // Make a fragment.  Follow the way it is done in the SSP
+        // boardreader. We always form fragments, even for the events
+        // that we're not going to send out to artdaq (spill
+        // start/end, run start), mostly to get the timestamp
+        // calculation done in the fragment, but partly to make the
+        // code easier to follow(?)
         std::unique_ptr<artdaq::Fragment> f = artdaq::Fragment::FragmentBytes( TimingFragment::size()*sizeof(uint32_t));
 
         // Read the data from the hardware
 	std::vector<uint32_t> uwords = master_partition().readEvents(1);
 
 #ifdef SEPARATE_DEBUG
-        uint32_t word[6];  // Declare like this if we want a local variable instead of putting it straight in the fragmenti
+        uint32_t word[12];  // Declare like this if we want a local variable instead of putting it straight in the fragmenti
 #else
         uint32_t* word = reinterpret_cast<uint32_t *> (f->dataBeginBytes());    // dataBeginBytes returns a byte_t pointer
 #endif
         for (int i=0;i<6;i++) {  word[i] = uwords[i]; }   // Unpacks from uHALs ValVector<> into the fragment
+
+        // Set the last spill/run timestamps in the fragment
+
+        // There had better be enough space in the object. If not, something has gone horribly wrong
+        static_assert(TimingFragment::Body::size >= 12ul);
+
+        // These must be kept in sync with the order declared in TimingFragment::Body in TimingFragment.hh
+        word[6]=last_runstart_tstampl_;
+        word[7]=last_runstart_tstamph_;
+
+        word[8]=last_spillstart_tstampl_;
+        word[9]=last_spillstart_tstamph_;
+
+        word[10]=last_spillend_tstampl_;
+        word[11]=last_spillend_tstamph_;
 
         dune::TimingFragment fo(*f);    // Overlay class - the internal bits of the class are
                                         // accessible here with the same functions we use offline.
@@ -428,12 +455,40 @@ bool dune::TimingReceiver::getNext_(artdaq::FragmentPtrs &frags)
         DAQLogger::LogInfo(instance_name_) << "For timing fragment with sequence ID " << ev_counter() << ", scmd " << std::showbase << std::hex << fo.get_scmd() << std::dec <<  ", setting the timestamp to " << fo.get_tstamp();
         f->setTimestamp(fo.get_tstamp());  // 64-bit number
 
-        // Send the fragment out on ZeroMQ for FELIX and whoever else wants to listen for it
-        int pubSuccess = fragment_publisher_->PublishFragment(f.get(), &fo);
-        //DAQLogger::LogInfo(instance_name_) << "Publishing fragment successfull?  " << pubSuccess;
 
-        frags.emplace_back(std::move(f));
-        ev_counter_inc();
+        // Do we want to send the fragment out to ZeroMQ and artdaq? We *don't* send out run start, spill start and spill end fragments.
+        // TODO: maybe this check should just be whether the scmd is >=0x8
+        dune::TimingCommand commandType=(dune::TimingCommand)fo.get_scmd();
+        bool shouldSendFragment=!(commandType==dune::TimingCommand::RunStart   ||
+                                  commandType==dune::TimingCommand::SpillStart ||
+                                  commandType==dune::TimingCommand::SpillStop);
+
+        if(shouldSendFragment){
+          // Send the fragment out on ZeroMQ for FELIX and whoever else wants to listen for it
+          int pubSuccess = fragment_publisher_->PublishFragment(f.get(), &fo);
+          //DAQLogger::LogInfo(instance_name_) << "Publishing fragment successfull?  " << pubSuccess;
+          
+          frags.emplace_back(std::move(f));
+          // We only increment the event counter for events we send out
+          ev_counter_inc();
+        }
+
+        // Update the last spill/run timestamps if the fragment type is one of those
+        switch(commandType){
+        case dune::TimingCommand::RunStart:
+          last_runstart_tstampl_=fo.get_tstampl();
+          last_runstart_tstamph_=fo.get_tstamph();
+          break;
+        case dune::TimingCommand::SpillStart:
+          last_spillstart_tstampl_=fo.get_tstampl();
+          last_spillstart_tstamph_=fo.get_tstamph();
+          break;
+        case dune::TimingCommand::SpillStop:
+          last_spillend_tstampl_=fo.get_tstampl();
+          last_spillend_tstamph_=fo.get_tstamph();
+          break;
+        };
+
         havedata = false;    // Combined with the while above, we could make havedata an integer 
                              // and read multiple events at once (so use "havedata -= 6;")
         
