@@ -175,7 +175,6 @@ void TpcRceReceiver::stop(void)
 void TpcRceReceiver::stopNoMutex(void)
 {
    DAQLogger::LogInfo(_instance_name) << "stopNoMutex()";
-   stop();
 }
 
 bool TpcRceReceiver::getNext_(artdaq::FragmentPtrs& frags)
@@ -301,6 +300,8 @@ void TpcRceReceiver::_update_stats()
    _stats.rssi_drop = curr.rssi_drop - _stats.prev.rssi_drop;
    _stats.pack_drop = curr.pack_drop - _stats.prev.pack_drop;
    _stats.bad_hdrs  = curr.bad_hdrs  - _stats.prev.bad_hdrs;
+   _stats.bad_trlr  = curr.bad_trlr  - _stats.prev.bad_trlr;
+   _stats.err_size  = curr.err_size  - _stats.prev.err_size;
    _stats.err_cnt   = curr.err_cnt   - _stats.prev.err_cnt;
    _stats.overflow  = curr.overflow  - _stats.prev.overflow;
    _stats.is_open   = static_cast<int>(_receiver->is_open());
@@ -344,6 +345,7 @@ void TpcRceReceiver::_print_summary(const char *title) const
       << "Overflow : " << curr.overflow  << "\n"
       << "Bad Hdrs : " << curr.bad_hdrs  << "\n"
       << "Bad Trlr : " << curr.bad_trlr  << "\n"
+      << "Err Size : " << curr.err_size  << "\n" 
       << "Err Cnt  : " << curr.err_cnt 
       ;
 }
@@ -358,9 +360,11 @@ void TpcRceReceiver::_send_stats() const
    mm->sendMetric("RceRecv AvgSize",   _stats.avg_size , "MB",   1,  last);
    mm->sendMetric("RceRecv MinSize",   _stats.min_size , "MB",   1,  last);
    mm->sendMetric("RceRecv MaxSize",   _stats.max_size , "MB",   1,  last);
-   mm->sendMetric("RceRecv RSSIDrop",  _stats.rssi_drop, "",     1,  last);
+   mm->sendMetric("RceRecv RSSIDrop",  _stats.rssi_drop,  "",    1,  last);
    mm->sendMetric("RceRecv PackDrop",  _stats.pack_drop,  "",    1,  last);
    mm->sendMetric("RceRecv BadHdrs",   _stats.bad_hdrs,   "",    1,  last);
+   mm->sendMetric("RceRecv BadTrlr",   _stats.bad_trlr,   "",    1,  last);
+   mm->sendMetric("RceRecv ErrSize",   _stats.err_size,   "",    1,  last);
    mm->sendMetric("RceRecv ErrCnt",    _stats.err_cnt,    "",    1,  last);
    mm->sendMetric("RceRecv Overflow",  _stats.overflow,   "",    1,  last);
    mm->sendMetric("RceRecv IsOpen",    _stats.is_open,    "",    1,  last);
@@ -382,6 +386,7 @@ void TpcRceReceiver::_send_summary() const
    send("RceRecv TotalOverflow", curr.overflow );
    send("RceRecv TotalBadHdrs" , curr.bad_hdrs );
    send("RceRecv TotalBadTrlr" , curr.bad_trlr );
+   send("RceRecv TotalErrSize" , curr.err_size );
    send("RceRecv TotalErrCnt"  , curr.err_cnt  );
 }
 
@@ -398,8 +403,8 @@ void TpcRceReceiver::_check_status()
       if (pass)
          break;
       else if (n_retries == max_trials) 
-         //DAQLogger::LogWarning(_instance_name) << status.err_msg();
-         DAQLogger::LogError(_instance_name) << status.err_msg();
+         DAQLogger::LogWarning(_instance_name) << status.err_msg();
+         //DAQLogger::LogError(_instance_name) << status.err_msg();
 
    } while (n_retries < max_trials);
 }

@@ -89,6 +89,8 @@ class TpcRceReceiver : public artdaq::CommandableFragmentGenerator
            uint_t   rssi_drop = 0;
            uint_t   pack_drop = 0;
            uint_t   bad_hdrs  = 0;
+           uint_t   bad_trlr  = 0;
+           uint_t   err_size  = 0;
            uint_t   err_cnt   = 0;
            uint_t   overflow  = 0;
            int      is_open   = 0;
