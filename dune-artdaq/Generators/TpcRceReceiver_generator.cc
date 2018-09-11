@@ -174,8 +174,8 @@ void TpcRceReceiver::stop(void)
 
 void TpcRceReceiver::stopNoMutex(void)
 {
-   DAQLogger::LogInfo(_instance_name) << "stopNoMutex()";
-   stop();
+   // DAQLogger::LogInfo(_instance_name) << "stopNoMutex()";
+   // stop();
 }
 
 bool TpcRceReceiver::getNext_(artdaq::FragmentPtrs& frags)
@@ -317,19 +317,19 @@ void TpcRceReceiver::_print_stats() const
 
    DAQLogger::LogInfo(_instance_name)
       << "=== Stats ===\n"
-      << "Last Update     : " << last_update       << "\n"
-      << "Rate (Hz)       : " << _stats.evt_rate   << "\n"
-      << "Data (Gbps)     : " << _stats.data_rate  << "\n"
-      << "Avg. Size (MB)  : " << _stats.avg_size   << "\n"
-      << "Min. Size (MB)  : " << _stats.min_size   << "\n"
-      << "Max. Size (MB)  : " << _stats.max_size   << "\n"
-      << "RSSI Drop       : " << _stats.rssi_drop  << "\n"
-      << "Pkt. Drop       : " << _stats.pack_drop  << "\n"
-      << "Bad Headers     : " << _stats.bad_hdrs   << "\n"
-      << "Err Cnt         : " << _stats.err_cnt    << "\n"
-      << "Overflow        : " << _stats.overflow   << "\n"
-      << "IsOpen          : " << _stats.is_open    << "\n"
-      << "Last Fragment   : " << _last_frag
+      << "Last Update       " << last_update       << "\n"
+      << "Rate (Hz)         " << _stats.evt_rate   << "\n"
+      << "Data (Gbps)       " << _stats.data_rate  << "\n"
+      << "Avg. Size (MB)    " << _stats.avg_size   << "\n"
+      << "Min. Size (MB)    " << _stats.min_size   << "\n"
+      << "Max. Size (MB)    " << _stats.max_size   << "\n"
+      << "RSSI Drop         " << _stats.rssi_drop  << "\n"
+      << "Pkt. Drop         " << _stats.pack_drop  << "\n"
+      << "Bad Headers       " << _stats.bad_hdrs   << "\n"
+      << "Err Cnt           " << _stats.err_cnt    << "\n"
+      << "Overflow          " << _stats.overflow   << "\n"
+      << "IsOpen            " << _stats.is_open    << "\n"
+      << "Last Fragment     " << _last_frag
       ;
 }
 
@@ -338,13 +338,13 @@ void TpcRceReceiver::_print_summary(const char *title) const
    auto curr = _receiver->get_stats();
    DAQLogger::LogInfo(_instance_name)
       << "=== " << title << " ===\n"
-      << "NFrags   : " << curr.rx_cnt    << "\n"
-      << "RSSI Drop: " << curr.rssi_drop << "\n"
-      << "Pkt. Drop: " << curr.pack_drop << "\n"
-      << "Overflow : " << curr.overflow  << "\n"
-      << "Bad Hdrs : " << curr.bad_hdrs  << "\n"
-      << "Bad Trlr : " << curr.bad_trlr  << "\n"
-      << "Err Cnt  : " << curr.err_cnt 
+      << "NFrags   " << curr.rx_cnt    << "\n"
+      << "RSSIDrop " << curr.rssi_drop << "\n"
+      << "Pkt.Drop " << curr.pack_drop << "\n"
+      << "Overflow " << curr.overflow  << "\n"
+      << "BadHdrs  " << curr.bad_hdrs  << "\n"
+      << "BadTrlr  " << curr.bad_trlr  << "\n"
+      << "ErrCnt   " << curr.err_cnt 
       ;
 }
 
@@ -398,8 +398,7 @@ void TpcRceReceiver::_check_status()
       if (pass)
          break;
       else if (n_retries == max_trials) 
-         //DAQLogger::LogWarning(_instance_name) << status.err_msg();
-         DAQLogger::LogError(_instance_name) << status.err_msg();
+         DAQLogger::LogWarning(_instance_name) << status.err_msg();
 
    } while (n_retries < max_trials);
 }
