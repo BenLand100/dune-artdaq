@@ -167,6 +167,18 @@ namespace dune {
     std::unique_ptr<artdaq::FragmentPublisher> fragment_publisher_;
 
     int want_inhibit_; // Do we want to request a trigger inhibit?
+
+    // Some timestamps of the most recent of each type of event. We
+    // fill these by reading events from the event buffer, and add
+    // their values to the subsequent event fragments, so that the
+    // information is in the data stream
+    uint32_t last_spillstart_tstampl_; // Timestamp of most recent start-of-spill (low 32 bits)
+    uint32_t last_spillstart_tstamph_; //                                         (high 32 bits)
+    uint32_t last_spillend_tstampl_;   // Timestamp of most recent end-of-spill (low 32 bits)
+    uint32_t last_spillend_tstamph_;   //                                       (high 32 bits)
+    uint32_t last_runstart_tstampl_;   // Timestamp of most recent start-of-run (low 32 bits)
+    uint32_t last_runstart_tstamph_;   //                                       (high 32 bits)
+
 // Internal functions
     void reset_met_variables(bool onlyspill=false);   // If onlyspill, only reset the in-spill variables
     void update_met_variables(dune::TimingFragment& fo); // Update variables for met
