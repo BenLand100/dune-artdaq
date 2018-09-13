@@ -157,7 +157,7 @@ void TpcRceReceiver::start(void)
 
 void TpcRceReceiver::stop(void)
 {
-   _print_summary("End of run summary");
+   _print_summary("[RceRecv Summary]");
    _send_summary();
 
    DAQLogger::LogInfo(_instance_name) << "stop()";
@@ -246,8 +246,14 @@ bool TpcRceReceiver::getNext_(artdaq::FragmentPtrs& frags)
       _send_stats();
    }
 
+   // send summary every 10 seconds
    if (_timer_summary.lap(now, 10)) {
       _send_summary();
+   }
+
+   // print summary every 5 mins
+   if (_timer_print.lap(now, 5 * 60)) {
+      _print_summary("[RceRecv Status]");
    }
 
   bool is_stop = should_stop() && _receiver->read_available() == 0;
@@ -338,15 +344,15 @@ void TpcRceReceiver::_print_summary(const char *title) const
 {
    auto curr = _receiver->get_stats();
    DAQLogger::LogInfo(_instance_name)
-      << "=== " << title << " ===\n"
-      << "NFrags   : " << curr.rx_cnt    << "\n"
-      << "RSSI Drop: " << curr.rssi_drop << "\n"
-      << "Pkt. Drop: " << curr.pack_drop << "\n"
-      << "Overflow : " << curr.overflow  << "\n"
-      << "Bad Hdrs : " << curr.bad_hdrs  << "\n"
-      << "Bad Trlr : " << curr.bad_trlr  << "\n"
-      << "Err Size : " << curr.err_size  << "\n" 
-      << "Err Cnt  : " << curr.err_cnt 
+      << title  << ", "
+      << "NFrags:"   << curr.rx_cnt    << ", "
+      << "RSSIDrop:" << curr.rssi_drop << ", "
+      << "PackDrop:" << curr.pack_drop << ", "
+      << "Overflow:" << curr.overflow  << ", "
+      << "BadHdrs:"  << curr.bad_hdrs  << ", "
+      << "BadTrlr:"  << curr.bad_trlr  << ", "
+      << "ErrSize:"  << curr.err_size  << ", " 
+      << "ErrCnt: "  << curr.err_cnt 
       ;
 }
 
