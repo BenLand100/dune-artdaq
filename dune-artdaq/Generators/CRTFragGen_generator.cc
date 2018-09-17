@@ -94,8 +94,7 @@ bool CRT::FragGen::getNext_(
     // Pause for a little bit if we didn't get anything to keep load down.
     usleep(10000);
 
-    // XXX debugging
-    TLOG(TLVL_INFO, "CRT") << "CRT getNext_ is returning with no data\n";
+    TLOG(TLVL_DEBUG, "CRT") << "CRT getNext_ is returning with no data\n";
     return true; // this means "keep taking data"
   }
 
@@ -166,8 +165,7 @@ bool CRT::FragGen::getNext_(
 
   ev_counter_inc(); // from base CommandableFragmentGenerator
 
-  // XXX debugging
-  TLOG(TLVL_INFO, "CRT") << "CRT getNext_ is returning with hits\n";
+  TLOG(TLVL_DEBUG, "CRT") << "CRT getNext_ is returning with hits\n";
 
   return true;
 }
