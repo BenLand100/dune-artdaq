@@ -62,8 +62,8 @@ namespace CRT
        the CRT hardware's 32-bit time stamp.
     *********************************************************************/
 
-    // Gets the full 64-bit run start time from a timing board and puts
-    // it in runstarttime.
+    // Gets the full 64-bit run start time, measured in 50MHz clock ticks,
+    // from a timing board and puts it in runstarttime.
     void getRunStartTime();
 
     std::unique_ptr<CRTInterface> hardware_interface_;

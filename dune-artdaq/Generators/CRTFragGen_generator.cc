@@ -38,8 +38,8 @@ CRT::FragGen::FragGen(fhicl::ParameterSet const& ps) :
   // timing board's endpoint0.csr.ctrl.tgrp before I retrieve the timestamp.
   // It's ok to do this in all four processes.
   , timingXMLfilename(ps.get<std::string>("connections_file",
-    "/nfs/sw/control_files/timing/connections_v4b2.xml"))
-  , hardwarename(ps.get<std::string>("hardware_select", "PRIMARY"))
+    "/nfs/sw/control_files/timing/connections_v4b4.xml"))
+  , hardwarename(ps.get<std::string>("hardware_select", "CRT_EPT"))
 {
   hardware_interface_->AllocateReadoutBuffer(&readout_buffer_);
 
@@ -191,16 +191,12 @@ void CRT::FragGen::getRunStartTime()
       << (int)status << ", can't read run start time\n";
   }
 
-  /* readBlock(2) read the register named and the next one that is contiguous
-     in memory, which is non-coincidentally the other bits we need.  The read
-     of both registers together is atomic. */
-  uhal::ValVector<uint32_t> runstarttimev = timinghw
-    // TODO: read right register. Dave will tell me this soon after 2018-08-29.
-    .getNode("endpoint0.tstamp")
-    .readBlock(2 /* number of 32-bit words read */);
+  uhal::ValWord<uint32_t> rst_l = timinghw.getNode("endpoint0.ts_l").read();
+  timinghw.dispatch();
+  uhal::ValWord<uint32_t> rst_h = timinghw.getNode("endpoint0.ts_h").read();
   timinghw.dispatch();
 
-  runstarttime = ((uint64_t)runstarttimev[1] << 32) + runstarttimev[0];
+  runstarttime = ((uint64_t)rst_h << 32) + rst_l;
 
   TLOG(TLVL_INFO, "CRT") << "CRT got run start time " << runstarttime << "\n";
   printf("CRT got run start time 0x%lx\n", runstarttime);
