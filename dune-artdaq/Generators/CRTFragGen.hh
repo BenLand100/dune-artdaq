@@ -94,6 +94,10 @@ namespace CRT
     // retrieve and store this to repair the CRT's internal 32-bit time.
     uint64_t runstarttime;
 
+    // The partition number from the FCL.  We need to write this into the
+    // timing board to be able to retrieve the run start time.
+    int partition_number;
+
     // True if this process is the one designated to start the backend DAQ.
     bool startbackend;
 

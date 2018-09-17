@@ -32,11 +32,8 @@ CRT::FragGen::FragGen(fhicl::ParameterSet const& ps) :
   , uppertime(0)
   , oldlowertime(0)
   , runstarttime(0)
+  , partition_number(ps.get<int>("partition_number"))
   , startbackend(ps.get<bool>("startbackend"))
-  // TODO: the fcl file is going to tell us what the partition is (don't know
-  // what the variable name is), and then I will need to write it into the
-  // timing board's endpoint0.csr.ctrl.tgrp before I retrieve the timestamp.
-  // It's ok to do this in all four processes.
   , timingXMLfilename(ps.get<std::string>("connections_file",
     "/nfs/sw/control_files/timing/connections_v4b4.xml"))
   , hardwarename(ps.get<std::string>("hardware_select", "CRT_EPT"))
@@ -182,6 +179,11 @@ void CRT::FragGen::getRunStartTime()
   uhal::setLogLevelTo(uhal::Error());
   static uhal::ConnectionManager timeConnMan(filepath);
   static uhal::HwInterface timinghw(timeConnMan.getDevice(hardwarename));
+
+  // Tell the timing board what partition we are running in.
+  // It's ok to do this in all four CRT processes.
+  timinghw.getNode("endpoint0.csr.ctrl.tgrp").write(partition_number);
+  timinghw.dispatch();
 
   uhal::ValWord<uint32_t> status
     = timinghw.getNode("endpoint0.csr.stat.ep_stat").read();
