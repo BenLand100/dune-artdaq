@@ -362,9 +362,6 @@ void CRTInterface::SetBaselines()
   // values will be obviously shifted upwards from what's expected.
   memset(baselines, 0, sizeof(baselines));
 
-  // XXX baseline data file is not yet named or formatted as the below code expects
-  return;
-
   FILE * in = NULL;
   while(true){
     errno = 0;
