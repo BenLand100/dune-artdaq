@@ -147,7 +147,7 @@ bool CRT::FragGen::getNext_(
   // https://cdcvs.fnal.gov/redmine/projects/artdaq-demo/wiki/How_to_write_an_overlay_class
 
   std::unique_ptr<artdaq::Fragment> fragptr
-    = std::make_unique<artdaq::Fragment>(bytes_read/sizeof(artdaq::Fragment));
+    = artdaq::Fragment::FragmentBytes(bytes_read);
 
   // ev_counter() from base CommandableFragmentGenerator
   fragptr->setSequenceID( ev_counter() );
