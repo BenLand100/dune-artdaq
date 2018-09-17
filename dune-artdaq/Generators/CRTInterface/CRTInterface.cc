@@ -108,7 +108,8 @@ std::string find_wr_file(const std::string & indir,
       struct stat thestat;
 
       if(-1 == stat((indir + de->d_name).c_str(), &thestat)){
-	throw cet::exception("CRTInterface") << "find_wr_file stat: Couldn't get timestamp of " << (indir + de->d_name).c_str() << ": " << strerror(errno);
+	throw cet::exception("CRTInterface")
+           << "find_wr_file stat: Couldn't get timestamp of " << (indir + de->d_name).c_str() << ": " << strerror(errno);
       }
 
       if(thestat.st_mtime > most_recent_time){
@@ -399,12 +400,14 @@ void CRTInterface::SetBaselines()
     }
 
     if(module >= 64){
-      TLOG(TLVL_WARNING, "CRTInterface") << "Warning: skipping baseline with invalid module number " << module << ".  Valid range is 0-63\n";
+      TLOG(TLVL_WARNING, "CRTInterface")
+         << "Warning: skipping baseline with invalid module number " << module << ".  Valid range is 0-63\n";
       continue;
     }
 
     if(channel >= 64){
-      TLOG(TLVL_WARNING, "CRTInterface") << "Warning: skipping baseline with invalid channel number " << module << ".  Valid range is 0-63\n";
+      TLOG(TLVL_WARNING, "CRTInterface")
+         << "Warning: skipping baseline with invalid channel number " << module << ".  Valid range is 0-63\n";
       continue;
     }
 
