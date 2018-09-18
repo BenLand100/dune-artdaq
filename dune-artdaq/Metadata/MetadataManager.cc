@@ -22,11 +22,13 @@ namespace meta {
   {
     //update metadata with information from parsing the pset
     for(auto& it: fPSetMetaMap){
-      fMetaMap[it.first] = it.second;
+      std::string key = "dunemeta." + it.first;
+      fMetaMap[key] = it.second;
     }
     //update metadata with information from the high priority map
     for(auto& it: fHighPrioMetaMap){
-      fMetaMap[it.first] = it.second;
+      std::string key = "dunemeta." + it.first;
+      fMetaMap[key] = it.second;
     }
     return fMetaMap;
   }
@@ -125,11 +127,6 @@ namespace meta {
         }
       }
 
-      //is this an unfilled base_release parameter?
-      if(key.find("base_release") != std::string::npos && value == "") {
-        value = std::getenv("SRT_BASE_RELEASE");
-      }
-      
       fPSetMetaMap[ key ] = value;
     }
   }
