@@ -94,7 +94,9 @@ The serialized format of a module packet is:
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |  Magic number | Count of hits |         Module number         |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |                            (Zero)                             |
+   |   (Zero: will have upper bits of global timestamp inserted)   |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |   (Zero: will have lower bits of global timestamp inserted)   |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |                   50 MHz counter time stamp                   |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -150,7 +152,7 @@ unsigned int serialize(char * cooked, const decoded_packet & packet,
 
   const unsigned int size_needed = 2 /* magic number 'M' (1) +
     count of hits (1) */ + sizeof packet.module
-    + 4 /* Upper 32 bits will be filled in downstream */
+    + 8 /* Global 64-bit timestamp will be filled in downstream */
     + sizeof packet.time16ns
     + packet.hits.size() *
       (1 /* magic number 'H' */
@@ -167,8 +169,8 @@ unsigned int serialize(char * cooked, const decoded_packet & packet,
   cooked[bytes++] = packet.hits.size();
   memcpy(cooked+bytes, &packet.module, sizeof packet.module);
   bytes += sizeof packet.module;
-  memset(cooked+bytes, 0, 4);
-  bytes += 4;
+  memset(cooked+bytes, 0, 8);
+  bytes += 8;
   memcpy(cooked+bytes, &packet.time16ns, sizeof packet.time16ns);
   bytes += sizeof packet.time16ns;
 
