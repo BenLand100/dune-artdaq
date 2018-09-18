@@ -129,6 +129,7 @@ bool CRT::FragGen::getNext_(
   // with the most recent file from the backend, where files are about
   // 5 seconds long).
   if(lowertime < oldlowertime) uppertime++;
+  oldlowertime = lowertime;
 
   timestamp_ = ((uint64_t)uppertime << 32) + lowertime + runstarttime;
 
