@@ -172,7 +172,6 @@ bool CRT::FragGen::getNext_(
 
 void CRT::FragGen::getRunStartTime()
 {
-#if 0 //Hacked by Andrew Olivier on September 13, 2018 to try skipping communication with the timing system through RC.
   std::string filepath = "file://" + timingXMLfilename;
   uhal::setLogLevelTo(uhal::Error());
   static uhal::ConnectionManager timeConnMan(filepath);
@@ -191,18 +190,15 @@ void CRT::FragGen::getRunStartTime()
       << (int)status << ", can't read run start time\n";
   }
 
-  uhal::ValWord<uint32_t> rst_l = timinghw.getNode("endpoint0.ts_l").read();
+  uhal::ValWord<uint32_t> rst_l = timinghw.getNode("endpoint0.pulse.ts_l").read();
   timinghw.dispatch();
-  uhal::ValWord<uint32_t> rst_h = timinghw.getNode("endpoint0.ts_h").read();
+  uhal::ValWord<uint32_t> rst_h = timinghw.getNode("endpoint0.pulse.ts_h").read();
   timinghw.dispatch();
 
   runstarttime = ((uint64_t)rst_h << 32) + rst_l;
 
   TLOG(TLVL_INFO, "CRT") << "CRT got run start time " << runstarttime << "\n";
   printf("CRT got run start time 0x%lx\n", runstarttime);
-#endif
-  runstarttime = 0; // irrelevant dummy value for testing without touching
-                    // the timing system
 }
 
 void CRT::FragGen::start()
