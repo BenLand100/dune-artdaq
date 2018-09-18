@@ -122,12 +122,12 @@ std::string find_wr_file(const std::string & indir,
   // If errno == 0, it just means we got to the end of the directory.
   // Otherwise, something went wrong.  This is unlikely since the only
   // error condition is "EBADF  Invalid directory stream descriptor dirp."
-  if(errno) 
+  if(errno)
     throw cet::exception("CRTInterface") << "find_wr_file readdir: " << strerror(errno);
 
   errno = 0;
   closedir(dp);
-  if(errno) 
+  if(errno)
     throw cet::exception("CRTInterface") << "find_wr_file closedir: " << strerror(errno);
 
   // slow down if the directory is there, but the file isn't yet
@@ -374,8 +374,11 @@ void CRTInterface::SetBaselines()
         sleep(1);
       }
       else{
-	throw cet::exception("CRTInterface") << "Can't open CRT baseline file";
+	throw cet::exception("CRTInterface") << "Can't open CRT baseline file: " << strerror(errno) << "\n";
       }
+    }
+    else{
+      break; //If I found the file, stop trying to open it!
     }
   }
 
@@ -418,8 +421,8 @@ void CRTInterface::SetBaselines()
   }
 
   errno = 0;
-  fclose(in);
-  throw cet::exception("CRTInterface") << "Can't close CRT baseline file";
+  if(fclose(in) == EOF)
+    throw cet::exception("CRTInterface") << "Can't close CRT baseline file: " << strerror(errno) << "\n";
 }
 
 void CRTInterface::AllocateReadoutBuffer(char** cooked_data)
