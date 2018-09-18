@@ -186,8 +186,8 @@ void CRT::FragGen::getRunStartTime()
     = timinghw.getNode("endpoint0.csr.stat.ep_stat").read();
   timinghw.dispatch();
   if(status != 8){
-    throw cet::exception("CRT") << "CRT timing board in bad state"
-      << (int)status << ", can't read run start time\n";
+    throw cet::exception("CRT") << "CRT timing board in bad state, 0x"
+      << std::hex << (int)status << ", can't read run start time\n";
   }
 
   uhal::ValWord<uint32_t> rst_l = timinghw.getNode("endpoint0.pulse.ts_l").read();
