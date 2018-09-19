@@ -276,15 +276,6 @@ namespace meta {
 
           } // for each key in config_docs
 
-          // Handle inconsistent or unset HW information
-          if (inconsistent_hw_config)
-            for (std::string & s : hw_config)
-              s = "inconsistent";
-          // Handle unset HW information
-          else if (!got_hw_config)
-            for (std::string & s : hw_config)
-              s = "none";
-
           // If we found components, add them all to a single string
           if (components.size() > 0) {
             component_list = "";
@@ -301,8 +292,11 @@ namespace meta {
       manager.AddMetadata("dune_data.detector_config", component_list);
       manager.AddMetadata("dune_data.inconsistent_hw_config", std::to_string(inconsistent_hw_config));
       manager.AddMetadata("dune_data.is_fake_data", std::to_string(is_fake_data));
-      for (unsigned int i = 0; i < hw_config.size(); ++i)
-        manager.AddMetadata("dune_data." + hw_config_name_out[i], hw_config[i]);
+      if (got_hw_config && !inconsistent_hw_config) {
+        for (unsigned int i = 0; i < hw_config.size(); ++i) {
+          manager.AddMetadata("dune_data." + hw_config_name_out[i], hw_config[i]);
+        }
+      }
 
       // Flag this as done, so it's only done once
       fParsedHWConfig = true;
