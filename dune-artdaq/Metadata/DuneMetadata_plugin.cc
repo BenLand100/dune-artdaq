@@ -171,6 +171,7 @@ namespace meta {
 
       // Metadata fields
       std::string daq_config_name = "unknown";
+      std::string data_stream = "unknown";
       bool got_hw_config = false;
       bool inconsistent_hw_config = false;
       bool is_fake_data = false;
@@ -199,6 +200,13 @@ namespace meta {
             daq_config_name = GetOneInstance(config_metadata_string, "Config name");
 
           } // if found metadata.contents
+
+          // Look for the run type in RunControl config dump
+          std::string config_runcontrol_string;
+          if (config_docs.get_if_present<std::string>("RunControl", config_runcontrol_string)) {
+            data_stream = GetOneInstance(config_runcontrol_string, "run_type");
+
+          } // if found RunControl string
 
           // Loop over every key
           for (std::string key : config_docs.get_all_keys()) {
@@ -288,6 +296,7 @@ namespace meta {
       } // if get_if_present(config docs)
 
       // Add HW config as metadata
+      manager.AddMetadata("data_stream", data_stream);
       manager.AddMetadata("dune_data.daqconfigname", daq_config_name);
       manager.AddMetadata("dune_data.detector_config", component_list);
       manager.AddMetadata("dune_data.inconsistent_hw_config", std::to_string(inconsistent_hw_config));
