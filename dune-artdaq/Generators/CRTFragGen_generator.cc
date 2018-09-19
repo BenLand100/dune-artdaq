@@ -113,8 +113,7 @@ bool CRT::FragGen::getNext_(
   // upper bits if needed, and finally concatenate the two.
   // This works because the CRT data comes strictly time ordered in
   // each USB stream [citation: Camillo 2018-08-03].
-  uint64_t lowertime = 0;
-  memcpy(&lowertime + 4, readout_buffer_ + 4 + sizeof(uint64_t), 4);
+  const uint64_t lowertime = *(uint32_t*)(readout_buffer_ + 4 + sizeof(uint64_t));
 
   // Store the first non-zero raw hardware timestamp that we see.  This is
   // only needed for debugging.  If the first timestamp happens to be zero,
