@@ -97,6 +97,7 @@ namespace meta {
 
     fFirstEvent = -1;
     fNEvts = 0;
+    fEventList.clear();
 
     return v;
 
