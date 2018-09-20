@@ -95,21 +95,36 @@ void RssiSink::
 
       size_t   n64     = (*header >> 8) & 0xffffff;
       uint64_t trailer =  *(header + n64 - 1);
+      bool     is_okay = true; 
 
+      // check header
       if (*header >> 40 != 0x8b309e) {
          ++stats_local.bad_hdrs;
-         ++stats_local.err_cnt;
-      }
-      else if (trailer != ~*header) {
-         ++stats_local.bad_trlr;
-         ++stats_local.err_cnt;
+         is_okay = false;
       }
       else {
-         // check TpcStream
+         // check trailer
+         if (trailer != ~*header) {
+            ++stats_local.bad_trlr;
+            is_okay = false;
+         }
+
+         // check size
+         if (nbytes != n64 * sizeof(uint64_t) + padding) {
+            ++stats_local.err_size;
+            is_okay = false;
+         }
+      }
+
+      // check TpcStream
+      if (is_okay) {
          DataFragmentUnpack data(header);
          if (!data.isTpcNormal())
-            ++stats_local.err_cnt;
+            is_okay = false;
       }
+
+      if (!is_okay)
+         ++stats_local.err_cnt;
 
       buffers.push(buf);
    }

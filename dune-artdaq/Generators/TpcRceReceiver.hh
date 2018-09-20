@@ -75,9 +75,6 @@ class TpcRceReceiver : public artdaq::CommandableFragmentGenerator
      class Stats
      {
         public:
-           // type for metric
-           typedef long unsigned int uint_t;
-
            Stats();
 
            rce::RecvStats prev;
@@ -86,11 +83,13 @@ class TpcRceReceiver : public artdaq::CommandableFragmentGenerator
            float    avg_size  = 0;
            float    min_size  = 0;
            float    max_size  = 0;
-           uint_t   rssi_drop = 0;
-           uint_t   pack_drop = 0;
-           uint_t   bad_hdrs  = 0;
-           uint_t   err_cnt   = 0;
-           uint_t   overflow  = 0;
+           int      rssi_drop = 0;
+           int      pack_drop = 0;
+           int      bad_hdrs  = 0;
+           int      bad_trlr  = 0;
+           int      err_size  = 0;
+           int      err_cnt   = 0;
+           int      overflow  = 0;
            int      is_open   = 0;
            boost::posix_time::ptime last_update;
 
@@ -130,6 +129,7 @@ class TpcRceReceiver : public artdaq::CommandableFragmentGenerator
 
      Timer _timer_stats;
      Timer _timer_summary;
+     Timer _timer_print;
 
      std::stringstream _debug_ss;
      std::string       _last_frag = "";

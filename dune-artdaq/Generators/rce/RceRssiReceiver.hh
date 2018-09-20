@@ -40,6 +40,7 @@ namespace rce {
          uint32_t overflow  = 0;
          uint32_t bad_hdrs  = 0;
          uint32_t bad_trlr  = 0;
+         uint32_t err_size  = 0;
          uint32_t err_cnt   = 0;
    };
 
