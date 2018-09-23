@@ -10,9 +10,11 @@
 #include "art/Framework/Core/FileCatalogMetadataPlugin.h"
 #include "art/Framework/Principal/Event.h"
 #include "art/Framework/Principal/SubRun.h"
+#include "art/Framework/Principal/Run.h"
 #include "art/Framework/Services/Registry/ServiceHandle.h"
 #include "fhiclcpp/make_ParameterSet.h"
 #include "dune-artdaq/Metadata/MetadataManager.h"
+#include "artdaq-core/Data/PackageBuildInfo.hh"
 
 #include <sstream>
 
@@ -34,7 +36,7 @@ namespace meta {
     auto produceMetadata() -> collection_type override;
     void fillMetadata();
 
-    void beginJob();
+    void beginRun(art::Run const & r);
     void collectMetadata(art::Event const & e);
     void beginSubRun(art::SubRun const & sr);
 
@@ -51,11 +53,18 @@ namespace meta {
 
     std::set<std::pair<int,int>> fSubRuns;
 
+    std::vector<double> fEventList; // List of events in this file
+
+    std::string fBuildInfoModuleLabel;   // Label for build info module
+    std::string fBuildInfoInstanceLabel; // Label for build info instance
+    std::string fDAQApplicationName;     // Name of DAQ application to be stored in metadata
+
     bool GetExistingMetadata(std::string key, std::string & val);
     std::string GetOneInstance (std::string config_name, std::string key);
     std::vector<std::string> GetAllInstances(std::string config_dump, std::string key);
 
-    std::vector<double> fEventList;
+    void GetPkgMetadata(std::string pkg_name,
+      art::Handle<std::vector<artdaq::PackageBuildInfo>> raw);
 
   }; // class DUNEMetadata
 
@@ -71,7 +80,11 @@ namespace meta {
 
     fNEvts       (0),
     fFirstEvent  (-1),
-    fLastEvent   (-1)
+    fLastEvent   (-1),
+  
+    fBuildInfoModuleLabel  (p.get< std::string >("buildinfo_module_label",   "undefined")),
+    fBuildInfoInstanceLabel(p.get< std::string >("buildinfo_instance_label", "undefined")),
+    fDAQApplicationName    (p.get< std::string >("daq_application_name",     "undefined"))
 
   {
     MetadataManager & manager = MetadataManager::getInstance();
@@ -146,10 +159,39 @@ namespace meta {
 
   } // function DUNEMetadata::fillMetadata
 
-  void DUNEMetadata::beginJob()
+  void DUNEMetadata::beginRun(art::Run const & r)
   {
+    // Get the metadata manager
+    MetadataManager & manager = MetadataManager::getInstance();
 
-  } // function DUNEMetadata::beginJob
+    // Get a handle to the package build info
+    art::Handle<std::vector<artdaq::PackageBuildInfo>> raw;
+    if (r.getByLabel(fBuildInfoModuleLabel, fBuildInfoInstanceLabel, raw)) {
+
+      // Look for the package we want
+      auto pkg = std::find_if(raw->begin(), raw->end(),
+        [this](const artdaq::PackageBuildInfo& p)
+        { return p.getPackageName() == fDAQApplicationName; });
+
+       // If we find it, get the metadata
+      if (pkg != raw->end()) {
+
+        // Pull out the info and add it to the metadata manager
+        std::ostringstream value_stream;
+        value_stream << "{\n\"family\":\"art\",";
+        value_stream << "\"name\":\"" << pkg->getPackageName() << "\",";
+        value_stream << "\"version\":\"" << pkg->getPackageVersion() << "\"}";
+        manager.AddMetadata("application", value_stream.str());
+      }
+
+      // Get metadata on specific packages
+      GetPkgMetadata("artdaq", raw);
+      GetPkgMetadata("artdaq-core", raw);
+      GetPkgMetadata("dune-artdaq", raw);
+      GetPkgMetadata("dune-raw-data", raw);
+
+    }
+  } // function DUNEMetadata::beginRun
 
   void DUNEMetadata::collectMetadata(art::Event const & e)
   {
@@ -385,6 +427,33 @@ namespace meta {
     return vals;
 
   } // function DUNEMetadata::GetAllInstances
+
+  void DUNEMetadata::GetPkgMetadata(std::string pkg_name,
+    art::Handle<std::vector<artdaq::PackageBuildInfo>> raw)
+  {
+
+    // Get metadata manager
+    MetadataManager & manager = MetadataManager::getInstance();
+
+    // Look for package info
+    auto pkg = std::find_if(raw->begin(), raw->end(),
+      [&pkg_name](const artdaq::PackageBuildInfo& p)
+      { return p.getPackageName() == pkg_name; });
+    if (pkg != raw->end()) {
+
+      // Add version
+      std::string key = pkg_name + ".version";
+      std::string val = pkg->getPackageVersion();
+      manager.AddMetadata(key, val);
+
+      // Add build timestamp
+      key = pkg_name + ".timestamp";
+      val = pkg->getBuildTimestamp();
+      std::replace(val.begin(), val.end(), ' ', '-');
+      manager.AddMetadata(key, val);
+
+    }
+  } // function DUNEMetadata::GetPkgMetadata
 
   DEFINE_ART_FILECATALOGMETADATA_PLUGIN(DUNEMetadata)
 
