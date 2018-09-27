@@ -81,13 +81,14 @@ dune::TimingReceiver::TimingReceiver(fhicl::ParameterSet const & ps):
   ,zmq_conn_out_(ps.get<std::string>("zmq_connection_out","tcp://*:5599"))
   ,zmq_fragment_conn_out_(ps.get<std::string>("zmq_fragment_connection_out","tcp://*:7123"))
   ,valid_firmware_versions_fcl_(ps.get<std::vector<int>>("valid_firmware_versions", std::vector<int>()))
+  ,enable_spill_commands_(ps.get<bool>("enable_spill_commands", false))
   ,want_inhibit_(false)
-  ,last_spillstart_tstampl_(0) // Timestamp of most recent start-of-spill
-  ,last_spillstart_tstamph_(0) // ...
-  ,last_spillend_tstampl_(0)   // Timestamp of most recent end-of-spill
-  ,last_spillend_tstamph_(0)   // ...
-  ,last_runstart_tstampl_(0)   // Timestamp of most recent start-of-run
-  ,last_runstart_tstamph_(0)   // ...
+  ,last_spillstart_tstampl_(0xffffffff) // Timestamp of most recent start-of-spill
+  ,last_spillstart_tstamph_(0xffffffff) // ...
+  ,last_spillend_tstampl_(0xffffffff)   // Timestamp of most recent end-of-spill
+  ,last_spillend_tstamph_(0xffffffff)   // ...
+  ,last_runstart_tstampl_(0xffffffff)   // Timestamp of most recent start-of-run
+  ,last_runstart_tstamph_(0xffffffff)   // ...
 
 {
 
@@ -164,6 +165,16 @@ dune::TimingReceiver::TimingReceiver(fhicl::ParameterSet const & ps):
     // - Set the command mask                            [done here, repeated at start()]
     // - Enable triggers                                 [Not done until inhibit lifted (in get_next_())]
 
+    // Enable/disable the sending of spill start/stop 
+    uint32_t fragment_mask = 0; 
+    if(enable_spill_commands_){
+      fragment_mask |= (1 << (int)dune::TimingCommand::RunStart);
+      fragment_mask |= (1 << (int)dune::TimingCommand::SpillStart);
+      fragment_mask |= (1 << (int)dune::TimingCommand::SpillStop);
+    }
+    DAQLogger::LogInfo(instance_name_) << "Setting fragment mask to " << std::showbase << std::hex << fragment_mask;
+    master_partition().getNode("csr.ctrl.frag_mask").write(fragment_mask);
+    master_partition().getClient().dispatch();
 
     // Modify the trigger mask so we only see fake triggers in our own partition
     fiddle_trigger_mask();
@@ -460,6 +471,7 @@ bool dune::TimingReceiver::getNext_(artdaq::FragmentPtrs &frags)
         // TODO: maybe this check should just be whether the scmd is >=0x8
         dune::TimingCommand commandType=(dune::TimingCommand)fo.get_scmd();
         bool shouldSendFragment=!(commandType==dune::TimingCommand::RunStart   ||
+                                  commandType==dune::TimingCommand::RunStop    ||
                                   commandType==dune::TimingCommand::SpillStart ||
                                   commandType==dune::TimingCommand::SpillStop);
 
@@ -471,6 +483,9 @@ bool dune::TimingReceiver::getNext_(artdaq::FragmentPtrs &frags)
           frags.emplace_back(std::move(f));
           // We only increment the event counter for events we send out
           ev_counter_inc();
+        }
+        else{
+          DAQLogger::LogInfo(instance_name_) << "Got a command of type " << std::showbase << std::hex << fo.get_scmd() << " with timestamp " << fo.get_tstamp() << " which we won't send";
         }
 
         // Update the last spill/run timestamps if the fragment type is one of those
@@ -486,6 +501,8 @@ bool dune::TimingReceiver::getNext_(artdaq::FragmentPtrs &frags)
         case dune::TimingCommand::SpillStop:
           last_spillend_tstampl_=fo.get_tstampl();
           last_spillend_tstamph_=fo.get_tstamph();
+          break;
+        default:
           break;
         };
 
