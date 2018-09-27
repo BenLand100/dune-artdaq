@@ -87,13 +87,16 @@ int main(int argn, char** argv) {
 
   int partition=0;
   int millisecwait = 30000;
-
-  if (argn > 3) {
-    printf("usage: %s [partition] [millisec time (default 30s)]\n",argv[0]);
+  int enable_spill_commands_int = 1;
+  if (argn > 4) {
+    printf("usage: %s [partition] [millisec time (default 30s)] [enable spill commands]\n",argv[0]);
     return 1;
   }
   if(argn>=2)  sscanf(argv[1],"%d",&partition);
-  if(argn==3)  sscanf(argv[2],"%d",&millisecwait);
+  if(argn>=3)  sscanf(argv[2],"%d",&millisecwait);
+  if(argn>=4)  sscanf(argv[3],"%d",&enable_spill_commands_int);
+
+  bool enable_spill_commands=enable_spill_commands_int;
 
   mf::setStandAloneMessageThreshold({"DEBUG"});
 
@@ -106,8 +109,11 @@ int main(int argn, char** argv) {
   ps.put<int>("fragment_id", 5);
   ps.put<int>("debug_print", 3);
   ps.put<int>("partition_number", partition);
-  ps.put<std::string>("connections_file", "/nfs/sw/timing/dev/software/v4a3/timing-board-software/tests/etc/connections.xml");
-  ps.put<std::string>("hardware_select", "PDTS_TERTIARY");
+  ps.put<bool>("enable_spill_commands", enable_spill_commands);
+  std::vector<int> firmware_versions{0x50000};
+  ps.put<std::vector<int>>("valid_firmware_versions", firmware_versions);
+  ps.put<std::string>("connections_file", "/nfs/sw/control_files/timing/connections_v5a1.xml");
+  ps.put<std::string>("hardware_select", "PROD_FANOUT_1");
   ps.put<std::string>("zmq_connection", "tcp://localhost:5601");
   dune::TimingReceiver trg(ps);       // (1) This does the configure step
   trgp = &trg;                        // Set this global variable to complete the fiddle at the start
