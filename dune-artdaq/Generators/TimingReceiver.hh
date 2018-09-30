@@ -135,16 +135,16 @@ namespace dune {
     uhal::ConnectionManager connectionManager_; 
     uhal::HwInterface hw_;
 
-// Things that are Fhicl parameters
+    // Things that are Fhicl parameters
     uint32_t partition_number_; // The partition number we're talking to
     uint32_t debugprint_;  // Controls the printing of stuff as info messages. 
                            // 0=minimal, 
                            // 1=Also reports throttling changes that go to hardware, 
                            // 2=calls the bufstatus and hwstatus during init, 
                            // 3=Debug message for each trigger and all throttling data
-    uint32_t trigger_mask_;         // Trigger mask (not used yet)
+    uint32_t trigger_mask_;         // Trigger mask
     uint32_t end_run_wait_;         // Number of microsecs to wait at the end of a run before looking for last event
-
+    bool enable_spill_commands_; // Should we tell the board to enable spill start/stop as event-generating commands?
     bool enable_spill_gate_; // Whether to enable the spill gate on the timing board
 
     std::string zmq_conn_;  // String specifying the zmq connection to subscribe for inhibit information

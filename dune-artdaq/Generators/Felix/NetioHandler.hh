@@ -9,7 +9,8 @@
 #include "Utilities.hh"
 #include "Types.hh"
 
-#include "ReordererFacility.hh"
+#include "ReorderFacility.hh"
+#include "QzCompressor.hh"
 
 #include "netio/netio.hpp"
 
@@ -21,6 +22,8 @@
 
 //#define MSGQ
 //#define QACHECK
+
+//#define REORD_DEBUG
 
 /*
  * NetioHandler
@@ -44,27 +47,39 @@ public:
   NetioHandler& operator=(NetioHandler const&) = delete;  // Copy assign
   NetioHandler& operator=(NetioHandler &&) = delete;      // Move assign 
 
-  // Custom types
+  // Custom types -> moved to Types.hh
   //typedef folly::ProducerConsumerQueue<IOVEC_CHAR_STRUCT> FrameQueue;
-  //typedef std::unique_ptr<FrameQueue> UniqueFrameQueue;
-  //typedef std::unique_ptr<FrameQueue>& 
 
-  //typedef folly::ProducerConsumerQueue<netio::message> MessageQueue;
-  //typedef std::unique_ptr<MessageQueue> UniqueMessageQueue; 
- 
-  //Add recalculators - Thijs
-  void recalculateByteSizes();
-
-  void setFrameSize(size_t frameSize) { m_framesize = frameSize; recalculateByteSizes(); }
-  void setTimeWindow(size_t timeWindow) { m_timeWindow = timeWindow; recalculateByteSizes(); }
+  void setFrameSize(size_t frameSize) { m_framesize = frameSize; }
+  void setTimeWindow(size_t timeWindow) { m_timeWindow = timeWindow; }
   void setWindowOffset(size_t windowOffset) { m_windowOffset = windowOffset; }
-  void setMessageSize(size_t messageSize) { m_msgsize = messageSize; recalculateByteSizes(); }
+  void setMessageSize(size_t messageSize) { m_msgsize = messageSize; }
   void setExtract(bool extract) { m_extract = extract; }
   void setVerbosity(bool v){ m_verbose = v; }
 
+  uint32_t getMessageSize() { return m_msgsize; }
+  uint32_t getFrameSize() { return m_framesize; }
+
   // Compression and reordering
-  void doReorder(bool doIt) { m_do_reorder = doIt; }
-  void doCompress(bool doIt) { m_do_compress = doIt; }
+  void doReorder(bool doIt, bool forceNoAVX) {
+    m_doReorder = doIt;
+    m_reorderFacility = std::make_unique<ReorderFacility>(forceNoAVX);
+  }
+  void doCompress(bool doIt) {
+    m_doCompress = doIt;
+    // QzCompressor qzc(QzCompressor::QzAlgo::Deflate, compression_level, hw_bufsize_kb);
+    m_compressionFacility = std::make_unique<QzCompressor>(QzCompressor::QzAlgo::Deflate, 6, 64);
+  }
+  int  initQAT() {
+    // If this fails, doCompression will fall back to 0.
+    int ret = m_compressionFacility->init(m_timeWindowByteSizeOut);
+    if (ret!=0) { m_doCompress=false; }
+    return ret;
+  }
+  void shutdownQAT() { m_compressionFacility->shutdown(); }
+  void recalculateByteSizes();
+  void recalculateFragmentSizes();
+  size_t getTimeWindowNumFrames() { return m_timeWindowNumFrames; }
 
   // Functionalities
   // Setup context:
@@ -114,23 +129,17 @@ private:
   size_t m_msgsize;
   size_t m_timeWindow;
   size_t m_windowOffset;
+  bool m_doReorder;
+  bool m_doCompress;
+  bool m_qatReady;
   bool m_extract;
   bool m_verbose;
-
-  bool m_do_reorder;
-  bool m_do_compress;
 
   //Precomputed bytesizes - Thijs
   size_t m_timeWindowByteSizeIn;
   size_t m_timeWindowByteSizeOut;
   size_t m_timeWindowNumFrames;
   size_t m_timeWindowNumMessages;
-
-  //Reordering type - Thijs - Doesn't exist anymore!
-  //ReordererType m_reord_type = ReordererType::TypeAVX2;
-  //ReordererFacility m_reorder_facility;
-
-  // Custom types from Types.h
 
   // Queues 
 #ifdef MSGQ
@@ -144,6 +153,11 @@ private:
   //std::vector<std::unique_ptr<NetioSubscriber>> m_subscribers;
   std::vector<std::unique_ptr<ReusableThread>>  m_extractors;
   std::vector<std::function<void()>> m_functors; 
+
+  // Reordering and compression utilities
+  bool m_forceNoAVXReorder;
+  std::unique_ptr<ReorderFacility> m_reorderFacility;
+  std::unique_ptr<QzCompressor> m_compressionFacility;
 
   // Trigger bookeeping
   bool m_turnaround;
