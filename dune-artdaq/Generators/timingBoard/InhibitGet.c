@@ -6,6 +6,8 @@
 #include "stdint.h"
 #include "InhibitGet.h"
 
+#include "trace.h"
+
 struct InhibitGet_vars {
   void *context;
   void *subscriber;
@@ -15,15 +17,14 @@ struct InhibitGet_vars {
 
 static struct InhibitGet_vars gIGhandle;
 
-void InhibitGet_init(const char *zmq_conn, uint32_t timetoignore) {
+void InhibitGet_init(uint32_t timetoignore) {
   //  Prepare our context and publisher
   gIGhandle.context = zmq_ctx_new ();
   gIGhandle.subscriber = zmq_socket (gIGhandle.context, ZMQ_SUB);
-  int rc = zmq_connect (gIGhandle.subscriber, zmq_conn);  // "tcp://pddaq-gen05-daq0:5566"
   
   char filter[] = "INHIBITMSG_";
   const int hwm=1;
-  rc = zmq_setsockopt (gIGhandle.subscriber, ZMQ_SUBSCRIBE,
+  int rc = zmq_setsockopt (gIGhandle.subscriber, ZMQ_SUBSCRIBE,
 		       filter, strlen (filter));
   rc = zmq_setsockopt(gIGhandle.subscriber,ZMQ_RCVHWM,&hwm,sizeof(int));
 
@@ -33,6 +34,14 @@ void InhibitGet_init(const char *zmq_conn, uint32_t timetoignore) {
 #else
   if (rc) { }   // Avoid unused variable compiler warning
 #endif
+}
+
+void InhibitGet_connect(const char* zmq_conn)
+{
+  int rc = zmq_connect (gIGhandle.subscriber, zmq_conn);
+  if(rc!=0){
+    printf("zmq_connect failed!\n");
+  }
 }
 
 void InhibitGet_retime(uint32_t timetoignore) {
@@ -49,10 +58,17 @@ uint32_t InhibitGet_get() {
 // Wait for up to gIGhandle.timetoignore usecs for the first response.
 // After first time through, set gIGhandle.timetoignore to zero
     int msg_size = zmq_recv(gIGhandle.subscriber,recv_buf,256,ZMQ_DONTWAIT);
+    if(msg_size>0){
+      TRACE(10, recv_buf);
+    }
     if (msg_size > 14) {
       gIGhandle.timetoignore = 0;
       if ((recv_buf[12]  == 'O' || recv_buf[12] == 'o') &&
-          (recv_buf[13] == 'N' || recv_buf[13] == 'n')) return 1;  // OK
+          (recv_buf[13] == 'N' || recv_buf[13] == 'n')){
+        TRACE(10, "InhibitGet returning 1 (OK)");
+        return 1;  // OK
+      }
+      TRACE(10, "InhibitGet returning 2 (Bad)");
       return 2;  // Bad
     } else if (msg_size >= 0) {
 #ifdef DEBUGPRINT
@@ -73,6 +89,8 @@ uint32_t InhibitGet_get() {
 #endif
 
       if (tnow-tthen > gIGhandle.timetoignore) {
+        TRACE(1, "No response from inhibit master after %d us. Allowing triggers\n",
+               gIGhandle.timetoignore);
         gIGhandle.timetoignore = 0;
         return 1;   // Give up on connecting to InhibitMaster and start sending triggers
       }

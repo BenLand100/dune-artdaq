@@ -82,7 +82,8 @@ void SSPDAQ::DeviceInterface::Initialize(){
   else{
     dune::DAQLogger::LogError("SSP_DeviceInterface")<<"Giving up on endpoint sync after 5 tries. Value of pdts_status register was "
 						    <<std::hex<<pdts_status<<std::dec<<std::endl;
-    }
+  }
+ 
 }
 
 void SSPDAQ::DeviceInterface::Stop(){
@@ -182,7 +183,7 @@ void SSPDAQ::DeviceInterface::HardwareReadLoop(){
     SSPDAQ::EventPacket newPacket;
     this->ReadEventFromDevice(newPacket);
     if(newPacket.header.header!=0xAAAAAAAA){
-      usleep(10000);
+      usleep(1000);
       continue;
     }
 
@@ -511,10 +512,10 @@ void SSPDAQ::DeviceInterface::ReadEventFromDevice(EventPacket& event){
   do{
     fDevice->DeviceQueueStatus(&queueLengthInUInts);
     if(queueLengthInUInts<headerReadSize){
-      usleep(1000); //1ms
+      usleep(100); //100us
       //      dune::DAQLogger::LogWarning("SSP_DeviceInterface")<<this->GetIdentifier()<<"Warning: we slept after finding pattern word while waiting for header."<<std::endl;
 
-      timeWaited+=1000;
+      timeWaited+=100;
       if(timeWaited>10000000){ //10s
 	try {
 	  dune::DAQLogger::LogError("SSP_DeviceInterface")<<this->GetIdentifier()<<"SSP delayed 10s between issuing header word and full header; giving up"
@@ -548,9 +549,9 @@ void SSPDAQ::DeviceInterface::ReadEventFromDevice(EventPacket& event){
   do{
     fDevice->DeviceQueueStatus(&queueLengthInUInts);
     if(queueLengthInUInts<bodyReadSize){
-      usleep(1000); //1ms
+      usleep(100); //100us
       //      dune::DAQLogger::LogWarning("SSP_DeviceInterface")<<this->GetIdentifier()<<"Warning: we slept after finding header before reading full event."<<std::endl;
-      timeWaited+=1000;
+      timeWaited+=100;
       if(timeWaited>10000000){ //10s
 	try {
 	dune::DAQLogger::LogError("SSP_DeviceInterface")<<this->GetIdentifier()<<"SSP delayed 10s between issuing header and full event; giving up"

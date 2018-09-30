@@ -15,7 +15,7 @@ if ! [[ "$HOSTNAME" =~ ^np04-srv ]]; then
 fi
 
 if [[ "$HOSTNAME" == "np04-srv-001" || "$HOSTNAME" == "np04-srv-009" || "$HOSTNAME" == "np04-srv-010" ]]; then
-    echo "Host $HOSTNAME either doesn't have enough processors for a speedy build or is in heavy use for other DAQ purposes; try another host (e.g., np04-srv-014)"
+    echo "Host $HOSTNAME doesn't physically have enough processors for a speedy build; try another host (e.g., np04-srv-014)"
     exit 1
 fi
 
@@ -58,10 +58,8 @@ env_opts_var=`basename $0 | sed 's/\.sh$//' | tr 'a-z-' 'A-Z_'`_OPTS
 USAGE="\
    usage: `basename $0` [options]
 examples: `basename $0` 
-          `basename $0` --wib-installation-dir <dirname1> --uhal-products-dir <dirname2> --dune-raw-data-developer --dune-raw-data-develop-branch
-          `basename $0` --wib-installation-dir <dirname1> --uhal-products-dir <dirname2> --debug --dune-raw-data-developer
---wib-installation-dir <dirname1> provide location of installation of WIB software from Boston University (mandatory)
---uhal-products-dir <dirname2> provide location of products directory containing uhal (mandatory)
+          `basename $0` --dune-raw-data-developer --dune-raw-data-develop-branch
+          `basename $0` --debug --dune-raw-data-developer
 --debug       perform a debug build
 --not-dune-artdaq-developer  use if you don't have write access to the dune-artdaq repository
 --dune-raw-data-develop-branch     Install the current \"develop\" version of dune-raw-data (may be unstable!)
@@ -82,8 +80,6 @@ while [ -n "${1-}" ];do
         test -n "$leq"&&eval "set -- \"\$lev\" \"\$@\""&&op=`expr "x$op" : 'x\([^=]*\)'`
         case "$op" in
             \?*|h*)     eval $op1chr; do_help=1;;
-	    -uhal-products-dir)   uhal_products_dir="$1";;
-	    -wib-installation-dir) wib_installation_dir="$1";;
 	    -debug)     opt_debug=--debug;;
 	    -not-dune-artdaq-developer) opt_la_nw=1;;
 	    -dune-raw-data-develop-branch) opt_lrd_develop=1;;
@@ -102,37 +98,11 @@ if [[ "$?" != "0" ]]; then
     exit 1
 fi
 
-if [[ -z $uhal_products_dir ]]; then
-    echo "Must supply the name of the products directory containing the uhal package needed for the timing fragment generator" >&2
-    exit 1
-fi
 
-if [[ ! -e $uhal_products_dir ]]; then
-    echo "Unable to find products directory ${uhal_products_dir}; exiting..." >&2
-    exit 1
-fi
-
-. $uhal_products_dir/setup
 uhal_setup_cmd="setup uhal v2_6_0 -q e15:prof:s64"
 $uhal_setup_cmd
 
-if [[ "$?" != "0" ]]; then
-    echo "Error: command \"${uhal_setup_cmd}\" failed. uhal needs to be set up in order for the timing fragment generator to build. Is the appropriate uhal version located in $uhal_products_dir ?" >&2
-    exit 1
-fi
 
-
-if [[ -z $wib_installation_dir ]]; then
-    echo "Must supply the name of the directory which contains the dune-wib source, shared object libraries, etc." >&2
-    exit 1
-fi
-
-if [[ -e $wib_installation_dir ]]; then
-    export WIB_DIRECTORY=$wib_installation_dir
-else
-    echo "Unable to find WIB software installation directory ${wib_installation_dir}; exiting..." >&2
-    exit 1
-fi
 
 set -u   # complain about uninitialed shell variables - helps development
 
@@ -296,7 +266,6 @@ cd $MRB_SOURCE
 if [[ $opt_lrd_develop -eq 1 ]]; then
     dune_raw_data_checkout_arg="-d dune_raw_data"
 else
-#    dune_raw_data_checkout_arg="-t ${coredemo_version} -d dune_raw_data"
     dune_raw_data_checkout_arg="-b feature/artdaq_v3_02 -d dune_raw_data"
 fi
 
@@ -310,8 +279,7 @@ fi
 if [[ $tag == "develop" ]]; then
     dune_artdaq_checkout_arg="-d dune_artdaq"
 else
-#    dune_artdaq_checkout_arg="-t $tag -d dune_artdaq"
-    dune_artdaq_checkout_arg="-b develop -d dune_artdaq"
+    dune_artdaq_checkout_arg="-b feature/artdaq_v3_02 -d dune_artdaq"
 fi
 
 
@@ -325,21 +293,34 @@ fi
 
 if ! $bad_network; then
 
-    mrb gitCheckout -b feature/pdune_from_v3_02_01 -d artdaq_core http://cdcvs.fnal.gov/projects/artdaq-core
+    mrb gitCheckout -b feature/pdune_ron_Aug01 -d artdaq_core http://cdcvs.fnal.gov/projects/artdaq-core
  
     if [[ "$?" != "0" ]]; then
         echo "Unable to perform checkout of http://cdcvs.fnal.gov/projects/artdaq-core"
         exit 1
     fi
 
+    mrb gitCheckout -b feature/pdune_ron_Aug01 -d artdaq_utilities http://cdcvs.fnal.gov/projects/artdaq-utilities
+ 
+    if [[ "$?" != "0" ]]; then
+        echo "Unable to perform checkout of http://cdcvs.fnal.gov/projects/artdaq-utilities"
+        exit 1
+    fi
 
-    mrb gitCheckout -b feature/pdune_from_v3_02_00a -d artdaq http://cdcvs.fnal.gov/projects/artdaq
+
+    mrb gitCheckout -b feature/pdune_ron_Aug01 -d artdaq http://cdcvs.fnal.gov/projects/artdaq
 
     if [[ "$?" != "0" ]]; then
     	echo "Unable to perform checkout of http://cdcvs.fnal.gov/projects/artdaq"
     	exit 1
     fi
 
+    mrb gitCheckout -b feature/pdune_ron_Aug01 -d artdaq_mpich_plugin http://cdcvs.fnal.gov/projects/artdaq-utilities-mpich-plugin
+
+   if [[ "$?" != "0" ]]; then
+    	echo "Unable to perform checkout of http://cdcvs.fnal.gov/projects/artdaq-utilities-mpich_plugin"
+    	exit 1
+    fi
 
     mrb gitCheckout $dune_raw_data_checkout_arg $dune_raw_data_repo
 
@@ -354,30 +335,36 @@ if ! $bad_network; then
 	echo "Unable to perform checkout of $dune_artdaq_repo"
 	exit 1
     fi
+
+    # JCF, Aug-9-2018
+
+    # Unclear why gitCheckout doesn't appear to simply *work* when I
+    # try to get the dune-artdaq feature/artdaq_v3_02 branch, but
+    # since it doesn't, I need to get it manually...
+
+    cd dune_artdaq
+    git fetch origin
+    git checkout -b origin/feature/artdaq_v3_02
+    git checkout feature/artdaq_v3_02
+    cd ..
 fi
 
 sed -i -r 's/^\s*defaultqual(\s+).*/defaultqual\1'$equalifier':'$squalifier'/' artdaq/ups/product_deps
-sed -i -r 's/^\s*defaultqual(\s+).*/defaultqual\1online:'$equalifier':'$squalifier'/' dune_raw_data/ups/product_deps
+sed -i -r 's/^\s*defaultqual(\s+).*/defaultqual\1'$equalifier':online:'$squalifier'/' dune_raw_data/ups/product_deps
 
 
 ARTDAQ_DEMO_DIR=$Base/srcs/dune_artdaq
 
 
-wibcmd=""
-
-if [[ ${WIB_DIRECTORY:-xx} != "xx" ]]; then
-    wibcmd="export WIB_DIRECTORY=$WIB_DIRECTORY"
-fi
-
 nprocessors=$( grep -E "processor\s+:" /proc/cpuinfo | wc -l )
 trace_file_label=$( basename $Base )
 
 cd $Base
-    cat >setupDUNEARTDAQ <<-EOF
+    cat >setupDUNEARTDAQ_forBuilding <<-EOF
        echo # This script is intended to be sourced.                                                                    
                                                                                                                          
         sh -c "[ \`ps \$\$ | grep bash | wc -l\` -gt 0 ] || { echo 'Please switch to the bash shell before running dune-artdaq.'; exit; }" || exit                                                                                           
-        source ${uhal_products_dir}/setup                                      
+        source /nfs/sw/artdaq/products/setup                                      
 
         setup mrb
         source $Base/localProducts_dune_artdaq_${demo_version}_${equalifier}_${build_type}/setup
@@ -387,62 +374,143 @@ cd $Base
         export DUNEARTDAQ_BUILD=$MRB_BUILDDIR/dune_artdaq                                                            
         export DUNEARTDAQ_REPO="$ARTDAQ_DEMO_DIR"                                                                        
         export FHICL_FILE_PATH=.:\$DUNEARTDAQ_REPO/tools/fcl:\$FHICL_FILE_PATH                                           
-        export WIB_DIRECTORY=$WIB_DIRECTORY
-        ${uhal_setup_cmd}                                                      
 
-        returndir=\$PWD
-        cd \$WIB_DIRECTORY
-        source ./env.sh
-        cd \$returndir
-
-        source /nfs/sw/artdaq/products/setup                                     
+        setup protodune_wibsoft v341 -q e15:s64
+        setup uhal v2_6_0 -q e15:prof:s64
+        setup netio v0_8_0 -q e15:prof:s64
+# RSIPOS 03/07/18 -> Infiniband workaround for FELIX BR build
+        #source /nfs/sw/felix/HACK-FELIX-BR-BUILD.sh
+        setup ftd2xx v1_2_7a
         setup dunepdsprce v0_0_4 -q e15:gen:prof
-        setup protodune_timing v4_0_2 -q e15:prof:s64
-        setup artdaq_mpich_plugin v1_00_01 -q e15:eth:prof:s64
-                                                                    
-# JCF, 11/25/14                                                                                                          
-# Make it easy for users to take a quick look at their output file via "rawEventDump"                                    
+        setup rogue v2_10_0_3_gfaeedd0 -q e15:prof
+        setup protodune_timing v4_1_3 -q e15:prof:s64
+        setup dune_artdaq_InhibitMaster v0_01_01 -q e15:prof
+
+        export DIM_INC=/nfs/sw/dim/dim_v20r20
+        export DIM_LIB=/nfs/sw/dim/dim_v20r20/linux
+        export LD_LIBRARY_PATH=\$DIM_LIB:\$LD_LIBRARY_PATH
+        
+setup jsoncpp v1_8_0 -q e15
+
+        # 26-Apr-2018, KAB: moved the sourcing of mrbSetEnv to *after* all product
+        # setups so that we get the right env vars for the source repositories that
+        # are part of the mrb build area.
+        source mrbSetEnv
+
+echo "Only need to source this file once in the environment; now, to perform builds do the following:"
+echo ""
+echo "  mrb build -j32  # to build without 'installing' the built code"
+echo "  mrb install -j32  # to build and 'install' the built code"
+echo "    (where 'install' means copy-to-local-products-area and use in runtime environment)"
+echo ""
+echo "*** PLEASE NOTE that we should now use 'mrb install -j32' to build the dune-artdaq software ***"
+echo ""
+
+EOF
+
+
+    cat >setupDUNEARTDAQ_forRunning <<-EOF
+       echo # This script is intended to be sourced.                                                                    
                                                                                                                          
-alias rawEventDump="if [[ -n \\\$SETUP_TRACE ]]; then unsetup TRACE ; echo Disabling TRACE; sleep 1; fi; art -c \$DUNEARTDAQ_REPO/tools/fcl/rawEventDump.fcl "                                                    
+        sh -c "[ \`ps \$\$ | grep bash | wc -l\` -gt 0 ] || { echo 'Please switch to the bash shell before running dune-artdaq.'; exit; }" || exit                                                                                           
+        source /nfs/sw/artdaq/products/setup                                      
+        source $Base/localProducts_dune_artdaq_${demo_version}_${equalifier}_${build_type}/setupWithoutMRB
+        setup dune_artdaq v1_16_00 -q e15:prof
+       
+        alias RoutingMaster="routing_master"
+                                                                                                           
+        export DAQ_INDATA_PATH=$ARTDAQ_DEMO_DIR/test/Generators:$ARTDAQ_DEMO_DIR/inputData                               
+                                                                                                                         
+        export DUNEARTDAQ_BUILD=$MRB_BUILDDIR/dune_artdaq                                                            
+        export DUNEARTDAQ_REPO="$ARTDAQ_DEMO_DIR"                                                                        
+        export FHICL_FILE_PATH=.:\$DUNEARTDAQ_REPO/tools/fcl:\$FHICL_FILE_PATH                                           
+
+        setup protodune_wibsoft v341 -q e15:s64
+        setup uhal v2_6_0 -q e15:prof:s64
+
+        setup netio v0_8_0 -q e15:prof:s64
+# RSIPOS 03/07/18 -> Infiniband workaround for FELIX BR build
+#        export LD_LIBRARY_PATH=\$LD_LIBRARY_PATH:/nfs/sw/felix/new-software/multidma/software/external/libfabric/1.4.1.3/x86_64-centos7-gcc62-opt/lib
+        export LD_LIBRARY_PATH=\$LD_LIBRARY_PATH:/nfs/sw/felix/fabric/build/lib
+        #source /nfs/sw/felix/HACK-FELIX-BR-BUILD.sh
+        setup ftd2xx v1_2_7a
+        setup dunepdsprce v0_0_4 -q e15:gen:prof
+        setup rogue v2_10_0_3_gfaeedd0 -q e15:prof
+        setup protodune_timing v4_1_3 -q e15:prof:s64
+        setup dune_artdaq_InhibitMaster v0_01_01 -q e15:prof
+export PYTHONUSERBASE=/nfs/sw/work_dirs/dune-artdaq-InhibitMaster/user_python
 
         export DIM_INC=/nfs/sw/dim/dim_v20r20
         export DIM_LIB=/nfs/sw/dim/dim_v20r20/linux
         export LD_LIBRARY_PATH=\$DIM_LIB:\$LD_LIBRARY_PATH
 
-        setup artdaq_dim_plugin v0_02_05 -q e15:prof:s64
-
-        setup TRACE v3_13_07
+       setup -j artdaq_dim_plugin v0_02_06 -q e15:prof:s64
+        setup artdaq_mpich_plugin v1_00_02 -q e15:eth:prof:s64
+        
+       setup TRACE v3_13_07
         export TRACE_FILE=/tmp/trace_$trace_file_label
         export TRACE_LIMIT_MS="500,1000,2000"
 
-        # Uncomment the "tonM" line for a given TRACE below which you
+setup jsoncpp v1_8_0 -q e15
+
+     # Uncomment the "tonM" line for a given TRACE below which you
         # want to activate. If you don't see the TRACE you want, then
         # add a toffM / tonM combination for it like you see in the
         # other examples below. 
 
-        toffM 12 -n RequestSender
-#        tonM 12 -n RequestSender
+        #toffM 12 -n RequestSender
+        #tonM 12 -n RequestSender
  
-        toffM 10 -n CommandableFragmentGenerator
-        tonM 10 -n CommandableFragmentGenerator
-        
-        
+        #toffM 10 -n CommandableFragmentGenerator
+        #tonM 10 -n CommandableFragmentGenerator
 
-        # 26-Apr-2018, KAB: moved the sourcing of mrbSetEnv to *after* all product
-        # setups so that we get the right env vars for the source repositories that
-        # are part of the mrb build area.
-        source mrbSetEnv       
+        toffM 50 -n RCE
+        tonM  50 -n RCE
 
-echo "Only need to source this file once in the environment; now, to perform builds do the following (see https://twiki.cern.ch/twiki/bin/view/CENF/Building for more):"
-echo
-echo "  mrb b -j$nprocessors "
-echo "  find build_slf7.x86_64/ -type d | xargs -i chmod g+rwx {}"
-echo "  find build_slf7.x86_64/ -type f | xargs -i chmod g+rw {}"
-echo    
-                                    
+toffS 20 -n TriggerBoardReader
+#tonS  20 -n TriggerBoardReader
 
-	EOF
-    #
+
+# JCF, 11/25/14
+# Make it easy for users to take a quick look at their output file via "rawEventDump"
+
+alias rawEventDump="if [[ -n \\\$SETUP_TRACE ]]; then unsetup TRACE ; echo Disabling TRACE ; sleep 1; fi; art -c \$DUNEARTDAQ_REPO/tools/fcl/rawEventDump.fcl "                                                    
+
+echo ""
+echo "*** PLEASE NOTE that there are now TWO setup scripts:"
+echo "    - setupDUNEARTDAQ_forBuilding"
+echo "    - setupDUNEARTDAQ_forRunning"
+echo ""
+echo "You have just sourced setupDUNEARTDAQ_forRunning."
+echo "Please use this script for all uses except building the software."
+echo ""
+echo "If, instead, you would like to build the software, please start with a fresh"
+echo "shell and 'source setupDUNEARTDAQ_forBuilding' and 'mrb install -j 32'".
+echo ""
+
+# 02-Aug-2018, KAB: only enable core dumps for certain hosts
+if [[ "\${HOSTNAME}" == "np04-srv-001" ]] ; then
+    ulimit -c unlimited
+fi
+if [[ "\${HOSTNAME}" == "np04-srv-002" ]] ; then
+    ulimit -c unlimited
+fi
+if [[ "\${HOSTNAME}" == "np04-srv-003" ]] ; then
+    ulimit -c unlimited
+fi
+if [[ "\${HOSTNAME}" == "np04-srv-004" ]] ; then
+    ulimit -c unlimited
+fi
+
+EOF
+
+if [[ -e $Base/srcs/dune_artdaq/tools/setupWithoutMRB ]]; then
+    cp $Base/srcs/dune_artdaq/tools/setupWithoutMRB $Base/localProducts_dune_artdaq_${demo_version}_${equalifier}_${build_type}/setupWithoutMRB
+else
+    echo "Problem: there's no setupWithoutMRB script in $Base/srcs/dune_artdaq; exiting..." >&2
+    exit 10
+fi
+
 
 
 cd $MRB_BUILDDIR
@@ -450,20 +518,23 @@ cd $MRB_BUILDDIR
 export CETPKG_J=$nprocessors
 source /nfs/sw/artdaq/products/setup
 
-returndir=$PWD
-cd $WIB_DIRECTORY
-source ./env.sh
-cd $returndir
 
-
-setup dunepdsprce v0_0_4 -q e15:gen:prof
-#setup netio
-setup protodune_timing v4_0_2 -q e15:prof:s64
+        setup protodune_wibsoft v341 -q e15:s64
+        setup uhal v2_6_0 -q e15:prof:s64
+        setup netio v0_8_0 -q e15:prof:s64
+# RSIPOS 03/07/18 -> Infiniband workaround for FELIX BR build
+        #source /nfs/sw/felix/HACK-FELIX-BR-BUILD.sh
+        setup ftd2xx v1_2_7a
+        setup dunepdsprce v0_0_4 -q e15:gen:prof
+        setup rogue v2_10_0_3_gfaeedd0 -q e15:prof
+        setup protodune_timing v4_0_2 -q e15:prof:s64
+        setup dune_artdaq_InhibitMaster v0_01_01 -q e15:prof
+	setup jsoncpp v1_8_0 -q e15
 
 set +u
 source mrbSetEnv
 set -u
-mrb b -j$nprocessors                              
+mrb install -j$nprocessors                              
 
 installStatus=$?
 

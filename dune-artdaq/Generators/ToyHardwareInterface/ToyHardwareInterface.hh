@@ -41,7 +41,7 @@ public:
   int NumADCBits() const;
   int BoardType() const;
 
-  enum class DistributionType { uniform, gaussian, monotonic };
+  enum class DistributionType { uniform, gaussian, monotonic, uninitialized };
 
 private:
 

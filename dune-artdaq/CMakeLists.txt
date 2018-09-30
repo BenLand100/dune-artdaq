@@ -7,7 +7,7 @@ add_subdirectory(Generators)
 add_subdirectory(BuildInfo)
 add_subdirectory(Triggers)
 add_subdirectory(DAQLogger)
-#add_subdirectory(Metadata)
+add_subdirectory(Metadata)
 
 # JCF, Jun-14-2017
 

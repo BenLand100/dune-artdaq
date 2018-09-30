@@ -2,6 +2,9 @@
 #include "NetioHandler.hh"
 #include "NetioWIBRecords.hh"
 #include "ReusableThread.hh"
+#include "FelixReorderer.hh"
+
+//#include <libxmlrpc.h>
 
 #include <ctime>
 #include <iomanip>
@@ -14,11 +17,10 @@ NetioHandler::NetioHandler()
   m_activeChannels=0;
 
   m_nmessages=0;
-  //GLM try complete IOV size
-  m_msgsize = 236640;
+  m_msgsize = 2784;
   m_stop_subs=false;
   m_cpu_lock=false;
-
+  m_extract = true;
   //m_bufferPtr=nullptr;
   //m_bytesReadPtr=nullptr;
 
@@ -33,6 +35,8 @@ NetioHandler::NetioHandler()
     DAQLogger::LogInfo("NetioHandler::NetioHandler")
       << "NIOH setup complete. Background thread spawned.";
   }
+
+  //recalculateByteSizes();
 }
 
 NetioHandler::~NetioHandler() {
@@ -110,9 +114,18 @@ void NetioHandler::startTriggerMatchers(){
 
 	// GLM: if Timestamp is 0, check if the queue is filling up and throw away oldest data
 	if (m_triggerTimestamp == 0) {
-	  if (m_pcqs[tid]->sizeGuess() > 0.7 * m_pcqs[tid]->capacity()) {
-	    DAQLogger::LogInfo("NetioHandler::startTriggerMatchers") << "Removing old non requested data";
-	    m_pcqs[tid]->popXFront(m_pcqs[tid]->capacity()/2);
+          /*
+          size_t queuedElements = m_pcqs[tid]->sizeGuess() - 2; 
+          DAQLogger::LogInfo("NetioHandler::startTriggerMatchers") << "Remove " << queuedElements << " old fragments.";
+          while(queuedElements) {
+            --queuedElements;
+	  */
+
+          size_t qSize = m_pcqs[tid]->sizeGuess() ;
+          if (qSize > 0.5 * m_pcqs[tid]->capacity()) {
+	     DAQLogger::LogInfo("NetioHandler::startTriggerMatchers") << "Removing old non requested data; (" << qSize << ") messages in queue.";
+	     //m_pcqs[tid]->popXFront(m_pcqs[tid]->sizeGuess());
+	     m_pcqs[tid]->popXFront(0.8 * qSize);
 	  }
 	  return;
 	}
@@ -120,18 +133,20 @@ void NetioHandler::startTriggerMatchers(){
         // GLM: Try this simplistic approach: do trigger matching and empty the queue until that point
         //      Requires time ordered trigger requests!!
 
+
+        uint_fast64_t startWindowTimestamp = m_triggerTimestamp - (uint_fast64_t)(m_windowOffset * m_tickdist);
         WIBHeader wh = *(reinterpret_cast<const WIBHeader*>( m_pcqs[tid]->frontPtr() ));
         m_lastTimestamp = wh.timestamp();
         m_positionDepth = 0;
 	//GLM: Check if there is such a delay in trigger requests that data have gone already...
-	if (m_lastTimestamp > m_triggerTimestamp ) {
+	if (m_lastTimestamp > startWindowTimestamp ) {
 	  DAQLogger::LogWarning("NetioHandler::startTriggerMatchers") 
 	    << "Requested data are so old that they were dropped. Trigger request TS = " 
 	    << m_triggerTimestamp << ", oldest TS in queue = "  << m_lastTimestamp;
 	  return;
 	}
 
-        uint_fast64_t timeTickDiff = (m_triggerTimestamp-m_lastTimestamp)/(uint_fast64_t)m_tickdist;
+        uint_fast64_t timeTickDiff = (startWindowTimestamp-m_lastTimestamp)/(uint_fast64_t)m_tickdist;
         // wait to have enough stuff in the queue
 	uint_fast64_t minQueueSize = (timeTickDiff + m_timeWindow)/framesPerMsg + 10 ; // make sure we don't overtake the write ptr
         size_t qsize = m_pcqs[tid]->sizeGuess();
@@ -148,19 +163,30 @@ void NetioHandler::startTriggerMatchers(){
         }
         // read everything that is older than the TS
 	//DAQLogger::LogInfo("NetioHandler::startTriggerMatchers")
-	//  << "Jumping by " << timeTickDiff/framesPerMsg << " elements in data queue. Queue size is " << m_pcqs[tid]->sizeGuess();
-	m_pcqs[tid]->popXFront(timeTickDiff/framesPerMsg);
-
-	m_fragmentPtr->resizeBytes(m_msgsize*(2 + m_timeWindow/framesPerMsg));
+	//  << "Jumping by " << timeTickDiff/framesPerMsg << " elements in data queue. Queue size is " << m_pcqs[tid]->sizeGuess();       
+        m_pcqs[tid]->popXFront(timeTickDiff/framesPerMsg);
+         
+        m_fragmentPtr->resizeBytes( m_msgsize*(2 + m_timeWindow/framesPerMsg) );
         for(unsigned i=0; i<(m_timeWindow/framesPerMsg)+2; i++) //read out 21 messages
         {
           memcpy(m_fragmentPtr->dataBeginBytes()+m_msgsize*i,(char*)m_pcqs[tid]->frontPtr(), m_msgsize);
           m_pcqs[tid]->popFront();
-        }        
-      } else {
-        DAQLogger::LogInfo("NetioHandler::startTriggerMatchers")
-          << "Dry run, won't extract... simulate some work.. (sleep for 100ms)\n";
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        }
+
+        // Thijs -> Man whaaaaaaaaat!?!?!?!?!?!
+        //memcpy(m_fragmentPtr->dataBeginBytes(), (uint8_t*)m_pcqs[tid]->frontPtr(), m_timeWindowByteSizeIn);
+        //m_pcqs[tid]->popXFront(m_timeWindowNumMessages);        
+
+
+      } else { // generate fake fragment for emulation
+        if (m_triggerTimestamp == 0) {
+          DAQLogger::LogInfo("NetioHandler::startTriggerMatchers") << "no trigger ";
+          return;
+        } else {
+          m_fragmentPtr->resizeBytes(m_msgsize*(2 + m_timeWindow/framesPerMsg));
+          char *buf = new char[m_msgsize*(2 + m_timeWindow/framesPerMsg)];
+          memcpy(m_fragmentPtr->dataBeginBytes(), buf, 2 + m_timeWindow/framesPerMsg);
+        }
       }
     });
   }
@@ -200,9 +226,6 @@ bool NetioHandler::triggerWorkers(uint64_t timestamp, uint64_t sequence_id, std:
   m_triggerTimestamp = timestamp;
   m_triggerSequenceId = sequence_id;
   m_fragmentPtr = frag.get();
-  //DAQLogger::LogInfo("NetioHandler::triggerWorkers")
-  //  << "Trigger workers for timestamp:" << m_triggerTimestamp 
-  //  << " seqId:" << m_triggerSequenceId ;
 
   // Set functors for extractors.
   for (uint32_t i=0; i<m_activeChannels; ++i){
@@ -211,30 +234,26 @@ bool NetioHandler::triggerWorkers(uint64_t timestamp, uint64_t sequence_id, std:
   while (busy()){
     std::this_thread::sleep_for(std::chrono::microseconds(50));
   }
-  return true;
-/* Single link approach
-  while ( m_extractors[0]->get_readiness() == false ) { // while we wait, do some other stuff if needed...
-    std::this_thread::sleep_for(std::chrono::microseconds(50));
-  }
-  if ( m_extractors[0]->get_readiness() == true ) {
-    return true;
-  } else {
+  if (m_triggerTimestamp == 0) {
     return false;
   }
-*/
+  return true;
 }
 
 void NetioHandler::startSubscribers(){
+  if (!m_extract) return;
+
   for (uint32_t i=0; i<m_activeChannels; ++i) {
     uint32_t chn = i; 
     m_netioSubscribers.push_back(
+
       std::thread([&, chn](){
         DAQLogger::LogInfo("NetioHandler::startSubscribers") << "Subscriber spawned for link " << chn;
         netio::endpoint ep;
         netio::message msg;
         size_t goodOnes=0;
         size_t badOnes=0;
-        uint32_t lostData=0;
+        size_t lostData=0;
 
         std::vector<size_t> badSizes;
         std::vector<size_t> badFrags;
@@ -247,23 +266,29 @@ void NetioHandler::startSubscribers(){
             badOnes++;
             badSizes.push_back(msg.size());
             badFrags.push_back(msg.num_fragments());
-            DAQLogger::LogWarning("NetioHandler::subscriber")
-              << " Received message with non-expected size! Bad omen!"
-              << " -> Trigger matching is unreliable until next queue turnaround!\n";
-          }          
+            //DAQLogger::LogWarning("NetioHandler::subscriber")
+            //  << " Received message with non-expected size! Bad omen!"
+            //  << " -> Trigger matching is unreliable until next queue turnaround!\n";
+          }     
 	  else {
-	    IOVEC_CHAR_STRUCT ics;
+	    SUPERCHUNK_CHAR_STRUCT ics;
 	    msg.serialize_to_usr_buffer((void*)&ics);
 	    bool storeOk = m_pcqs[m_channels[chn]]->write( std::move(ics) ); // RS -> Add possibility for dry_run! (No push mode.)
 	    if (!storeOk) {
-	      if(lostData%1000 == 0) {
-		DAQLogger::LogWarning("NetioHandler::subscriber") << " Fragments queue is full. Loosing data!";
-	      }
-	      ++lostData;
+              DAQLogger::LogWarning("NetioHandler::subscriber") << " Fragments queue is full. Lost: " << lostData;
+              if(!busy()) {
+                m_pcqs[m_channels[chn]]->popXFront(m_pcqs[m_channels[chn]]->capacity()/2);
+                lostData+= m_pcqs[m_channels[chn]]->capacity()/2;
+              }
+              else {
+                ++ lostData;
+              }
+	    //  if(lostData%10000 == 0) {
+		//DAQLogger::LogWarning("NetioHandler::subscriber") << " Fragments queue is full. Lost: " << lostData;
+	      //}
 	    }
 	    goodOnes++;
-	  }
-          
+          }
           // RS -> Add more sophisticated quality check.
           /*newTs = *(reinterpret_cast<const uint_fast64_t*>((&wcs)+8)); 
           if ( (newTs-ts)!= expDist ){
@@ -271,6 +296,11 @@ void NetioHandler::startSubscribers(){
           }
           ts = newTs;*/
         }
+
+        // unsubscriber from publisher
+        //m_sub_sockets[chn]->unsubscribe(chn, netio::endpoint(m_host, m_port));
+        //DAQLogger::LogInfo("NetioHandler::subscriber") << "Joining... Unsubscribed from channel[" << chn << "]";
+        
         // Joining subscriber...
         std::ostringstream subsummary;
         for (unsigned i=0; i<badSizes.size(); ++i){
@@ -287,8 +317,8 @@ void NetioHandler::startSubscribers(){
           << subsummary.str()
           << " -> Failed timestamp distances (expected distance between messages: " << expDist << ")\n";
           //<< distsummary.str();
-      })
-    );
+	})
+				 );
     set_thread_name(m_netioSubscribers[i], "nioh-sub", i);
   }
 }
@@ -297,6 +327,7 @@ void NetioHandler::stopSubscribers(){
   m_stop_subs=true;
   for (uint32_t i=0; i<m_netioSubscribers.size(); ++i) {
     m_netioSubscribers[i].join();
+    DAQLogger::LogInfo("NetioHandler::stopSubscriber") << "Subscriber[" << i << "] joined."; 
   }
   m_netioSubscribers.clear();
 }
@@ -308,6 +339,8 @@ void NetioHandler::lockSubsToCPUs(uint32_t offset) {
   unsigned short cpuid = offset;
   for (unsigned i=0; i< m_netioSubscribers.size(); ++i) {
     CPU_SET(cpuid, &cpuset);
+    // RS : Not a good attempt.
+    //CPU_SET(cpuid+16, &cpuset);
     int ret = pthread_setaffinity_np(m_netioSubscribers[i].native_handle(), sizeof(cpu_set_t), &cpuset);
     if (ret!=0) {
       DAQLogger::LogError("NetioHandler::lockSubsToCPUs") 
@@ -323,15 +356,20 @@ void NetioHandler::lockSubsToCPUs(uint32_t offset) {
 }
 
 bool NetioHandler::addChannel(uint64_t chn, uint16_t tag, std::string host, uint16_t port, size_t queueSize, bool zerocopy){
+  m_host=host;
+  m_port=port;
   m_channels.push_back(chn);
   m_pcqs[chn] = std::make_unique<FrameQueue>(queueSize);
+  if (m_extract) {
   try {
     netio::sockcfg cfg = netio::sockcfg::cfg(); 
     if (zerocopy) cfg(netio::sockcfg::ZERO_COPY);
     m_sub_sockets[chn] = new netio::subscribe_socket(m_context, cfg);
-    netio::tag elink = chn; //*2;
+    netio::tag elink = tag;
     m_sub_sockets[chn]->subscribe(elink, netio::endpoint(host, port));
-    std::this_thread::sleep_for(std::chrono::microseconds(10000)); // This is needed... :/
+    std::this_thread::sleep_for(std::chrono::microseconds(10000)); // This is needed... Why? :/
+    DAQLogger::LogInfo("NetioHandler::addChannel") 
+      << "Added channel chn:" << chn << " tag:" << tag << " host:" << host << " port:" << port;
   } catch(...) {
     DAQLogger::LogError("NetioHandler::addChannel") 
       << "Failed to add channel! chn:" << chn << " tag:" << tag << " host:" << host << " port:" << port;
@@ -341,8 +379,24 @@ bool NetioHandler::addChannel(uint64_t chn, uint16_t tag, std::string host, uint
     DAQLogger::LogInfo("NetioHandler::addChannel") 
       << "Activated channel in NIOH. chn:" << chn << " tag:" << tag << " host:" << host << " port:" << port;
   }
+  }
   m_activeChannels++;
   return true;
 } 
+
+void NetioHandler::recalculateByteSizes()
+{
+    size_t framesPerMsg = m_msgsize / m_framesize;
+    m_timeWindowNumMessages = (m_timeWindow / framesPerMsg) + 2;
+
+    m_timeWindowByteSizeIn = m_msgsize * m_timeWindowNumMessages;
+    m_timeWindowNumFrames = m_timeWindowByteSizeIn / FelixReorderer::m_num_bytes_per_frame;
+
+    //if (m_do_reorder)
+    //    m_timeWindowByteSizeOut = m_timeWindowByteSizeIn 
+    //        * FelixReorderer::num_bytes_per_reord_frame / FelixReorderer::num_bytes_per_frame;
+    //else
+        m_timeWindowByteSizeOut = m_timeWindowByteSizeIn;
+}
 
 

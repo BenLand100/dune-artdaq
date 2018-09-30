@@ -8,6 +8,12 @@
 //# */
 //################################################################################
 
+
+#include "artdaq/DAQdata/Globals.hh"
+#define TRACE_NAME (app_name + "_TimingReceiver").c_str()
+#define TLVL_HWSTATUS 20
+#define TLVL_TIMING 10
+
 #include "dune-artdaq/Generators/TimingReceiver.hh"
 #include "dune-artdaq/DAQLogger/DAQLogger.hh"
 
@@ -37,6 +43,8 @@
 #include "pdt/PartitionNode.hpp" // The interface to a timing system
                                  // partition, from the
                                  // protodune_timing UPS product
+
+#include "artdaq/Application/BoardReaderCore.hh"
 
 using namespace dune;
 
@@ -68,9 +76,20 @@ dune::TimingReceiver::TimingReceiver(fhicl::ParameterSet const & ps):
   ,debugprint_(ps.get<uint32_t>("debug_print",0))
   ,trigger_mask_(ps.get<uint32_t>("trigger_mask",0xff))
   ,end_run_wait_(ps.get<uint32_t>("end_run_wait",1000))
+  ,enable_spill_gate_(ps.get<bool>("enable_spill_gate", false))
   ,zmq_conn_(ps.get<std::string>("zmq_connection","tcp://pddaq-gen05-daq0:5566"))
   ,zmq_conn_out_(ps.get<std::string>("zmq_connection_out","tcp://*:5599"))
   ,zmq_fragment_conn_out_(ps.get<std::string>("zmq_fragment_connection_out","tcp://*:7123"))
+  ,valid_firmware_versions_fcl_(ps.get<std::vector<int>>("valid_firmware_versions", std::vector<int>()))
+  ,enable_spill_commands_(ps.get<bool>("enable_spill_commands", false))
+  ,want_inhibit_(false)
+  ,last_spillstart_tstampl_(0xffffffff) // Timestamp of most recent start-of-spill
+  ,last_spillstart_tstamph_(0xffffffff) // ...
+  ,last_spillend_tstampl_(0xffffffff)   // Timestamp of most recent end-of-spill
+  ,last_spillend_tstamph_(0xffffffff)   // ...
+  ,last_runstart_tstampl_(0xffffffff)   // Timestamp of most recent start-of-run
+  ,last_runstart_tstamph_(0xffffffff)   // ...
+
 {
 
     // TODO:
@@ -104,12 +123,14 @@ dune::TimingReceiver::TimingReceiver(fhicl::ParameterSet const & ps):
 
     // Match Fw version with configuration
     DAQLogger::LogInfo(instance_name_) << "Timing Master firmware version " << std::showbase << std::hex << (uint32_t)lVersion;
-    std::set<uint32_t> allowed_fw_versions{0x40100};
+    std::set<uint32_t> allowed_fw_versions{0x500001};
+    for(auto const& ver : valid_firmware_versions_fcl_) allowed_fw_versions.insert(ver);
+
     if ( allowed_fw_versions.find(lVersion)==allowed_fw_versions.end() ) {
         std::stringstream errormsg;
-        errormsg << "Firmware version mismatch! Got firmware version " << lVersion << " but allowed versions are:";
+        errormsg << "Firmware version mismatch! Got firmware version " << std::showbase << std::hex << lVersion << " but allowed versions are:";
         for(auto allowed_ver : allowed_fw_versions){
-            errormsg << allowed_ver << " ";
+            errormsg << std::showbase << std::hex << allowed_ver << " ";
         }
         DAQLogger::LogError(instance_name_) << errormsg.str();
     }
@@ -127,7 +148,10 @@ dune::TimingReceiver::TimingReceiver(fhicl::ParameterSet const & ps):
     float lFrequency = ((uint32_t)fq) * 119.20928 / 1000000;
     DAQLogger::LogInfo(instance_name_) << "Measured timing master frequency: " << lFrequency << " Hz";
 
-    if ( lFrequency < 240. || lFrequency > 260) {
+    // The TLU has a 50 MHz clock, and other hardware has a 250 MHz
+    // clock. Make sure we're in one of those ranges
+    if ( !( (lFrequency > 240. && lFrequency < 260) ||
+            (lFrequency >  49. && lFrequency <  51) ) ) {
       DAQLogger::LogError(instance_name_) << "Timing master clock out of expected range: " << lFrequency << " Hz. Has it been configured?";
     }
 
@@ -141,6 +165,16 @@ dune::TimingReceiver::TimingReceiver(fhicl::ParameterSet const & ps):
     // - Set the command mask                            [done here, repeated at start()]
     // - Enable triggers                                 [Not done until inhibit lifted (in get_next_())]
 
+    // Enable/disable the sending of spill start/stop 
+    uint32_t fragment_mask = 0; 
+    if(enable_spill_commands_){
+      fragment_mask |= (1 << (int)dune::TimingCommand::RunStart);
+      fragment_mask |= (1 << (int)dune::TimingCommand::SpillStart);
+      fragment_mask |= (1 << (int)dune::TimingCommand::SpillStop);
+    }
+    DAQLogger::LogInfo(instance_name_) << "Setting fragment mask to " << std::showbase << std::hex << fragment_mask;
+    master_partition().getNode("csr.ctrl.frag_mask").write(fragment_mask);
+    master_partition().getClient().dispatch();
 
     // Modify the trigger mask so we only see fake triggers in our own partition
     fiddle_trigger_mask();
@@ -150,26 +184,23 @@ dune::TimingReceiver::TimingReceiver(fhicl::ParameterSet const & ps):
     master_partition().enable(0, true);
     master_partition().stop();
     master_partition().enable(1, true);
-    master_partition().writeTriggerMask(trigger_mask_);
+    master_partition().configure(trigger_mask_, enable_spill_gate_);
 
     // Set up connection to Inhibit Master. This is the inbound
     // connection (ie, InhibitMaster talks to us to say whether we
-    // should enable triggers)
-    InhibitGet_init(zmq_conn_.c_str(),inhibitget_timer_);
+    // should enable triggers). We'll actually call
+    // InhibitGet_connect() in start(), in order to do so as late as
+    // possible and minimize the chance of reading stale messages from
+    // the InhibitMaster
+    InhibitGet_init(inhibitget_timer_);
 
     // Set up outgoing connection to InhibitMaster: this is where we
     // broadcast whether we're happy to take triggers
     status_publisher_.reset(new artdaq::StatusPublisher(instance_name_, zmq_conn_out_));
-    int rc=status_publisher_->BindPublisher();
-    if(rc!=0){
-        throw cet::exception(instance_name_) << "StatusPublisher couldn't bind to " << zmq_conn_out_ << ". errno " << errno;
-    }
+    status_publisher_->BindPublisher();
 
     fragment_publisher_.reset(new artdaq::FragmentPublisher(zmq_fragment_conn_out_));
-    rc=fragment_publisher_->BindPublisher();
-    if(rc!=0){
-        throw cet::exception(instance_name_) << "FragmentPublisher couldn't bind to " << zmq_fragment_conn_out_ << ". errno " << errno;
-    }
+    fragment_publisher_->BindPublisher();
 
     // TODO: Do we really need to sleep here to wait for the socket to bind?
     usleep(2000000);
@@ -194,7 +225,7 @@ void dune::TimingReceiver::start(void)
 
     // These are the steps taken by pdtbutler's `configure` command
     master_partition().reset();
-    master_partition().writeTriggerMask(trigger_mask_);
+    master_partition().configure(trigger_mask_, enable_spill_gate_);
     master_partition().enable(1);
 
     // Dave N's message part 3
@@ -213,6 +244,7 @@ void dune::TimingReceiver::start(void)
         // it's all gone pear-shaped?
     }
 
+    InhibitGet_connect(zmq_conn_.c_str());
     InhibitGet_retime(inhibitget_timer_);
 
     this->reset_met_variables(false);
@@ -235,6 +267,54 @@ void dune::TimingReceiver::stopNoMutex(void)
 
     stopping_flag_ = 1;    // Tells the getNext_() while loop to stop the run
 }
+
+
+bool dune::TimingReceiver::checkHWStatus_()
+{
+    auto dsmptr = artdaq::BoardReaderCore::GetDataSenderManagerPtr();
+    if(!dsmptr)
+      TLOG(TLVL_HWSTATUS) << "DataSenderManagerPtr not valid.";
+
+    auto mp_ovrflw = master_partition().readROBWarningOverflow();
+    int n_remaining_table_entries = dsmptr? dsmptr->GetRemainingRoutingTableEntries() : -1;
+    int n_table_count = dsmptr? dsmptr->GetRoutingTableEntryCount() : -1;
+    TLOG(TLVL_HWSTATUS) << "hwstatus: buf_warn=" << mp_ovrflw
+			<< " table_count=" << n_table_count
+			<< " table_entries_remaining=" << n_remaining_table_entries;
+
+    bool new_want_inhibit=false;
+    std::string status_msg="";
+
+    if(mp_ovrflw){
+        // Tell the InhibitMaster that we want to stop triggers, then
+        // carry on with this iteration of the loop
+        DAQLogger::LogInfo(instance_name_) << "buf_warn is high, with " << master_partition().numEventsInBuffer() << " events in buffer. Requesting InhibitMaster to stop triggers";
+        status_msg="ROBWarningOverflow";
+        new_want_inhibit=true;
+    }
+    //check if there are available routing tokens, and if not inhibit
+    else if(n_remaining_table_entries==0){
+      new_want_inhibit=true;
+      status_msg="NoAvailableTokens";
+    }
+    else{
+      new_want_inhibit=false;
+    }
+
+    if(new_want_inhibit && !want_inhibit_){
+      DAQLogger::LogInfo(instance_name_) << "Want inhibit Status change: Publishing bad status: \"" << status_msg << "\"";
+      status_publisher_->PublishBadStatus(status_msg);
+    }
+    if(want_inhibit_ && !new_want_inhibit){
+      DAQLogger::LogInfo(instance_name_) << "Want inhibit status change: Publishing good status";
+      status_publisher_->PublishGoodStatus();
+    }
+
+    want_inhibit_ = new_want_inhibit;
+
+    return true;
+}
+
 
 //#define D(a) a
 #define D(a)
@@ -298,37 +378,68 @@ bool dune::TimingReceiver::getNext_(artdaq::FragmentPtrs &frags)
     // change). Also, we're safe from rapidly oscillating between warn
     // and not-warn because the register in the timing board has some
     // hysteresis
+    /*
+//
+//  Wes testing moving this to checkHWStatus_
+//
+    DAQLogger::LogInfo(instance_name_) << "AvailableTokens: " << artdaq::BoardReaderCore::GetDataSenderManagerPtr()->GetRemainingRoutingTableEntries();
     if(master_partition().readROBWarningOverflow()){
         // Tell the InhibitMaster that we want to stop triggers, then
         // carry on with this iteration of the loop
         DAQLogger::LogInfo(instance_name_) << "buf_warn is high. Requesting InhibitMaster to stop triggers";
-        status_publisher_->PublishBadStatus();
+        status_publisher_->PublishBadStatus("ROBWarningOverflow");
+    }
+    //check if there are available routing tokens, and if not inhibit
+    else if(artdaq::BoardReaderCore::GetDataSenderManagerPtr()->GetRemainingRoutingTableEntries()<1){
+        status_publisher_->PublishBadStatus("NoAvailableTokens");
+        DAQLogger::LogInfo(instance_name_) << "NoAvailableTokens! Requesting InhibitMaster to stop triggers";
     }
     else{
         status_publisher_->PublishGoodStatus();
     }
-
+    */
     unsigned int havedata = (master_partition().numEventsInBuffer()>0);   // Wait for a complete event
     if (havedata) timeout = 1;  // If we have data, we don't wait around in case there is more or a throttle
 
+    TLOG(TLVL_TIMING) << "havedata: " << havedata;
     // TODO: Consider moving throttling check up here; as it is, we could receive a huge rate of events even though we
     // are also being told to throttle, and may not notice that throttling request.
 
     if (havedata) {   // An event or many events have arrived
       while (havedata) {
 
-        // Make a fragment.  Follow the way it is done in the SSP boardreader
+        // Make a fragment.  Follow the way it is done in the SSP
+        // boardreader. We always form fragments, even for the events
+        // that we're not going to send out to artdaq (spill
+        // start/end, run start), mostly to get the timestamp
+        // calculation done in the fragment, but partly to make the
+        // code easier to follow(?)
         std::unique_ptr<artdaq::Fragment> f = artdaq::Fragment::FragmentBytes( TimingFragment::size()*sizeof(uint32_t));
 
         // Read the data from the hardware
 	std::vector<uint32_t> uwords = master_partition().readEvents(1);
 
 #ifdef SEPARATE_DEBUG
-        uint32_t word[6];  // Declare like this if we want a local variable instead of putting it straight in the fragmenti
+        uint32_t word[12];  // Declare like this if we want a local variable instead of putting it straight in the fragmenti
 #else
         uint32_t* word = reinterpret_cast<uint32_t *> (f->dataBeginBytes());    // dataBeginBytes returns a byte_t pointer
 #endif
         for (int i=0;i<6;i++) {  word[i] = uwords[i]; }   // Unpacks from uHALs ValVector<> into the fragment
+
+        // Set the last spill/run timestamps in the fragment
+
+        // There had better be enough space in the object. If not, something has gone horribly wrong
+        static_assert(TimingFragment::Body::size >= 12ul);
+
+        // These must be kept in sync with the order declared in TimingFragment::Body in TimingFragment.hh
+        word[6]=last_runstart_tstampl_;
+        word[7]=last_runstart_tstamph_;
+
+        word[8]=last_spillstart_tstampl_;
+        word[9]=last_spillstart_tstamph_;
+
+        word[10]=last_spillend_tstampl_;
+        word[11]=last_spillend_tstamph_;
 
         dune::TimingFragment fo(*f);    // Overlay class - the internal bits of the class are
                                         // accessible here with the same functions we use offline.
@@ -344,6 +455,7 @@ bool dune::TimingReceiver::getNext_(artdaq::FragmentPtrs &frags)
         }
 #endif
 
+        TLOG(TLVL_TIMING) << fo;
         // Fill in the fragment header fields (not some other fragment generators may put these in the
         // constructor for the fragment, but here we push them in one at a time.
         f->setSequenceID( ev_counter() );  // ev_counter is in our base class  // or f->setSequenceID(fo.get_evtctr())
@@ -351,14 +463,49 @@ bool dune::TimingReceiver::getNext_(artdaq::FragmentPtrs &frags)
         f->setUserType( dune::detail::TIMING );
         //  No metadata in this block
 
-        DAQLogger::LogInfo(instance_name_) << "For timing fragment with sequence ID " << ev_counter() << ", setting the timestamp to " << fo.get_tstamp();
+        DAQLogger::LogInfo(instance_name_) << "For timing fragment with sequence ID " << ev_counter() << ", scmd " << std::showbase << std::hex << fo.get_scmd() << std::dec <<  ", setting the timestamp to " << fo.get_tstamp();
         f->setTimestamp(fo.get_tstamp());  // 64-bit number
 
-        // Send the fragment out on ZeroMQ for FELIX and whoever else wants to listen for it
-        fragment_publisher_->PublishFragment(f.get(), &fo);
 
-        frags.emplace_back(std::move(f));
-        ev_counter_inc();
+        // Do we want to send the fragment out to ZeroMQ and artdaq? We *don't* send out run start, spill start and spill end fragments.
+        // TODO: maybe this check should just be whether the scmd is >=0x8
+        dune::TimingCommand commandType=(dune::TimingCommand)fo.get_scmd();
+        bool shouldSendFragment=!(commandType==dune::TimingCommand::RunStart   ||
+                                  commandType==dune::TimingCommand::RunStop    ||
+                                  commandType==dune::TimingCommand::SpillStart ||
+                                  commandType==dune::TimingCommand::SpillStop);
+
+        if(shouldSendFragment){
+          // Send the fragment out on ZeroMQ for FELIX and whoever else wants to listen for it
+          int pubSuccess = fragment_publisher_->PublishFragment(f.get(), &fo);
+          //DAQLogger::LogInfo(instance_name_) << "Publishing fragment successfull?  " << pubSuccess;
+          
+          frags.emplace_back(std::move(f));
+          // We only increment the event counter for events we send out
+          ev_counter_inc();
+        }
+        else{
+          DAQLogger::LogInfo(instance_name_) << "Got a command of type " << std::showbase << std::hex << fo.get_scmd() << " with timestamp " << fo.get_tstamp() << " which we won't send";
+        }
+
+        // Update the last spill/run timestamps if the fragment type is one of those
+        switch(commandType){
+        case dune::TimingCommand::RunStart:
+          last_runstart_tstampl_=fo.get_tstampl();
+          last_runstart_tstamph_=fo.get_tstamph();
+          break;
+        case dune::TimingCommand::SpillStart:
+          last_spillstart_tstampl_=fo.get_tstampl();
+          last_spillstart_tstamph_=fo.get_tstamph();
+          break;
+        case dune::TimingCommand::SpillStop:
+          last_spillend_tstampl_=fo.get_tstampl();
+          last_spillend_tstamph_=fo.get_tstamph();
+          break;
+        default:
+          break;
+        };
+
         havedata = false;    // Combined with the while above, we could make havedata an integer 
                              // and read multiple events at once (so use "havedata -= 6;")
         
@@ -393,10 +540,10 @@ bool dune::TimingReceiver::getNext_(artdaq::FragmentPtrs &frags)
       if (stopping_flag_ != 0) break;      // throttling change not desired after run stop request.      
       uint32_t tf = InhibitGet_get();      // Can give 0=No change, 1=OK, 2=Not OK)
       uint32_t bit = 1;                    // If we change, this is the value to set. 1=running 
+      TLOG(TLVL_TIMING) << "Received value " << tf << " from InhibitGet_get()\n";
       if (tf == 0) break;                  // No change, so no need to do anything
-      if (debugprint_ > 2) {
-        DAQLogger::LogDebug(instance_name_) << "Received value " << tf << " from InhibitGet_get()\n";
-      }
+
+
       if (tf == 1) {                       // Want to be running
         if (throttling_state_ != 1) break; // No change needed
         bit = 1;                           // To set running (line not needed, bit is set to 1 already)
@@ -407,10 +554,13 @@ bool dune::TimingReceiver::getNext_(artdaq::FragmentPtrs &frags)
         DAQLogger::LogWarning(instance_name_) << "TimingReceiver_generator.cc: Logic error should not happen";
         break;                             // Treat as no change
       }
-      if (debugprint_ > 0) { 
-        DAQLogger::LogInfo(instance_name_) << "Throttle state change: Writing " << bit 
+      std::stringstream change_msg;
+      change_msg << "Throttle state change: Writing " << bit 
                                            << " to trig_en.  [Throttling state was " << throttling_state_
-                                           << "] (1 means enabled)\n";
+                                           << "]\n";
+      TLOG(TLVL_TIMING) << change_msg.str();
+      if (debugprint_ > 0) { 
+        DAQLogger::LogInfo(instance_name_) << change_msg.str();
       }
       master_partition().enableTriggers(bit); // Set XOFF or XON as requested
       throttling_state_ = bit ^ 0x1;       // throttling_state is the opposite of bit
@@ -453,9 +603,10 @@ void dune::TimingReceiver::fiddle_trigger_mask()
 
     uint32_t old_mask=trigger_mask_;
     // We modify the trigger mask to always be zero for the _other_ partitions
-    trigger_mask_ &= 0xf0 + (1<<partition_number_);
-    printf("fiddle_trigger_mask partn %d. Old: 0x%x, New: 0x%x\n",
-           partition_number_, old_mask, trigger_mask_);
+    trigger_mask_ &= 0xf0 | (1<<partition_number_);
+    DAQLogger::LogInfo(instance_name_) << "fiddle_trigger_mask partn " << partition_number_
+                                       << " Old: " << std::showbase << std::hex << old_mask
+                                       << " New: " << std::showbase << std::hex << trigger_mask_;
 }
 
 void dune::TimingReceiver::reset_met_variables(bool onlyspill) {
@@ -487,6 +638,10 @@ void dune::TimingReceiver::update_met_variables(dune::TimingFragment& fo) {
   if (met_sintmin_ > diff) met_sintmin_ = diff;
   if (met_rintmax_ < diff) met_rintmax_ = diff;
   if (met_sintmax_ < diff) met_sintmax_ = diff;
+  // Get the accepted and rejected trigger counters
+  pdt::PartitionCounts trigCounts=master_partition().readCommandCounts();
+  met_accepted_trig_count_=trigCounts.accepted;
+  met_rejected_trig_count_=trigCounts.rejected;
 }
 
 void dune::TimingReceiver::send_met_variables() {
@@ -509,6 +664,49 @@ void dune::TimingReceiver::send_met_variables() {
   artdaq::Globals::metricMan_->sendMetric("TimingSys MinInterval spill", met_sintmin_, "ticks", 1, artdaq::MetricMode::LastPoint);
   artdaq::Globals::metricMan_->sendMetric("TimingSys MaxInterval run",   met_rintmax_, "ticks", 1, artdaq::MetricMode::LastPoint);
   artdaq::Globals::metricMan_->sendMetric("TimingSys MaxInterval spill", met_sintmax_, "ticks", 1, artdaq::MetricMode::LastPoint);
+
+  std::vector<std::string> commandNames={
+      "TimeSync",
+      "Echo",
+      "SpillStart",
+      "SpillStop",
+      "RunStart",
+      "RunStop",
+      "WibCalib",
+      "Trig0",
+      "Trig1",
+      "Trig2",
+      "Trig3",
+      "Trig4",
+      "Trig5",
+      "Trig6",
+      "Trig7",
+      "Trig8"
+  };
+
+  std::stringstream acc_msg, rej_msg;
+  acc_msg << "Acc. counts: ";
+  rej_msg << "Rej. counts: ";
+      
+  // send the trigger counts
+  for(int i=0; i<16; ++i){
+      if (met_accepted_trig_count_.size() > i){
+          std::stringstream ss1;
+          ss1 << "TimingSys Accepted " << commandNames.at(i);
+          artdaq::Globals::metricMan_->sendMetric(ss1.str(), (int)met_accepted_trig_count_.at(i), "triggers", 1, artdaq::MetricMode::LastPoint);
+          acc_msg << ((int)met_accepted_trig_count_.at(i)) << ",";
+      }
+
+      if (met_rejected_trig_count_.size() > i){
+          std::stringstream ss2;
+          ss2 << "TimingSys Rejected " << commandNames.at(i);
+          artdaq::Globals::metricMan_->sendMetric(ss2.str(), (int)met_rejected_trig_count_.at(i), "triggers", 1, artdaq::MetricMode::LastPoint);
+          rej_msg << ((int)met_rejected_trig_count_.at(i)) << ",";
+      }
+  }
+
+  TLOG(TLVL_TIMING) << acc_msg.str();
+  TLOG(TLVL_TIMING) << rej_msg.str();
 }
 
 // The following macro is defined in artdaq's GeneratorMacros.hh header

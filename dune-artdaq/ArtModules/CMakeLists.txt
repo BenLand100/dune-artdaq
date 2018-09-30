@@ -64,6 +64,9 @@ simple_plugin(ToyDump "module")
 simple_plugin(DuneInput "source"
   dune-raw-data_Overlays
   artdaq_ArtModules
+  artdaq-core_Core
+  artdaq_DAQdata
+  artdaq-utilities_Plugins
   art_Framework_Core
   art_Framework_IO_Sources
   art_Framework_Principal

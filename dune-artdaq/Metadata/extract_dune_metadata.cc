@@ -88,7 +88,7 @@ print_one_fc_metadata_entry_hr(FileCatalogMetadataEntry const & ent,
                                size_t longestName,
                                ostream & output)
 {
-  const std::string& name = ent.name.substr(9);
+  const std::string& name = ent.name.substr(0,9) == "dunemeta." ?  ent.name.substr(9) : ent.name;
   constexpr size_t maxIDdigits = 5;
   constexpr size_t maxNameSpacing = 20;
 
@@ -148,7 +148,10 @@ void
 print_one_fc_metadata_entry_JSON(FileCatalogMetadataEntry const & ent,
                                  ostream & output)
 {
-  output << cet::canonical_string(ent.name.substr(9)) << ": ";
+  if (ent.name.substr(0,9) == "dunemeta.")
+    output << cet::canonical_string(ent.name.substr(9)) << ": ";
+  else
+    output << cet::canonical_string(ent.name) << ": ";
 
   output << entryValue(ent.value);
 }
@@ -161,7 +164,8 @@ print_all_fc_metadata_entries_JSON(vector<FileCatalogMetadataEntry> const & entr
   std::ostringstream buf; // Need seekp to work.
   buf << "{\n";
   for (auto const & entry : entries) {
-    if(entry.name.substr(0,9) == "dunemeta.") {
+    if(entry.name.substr(0,9) == "dunemeta." || entry.name == "start_time"
+      || entry.name == "end_time") {
       buf << "    "; // Indent.
       print_one_fc_metadata_entry_JSON(entry, buf);
       buf << ",\n";

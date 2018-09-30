@@ -62,8 +62,8 @@ wib_config: {
       # FEMB register map
       femb_table: "PDUNE_FEMB_323.adt"
       # this must match the WIB firmware version (hex)
-      expected_wib_fw_version_rce: 0x18041701
-      expected_wib_fw_version_felix: 0x18060501
+      expected_wib_fw_version_rce: 0x18072501
+      expected_wib_fw_version_felix: 0x18072501
       # this must match the WIB firmware version
       expected_daq_mode: "any" # "RCE", "FELIX", or "any"
 
@@ -99,6 +99,10 @@ wib_config: {
 
     #Use full reset over checked
     force_full_reset: false
+    #Time to wait after setting do-not-disturb (unsigned int seconds)
+    dnd_wait_time: 10
+    #Number of times to try configuring before giving up
+    configuration_tries: 3
 }
 
 # standard wib configuration

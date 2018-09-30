@@ -1,6 +1,8 @@
-art_make_library( SOURCE InhibitGet.c StatusPublisher.cc FragmentPublisher.cc
+art_make_library( LIBRARY_NAME dune-artdaq_Generators_timingBoard
+		  SOURCE InhibitGet.c StatusPublisher.cc FragmentPublisher.cc
 		  LIBRARIES ${UHAL_UHAL} ${UHAL_LOG} ${Boost_SYSTEM_LIBRARY} zmq dune-artdaq_DAQLogger ${CETLIB} ${CETLIB_EXCEPT}
-		  LIBRARY_NAME_VAR TIMING_BOARD_LIB )
+)
+		  #LIBRARY_NAME_VAR TIMING_BOARD_LIB )
 
 
 cet_make_exec(TimingMain
@@ -14,13 +16,16 @@ cet_make_exec(TimingMain
   ${CANVAS}
   ${FHICLCPP}
   ${MF_MESSAGELOGGER}
+  ${MF_UTILITIES}
   ${CETLIB}
   dune-artdaq_DAQLogger
   ${UHAL_UHAL}
   ${UHAL_LOG}
   ${PDT_CORE}
   ${Boost_SYSTEM_LIBRARY}
-  dune-artdaq_Generators_TimingReceiver_generator)
+  dune-artdaq_Generators_TimingReceiver_generator
+  pthread
+)
 
 cet_make_exec(FragmentSubscriber
   SOURCE FragmentSubscriber.cc
@@ -31,6 +36,7 @@ cet_make_exec(FragmentSubscriber
   artdaq-core_Utilities
   ${FHICLCPP}
   ${MF_MESSAGELOGGER}
+  ${MF_UTILITIES}
   ${CETLIB}
   ${Boost_SYSTEM_LIBRARY}
   zmq)

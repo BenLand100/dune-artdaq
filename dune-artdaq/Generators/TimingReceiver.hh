@@ -74,6 +74,12 @@ namespace dune {
 
     bool getNext_(artdaq::FragmentPtrs & output) override;
 
+    // Wes, 18 July 2018
+    // Use a checkHWStatus_ function to run a thread on the side to
+    // check buffers and issue inhibits.
+    bool checkHWStatus_() override;
+
+
     // JCF, Dec-11-2015
 
     // startOfDatataking will determine whether or not we've begun
@@ -129,19 +135,22 @@ namespace dune {
     uhal::ConnectionManager connectionManager_; 
     uhal::HwInterface hw_;
 
-// Things that are Fhicl parameters
+    // Things that are Fhicl parameters
     uint32_t partition_number_; // The partition number we're talking to
     uint32_t debugprint_;  // Controls the printing of stuff as info messages. 
                            // 0=minimal, 
                            // 1=Also reports throttling changes that go to hardware, 
                            // 2=calls the bufstatus and hwstatus during init, 
                            // 3=Debug message for each trigger and all throttling data
-    uint32_t trigger_mask_;         // Trigger mask (not used yet)
+    uint32_t trigger_mask_;         // Trigger mask
     uint32_t end_run_wait_;         // Number of microsecs to wait at the end of a run before looking for last event
+    bool enable_spill_commands_; // Should we tell the board to enable spill start/stop as event-generating commands?
+    bool enable_spill_gate_; // Whether to enable the spill gate on the timing board
 
     std::string zmq_conn_;  // String specifying the zmq connection to subscribe for inhibit information
     std::string zmq_conn_out_;  // String specifying the zmq connection we will send our inhibit information to
     std::string zmq_fragment_conn_out_; // String specifying the zmq connection we publish fragments on
+    std::vector<int> valid_firmware_versions_fcl_; // Valid versions of the firmware according to the fcl file. We take the union of these and any versions hardcoded into the board reader as being allowed
 
     // Things for metrics (need to use int because the metrics send class signature uses 'int')
     int met_event_;    // Current event
@@ -151,9 +160,24 @@ namespace dune {
     int met_sintmin_;  // Min interval between events this spill
     int met_rintmax_;  // Max interval between events this run
     int met_sintmax_;  // Max interval between events this spill
+    std::vector<uint32_t> met_accepted_trig_count_;
+    std::vector<uint32_t> met_rejected_trig_count_;
 
     std::unique_ptr<artdaq::StatusPublisher> status_publisher_;
     std::unique_ptr<artdaq::FragmentPublisher> fragment_publisher_;
+
+    int want_inhibit_; // Do we want to request a trigger inhibit?
+
+    // Some timestamps of the most recent of each type of event. We
+    // fill these by reading events from the event buffer, and add
+    // their values to the subsequent event fragments, so that the
+    // information is in the data stream
+    uint32_t last_spillstart_tstampl_; // Timestamp of most recent start-of-spill (low 32 bits)
+    uint32_t last_spillstart_tstamph_; //                                         (high 32 bits)
+    uint32_t last_spillend_tstampl_;   // Timestamp of most recent end-of-spill (low 32 bits)
+    uint32_t last_spillend_tstamph_;   //                                       (high 32 bits)
+    uint32_t last_runstart_tstampl_;   // Timestamp of most recent start-of-run (low 32 bits)
+    uint32_t last_runstart_tstamph_;   //                                       (high 32 bits)
 
 // Internal functions
     void reset_met_variables(bool onlyspill=false);   // If onlyspill, only reset the in-spill variables

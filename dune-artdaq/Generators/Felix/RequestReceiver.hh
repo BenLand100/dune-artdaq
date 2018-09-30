@@ -3,53 +3,50 @@
  *
  *  Created on: Feb 15, 2016
  *      Author: Enrico.Gamberini@cern.ch
+ *  Modified on: Jun 6, 2018 (GLM: get triggers from timing BR)
  */
 
 #ifndef SRC_REQUESTRECEIVER_H_
 #define SRC_REQUESTRECEIVER_H_
 
 #include <thread>
-
-#include <boost/asio.hpp>
-#include <boost/bind.hpp>
+#include <vector>
+#include "zmq.h"
 
 #include "Utilities.hh"
 #include "ProducerConsumerQueue.hh"
-#include "artdaq/DAQrate/detail/RequestMessage.hh"
+
+struct TriggerInfo {
+  uint64_t seqID;
+  uint64_t timestamp;
+};
 
 class RequestReceiver {
 public:
-  RequestReceiver(); 
+  RequestReceiver(std::string & addr); 
   ~RequestReceiver();
 
   // Custom types
-  typedef folly::ProducerConsumerQueue<artdaq::detail::RequestPacket> RequestQueue_t;
+  typedef folly::ProducerConsumerQueue<TriggerInfo> RequestQueue_t;
   typedef std::unique_ptr<RequestQueue_t> RequestQueuePtr_t;
 
-  // Main worker function
-  void thread();
 
   // Functionalities
-  bool setup(const std::string& listenAddress,
-             const std::string& multicastAddress,
-             const unsigned short& multicastPort,
-             const unsigned short& requestSize);
   void start();
   void stop();
-  bool requestAvailable();
-  bool getNextRequest(artdaq::detail::RequestPacket& request);
+  TriggerInfo getNextRequest();
 
 private:
-  // Socket
-  boost::asio::io_service m_io_service;
-  boost::asio::ip::udp::socket m_socket;
-  boost::asio::ip::udp::endpoint m_remote_endpoint;
-
+  // Main worker function
+  void thread();
+  bool rcvMore();
+  std::vector<uint64_t> getVals();
+  void* m_socket;
+  void* m_ctx;
   // Configuration
-  std::string m_listenAddress;
-  std::string m_multicastAddress;
-  unsigned short m_multicastPort;
-  unsigned short m_max_requests;
+  std::string m_subscribeAddress;
+
+  TriggerInfo m_prevTrigger;
 
   // Request queue and thread
   RequestQueuePtr_t m_req;
