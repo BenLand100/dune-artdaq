@@ -12,7 +12,8 @@
 #include "art/Framework/Principal/SubRun.h"
 #include "art/Framework/Principal/Run.h"
 #include "art/Framework/Services/Registry/ServiceHandle.h"
-#include "fhiclcpp/make_ParameterSet.h"
+#include "canvas/Persistency/Provenance/ProcessHistory.h"
+#include "fhiclcpp/ParameterSetRegistry.h"
 #include "dune-artdaq/Metadata/MetadataManager.h"
 #include "artdaq-core/Data/PackageBuildInfo.hh"
 
@@ -191,26 +192,13 @@ namespace meta {
       GetPkgMetadata("dune-raw-data", raw);
 
     }
-  } // function DUNEMetadata::beginRun
-
-  void DUNEMetadata::collectMetadata(art::Event const & e)
-  {
-    MetadataManager & manager = MetadataManager::getInstance();
-
-    if (fFirstEvent == -1) fFirstEvent = e.event();
-    fLastEvent = e.event();
-    ++fNEvts;
-
-    fEventList.push_back(e.event());
 
     if (!fParsedHWConfig) {
 
       // Now we get the provenance information included
-      // in the art event. This is the only way to access
+      // in the art run. This is the only way to access
       // hardware configuration information, since this
       // module runs on the EventBuilder process.
-
-      fhicl::ParameterSet ps;
 
       // Metadata fields
       std::string daq_config_name = "unknown";
@@ -227,7 +215,13 @@ namespace meta {
       std::vector<std::string> hw_config(hw_config_name_in.size());
       for (std::string & s : hw_config) s = "unknown";
 
-      if (e.getProcessParameterSet("DAQ", ps)) {
+      // Look get the DAQ process configuration
+      art::ProcessHistory ph = r.processHistory();
+      art::ProcessConfiguration pc;
+      if (ph.getConfigurationForProcess("DAQ", pc)) {
+
+        // Get the DAQ config docs pset from the registry
+        fhicl::ParameterSet ps = fhicl::ParameterSetRegistry::get(pc.parameterSetID());
 
         // The configuration documents are organised
         // as a parameter set where each key is a single
@@ -344,8 +338,17 @@ namespace meta {
       // Flag this as done, so it's only done once
       fParsedHWConfig = true;
     }
+  } // function DUNEMetadata::beginRun
 
-    std::cout << "Done with collectMetadata function." << std::endl;
+  void DUNEMetadata::collectMetadata(art::Event const & e)
+  {
+
+    // Track first + last event and event list
+    if (fFirstEvent == -1) fFirstEvent = e.event();
+    fLastEvent = e.event();
+    ++fNEvts;
+
+    fEventList.push_back(e.event());
 
   } // function DUNEMetadata::collectMetadata
 
