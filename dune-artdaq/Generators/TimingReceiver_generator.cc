@@ -312,6 +312,33 @@ bool dune::TimingReceiver::checkHWStatus_()
 
     want_inhibit_ = new_want_inhibit;
 
+    // Check that the timing-trigger endpoint ("ext-trig" in the
+    // butler), which is listening to the trigger board, is is a ready
+    // state. It gets upset by errors on the return path and/or by the
+    // CTB firmware being reloaded. If it's not ready, and this
+    // partition is using external triggers (as specified by the
+    // trigger mask), then that's a fatal error, so we return false to
+    // tell artdaq to stop the run
+    ValWord<uint32_t> trig_endpoint_ready = hw_.getNode("master_top.trig.csr.stat.ep_rdy").read();
+    hw_.dispatch();
+    if(trig_endpoint_ready==0){
+        // Is this partition interested in external triggers? The lowest four triggers are internal; higher are external
+        bool want_external=trigger_mask_ & 0xfffffff0;
+        if(want_external){
+            // The full status of the endpoint
+            ValWord<uint32_t> trig_endpoint_status = hw_.getNode("master_top.trig.csr.stat.ep_stat").read();
+            hw_.dispatch();
+            DAQLogger::LogError(instance_name_)
+                << "timing-trigger endpoint is not ready: status is "
+                << std::showbase << std::hex << trig_endpoint_status.value()
+                << " when trigger mask is "
+                << std::showbase << std::hex << trigger_mask_
+                << ". This is a fatal error";
+            return false;
+        }
+    }
+    
+
     return true;
 }
 
