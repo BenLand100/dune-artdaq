@@ -40,6 +40,9 @@
 
 #include "timingBoard/InhibitGet.h" // The interface to the ZeroMQ trigger inhibit master
 
+#pragma GCC diagnostic ignored "-Wpedantic"
+#pragma GCC diagnostic ignored "-Woverloaded-virtual"
+#pragma GCC diagnostic push
 #include "pdt/PartitionNode.hpp" // The interface to a timing system
                                  // partition, from the
                                  // protodune_timing UPS product
@@ -76,12 +79,12 @@ dune::TimingReceiver::TimingReceiver(fhicl::ParameterSet const & ps):
   ,debugprint_(ps.get<uint32_t>("debug_print",0))
   ,trigger_mask_(ps.get<uint32_t>("trigger_mask",0xff))
   ,end_run_wait_(ps.get<uint32_t>("end_run_wait",1000))
+  ,enable_spill_commands_(ps.get<bool>("enable_spill_commands", false))
   ,enable_spill_gate_(ps.get<bool>("enable_spill_gate", false))
   ,zmq_conn_(ps.get<std::string>("zmq_connection","tcp://pddaq-gen05-daq0:5566"))
   ,zmq_conn_out_(ps.get<std::string>("zmq_connection_out","tcp://*:5599"))
   ,zmq_fragment_conn_out_(ps.get<std::string>("zmq_fragment_connection_out","tcp://*:7123"))
   ,valid_firmware_versions_fcl_(ps.get<std::vector<int>>("valid_firmware_versions", std::vector<int>()))
-  ,enable_spill_commands_(ps.get<bool>("enable_spill_commands", false))
   ,want_inhibit_(false)
   ,last_spillstart_tstampl_(0xffffffff) // Timestamp of most recent start-of-spill
   ,last_spillstart_tstamph_(0xffffffff) // ...
@@ -505,7 +508,8 @@ bool dune::TimingReceiver::getNext_(artdaq::FragmentPtrs &frags)
         if(shouldSendFragment){
           // Send the fragment out on ZeroMQ for FELIX and whoever else wants to listen for it
           int pubSuccess = fragment_publisher_->PublishFragment(f.get(), &fo);
-          //DAQLogger::LogInfo(instance_name_) << "Publishing fragment successfull?  " << pubSuccess;
+          if(!pubSuccess)
+              DAQLogger::LogInfo(instance_name_) << "Publishing fragment to ZeroMQ failed";
           
           frags.emplace_back(std::move(f));
           // We only increment the event counter for events we send out
@@ -716,7 +720,7 @@ void dune::TimingReceiver::send_met_variables() {
   rej_msg << "Rej. counts: ";
       
   // send the trigger counts
-  for(int i=0; i<16; ++i){
+  for(size_t i=0; i<16; ++i){
       if (met_accepted_trig_count_.size() > i){
           std::stringstream ss1;
           ss1 << "TimingSys Accepted " << commandNames.at(i);

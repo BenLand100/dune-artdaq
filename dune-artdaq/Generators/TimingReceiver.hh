@@ -27,7 +27,12 @@
 #include <map>
 #include <chrono>
 
+#pragma GCC diagnostic ignored "-Wunused"
+#pragma GCC diagnostic ignored "-Wunused-parameter"
+#pragma GCC diagnostic ignored "-Woverloaded-virtual"
+#pragma GCC diagnostic push
 #include "uhal/uhal.hpp"   // The real uhal
+#pragma GCC diagnostic pop
 #include "timingBoard/StatusPublisher.hh"
 #include "timingBoard/FragmentPublisher.hh"
 
