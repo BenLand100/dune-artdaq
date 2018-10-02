@@ -611,7 +611,7 @@ SSPDAQ::RegMap& SSPDAQ::RegMap::Get(void)
     instance->fNamed["sync_period"]             =Register(  0x80000494, 0xFFFFFFFF, 0x00000000, 1 );
     instance->fNamed["sync_delay"]              =Register(  0x80000498, 0xFFFFFFFF, 0x00000000, 1 );
     instance->fNamed["sync_count"]              =Register(  0x8000049C, 0xFFFFFFFF, 0x00000000, 1 ); 
-    instance->fNamed["pdts_control"]            =Register(  0x800004C0, 0xFFFFFFFF, 0x00000000, 1 );
+    instance->fNamed["pdts_control"]            =Register(  0x800004C0, 0xFFFFFFFF, 0xFFFFFFFF, 1 );
     instance->fNamed["pdts_status"]             =Register(  0x800004C4, 0x00000000, 0xFFFFFFFF, 1 );
     instance->fNamed["pdts_ts_preset"]          =Register(  0x800004C8, 0x00000000, 0xFFFFFFFF, 2 );
     instance->fNamed["master_logic_control"]    =Register(  0x80000500, 0xFFFFFFFF, 0x00000173, 1 );     
