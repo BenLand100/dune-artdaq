@@ -322,22 +322,26 @@ bool dune::TimingReceiver::checkHWStatus_()
     // partition is using external triggers (as specified by the
     // trigger mask), then that's a fatal error, so we return false to
     // tell artdaq to stop the run
-    ValWord<uint32_t> trig_endpoint_ready = hw_.getNode("master_top.trig.csr.stat.ep_rdy").read();
-    hw_.dispatch();
-    if(trig_endpoint_ready==0){
-        // Is this partition interested in external triggers? The lowest four triggers are internal; higher are external
-        bool want_external=trigger_mask_ & 0xfffffff0;
-        if(want_external){
-            // The full status of the endpoint
-            ValWord<uint32_t> trig_endpoint_status = hw_.getNode("master_top.trig.csr.stat.ep_stat").read();
-            hw_.dispatch();
-            DAQLogger::LogError(instance_name_)
-                << "timing-trigger endpoint is not ready: status is "
-                << std::showbase << std::hex << trig_endpoint_status.value()
-                << " when trigger mask is "
-                << std::showbase << std::hex << trigger_mask_
-                << ". This is a fatal error";
-            return false;
+    //
+    // Extra complication: only the TLU has the necessary registers (the fanouts do not), so test that first
+    if(!hw_.getNodes("master_top.trig").empty()){
+        ValWord<uint32_t> trig_endpoint_ready = hw_.getNode("master_top.trig.csr.stat.ep_rdy").read();
+        hw_.dispatch();
+        if(trig_endpoint_ready==0){
+            // Is this partition interested in external triggers? The lowest four triggers are internal; higher are external
+            bool want_external=trigger_mask_ & 0xfffffff0;
+            if(want_external){
+                // The full status of the endpoint
+                ValWord<uint32_t> trig_endpoint_status = hw_.getNode("master_top.trig.csr.stat.ep_stat").read();
+                hw_.dispatch();
+                DAQLogger::LogError(instance_name_)
+                    << "timing-trigger endpoint is not ready: status is "
+                    << std::showbase << std::hex << trig_endpoint_status.value()
+                    << " when trigger mask is "
+                    << std::showbase << std::hex << trigger_mask_
+                    << ". This is a fatal error";
+                return false;
+            }
         }
     }
     
@@ -444,8 +448,13 @@ bool dune::TimingReceiver::getNext_(artdaq::FragmentPtrs &frags)
         // start/end, run start), mostly to get the timestamp
         // calculation done in the fragment, but partly to make the
         // code easier to follow(?)
-        std::unique_ptr<artdaq::Fragment> f = artdaq::Fragment::FragmentBytes( TimingFragment::size()*sizeof(uint32_t));
-
+        std::unique_ptr<artdaq::Fragment> f = artdaq::Fragment::FragmentBytes( TimingFragment::size()*sizeof(uint32_t),
+                                                                               artdaq::Fragment::InvalidSequenceID,
+                                                                               artdaq::Fragment::InvalidFragmentID,
+                                                                               artdaq::Fragment::InvalidFragmentType,
+                                                                               dune::TimingFragment::Metadata(TimingFragment::VERSION));
+        // It's unclear to me whether the constructor above actually sets the metadata, so let's do it here too to be sure
+        f->updateMetadata(TimingFragment::Metadata(TimingFragment::VERSION));
         // Read the data from the hardware
 	std::vector<uint32_t> uwords = master_partition().readEvents(1);
 
