@@ -36,6 +36,14 @@ dune::SSP::SSP(fhicl::ParameterSet const & ps)
       throw SSPDAQ::EDAQConfigError("");
   }
 
+  unsigned int timingAddress=ps.get<unsigned int>("timing_address",0);
+  if(timingAddress>0xff){
+    try {
+      DAQLogger::LogError("SSP_SSP_generator")<<"Error: Invalid timing system address set ("<<timingAddress<<")!"<<std::endl;
+    } catch (...) {}
+    throw SSPDAQ::EDAQConfigError("");
+  }
+
 
   unsigned int interfaceTypeCode(ps.get<unsigned int>("interface_type",999));
 
@@ -68,7 +76,8 @@ dune::SSP::SSP(fhicl::ParameterSet const & ps)
   }
   device_interface_=new SSPDAQ::DeviceInterface(interface_type_,board_id_);//board_id_);
   device_interface_->SetPartitionNumber(partitionNumber);
-      device_interface_->Initialize();
+  device_interface_->SetTimingAddress(timingAddress);
+  device_interface_->Initialize();
   this->ConfigureDAQ(ps);
   this->ConfigureDevice(ps);
 }

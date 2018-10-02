@@ -10,7 +10,7 @@ SSPDAQ::DeviceInterface::DeviceInterface(SSPDAQ::Comm_t commType, unsigned long 
   : fCommType(commType), fDeviceId(deviceId), fState(SSPDAQ::DeviceInterface::kUninitialized),
     fUseExternalTimestamp(false), fHardwareClockRateInMHz(128), fPreTrigLength(1E8), 
     fPostTrigLength(1E7), fTriggerWriteDelay(1000), fTriggerMask(0), fDummyPeriod(-1), 
-    fSlowControlOnly(false), fPartitionNumber(0), exception_(false), fDataThread(0){
+    fSlowControlOnly(false), fPartitionNumber(0), fTimingAddress(0), exception_(false), fDataThread(0){
 }
 
 void SSPDAQ::DeviceInterface::OpenSlowControl(){
@@ -65,18 +65,23 @@ void SSPDAQ::DeviceInterface::Initialize(){
   unsigned int nTries=0;
   unsigned int pdts_status=0;
 
+  dune::DAQLogger::LogInfo("SSP_DeviceInterface")<<"Syncing SSP to PDTS (partition "<<fPartitionNumber
+						 <<", endpoint address "<<std::hex<<fTimingAddress
+						 <<std::dec<<")"<<std::endl;
+
   while(nTries<5){
-    fDevice->DeviceWrite(duneReg.pdts_control, 0x80000000 + fPartitionNumber);
-    fDevice->DeviceWrite(duneReg.pdts_control, 0x00000000 + fPartitionNumber);
+    fDevice->DeviceWrite(duneReg.dsp_clock_control,0x30);
+    fDevice->DeviceWrite(duneReg.pdts_control, 0x80000000 + fPartitionNumber + fTimingAddress*0x10000);
+    fDevice->DeviceWrite(duneReg.pdts_control, 0x00000000 + fPartitionNumber + fTimingAddress*0x10000);
     usleep(2000000);
-    fDevice->DeviceWrite(duneReg.dsp_clock_control,0x431);
+    fDevice->DeviceWrite(duneReg.dsp_clock_control,0x31);
     usleep(2000000);
     fDevice->DeviceRead(duneReg.pdts_status, &pdts_status);
-    if((pdts_status&0xF)==0x8) break;
+    if((pdts_status&0xF)>=0x6 && (pdts_status&0xF)<=0x8 ) break;
     dune::DAQLogger::LogInfo("SSP_DeviceInterface")<<"Timing endpoint sync failed (try "<<nTries<<")"<<std::endl;
     ++nTries;
   }
-  if((pdts_status&0xF)==0x8){
+  if((pdts_status&0xF)>=0x6 && (pdts_status&0xF)<=0x8 ){
     dune::DAQLogger::LogInfo("SSP_DeviceInterface")<<"Timing endpoint synced!"<<std::endl;
   }
   else{
