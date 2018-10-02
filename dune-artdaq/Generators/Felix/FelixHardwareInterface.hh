@@ -2,6 +2,7 @@
 #define dune_artdaq_Generators_Felix_FelixHardwareInterface_hh
 
 #include "dune-raw-data/Overlays/FragmentType.hh"
+#include "dune-raw-data/Overlays/FelixFragment.hh"
 #include "artdaq/DAQrate/RequestReceiver.hh"
 #include "fhiclcpp/fwd.h"
 
@@ -74,6 +75,8 @@ private:
   unsigned offset_;
   unsigned window_;
   unsigned window_offset_;
+  bool reordering_;
+  bool compression_;
   std::string requester_address_;
   std::string request_address_;
   unsigned short request_port_;
@@ -82,8 +85,7 @@ private:
   // NETIO & NIOH & RequestReceiver
   std::vector<LinkParameters> link_parameters_;
   NetioHandler& nioh_;
-  RequestReceiver* request_receiver_;
-  //artdaq::RequestReceiver artdaq_request_receiver_;
+  std::unique_ptr<RequestReceiver> request_receiver_;
 
   // Statistics and internals
   std::atomic<unsigned long long> messages_received_;
@@ -92,7 +94,10 @@ private:
   std::atomic<unsigned long long> fake_trigger_;
   std::atomic<unsigned int> fake_trigger_attempts_;
 
+  // Fragment related
   dune::FragmentType fragment_type_;
+  dune::FelixFragmentBase::Metadata fragment_meta_;
+
   std::size_t usecs_between_sends_;
   
   using time_type = decltype(std::chrono::high_resolution_clock::now());

@@ -47,13 +47,15 @@ public:
   bool stop() ; 
   bool start() ;
 
-  static bool IsTSWord( const ptb::content::word::word & w ) noexcept ;
-  static bool IsFeedbackWord( const ptb::content::word::word & w ) noexcept ;
+  static bool IsTSWord( const ptb::content::word::word_t & w ) noexcept ;
+  static bool IsFeedbackWord( const ptb::content::word::word_t & w ) noexcept ;
+
+  bool ErrorState() const { return _error_state.load() ; } 
 
 private:
 
   // the raw buffer can contain 4 times the maximum TCP package size, which is 4 KB
-  boost::lockfree::spsc_queue< ptb::content::word::word > _word_buffer ;  
+  boost::lockfree::spsc_queue< ptb::content::word::word_t > _word_buffer ;  
   
   // this is the receiver thread to be called
   int _word_receiver() ;
@@ -74,6 +76,7 @@ private:
   std::atomic<unsigned int> _n_TS_words ;
 
   std::atomic<bool> _stop_requested ;
+  std::atomic<bool> _error_state ;
 
   // members related to calibration stream
   bool _has_calibration_stream ; 

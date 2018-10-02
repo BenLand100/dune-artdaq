@@ -39,12 +39,10 @@ FelixHardwareInterface::FelixHardwareInterface(fhicl::ParameterSet const& ps) :
   offset_ = hps.get<unsigned>("offset");
   window_ = hps.get<unsigned>("trigger_matching_window_ticks");
   window_offset_ = hps.get<unsigned>("trigger_matching_offset_ticks");
-
+  reordering_ = hps.get<bool>("reordering", false);
+  compression_ = hps.get<bool>("compression", false);  
   requester_address_ = ps.get<std::string>("zmq_fragment_connection_out");
-  //requester_address_ = ps.get<std::string>("requester_address");
-  //request_address_ = ps.get<std::string>("request_address");
-  //request_port_ = ps.get<unsigned short>("request_port");
-  //requests_size_ = ps.get<unsigned short>("requests_size");
+  
 
   DAQLogger::LogInfo("dune::FelixHardwareInterface::FelixHardwareInterface")
     << "Configuration for Links from FHiCL."; 
@@ -62,7 +60,7 @@ FelixHardwareInterface::FelixHardwareInterface(fhicl::ParameterSet const& ps) :
 
   DAQLogger::LogInfo("dune::FelixHardwareInterface::FelixHardwareInterface")
     << "Setting up RequestReceiver.";
-  request_receiver_ = new RequestReceiver(requester_address_);
+  request_receiver_ = std::make_unique<RequestReceiver>(requester_address_);
 
   nioh_.setExtract(extract_);
   //DAQLogger::LogInfo("dune::FelixHardwareInterface::FelixHardwareInterface")
@@ -77,9 +75,42 @@ FelixHardwareInterface::FelixHardwareInterface(fhicl::ParameterSet const& ps) :
   nioh_.setTimeWindow(window_);
   nioh_.setWindowOffset(window_offset_);
 
-  // reorder and compression configs:
-  nioh_.doReorder(false);
-  nioh_.doCompress(false);
+  fragment_meta_.reordered = 0;
+  fragment_meta_.compressed = 0;
+
+  // Reordering
+  if (false) { // from config
+    nioh_.doReorder(true, false);
+    nioh_.doCompress(true);
+    fragment_meta_.reordered = 1;
+  } else {
+    nioh_.doReorder(false, false);
+    nioh_.doCompress(false);
+    fragment_meta_.reordered = 0;
+  }
+  // QAT compression
+  if (false) {
+    int ret = nioh_.initQAT();
+    DAQLogger::LogInfo("dune::FelixHardwareInterface::FelixHardwareInterface")
+      << "Init QAT: " << ret;
+    if (ret==0){
+      fragment_meta_.compressed = 1;
+    } else {
+      fragment_meta_.compressed = 0;
+    }
+  }
+
+  // Finalize setup
+  nioh_.recalculateFragmentSizes();
+
+  // metadata settings
+  uint32_t framesPerMsg = message_size_/nioh_.getFrameSize(); // will be 12 for a looong time.
+  fragment_meta_.num_frames = window_+(framesPerMsg*2); // + safety (should be a const?)
+  fragment_meta_.num_frames = nioh_.getTimeWindowNumFrames(); // RS -> New and correct way.
+  //fragment_meta_.reordered = 0;
+  //fragment_meta_.compressed = 0;
+  fragment_meta_.offset_frames = window_offset_; // <- ???
+  fragment_meta_.window_frames = window_; // should be 6000
 
   DAQLogger::LogInfo("dune::FelixHardwareInterface::FelixHardwareInterface")
     << "FelixHardwareInterface is ready.";
@@ -89,7 +120,9 @@ FelixHardwareInterface::~FelixHardwareInterface(){
   DAQLogger::LogInfo("dune::FelixHardwareInterface::FelixHardwareInterface")
     << "Destructing FelixHardwareInterface. Joining request thread.";
   nioh_.stopContext();
-  delete request_receiver_;
+  DAQLogger::LogInfo("dune::FelixHardwareInterface::FelixHardwareInterface")
+    << "Shutting down QAT.";
+  nioh_.shutdownQAT();
 }
 
 
@@ -192,6 +225,7 @@ bool FelixHardwareInterface::FillFragment( std::unique_ptr<artdaq::Fragment>& fr
       if (success) {
         frag->setSequenceID(requestSeqId);
         frag->setTimestamp(requestTimestamp);
+        frag->updateMetadata(fragment_meta_);
 	if (frag->dataSizeBytes() == 0) {
 	  DAQLogger::LogWarning("dune::FelixHardwareInterface::FillFragment")
 	    << "Returning empty fragment for TS = " << requestTimestamp << ", seqID = " << requestSeqId;

@@ -17,6 +17,7 @@
 
 #include <random>
 #include <vector>
+#include <array>
 #include <atomic>
 #include <chrono>
 
@@ -64,6 +65,7 @@ namespace dune {
     //multi thread parameters
     std::chrono::microseconds _timeout ;
     std::atomic<bool> _stop_requested ;
+    std::atomic<bool> _error_state ;
     std::future<int> _frag_future ;
 
     boost::lockfree::spsc_queue<artdaq::Fragment* > _fragment_buffer ; 
@@ -75,15 +77,34 @@ namespace dune {
     bool _has_last_TS = false ;
     artdaq::Fragment::timestamp_t _last_timestamp = artdaq::Fragment::InvalidTimestamp ;
 
+    bool throw_exception_;
+
     // metric parameters
     unsigned int _metric_TS_max ;
     unsigned int _metric_TS_counter = 0 ; 
-    unsigned int _metric_HLT_counter = 0 ; 
+    unsigned int _metric_Word_counter = 0 ; 
+
+    unsigned int _metric_HLT_counter = 0 ;  // this is not the sum of the specific HLT_n, 
+                                            // it is the counter of the HLT word
+    unsigned int _metric_HLT_counters[8] = {0} ;
     unsigned int _metric_LLT_counter = 0 ; 
+
+    unsigned int _metric_beam_trigger_counter = 0 ;
+    unsigned int _metric_good_particle_counter = 0 ;  //LLT_1
+
     unsigned int _metric_CS_counter = 0 ;  // channel status
 
+    // metric utilities
+    const std::array<std::string, 8> _metric_HLT_names  = { "CTB_HLT_0_rate",
+							    "CTB_HLT_1_rate", 
+							    "CTB_HLT_2_rate",
+							    "CTB_HLT_3_rate",
+							    "CTB_HLT_4_rate",
+							    "CTB_HLT_5_rate",
+							    "CTB_HLT_6_rate",
+							    "CTB_HLT_7_rate" } ;
 
-    bool throw_exception_;
+
   };
 
   inline bool TriggerBoardReader::CanCreateFragments() {
@@ -93,7 +114,10 @@ namespace dune {
   }
 
   inline bool TriggerBoardReader::NeedToEmptyBuffer() {
-    return _receiver -> Buffer().read_available() >= _max_words_per_frag ;
+    
+    unsigned int n_word = _receiver -> Buffer().read_available() ;
+    return ( n_word >= _max_words_per_frag ) || 
+           ( _receiver -> ErrorState() && n_word > 0 ) ;
   }
 
 }

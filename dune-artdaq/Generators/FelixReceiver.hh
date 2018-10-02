@@ -68,7 +68,7 @@ namespace dune {
     artdaq::Fragment::timestamp_t timestamp_;
     int timestampScale_;
 
-    FelixFragment::Metadata metadata_;
+    FelixFragmentBase::Metadata metadata_;
 
     // buffer_ points to the buffer which the hardware interface will
     // fill. Notice that it's a raw pointer rather than a smart

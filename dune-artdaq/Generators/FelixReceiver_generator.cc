@@ -40,8 +40,9 @@ dune::FelixReceiver::FelixReceiver(fhicl::ParameterSet const & ps)
 
   /* ADDITIONAL METADATA IF NEEDED */
   // RS -> These metadata will be cleared out!
-  metadata_.board_serial_number = 999;
-  metadata_.num_adc_bits = 12;
+  metadata_.num_frames = 0;
+  metadata_.reordered = 0;
+  metadata_.compressed = 0;
   fragment_type_ = toFragmentType("FELIX");
 
   // Metrics
@@ -88,8 +89,20 @@ bool dune::FelixReceiver::getNext_(artdaq::FragmentPtrs & frags) {
     }
 
     //uint64_t newTS = *(reinterpret_cast<const uint_fast64_t*>(fragptr->dataBeginBytes()+8));
-    DAQLogger::LogInfo("dune::FelixReceiver::getNext_") << "Passing frag ID " << fragptr->sequenceID()
-      << " TS: " << fragptr->timestamp();
+    
+    // RS -> Place for debugging purposes to check Fragment consistency, meta, etc..
+    //DAQLogger::LogInfo("dune::FelixReceiver::getNext_") << "Passing frag ID " << fragptr->sequenceID()
+    //  << " TS: " << fragptr->timestamp();
+
+    //dune::FelixFragmentBase::Metadata metaAfter = *(fragptr->metadata<dune::FelixFragmentBase::Metadata>());
+    //uint32_t nf = metaAfter.num_frames;
+    //uint32_t re = metaAfter.reordered;
+    //uint32_t co = metaAfter.compressed;
+    //DAQLogger::LogInfo("dune::FelixReceiver::getNext_")
+    //  << "Metadata AFTER update, right before passing.: numFrames:" << (unsigned)nf
+    //  << " reordered:" << (unsigned)re
+    //  << " compressed:" << (unsigned)co;
+
 
     frags.emplace_back( std::move(fragptr) );
     /* RS -> Add metric manager...
