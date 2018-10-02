@@ -98,8 +98,9 @@ if [[ "$?" != "0" ]]; then
     exit 1
 fi
 
+uhal_version=v2_6_0
 
-uhal_setup_cmd="setup uhal v2_6_0 -q e15:prof:s64"
+uhal_setup_cmd="setup uhal $uhal_version -q e15:prof:s64"
 $uhal_setup_cmd
 
 
@@ -233,7 +234,7 @@ if ! $bad_network; then
 fi
 
 # JCF, Apr-26-2018: Kurt discovered that it's necessary for the $Base/products area to be based on ups v6_0_7
-upsfile=/nfs/home/np04daq/.jcfree/Documents/ups-6.0.7-Linux64bit+3.10-2.17.tar.bz2
+upsfile=/nfs/sw/control_files/misc/ups-6.0.7-Linux64bit+3.10-2.17.tar.bz2
 
 if [[ ! -e $upsfile ]]; then
     echo "Unable to find ${upsfile}; you'll need to restore it from SciSoft" >&2
@@ -253,11 +254,6 @@ cd $Base
 mrb newDev -f -v $demo_version -q ${equalifier}:${build_type}
 set +u
 
-
-
-
-
-#setup netio
 source $Base/localProducts_dune_artdaq_${demo_version}_${equalifier}_${build_type}/setup
 set -u
 
@@ -266,7 +262,7 @@ cd $MRB_SOURCE
 if [[ $opt_lrd_develop -eq 1 ]]; then
     dune_raw_data_checkout_arg="-d dune_raw_data"
 else
-    dune_raw_data_checkout_arg="-b feature/artdaq_v3_02 -d dune_raw_data"
+    dune_raw_data_checkout_arg="-b for_dune-artdaq -d dune_raw_data"
 fi
 
 
@@ -279,7 +275,7 @@ fi
 if [[ $tag == "develop" ]]; then
     dune_artdaq_checkout_arg="-d dune_artdaq"
 else
-    dune_artdaq_checkout_arg="-b feature/artdaq_v3_02 -d dune_artdaq"
+    dune_artdaq_checkout_arg="-b develop -d dune_artdaq"
 fi
 
 
@@ -293,14 +289,14 @@ fi
 
 if ! $bad_network; then
 
-    mrb gitCheckout -b feature/pdune_ron_Aug01 -d artdaq_core http://cdcvs.fnal.gov/projects/artdaq-core
+    mrb gitCheckout -t v3_04_02 -d artdaq_core http://cdcvs.fnal.gov/projects/artdaq-core
  
     if [[ "$?" != "0" ]]; then
         echo "Unable to perform checkout of http://cdcvs.fnal.gov/projects/artdaq-core"
         exit 1
     fi
 
-    mrb gitCheckout -b feature/pdune_ron_Aug01 -d artdaq_utilities http://cdcvs.fnal.gov/projects/artdaq-utilities
+    mrb gitCheckout -t v1_04_08 -d artdaq_utilities http://cdcvs.fnal.gov/projects/artdaq-utilities
  
     if [[ "$?" != "0" ]]; then
         echo "Unable to perform checkout of http://cdcvs.fnal.gov/projects/artdaq-utilities"
@@ -308,14 +304,14 @@ if ! $bad_network; then
     fi
 
 
-    mrb gitCheckout -b feature/pdune_ron_Aug01 -d artdaq http://cdcvs.fnal.gov/projects/artdaq
+    mrb gitCheckout -b for_dune-artdaq -d artdaq http://cdcvs.fnal.gov/projects/artdaq
 
     if [[ "$?" != "0" ]]; then
     	echo "Unable to perform checkout of http://cdcvs.fnal.gov/projects/artdaq"
     	exit 1
     fi
 
-    mrb gitCheckout -b feature/pdune_ron_Aug01 -d artdaq_mpich_plugin http://cdcvs.fnal.gov/projects/artdaq-utilities-mpich-plugin
+    mrb gitCheckout -t v1_00_03 -d artdaq_mpich_plugin http://cdcvs.fnal.gov/projects/artdaq-utilities-mpich-plugin
 
    if [[ "$?" != "0" ]]; then
     	echo "Unable to perform checkout of http://cdcvs.fnal.gov/projects/artdaq-utilities-mpich_plugin"
@@ -336,28 +332,26 @@ if ! $bad_network; then
 	exit 1
     fi
 
-    # JCF, Aug-9-2018
-
-    # Unclear why gitCheckout doesn't appear to simply *work* when I
-    # try to get the dune-artdaq feature/artdaq_v3_02 branch, but
-    # since it doesn't, I need to get it manually...
-
-    cd dune_artdaq
-    git fetch origin
-    git checkout -b origin/feature/artdaq_v3_02
-    git checkout feature/artdaq_v3_02
-    cd ..
 fi
 
 sed -i -r 's/^\s*defaultqual(\s+).*/defaultqual\1'$equalifier':'$squalifier'/' artdaq/ups/product_deps
 sed -i -r 's/^\s*defaultqual(\s+).*/defaultqual\1'$equalifier':online:'$squalifier'/' dune_raw_data/ups/product_deps
-
+dune_artdaq_version=$( sed -r -n 's/^\s*parent\s+\S+\s+(\S+).*/\1/p' dune_artdaq/ups/product_deps )
 
 ARTDAQ_DEMO_DIR=$Base/srcs/dune_artdaq
 
 
 nprocessors=$( grep -E "processor\s+:" /proc/cpuinfo | wc -l )
 trace_file_label=$( basename $Base )
+
+protodune_timing_version=v4_1_3
+rogue_version=v2_10_0_3_gfaeedd0
+protodune_wibsoft_version=v341
+netio_version=v0_8_0
+ftd2xx_version=v1_2_7a
+dunepdsprce_version=v0_0_4
+jsoncpp_version=v1_8_0
+dune_artdaq_InhibitMaster_version=v0_01_01
 
 cd $Base
     cat >setupDUNEARTDAQ_forBuilding <<-EOF
@@ -375,22 +369,27 @@ cd $Base
         export DUNEARTDAQ_REPO="$ARTDAQ_DEMO_DIR"                                                                        
         export FHICL_FILE_PATH=.:\$DUNEARTDAQ_REPO/tools/fcl:\$FHICL_FILE_PATH                                           
 
-        setup protodune_wibsoft v341 -q e15:s64
-        setup uhal v2_6_0 -q e15:prof:s64
-        setup netio v0_8_0 -q e15:prof:s64
+        setup protodune_wibsoft $protodune_wibsoft_version -q e15:s64
+        setup uhal $uhal_version -q e15:prof:s64
+        setup netio $netio_version -q e15:prof:s64
 # RSIPOS 03/07/18 -> Infiniband workaround for FELIX BR build
         #source /nfs/sw/felix/HACK-FELIX-BR-BUILD.sh
-        setup ftd2xx v1_2_7a
-        setup dunepdsprce v0_0_4 -q e15:gen:prof
-        setup rogue v2_10_0_3_gfaeedd0 -q e15:prof
-        setup protodune_timing v4_1_3 -q e15:prof:s64
-        setup dune_artdaq_InhibitMaster v0_01_01 -q e15:prof
+        export ICP_ROOT=/nfs/sw/felix/QAT/QAT2.0
+        export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/nfs/sw/felix/QAT/QAT2.0/build
+        export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/nfs/sw/felix/QAT/QAT2.0/qatzip2/qatzip/src
+
+
+        setup ftd2xx $ftd2xx_version
+        setup dunepdsprce $dunepdsprce_version -q e15:gen:prof
+        setup rogue $rogue_version -q e15:prof
+        setup protodune_timing $protodune_timing_version -q e15:prof:s64
+        setup dune_artdaq_InhibitMaster $dune_artdaq_InhibitMaster_version -q e15:prof
 
         export DIM_INC=/nfs/sw/dim/dim_v20r20
         export DIM_LIB=/nfs/sw/dim/dim_v20r20/linux
         export LD_LIBRARY_PATH=\$DIM_LIB:\$LD_LIBRARY_PATH
         
-setup jsoncpp v1_8_0 -q e15
+setup jsoncpp $jsoncpp_version -q e15
 
         # 26-Apr-2018, KAB: moved the sourcing of mrbSetEnv to *after* all product
         # setups so that we get the right env vars for the source repositories that
@@ -415,7 +414,7 @@ EOF
         sh -c "[ \`ps \$\$ | grep bash | wc -l\` -gt 0 ] || { echo 'Please switch to the bash shell before running dune-artdaq.'; exit; }" || exit                                                                                           
         source /nfs/sw/artdaq/products/setup                                      
         source $Base/localProducts_dune_artdaq_${demo_version}_${equalifier}_${build_type}/setupWithoutMRB
-        setup dune_artdaq v1_16_00 -q e15:prof
+        setup dune_artdaq $dune_artdaq_version -q e15:prof
        
         alias RoutingMaster="routing_master"
                                                                                                            
@@ -425,19 +424,23 @@ EOF
         export DUNEARTDAQ_REPO="$ARTDAQ_DEMO_DIR"                                                                        
         export FHICL_FILE_PATH=.:\$DUNEARTDAQ_REPO/tools/fcl:\$FHICL_FILE_PATH                                           
 
-        setup protodune_wibsoft v341 -q e15:s64
-        setup uhal v2_6_0 -q e15:prof:s64
+        setup protodune_wibsoft $protodune_wibsoft_version -q e15:s64
+        setup uhal $uhal_version -q e15:prof:s64
 
-        setup netio v0_8_0 -q e15:prof:s64
+        setup netio $netio_version -q e15:prof:s64
 # RSIPOS 03/07/18 -> Infiniband workaround for FELIX BR build
 #        export LD_LIBRARY_PATH=\$LD_LIBRARY_PATH:/nfs/sw/felix/new-software/multidma/software/external/libfabric/1.4.1.3/x86_64-centos7-gcc62-opt/lib
         export LD_LIBRARY_PATH=\$LD_LIBRARY_PATH:/nfs/sw/felix/fabric/build/lib
         #source /nfs/sw/felix/HACK-FELIX-BR-BUILD.sh
-        setup ftd2xx v1_2_7a
-        setup dunepdsprce v0_0_4 -q e15:gen:prof
-        setup rogue v2_10_0_3_gfaeedd0 -q e15:prof
-        setup protodune_timing v4_1_3 -q e15:prof:s64
-        setup dune_artdaq_InhibitMaster v0_01_01 -q e15:prof
+        export ICP_ROOT=/nfs/sw/felix/QAT/QAT2.0
+        export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/nfs/sw/felix/QAT/QAT2.0/build
+        export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/nfs/sw/felix/QAT/QAT2.0/qatzip2/qatzip/src
+
+        setup ftd2xx $ftd2xx_version
+        setup dunepdsprce $dunepdsprce_version -q e15:gen:prof
+        setup rogue $rogue_version -q e15:prof
+        setup protodune_timing $protodune_timing_version -q e15:prof:s64
+        setup dune_artdaq_InhibitMaster $dune_artdaq_InhibitMaster_version -q e15:prof
 export PYTHONUSERBASE=/nfs/sw/work_dirs/dune-artdaq-InhibitMaster/user_python
 
         export DIM_INC=/nfs/sw/dim/dim_v20r20
@@ -451,7 +454,7 @@ export PYTHONUSERBASE=/nfs/sw/work_dirs/dune-artdaq-InhibitMaster/user_python
         export TRACE_FILE=/tmp/trace_$trace_file_label
         export TRACE_LIMIT_MS="500,1000,2000"
 
-setup jsoncpp v1_8_0 -q e15
+setup jsoncpp $jsoncpp_version -q e15
 
      # Uncomment the "tonM" line for a given TRACE below which you
         # want to activate. If you don't see the TRACE you want, then
@@ -519,17 +522,21 @@ export CETPKG_J=$nprocessors
 source /nfs/sw/artdaq/products/setup
 
 
-        setup protodune_wibsoft v341 -q e15:s64
-        setup uhal v2_6_0 -q e15:prof:s64
-        setup netio v0_8_0 -q e15:prof:s64
+        setup protodune_wibsoft $protodune_wibsoft_version -q e15:s64
+        setup uhal $uhal_version -q e15:prof:s64
+        setup netio $netio_version -q e15:prof:s64
 # RSIPOS 03/07/18 -> Infiniband workaround for FELIX BR build
         #source /nfs/sw/felix/HACK-FELIX-BR-BUILD.sh
-        setup ftd2xx v1_2_7a
-        setup dunepdsprce v0_0_4 -q e15:gen:prof
-        setup rogue v2_10_0_3_gfaeedd0 -q e15:prof
-        setup protodune_timing v4_0_2 -q e15:prof:s64
-        setup dune_artdaq_InhibitMaster v0_01_01 -q e15:prof
-	setup jsoncpp v1_8_0 -q e15
+        export ICP_ROOT=/nfs/sw/felix/QAT/QAT2.0
+        export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/nfs/sw/felix/QAT/QAT2.0/build
+        export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/nfs/sw/felix/QAT/QAT2.0/qatzip2/qatzip/src
+
+        setup ftd2xx $ftd2xx_version
+        setup dunepdsprce $dunepdsprce_version -q e15:gen:prof
+        setup rogue $rogue_version -q e15:prof
+        setup protodune_timing $protodune_timing_version -q e15:prof:s64
+        setup dune_artdaq_InhibitMaster $dune_artdaq_InhibitMaster_version -q e15:prof
+	setup jsoncpp $jsoncpp_version -q e15
 
 set +u
 source mrbSetEnv
