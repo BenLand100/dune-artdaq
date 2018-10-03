@@ -26,8 +26,6 @@ else
     exit 1
 fi
 
-bad_network=false
-
 
 git_status=`git status 2>/dev/null`
 git_sts=$?
@@ -41,17 +39,6 @@ Base=$PWD
 test -d products || mkdir products
 test -d download || mkdir download
 test -d log || mkdir log
-
-if $bad_network ; then
-    echo "\"bad_network\" parameter is set; therefore quick-mrb-start.sh makes the following assumptions: "
-    echo "-All needed products are on the host, and the setup for those products has been sourced"
-    echo "-The git repos for artdaq, etc., are already in this directory"
-    echo "-There's a file already existing called $Base/download/product_deps which will tell this script what version of artdaq, etc., to expect"
-    echo "-Your host has the SLF7 operating system"
-    echo "-You've deleted the directories which look like localProducts_dune_artdaq_v1_06_00_e10_prof and build_slf7.x86_64 (though the versions may have changed since this instruction was written)"
-    sleep 5
-fi
-
 
 
 env_opts_var=`basename $0 | sed 's/\.sh$//' | tr 'a-z-' 'A-Z_'`_OPTS
@@ -160,11 +147,7 @@ function detectAndPull() {
     cd $startDir
 }
 
-if $bad_network ; then
-    os="slf7"    
-else 
-    os=
-fi
+os=
 
 cd $Base/download
 
@@ -183,9 +166,7 @@ if [ -z "${tag:-}" ]; then
   tag=develop;
 fi
 
-if ! $bad_network; then
-    wget https://cdcvs.fnal.gov/redmine/projects/dune-artdaq/repository/revisions/develop/raw/ups/product_deps
-fi
+wget https://cdcvs.fnal.gov/redmine/projects/dune-artdaq/repository/revisions/develop/raw/ups/product_deps
 
 if [[ ! -e $Base/download/product_deps ]]; then
     echo "You need to have a product_deps file in $Base/download" >&2
@@ -215,23 +196,16 @@ else
     build_type="prof"
 fi
 
+wget http://scisoft.fnal.gov/scisoft/bundles/tools/pullProducts
+chmod +x pullProducts
+./pullProducts $Base/products ${os} artdaq-${artdaq_manifest_version} ${squalifier}-${equalifier} ${build_type}
 
-# If we aren't connected to the outside world, you'll need to have
-# previously scp'd or rsync'd the products to the host you're trying
-# to install dune-artdaq on
-
-if ! $bad_network; then
-    wget http://scisoft.fnal.gov/scisoft/bundles/tools/pullProducts
-    chmod +x pullProducts
-    ./pullProducts $Base/products ${os} artdaq-${artdaq_manifest_version} ${squalifier}-${equalifier} ${build_type}
-
-    if [ $? -ne 0 ]; then
-	echo "Error in pullProducts. Please go to http://scisoft.fnal.gov/scisoft/bundles/artdaq/${artdaq_manifest_version}/manifest and make sure that a manifest for the specified qualifiers (${squalifier}-${equalifier}) exists."
-	exit 1
-    fi
-
-    detectAndPull mrb noarch
+if [ $? -ne 0 ]; then
+    echo "Error in pullProducts. Please go to http://scisoft.fnal.gov/scisoft/bundles/artdaq/${artdaq_manifest_version}/manifest and make sure that a manifest for the specified qualifiers (${squalifier}-${equalifier}) exists."
+    exit 1
 fi
+
+detectAndPull mrb noarch
 
 # JCF, Apr-26-2018: Kurt discovered that it's necessary for the $Base/products area to be based on ups v6_0_7
 upsfile=/nfs/sw/control_files/misc/ups-6.0.7-Linux64bit+3.10-2.17.tar.bz2
@@ -286,52 +260,49 @@ else
     dune_artdaq_repo="ssh://p-dune-artdaq@cdcvs.fnal.gov/cvs/projects/dune-artdaq"
 fi
 
+artdaq_mpich_plugin_version=v1_00_03
 
-if ! $bad_network; then
 
-    mrb gitCheckout -t v3_04_02 -d artdaq_core http://cdcvs.fnal.gov/projects/artdaq-core
+mrb gitCheckout -t v3_04_02 -d artdaq_core http://cdcvs.fnal.gov/projects/artdaq-core
  
-    if [[ "$?" != "0" ]]; then
-        echo "Unable to perform checkout of http://cdcvs.fnal.gov/projects/artdaq-core"
-        exit 1
-    fi
+if [[ "$?" != "0" ]]; then
+    echo "Unable to perform checkout of http://cdcvs.fnal.gov/projects/artdaq-core"
+    exit 1
+fi
 
-    mrb gitCheckout -t v1_04_08 -d artdaq_utilities http://cdcvs.fnal.gov/projects/artdaq-utilities
+mrb gitCheckout -t v1_04_08 -d artdaq_utilities http://cdcvs.fnal.gov/projects/artdaq-utilities
  
-    if [[ "$?" != "0" ]]; then
-        echo "Unable to perform checkout of http://cdcvs.fnal.gov/projects/artdaq-utilities"
-        exit 1
-    fi
+if [[ "$?" != "0" ]]; then
+    echo "Unable to perform checkout of http://cdcvs.fnal.gov/projects/artdaq-utilities"
+    exit 1
+fi
 
+mrb gitCheckout -b for_dune-artdaq -d artdaq http://cdcvs.fnal.gov/projects/artdaq
 
-    mrb gitCheckout -b for_dune-artdaq -d artdaq http://cdcvs.fnal.gov/projects/artdaq
+if [[ "$?" != "0" ]]; then
+    echo "Unable to perform checkout of http://cdcvs.fnal.gov/projects/artdaq"
+    exit 1
+fi
 
-    if [[ "$?" != "0" ]]; then
-    	echo "Unable to perform checkout of http://cdcvs.fnal.gov/projects/artdaq"
-    	exit 1
-    fi
+mrb gitCheckout -t $artdaq_mpich_plugin_version -d artdaq_mpich_plugin http://cdcvs.fnal.gov/projects/artdaq-utilities-mpich-plugin
 
-    mrb gitCheckout -t v1_00_03 -d artdaq_mpich_plugin http://cdcvs.fnal.gov/projects/artdaq-utilities-mpich-plugin
+if [[ "$?" != "0" ]]; then
+    echo "Unable to perform checkout of http://cdcvs.fnal.gov/projects/artdaq-utilities-mpich_plugin"
+    exit 1
+fi
 
-   if [[ "$?" != "0" ]]; then
-    	echo "Unable to perform checkout of http://cdcvs.fnal.gov/projects/artdaq-utilities-mpich_plugin"
-    	exit 1
-    fi
+mrb gitCheckout $dune_raw_data_checkout_arg $dune_raw_data_repo
 
-    mrb gitCheckout $dune_raw_data_checkout_arg $dune_raw_data_repo
+if [[ "$?" != "0" ]]; then
+    echo "Unable to perform checkout of $dune_raw_data_repo"
+    exit 1
+fi
 
-    if [[ "$?" != "0" ]]; then
-	echo "Unable to perform checkout of $dune_raw_data_repo"
-	exit 1
-    fi
+mrb gitCheckout $dune_artdaq_checkout_arg $dune_artdaq_repo
 
-    mrb gitCheckout $dune_artdaq_checkout_arg $dune_artdaq_repo
-
-    if [[ "$?" != "0" ]]; then
-	echo "Unable to perform checkout of $dune_artdaq_repo"
-	exit 1
-    fi
-
+if [[ "$?" != "0" ]]; then
+    echo "Unable to perform checkout of $dune_artdaq_repo"
+    exit 1
 fi
 
 sed -i -r 's/^\s*defaultqual(\s+).*/defaultqual\1'$equalifier':'$squalifier'/' artdaq/ups/product_deps
@@ -352,8 +323,7 @@ ftd2xx_version=v1_2_7a
 dunepdsprce_version=v0_0_4
 jsoncpp_version=v1_8_0
 dune_artdaq_InhibitMaster_version=v0_01_01
-artdaq_dim_plugin_version=v0_02_06
-artdaq_mpich_plugin_version=v1_00_03
+artdaq_dim_plugin_version=v0_02_07
 
 cd $Base
     cat >setupDUNEARTDAQ_forBuilding <<-EOF
