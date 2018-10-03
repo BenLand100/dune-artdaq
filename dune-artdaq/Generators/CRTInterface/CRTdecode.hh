@@ -25,6 +25,7 @@ namespace CRT{
 unsigned int raw2cook(char * const cooked_data,
                       const unsigned int max_cooked,
                       char * rawfromhardware,
-                      char * & next_raw_byte);
+                      char * & next_raw_byte,
+                      const int baselines[64 /*maxModules*/][64 /*numChannels*/]);
 
 }

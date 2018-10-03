@@ -144,11 +144,6 @@ simple_plugin(TimingReceiver "generator"
   ${PDT_CORE}
   )
 
-# The timing board reader #includes headers from uhal which generate
-# compiler warnings, so we need to turn off -Werror for just this target
-
-target_compile_options("dune-artdaq_Generators_TimingReceiver_generator" PRIVATE -Wno-error )
-
 if ( (DEFINED ENV{PROTODUNE_WIBSOFT_LIB}) AND (DEFINED ENV{PROTODUNE_WIBSOFT_INC}) )
 
 include_directories( $ENV{PROTODUNE_WIBSOFT_INC} )
@@ -186,5 +181,8 @@ simple_plugin(CRTFragGen "generator"
   ${MF_UTILITIES}
   ${CETLIB}
   ${CETLIB_EXCEPT}
+  ${UHAL_UHAL}
+  ${UHAL_LOG}
   )
  
+
