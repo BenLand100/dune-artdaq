@@ -1,7 +1,7 @@
 /* Author: Matthew Strait <mstrait@fnal.gov> */
 
-#ifndef dune_artdaq_Generators_CRTInterface_CRTInterface_hh
-#define dune_artdaq_Generators_CRTInterface_CRTInterface_hh
+#ifndef artdaq_Generators_CRTInterface_CRTInterface_hh
+#define artdaq_Generators_CRTInterface_CRTInterface_hh
 
 #include "dune-raw-data/Overlays/FragmentType.hh"
 
@@ -63,18 +63,27 @@ public:
 	 */
 	void FreeReadoutBuffer(char* buffer);
 
+  void SetBaselines();
+
 private:
+
+  // Baselines, a.k.a. pedestals, for all of the channels in the run,
+  // to be subtracted from the raw data before sending to artdaq.  These
+  // are determined for each run as part of the run startup.
+  int baselines[64 /*maxModules*/][64 /*numChannels*/];
 
   // The directory in which to look for input files.  This is probably
   // something like Run_0000123/binary/. It can be an absolute or relative
   // path.
   std::string indir;
 
+  // One of {3, 13, 14, 22}, each of which is a USB stream with 8 modules
+  // on it.
+  unsigned int usbnumber;
+
   // State: whether we are reading an input file, waiting for one, etc.
   // bitmask of CRT_* defined above
   unsigned int state;
-
-	bool taking_data_;
 
   // File descriptor associated with the inotify event queue, which is
   // used to find out when there is new data to read.
@@ -85,6 +94,9 @@ private:
 
   // File descriptor for the data file we are reading
   int datafile_fd = -1;
+
+  // Name of the data file we are reading
+  std::string datafile_name;
 
   // Private functions documented in the implementation.
   bool try_open_file();

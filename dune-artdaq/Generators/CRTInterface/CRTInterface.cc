@@ -32,29 +32,20 @@ static char * next_raw_byte = rawfromhardware;
 
 CRTInterface::CRTInterface(fhicl::ParameterSet const& ps) :
   indir(ps.get<std::string>("indir")),
-  state(CRT_WAIT),
-  taking_data_(false)
+  usbnumber(ps.get<unsigned int>("usbnumber")),
+  state(CRT_WAIT)
 {
 }
 
-// XXX Should this function do a system() call (or something less awful)
-// to start the backend DAQ program?  Is it ok to spend several seconds
-// in this function waiting for that program to start up and figuring out
-// where it is putting its output?
 void CRTInterface::StartDatataking()
 {
-  taking_data_ = true;
-
-  // Already initialized by call for another board (?)
   if(inotifyfd != -1){
-    fprintf(stderr, "inotify already init'd.  Maybe this is ok if we\n"
-                    "stopped and restarted data taking...?\n");
+    TLOG(TLVL_WARNING, "CRTInterface") << "inotify already init'd. Ok if we\nstopped and restarted data taking.\n";
     return;
   }
 
   if(-1 == (inotifyfd = inotify_init())){
-    perror("CRTInterface::StartDatataking");
-    _exit(1);
+    throw cet::exception("CRTInterface") << "CRTInterface::StartDatataking: " << strerror(errno);
   }
 
   // Set the file descriptor to non-blocking so that we can immediately
@@ -64,23 +55,22 @@ void CRTInterface::StartDatataking()
 
 void CRTInterface::StopDatataking()
 {
-  taking_data_ = false;
   if(-1 == inotify_rm_watch(inotifyfd, inotify_watchfd)){
-    perror("CRTInterface::StopDatataking");
-    _exit(1); // maybe not necessary
+    TLOG(TLVL_WARNING, "CRTInterface") << "CRTInterface::StopDatataking: " << strerror(errno);
   }
 }
 
-// NOTE: probably want to skip forward to the file named after the current
-// second in case Camillo's DAQ was started up a long time ago.
-char * find_wr_file(const std::string & indir)
+// Return the name of the most recent file that we can read, without the
+// directory path.  If the backend DAQ started up a long time ago, there
+// will be a pile of files we never read, but that is OK.
+std::string find_wr_file(const std::string & indir,
+                         const unsigned int usbnumber)
 {
   DIR * dp = NULL;
   errno = 0;
   if((dp = opendir(indir.c_str())) == NULL){
     if(errno == ENOENT){
-      fprintf(stderr, "No such directory %s, but will wait for it\n",
-              indir.c_str());
+      TLOG(TLVL_WARNING, "CRTInterface") << "No such directory " << indir << ", but will wait for it\n";
       usleep(100000);
       return NULL;
     }
@@ -88,20 +78,24 @@ char * find_wr_file(const std::string & indir)
       // Other conditions we are unlikely to recover from: permission denied,
       // too many file descriptors in use, too many files open, out of memory,
       // or the name isn't a directory.
-      perror("find_wr_file opendir");
-      _exit(1);
+      throw cet::exception("CRTInterface") << "find_wr_file opendir: " << strerror(errno);
     }
   }
 
+  time_t most_recent_time = 0;
+  std::string most_recent_file = "";
+
   struct dirent * de = NULL;
   while(errno = 0, (de = readdir(dp)) != NULL){
-    // Does this file name end in ".wr"?  Having ".wr" in the middle somewhere
-    // is not sufficient (and also should never happen).
+    char suffix[7];
+    snprintf(suffix, 7, "_%2d.wr", usbnumber);
+
+    // Does this file name end in "_NN.wr", where NN is the usbnumber?
     //
     // Ignore baseline (a.k.a. pedestal) files, which are also given ".wr"
-    // names while being written.  We could be even more restrictive and require
-    // that the file be named like <unix time stamp>_NN.wr, but it doesn't
-    // seem necessary.
+    // names while being written.  We could be even more restrictive and
+    // require that the file be named like <unix time stamp>_NN.wr, but it
+    // doesn't seem necessary.
     //
     // If somehow there ends up being a directory ending in ".wr", ignore it
     // (and all other directories).  I suppose all other types are fine, even
@@ -109,28 +103,37 @@ char * find_wr_file(const std::string & indir)
     // to accept a named pipe, etc.
     if(de->d_type != DT_DIR &&
        strstr(de->d_name, "baseline") == NULL &&
-       strstr(de->d_name, ".wr") != NULL &&
-       strlen(strstr(de->d_name, ".wr")) == strlen(".wr")){
-      errno = 0;
-      closedir(dp);
-      if(errno) perror("find_wr_file closedir");
+       strstr(de->d_name, suffix) != NULL &&
+       strlen(strstr(de->d_name, suffix)) == strlen(suffix)){
+      struct stat thestat;
 
-      // As per readdir(3), this pointer is good until readdir() is called
-      // again on this directory.
-      return de->d_name;
+      if(-1 == stat((indir + de->d_name).c_str(), &thestat)){
+	throw cet::exception("CRTInterface")
+           << "find_wr_file stat: Couldn't get timestamp of " << (indir + de->d_name).c_str() << ": " << strerror(errno);
+      }
+
+      if(thestat.st_mtime > most_recent_time){
+        most_recent_time = thestat.st_mtime;
+        most_recent_file = de->d_name;
+      }
     }
   }
 
   // If errno == 0, it just means we got to the end of the directory.
   // Otherwise, something went wrong.  This is unlikely since the only
   // error condition is "EBADF  Invalid directory stream descriptor dirp."
-  if(errno) perror("find_wr_file readdir");
+  if(errno)
+    throw cet::exception("CRTInterface") << "find_wr_file readdir: " << strerror(errno);
 
   errno = 0;
   closedir(dp);
-  if(errno) perror("find_wr_file closedir");
+  if(errno)
+    throw cet::exception("CRTInterface") << "find_wr_file closedir: " << strerror(errno);
 
-  return NULL;
+  // slow down if the directory is there, but the file isn't yet
+  if(most_recent_file == "") usleep(100000);
+
+  return most_recent_file; // even if it is "", which means none
 }
 
 /*
@@ -140,13 +143,20 @@ char * find_wr_file(const std::string & indir)
 */
 bool CRTInterface::try_open_file()
 {
-  const char * const filename = find_wr_file(indir);
+  // I am sure it used to work to do find_wr_file().c_str() but now C++ is so
+  // complicated that no one can understand it.  Apparently if you use the old
+  // approach after C++11 or C++14 or thereabouts, the std::string destructor
+  // is immediately called because the scope of a return value is only the
+  // right hand side of the expression.
+  const std::string cplusplusiscrazy =
+    find_wr_file(indir + "/binary/", usbnumber);
+  const char * filename = cplusplusiscrazy.c_str();
 
-  if(filename == NULL) return false;
+  if(strlen(filename) == 0) return false;
 
-  const std::string fullfilename = indir + "/" + filename;
+  const std::string fullfilename = indir + "/binary/" + filename;
 
-  printf("Found input file: %s\n", filename);
+  TLOG(TLVL_INFO, "CRTInterface") << "Found input file: " << filename;
 
   if(-1 == (inotify_watchfd =
             inotify_add_watch(inotifyfd, fullfilename.c_str(),
@@ -155,14 +165,12 @@ bool CRTInterface::try_open_file()
       // It's possible that the file we just found has vanished by the time
       // we get here, probably by being renamed without the ".wr".  That's
       // OK, we'll just try again in a moment.
-      fprintf(stderr, "File has vanished. We'll wait for another\n");
+      TLOG(TLVL_WARNING, "CRTInterface") << "File has vanished. We'll wait for another\n";
       return false;
     }
     else{
       // But other inotify_add_watch errors we probably can't recover from
-      fprintf(stderr, "CRTInterface: Could not open %s\n", filename);
-      perror("CRTInterface");
-      _exit(1);
+      throw cet::exception("CRTInterface") << "CRTInterface: Could not open " << filename << ": " << strerror(errno);
     }
   }
 
@@ -174,13 +182,12 @@ bool CRTInterface::try_open_file()
       return false;
     }
     else{
-      // But other errors probably indicate an unrecoverable problem.
-      perror("CRTInterface::StartDatataking");
-      _exit(1);
+      throw cet::exception("CRTInterface") << "CRTInterface::StartDatataking: " << strerror(errno);
     }
   }
 
   state = CRT_READ_ACTIVE;
+  datafile_name = filename;
 
   return true;
 }
@@ -205,8 +212,7 @@ bool CRTInterface::check_events()
 
     // Anything else maybe should be a fatal error.  If we can't read from
     // inotify once, we probably won't be able to again.
-    perror("CRTInterface::FillBuffer");
-    return false;
+    throw cet::exception("CRTInterface") << "CRTInterface::FillBuffer: " << strerror(errno);
   }
 
   if(inotify_bread == 0){
@@ -216,9 +222,7 @@ bool CRTInterface::check_events()
   }
 
   if(inotify_bread < (ssize_t)sizeof(struct inotify_event)){
-    fprintf(stderr, "Non-zero, yet wrong number (%ld) of bytes from inotify\n",
-            inotify_bread);
-    _exit(1);
+    throw cet::exception("CRTInterface") << "Non-zero, yet wrong number (" << inotify_bread << ") of bytes from inotify\n";
   }
 
 #pragma GCC diagnostic push
@@ -230,7 +234,7 @@ bool CRTInterface::check_events()
     // Active file has been modified again
     if(state == CRT_READ_ACTIVE) return true;
     else{
-      fprintf(stderr, "File modified, but not watching an open file...\n");
+      TLOG(TLVL_WARNING, "CRTInterface") << "File modified, but not watching an open file...\n";
       return false; // Should be fatal?
     }
   }
@@ -242,14 +246,15 @@ bool CRTInterface::check_events()
     if(state == CRT_READ_ACTIVE){
       close(datafile_fd);
 
-      // XXX Is this desired?
-      //unlink(datafile_fd);
+      // Is this desired?  I think so.
+      unlink(datafile_name.c_str());
+      TLOG(TLVL_INFO, "CRTInterface") << "Deleted data file after reading it.\n";
 
       state = CRT_WAIT;
       return true;
     }
     else{
-      fprintf(stderr, "Not reached.  Closed file renamed.\n");
+      TLOG(TLVL_WARNING, "CRTInterface") << "Not reached.  Closed file renamed.\n";
       return false; // should be fatal?
     }
   }
@@ -263,9 +268,10 @@ size_t CRTInterface::read_everything_from_file(char * cooked_data)
   // Oh boy!  Since we're here, it means we have a new file, or that the file
   // has changed.  Hopefully that means *appended to*, in which case we're
   // going to read the new bytes.  At the moment, let's ponderously read one at
-  // a time.  (XXX fix this.)  If by "changed", in fact the file was truncated
+  // a time.  (Dumb, but maybe if it works, we should just keep it
+  // that way.)  If by "changed", in fact the file was truncated
   // or that some contents prior to our current position were changed, we'll
-  // get nothing here, which will signal that such shenanigans occured.
+  // get nothing here, which will signal that such shenanigans occurred.
 
   ssize_t read_bread = 0;
 
@@ -283,17 +289,16 @@ size_t CRTInterface::read_everything_from_file(char * cooked_data)
 
   if(read_bread == -1){
     // All read() errors other than *maybe* EINTR should be fatal.
-    perror("CRTInterface::FillBuffer");
-    _exit(1);
+    throw cet::exception("CRTInterface") << "CRTInterface::FillBuffer: " << strerror(errno);
   }
 
   const int bytesleft = next_raw_byte - rawfromhardware;
-  printf("%d bytes in raw buffer after read.\n", bytesleft);
+  TLOG(TLVL_INFO, "CRTInterface") << bytesleft << " bytes in raw buffer after read.\n";
 
   if(bytesleft > 0) state |= CRT_DRAIN_BUFFER;
 
   return CRT::raw2cook(cooked_data, COOKEDBUFSIZE,
-                       rawfromhardware, next_raw_byte);
+                       rawfromhardware, next_raw_byte, baselines);
 }
 
 void CRTInterface::FillBuffer(char* cooked_data, size_t* bytes_ret)
@@ -303,10 +308,10 @@ void CRTInterface::FillBuffer(char* cooked_data, size_t* bytes_ret)
   // First see if we can decode another module packet out of the data already
   // read from the input files.
   if(state & CRT_DRAIN_BUFFER){
-    printf("%ld bytes in raw buffer before read.\n",
-           next_raw_byte - rawfromhardware);
+    TLOG(TLVL_INFO, "CRTInterface") << (next_raw_byte - rawfromhardware) << " bytes in raw buffer before read.\n";
+
     if((*bytes_ret = CRT::raw2cook(cooked_data, COOKEDBUFSIZE,
-                                   rawfromhardware, next_raw_byte)))
+                                   rawfromhardware, next_raw_byte, baselines)))
       return;
     else
       state &= ~CRT_DRAIN_BUFFER;
@@ -346,6 +351,78 @@ void CRTInterface::FillBuffer(char* cooked_data, size_t* bytes_ret)
   if(state != CRT_READ_ACTIVE && !try_open_file()) return;
 
   *bytes_ret = read_everything_from_file(cooked_data);
+}
+
+void CRTInterface::SetBaselines()
+{
+  // Note that there is no check below that all channels are assigned a
+  // baseline.  Indeed, since we have fewer than 64 modules, not all elements
+  // of the array will be filled.  The check will be done in online monitoring.
+  // If a channel has no baseline set, nothing will be subtracted and the ADC
+  // values will be obviously shifted upwards from what's expected.
+  memset(baselines, 0, sizeof(baselines));
+
+  FILE * in = NULL;
+  while(true){
+    errno = 0;
+    if(NULL == (in = fopen((indir + "/baselines.dat").c_str(), "r"))){
+      if(errno == ENOENT){
+        // File isn't there.  This probably means that we are not the process
+        // that started up the backend. We'll just wait for the backend to
+        // finish starting and the file to appear.
+	TLOG(TLVL_INFO, "CRTInterface") << "Waiting for baseline file to appear\n";
+        sleep(1);
+      }
+      else{
+	throw cet::exception("CRTInterface") << "Can't open CRT baseline file: " << strerror(errno) << "\n";
+      }
+    }
+    else{
+      break; //If I found the file, stop trying to open it!
+    }
+  }
+
+  int module = 0, channel = 0, nhit = 0;
+  float fbaseline = 0, stddev = 0;
+  int nconverted = 0;
+  int line = 0;
+  while(EOF != (nconverted = fscanf(in, "%d,%d,%f,%f,%d",
+        &module, &channel, &fbaseline, &stddev, &nhit))){
+
+    line++; // This somewhat erroneously assumes that we consume
+            // one line per scanf.  In a pathological file with the right
+            // format, but bad data, and with fewer line breaks than expected,
+            // the reported line number will be wrong.
+
+    if(nconverted != 5){
+      TLOG(TLVL_WARNING, "CRTInterface") << "Warning: skipping invalid line " << line << " in baseline file";
+      continue;
+    }
+
+    if(module >= 64){
+      TLOG(TLVL_WARNING, "CRTInterface")
+         << "Warning: skipping baseline with invalid module number " << module << ".  Valid range is 0-63\n";
+      continue;
+    }
+
+    if(channel >= 64){
+      TLOG(TLVL_WARNING, "CRTInterface")
+         << "Warning: skipping baseline with invalid channel number " << module << ".  Valid range is 0-63\n";
+      continue;
+    }
+
+    if(nhit < 100)
+      TLOG(TLVL_WARNING, "CRTInterface") << "Warning: using baseline based on only " << nhit << " hits\n";
+
+    if(stddev > 5.0)
+      TLOG(TLVL_WARNING, "CRTInterface") << "Warning: using baseline with large error: " << stddev << " ADC counts\n";
+
+    baselines[module][channel] = int(fbaseline + 0.5);
+  }
+
+  errno = 0;
+  if(fclose(in) == EOF)
+    throw cet::exception("CRTInterface") << "Can't close CRT baseline file: " << strerror(errno) << "\n";
 }
 
 void CRTInterface::AllocateReadoutBuffer(char** cooked_data)
