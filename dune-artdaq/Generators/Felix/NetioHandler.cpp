@@ -2,7 +2,7 @@
 #include "NetioHandler.hh"
 #include "NetioWIBRecords.hh"
 #include "ReusableThread.hh"
-#include "FelixReorderer.hh"
+#include "FelixReorder.hh"
 
 //#include <libxmlrpc.h>
 
@@ -35,8 +35,6 @@ NetioHandler::NetioHandler()
     DAQLogger::LogInfo("NetioHandler::NetioHandler")
       << "NIOH setup complete. Background thread spawned.";
   }
-
-  //recalculateByteSizes();
 }
 
 NetioHandler::~NetioHandler() {
@@ -165,18 +163,61 @@ void NetioHandler::startTriggerMatchers(){
 	//DAQLogger::LogInfo("NetioHandler::startTriggerMatchers")
 	//  << "Jumping by " << timeTickDiff/framesPerMsg << " elements in data queue. Queue size is " << m_pcqs[tid]->sizeGuess();       
         m_pcqs[tid]->popXFront(timeTickDiff/framesPerMsg);
+
+        // Roland, Thijs -> Reordering mode.
+        m_fragmentPtr->resizeBytes(m_timeWindowByteSizeOut);
+        uint64_t fragSize = m_timeWindowByteSizeOut;
+        if (!m_doReorder)
+        {
+          for (unsigned i = 0; i < m_timeWindowNumMessages; i++)
+          {
+            memcpy(m_fragmentPtr->dataBeginBytes() + m_msgsize * i, (char *)m_pcqs[tid]->frontPtr(), m_msgsize);
+            m_pcqs[tid]->popFront();
+          }
+        }
+        else
+        {
+#ifdef REORD_DEBUG
+          std::chrono::high_resolution_clock::time_point t1 = std::chrono::high_resolution_clock::now();
+#endif
+          m_reorderFacility->do_reorder_start(m_timeWindowNumFrames);
+          for (unsigned i = 0; i < m_timeWindowNumMessages; i++)
+          {
+            m_reorderFacility->do_reorder_part(
+              m_fragmentPtr->dataBeginBytes(),         // dst
+              (uint8_t *)m_pcqs[tid]->frontPtr(),      // src
+              i * framesPerMsg, (i + 1) * framesPerMsg // frame start, frame stop
+            );
+            m_pcqs[tid]->popFront();
+          }
+          fragSize = m_reorderFacility->reorder_final_size();
+#ifdef REORD_DEBUG
+          auto tdelta = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now() - t1);
+          DAQLogger::LogInfo("NetioHandler::reorderTiming") << "reorder took: " << tdelta.count() << " us";
+#endif
+        }
+
+        if (m_doCompress) {
+          // RS -> Keep in mind, compFacility does all the fragment size resizes.
+          uint_fast32_t compSize = m_compressionFacility->do_compress(m_fragmentPtr, fragSize);
+          DAQLogger::LogInfo("NetioHandler::startTriggerMatchers")
+            << "Data compressed! Orig:" << fragSize << " Compressed:" << compSize
+            << " ratio:" << float(fragSize)/float(compSize);
+        } else {
+        // Not sure what should happen here. If we have reordered the fragment is too large
+          if (m_doReorder) {
+            // It should be checked that resizing to smaller size never re-allocs and destroys
+            // data in the buffer
+            m_fragmentPtr->resizeBytes(fragSize);
+          }
+        }
          
-        m_fragmentPtr->resizeBytes( m_msgsize*(2 + m_timeWindow/framesPerMsg) );
+        /*m_fragmentPtr->resizeBytes( m_msgsize*(2 + m_timeWindow/framesPerMsg) );
         for(unsigned i=0; i<(m_timeWindow/framesPerMsg)+2; i++) //read out 21 messages
         {
           memcpy(m_fragmentPtr->dataBeginBytes()+m_msgsize*i,(char*)m_pcqs[tid]->frontPtr(), m_msgsize);
           m_pcqs[tid]->popFront();
-        }
-
-        // Thijs -> Man whaaaaaaaaat!?!?!?!?!?!
-        //memcpy(m_fragmentPtr->dataBeginBytes(), (uint8_t*)m_pcqs[tid]->frontPtr(), m_timeWindowByteSizeIn);
-        //m_pcqs[tid]->popXFront(m_timeWindowNumMessages);        
-
+        }*/
 
       } else { // generate fake fragment for emulation
         if (m_triggerTimestamp == 0) {
@@ -275,7 +316,7 @@ void NetioHandler::startSubscribers(){
 	    msg.serialize_to_usr_buffer((void*)&ics);
 	    bool storeOk = m_pcqs[m_channels[chn]]->write( std::move(ics) ); // RS -> Add possibility for dry_run! (No push mode.)
 	    if (!storeOk) {
-              DAQLogger::LogWarning("NetioHandler::subscriber") << " Fragments queue is full. Lost: " << lostData;
+              //DAQLogger::LogWarning("NetioHandler::subscriber") << " Fragments queue is full. Lost: " << lostData;
               if(!busy()) {
                 m_pcqs[m_channels[chn]]->popXFront(m_pcqs[m_channels[chn]]->capacity()/2);
                 lostData+= m_pcqs[m_channels[chn]]->capacity()/2;
@@ -386,17 +427,46 @@ bool NetioHandler::addChannel(uint64_t chn, uint16_t tag, std::string host, uint
 
 void NetioHandler::recalculateByteSizes()
 {
-    size_t framesPerMsg = m_msgsize / m_framesize;
-    m_timeWindowNumMessages = (m_timeWindow / framesPerMsg) + 2;
-
-    m_timeWindowByteSizeIn = m_msgsize * m_timeWindowNumMessages;
-    m_timeWindowNumFrames = m_timeWindowByteSizeIn / FelixReorderer::m_num_bytes_per_frame;
-
-    //if (m_do_reorder)
-    //    m_timeWindowByteSizeOut = m_timeWindowByteSizeIn 
-    //        * FelixReorderer::num_bytes_per_reord_frame / FelixReorderer::num_bytes_per_frame;
-    //else
-        m_timeWindowByteSizeOut = m_timeWindowByteSizeIn;
+     size_t framesPerMsg = m_msgsize / m_framesize;
+     m_timeWindowNumMessages = (m_timeWindow / framesPerMsg) + 2;
+ 
+     m_timeWindowByteSizeIn = m_msgsize * m_timeWindowNumMessages;
+     m_timeWindowNumFrames = m_timeWindowByteSizeIn / FelixReorder::m_num_bytes_per_frame;
+ 
+     //if (m_do_reorder)
+     //    m_timeWindowByteSizeOut = m_timeWindowByteSizeIn 
+     //        * FelixReorderer::num_bytes_per_reord_frame / FelixReorderer::num_bytes_per_frame;
+     //else
+         m_timeWindowByteSizeOut = m_timeWindowByteSizeIn;
 }
 
+
+void NetioHandler::recalculateFragmentSizes()
+{
+  size_t framesPerMsg = m_msgsize / m_framesize;
+  m_timeWindowNumMessages = (m_timeWindow / framesPerMsg) + 2;
+
+  m_timeWindowByteSizeIn = m_msgsize * m_timeWindowNumMessages;
+  m_timeWindowNumFrames = m_timeWindowByteSizeIn / FelixReorder::m_num_bytes_per_frame;
+
+  if (m_doReorder)
+  {
+    m_timeWindowByteSizeOut = m_timeWindowByteSizeIn * FelixReorder::m_num_bytes_per_reord_frame / FelixReorder::m_num_bytes_per_frame;
+    // We need to account for the added bitfield to keep track of which headers are saved
+    // This size is also not the actual size, but the maximum size
+    // Number of bits needed is rounded up to bytes.
+    m_timeWindowByteSizeOut += (m_timeWindowNumFrames + 7) / 8;
+  }
+  else
+  {
+    m_timeWindowByteSizeOut = m_timeWindowByteSizeIn;
+  }
+  DAQLogger::LogInfo("NetioHandler::recalculateFragmentSizes")
+    << "Recalculated sizes: framesPerMsg:" << framesPerMsg
+    << " | messages per timewindow: " << m_timeWindowNumMessages
+    << " | WIB frames per timewindow:" << m_timeWindowNumFrames
+    << " | original fragment size: " << m_timeWindowByteSizeIn
+    << " | reordered fragment size: " << m_timeWindowByteSizeOut
+    << " | reorder info: " << m_reorderFacility->get_info();
+}
 
