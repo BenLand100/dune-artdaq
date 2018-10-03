@@ -14,7 +14,7 @@ if ! [[ "$HOSTNAME" =~ ^np04-srv ]]; then
     exit 1
 fi
 
-if [[ "$HOSTNAME" == "np04-srv-001" || "$HOSTNAME" == "np04-srv-009" || "$HOSTNAME" == "np04-srv-010" ]]; then
+if [[ "$HOSTNAME" == "np04-srv-001" || "$HOSTNAME" == "np04-srv-009" || "$HOSTNAME" == "np04-srv-010" || "$HOSTNAME" == "np04-srv-024" ]]; then
     echo "Host $HOSTNAME doesn't physically have enough processors for a speedy build; try another host (e.g., np04-srv-014)"
     exit 1
 fi
@@ -352,6 +352,8 @@ ftd2xx_version=v1_2_7a
 dunepdsprce_version=v0_0_4
 jsoncpp_version=v1_8_0
 dune_artdaq_InhibitMaster_version=v0_01_01
+artdaq_dim_plugin_version=v0_02_06
+artdaq_mpich_plugin_version=v1_00_03
 
 cd $Base
     cat >setupDUNEARTDAQ_forBuilding <<-EOF
@@ -375,8 +377,8 @@ cd $Base
 # RSIPOS 03/07/18 -> Infiniband workaround for FELIX BR build
         #source /nfs/sw/felix/HACK-FELIX-BR-BUILD.sh
         export ICP_ROOT=/nfs/sw/felix/QAT/QAT2.0
-        export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/nfs/sw/felix/QAT/QAT2.0/build
-        export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/nfs/sw/felix/QAT/QAT2.0/qatzip2/qatzip/src
+        export LD_LIBRARY_PATH=\$LD_LIBRARY_PATH:/nfs/sw/felix/QAT/QAT2.0/build
+        export LD_LIBRARY_PATH=\$LD_LIBRARY_PATH:/nfs/sw/felix/QAT/QAT2.0/qatzip2/qatzip/src
 
 
         setup ftd2xx $ftd2xx_version
@@ -433,8 +435,8 @@ EOF
         export LD_LIBRARY_PATH=\$LD_LIBRARY_PATH:/nfs/sw/felix/fabric/build/lib
         #source /nfs/sw/felix/HACK-FELIX-BR-BUILD.sh
         export ICP_ROOT=/nfs/sw/felix/QAT/QAT2.0
-        export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/nfs/sw/felix/QAT/QAT2.0/build
-        export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/nfs/sw/felix/QAT/QAT2.0/qatzip2/qatzip/src
+        export LD_LIBRARY_PATH=\$LD_LIBRARY_PATH:/nfs/sw/felix/QAT/QAT2.0/build
+        export LD_LIBRARY_PATH=\$LD_LIBRARY_PATH:/nfs/sw/felix/QAT/QAT2.0/qatzip2/qatzip/src
 
         setup ftd2xx $ftd2xx_version
         setup dunepdsprce $dunepdsprce_version -q e15:gen:prof
@@ -447,8 +449,8 @@ export PYTHONUSERBASE=/nfs/sw/work_dirs/dune-artdaq-InhibitMaster/user_python
         export DIM_LIB=/nfs/sw/dim/dim_v20r20/linux
         export LD_LIBRARY_PATH=\$DIM_LIB:\$LD_LIBRARY_PATH
 
-       setup -j artdaq_dim_plugin v0_02_06 -q e15:prof:s64
-        setup artdaq_mpich_plugin v1_00_02 -q e15:eth:prof:s64
+       setup -j artdaq_dim_plugin $artdaq_dim_plugin_version -q e15:prof:s64
+        setup artdaq_mpich_plugin $artdaq_mpich_plugin_version -q e15:eth:prof:s64
         
        setup TRACE v3_13_07
         export TRACE_FILE=/tmp/trace_$trace_file_label
@@ -548,6 +550,8 @@ installStatus=$?
 cd $Base
 find build_slf7.x86_64/ -type d | xargs -i chmod g+rwx {}              
 find build_slf7.x86_64/ -type f | xargs -i chmod g+rw {}               
+
+ln -s setupDUNEARTDAQ_forRunning setupDUNEARTDAQ
 
 if [ $installStatus -eq 0 ]; then
      echo "dune-artdaq has been installed correctly."
