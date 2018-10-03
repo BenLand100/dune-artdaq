@@ -79,7 +79,7 @@ FelixHardwareInterface::FelixHardwareInterface(fhicl::ParameterSet const& ps) :
   fragment_meta_.compressed = 0;
 
   // Reordering
-  if (false) { // from config
+  if (reordering_) { // from config
     nioh_.doReorder(true, false);
     nioh_.doCompress(true);
     fragment_meta_.reordered = 1;
@@ -88,8 +88,12 @@ FelixHardwareInterface::FelixHardwareInterface(fhicl::ParameterSet const& ps) :
     nioh_.doCompress(false);
     fragment_meta_.reordered = 0;
   }
+
+  // For final setup and compression engine
+  nioh_.recalculateFragmentSizes();
+
   // QAT compression
-  if (false) {
+  if (compression_) {
     int ret = nioh_.initQAT();
     DAQLogger::LogInfo("dune::FelixHardwareInterface::FelixHardwareInterface")
       << "Init QAT: " << ret;
@@ -99,9 +103,6 @@ FelixHardwareInterface::FelixHardwareInterface(fhicl::ParameterSet const& ps) :
       fragment_meta_.compressed = 0;
     }
   }
-
-  // Finalize setup
-  nioh_.recalculateFragmentSizes();
 
   // metadata settings
   uint32_t framesPerMsg = message_size_/nioh_.getFrameSize(); // will be 12 for a looong time.

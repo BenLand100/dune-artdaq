@@ -40,6 +40,9 @@
 
 #include "timingBoard/InhibitGet.h" // The interface to the ZeroMQ trigger inhibit master
 
+#pragma GCC diagnostic ignored "-Wpedantic"
+#pragma GCC diagnostic ignored "-Woverloaded-virtual"
+#pragma GCC diagnostic push
 #include "pdt/PartitionNode.hpp" // The interface to a timing system
                                  // partition, from the
                                  // protodune_timing UPS product
@@ -76,12 +79,12 @@ dune::TimingReceiver::TimingReceiver(fhicl::ParameterSet const & ps):
   ,debugprint_(ps.get<uint32_t>("debug_print",0))
   ,trigger_mask_(ps.get<uint32_t>("trigger_mask",0xff))
   ,end_run_wait_(ps.get<uint32_t>("end_run_wait",1000))
+  ,enable_spill_commands_(ps.get<bool>("enable_spill_commands", false))
   ,enable_spill_gate_(ps.get<bool>("enable_spill_gate", false))
   ,zmq_conn_(ps.get<std::string>("zmq_connection","tcp://pddaq-gen05-daq0:5566"))
   ,zmq_conn_out_(ps.get<std::string>("zmq_connection_out","tcp://*:5599"))
   ,zmq_fragment_conn_out_(ps.get<std::string>("zmq_fragment_connection_out","tcp://*:7123"))
   ,valid_firmware_versions_fcl_(ps.get<std::vector<int>>("valid_firmware_versions", std::vector<int>()))
-  ,enable_spill_commands_(ps.get<bool>("enable_spill_commands", false))
   ,want_inhibit_(false)
   ,last_spillstart_tstampl_(0xffffffff) // Timestamp of most recent start-of-spill
   ,last_spillstart_tstamph_(0xffffffff) // ...
@@ -123,7 +126,7 @@ dune::TimingReceiver::TimingReceiver(fhicl::ParameterSet const & ps):
 
     // Match Fw version with configuration
     DAQLogger::LogInfo(instance_name_) << "Timing Master firmware version " << std::showbase << std::hex << (uint32_t)lVersion;
-    std::set<uint32_t> allowed_fw_versions{0x500001};
+    std::set<uint32_t> allowed_fw_versions{0x050001};
     for(auto const& ver : valid_firmware_versions_fcl_) allowed_fw_versions.insert(ver);
 
     if ( allowed_fw_versions.find(lVersion)==allowed_fw_versions.end() ) {
@@ -312,6 +315,37 @@ bool dune::TimingReceiver::checkHWStatus_()
 
     want_inhibit_ = new_want_inhibit;
 
+    // Check that the timing-trigger endpoint ("ext-trig" in the
+    // butler), which is listening to the trigger board, is is a ready
+    // state. It gets upset by errors on the return path and/or by the
+    // CTB firmware being reloaded. If it's not ready, and this
+    // partition is using external triggers (as specified by the
+    // trigger mask), then that's a fatal error, so we return false to
+    // tell artdaq to stop the run
+    //
+    // Extra complication: only the TLU has the necessary registers (the fanouts do not), so test that first
+    if(!hw_.getNodes("master_top.trig").empty()){
+        ValWord<uint32_t> trig_endpoint_ready = hw_.getNode("master_top.trig.csr.stat.ep_rdy").read();
+        hw_.dispatch();
+        if(trig_endpoint_ready==0){
+            // Is this partition interested in external triggers? The lowest four triggers are internal; higher are external
+            bool want_external=trigger_mask_ & 0xfffffff0;
+            if(want_external){
+                // The full status of the endpoint
+                ValWord<uint32_t> trig_endpoint_status = hw_.getNode("master_top.trig.csr.stat.ep_stat").read();
+                hw_.dispatch();
+                DAQLogger::LogError(instance_name_)
+                    << "timing-trigger endpoint is not ready: status is "
+                    << std::showbase << std::hex << trig_endpoint_status.value()
+                    << " when trigger mask is "
+                    << std::showbase << std::hex << trigger_mask_
+                    << ". This is a fatal error";
+                return false;
+            }
+        }
+    }
+    
+
     return true;
 }
 
@@ -414,8 +448,13 @@ bool dune::TimingReceiver::getNext_(artdaq::FragmentPtrs &frags)
         // start/end, run start), mostly to get the timestamp
         // calculation done in the fragment, but partly to make the
         // code easier to follow(?)
-        std::unique_ptr<artdaq::Fragment> f = artdaq::Fragment::FragmentBytes( TimingFragment::size()*sizeof(uint32_t));
-
+        std::unique_ptr<artdaq::Fragment> f = artdaq::Fragment::FragmentBytes( TimingFragment::size()*sizeof(uint32_t),
+                                                                               artdaq::Fragment::InvalidSequenceID,
+                                                                               artdaq::Fragment::InvalidFragmentID,
+                                                                               artdaq::Fragment::InvalidFragmentType,
+                                                                               dune::TimingFragment::Metadata(TimingFragment::VERSION));
+        // It's unclear to me whether the constructor above actually sets the metadata, so let's do it here too to be sure
+        f->updateMetadata(TimingFragment::Metadata(TimingFragment::VERSION));
         // Read the data from the hardware
 	std::vector<uint32_t> uwords = master_partition().readEvents(1);
 
@@ -478,7 +517,8 @@ bool dune::TimingReceiver::getNext_(artdaq::FragmentPtrs &frags)
         if(shouldSendFragment){
           // Send the fragment out on ZeroMQ for FELIX and whoever else wants to listen for it
           int pubSuccess = fragment_publisher_->PublishFragment(f.get(), &fo);
-          //DAQLogger::LogInfo(instance_name_) << "Publishing fragment successfull?  " << pubSuccess;
+          if(!pubSuccess)
+              DAQLogger::LogInfo(instance_name_) << "Publishing fragment to ZeroMQ failed";
           
           frags.emplace_back(std::move(f));
           // We only increment the event counter for events we send out
@@ -689,7 +729,7 @@ void dune::TimingReceiver::send_met_variables() {
   rej_msg << "Rej. counts: ";
       
   // send the trigger counts
-  for(int i=0; i<16; ++i){
+  for(size_t i=0; i<16; ++i){
       if (met_accepted_trig_count_.size() > i){
           std::stringstream ss1;
           ss1 << "TimingSys Accepted " << commandNames.at(i);
