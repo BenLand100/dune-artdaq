@@ -49,7 +49,7 @@ CRT::FragGen::FragGen(fhicl::ParameterSet const& ps) :
   // Yes, a call to system() is awful.  We could improve this.
   if(startbackend &&
      system(("source /nfs/sw/crt/readout_linux/script/setup.sh; "
-              "startallboards_shortbaseline.pl " + sqltable).c_str())){
+              "startallboards.pl " + sqltable).c_str())){
     throw cet::exception("CRT") << "Failed to start up CRT backend\n";
   }
 
@@ -65,7 +65,7 @@ CRT::FragGen::~FragGen()
 {
   // Stop the backend DAQ.
   if(system(("source /nfs/sw/crt/readout_linux/script/setup.sh; "
-              "stopallboards.pl " + sqltable).c_str())){
+              "nohup stopallboards.pl " + sqltable + "&").c_str())){
     TLOG(TLVL_WARNING, "CRT") << "Failed in call to stopallboards.pl\n";
   }
 
