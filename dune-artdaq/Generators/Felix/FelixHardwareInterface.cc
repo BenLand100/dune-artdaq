@@ -75,6 +75,8 @@ FelixHardwareInterface::FelixHardwareInterface(fhicl::ParameterSet const& ps) :
   nioh_.setTimeWindow(window_);
   nioh_.setWindowOffset(window_offset_);
 
+  fragment_meta_.control_word = 0xabc;
+  fragment_meta_.version = 1;
   fragment_meta_.reordered = 0;
   fragment_meta_.compressed = 0;
 
