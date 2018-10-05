@@ -177,10 +177,12 @@ demo_version=`grep "parent dune_artdaq" $Base/download/product_deps|awk '{print 
 
 artdaq_version=`grep -E "^artdaq\s+" $Base/download/product_deps | awk '{print $2}'`
 
-if [[ "$artdaq_version" != "v3_00_03a" ]]; then
-    artdaq_manifest_version=$artdaq_version
-else
+if [[ "$artdaq_version" == "v3_00_03a" ]]; then
     artdaq_manifest_version=v3_00_03
+elif [[ "$artdaq_version" == "v3_03_00_beta" ]]; then
+    artdaq_manifest_version=v3_03_00
+else
+    artdaq_manifest_version=$artdaq_version
 fi
 
 
@@ -260,7 +262,7 @@ else
     dune_artdaq_repo="ssh://p-dune-artdaq@cdcvs.fnal.gov/cvs/projects/dune-artdaq"
 fi
 
-artdaq_mpich_plugin_version=v1_00_03
+
 
 
 mrb gitCheckout -t v3_04_02 -d artdaq_core http://cdcvs.fnal.gov/projects/artdaq-core
@@ -284,7 +286,7 @@ if [[ "$?" != "0" ]]; then
     exit 1
 fi
 
-mrb gitCheckout -t $artdaq_mpich_plugin_version -d artdaq_mpich_plugin http://cdcvs.fnal.gov/projects/artdaq-utilities-mpich-plugin
+mrb gitCheckout -b for_dune-artdaq -d artdaq_mpich_plugin http://cdcvs.fnal.gov/projects/artdaq-utilities-mpich-plugin
 
 if [[ "$?" != "0" ]]; then
     echo "Unable to perform checkout of http://cdcvs.fnal.gov/projects/artdaq-utilities-mpich_plugin"
@@ -324,6 +326,8 @@ dunepdsprce_version=v0_0_4
 jsoncpp_version=v1_8_0
 dune_artdaq_InhibitMaster_version=v0_01_01
 artdaq_dim_plugin_version=v0_02_07
+artdaq_mpich_plugin_version=v1_00_03a
+TRACE_version=v3_13_07
 
 cd $Base
     cat >setupDUNEARTDAQ_forBuilding <<-EOF
@@ -422,7 +426,7 @@ export PYTHONUSERBASE=/nfs/sw/work_dirs/dune-artdaq-InhibitMaster/user_python
        setup -j artdaq_dim_plugin $artdaq_dim_plugin_version -q e15:prof:s64
         setup artdaq_mpich_plugin $artdaq_mpich_plugin_version -q e15:eth:prof:s64
         
-       setup TRACE v3_13_07
+       setup TRACE $TRACE_version
         export TRACE_FILE=/tmp/trace_$trace_file_label
         export TRACE_LIMIT_MS="500,1000,2000"
 
@@ -431,7 +435,8 @@ setup jsoncpp $jsoncpp_version -q e15
      # Uncomment the "tonM" line for a given TRACE below which you
         # want to activate. If you don't see the TRACE you want, then
         # add a toffM / tonM combination for it like you see in the
-        # other examples below. 
+        # other examples below. For more info, take a look at
+        # https://twiki.cern.ch/twiki/bin/view/CENF/TRACE
 
         #toffM 12 -n RequestSender
         #tonM 12 -n RequestSender
@@ -476,6 +481,50 @@ fi
 if [[ "\${HOSTNAME}" == "np04-srv-004" ]] ; then
     ulimit -c unlimited
 fi
+
+EOF
+
+cat >setupDUNEARTDAQ_forInhibitMaster<<-EOF
+
+        echo # This script is intended to be sourced.
+
+        sh -c "[ `ps $$ | grep bash | wc -l` -gt 0 ] || { echo 'Please switch to the bash shell before running dune-artdaq.'; exit; }" || exit
+
+        source /nfs/sw/artdaq/products/setup
+        setup dune_artdaq_InhibitMaster $dune_artdaq_InhibitMaster_version -q e15:prof
+        export PYTHONUSERBASE=/nfs/sw/work_dirs/dune-artdaq-InhibitMaster/user_python
+
+        setup TRACE $TRACE_version
+        export TRACE_FILE=/tmp/trace_$trace_file_label
+        export TRACE_LIMIT_MS="500,1000,2000"
+
+
+EOF
+
+cat >setupDUNEARTDAQ_forTRACE<<-EOF
+
+echo # This script is intended to be sourced.
+
+        sh -c "[ `ps $$ | grep bash | wc -l` -gt 0 ] || { echo 'Please switch to the bash shell before running dune-artdaq.'; exit; }" || exit
+
+        source /nfs/sw/artdaq/products/setup
+        source $Base/localProducts_dune_artdaq_${demo_version}_${equalifier}_${build_type}/setupWithoutMRB
+
+        setup TRACE $TRACE_version
+        export TRACE_FILE=/tmp/trace_$trace_file_label
+        export TRACE_LIMIT_MS="500,1000,2000"
+
+        # Uncomment the "tonM" line for a given TRACE below which you
+        # want to activate. If you don't see the TRACE you want, then
+        # add a toffM / tonM combination for it like you see in the
+        # other examples below. For more info, take a look at
+        # https://twiki.cern.ch/twiki/bin/view/CENF/TRACE
+
+        #toffM 12 -n RequestSender
+        #tonM 12 -n RequestSender
+ 
+        #toffM 10 -n CommandableFragmentGenerator
+        #tonM 10 -n CommandableFragmentGenerator
 
 EOF
 
