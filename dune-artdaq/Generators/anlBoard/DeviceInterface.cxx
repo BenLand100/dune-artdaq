@@ -69,6 +69,12 @@ void SSPDAQ::DeviceInterface::Initialize(){
 						 <<", endpoint address "<<std::hex<<fTimingAddress
 						 <<std::dec<<")"<<std::endl;
 
+  fDevice->DeviceRead(duneReg.pdts_status, &pdts_status);
+  if((pdts_status&0xF)>=0x6 && (pdts_status&0xF)<=0x8){
+    fDevice->DeviceWrite(duneReg.pdts_control, 0x00000000 + fPartitionNumber + fTimingAddress*0x10000);
+    fDevice->DeviceWrite(duneReg.dsp_clock_control,0x31);
+  }
+  else{
   while(nTries<5){
     fDevice->DeviceWrite(duneReg.dsp_clock_control,0x30);
     fDevice->DeviceWrite(duneReg.pdts_control, 0x80000000 + fPartitionNumber + fTimingAddress*0x10000);
@@ -80,6 +86,7 @@ void SSPDAQ::DeviceInterface::Initialize(){
     if((pdts_status&0xF)>=0x6 && (pdts_status&0xF)<=0x8 ) break;
     dune::DAQLogger::LogInfo("SSP_DeviceInterface")<<"Timing endpoint sync failed (try "<<nTries<<")"<<std::endl;
     ++nTries;
+  }
   }
   if((pdts_status&0xF)>=0x6 && (pdts_status&0xF)<=0x8 ){
     dune::DAQLogger::LogInfo("SSP_DeviceInterface")<<"Timing endpoint synced!"<<std::endl;
