@@ -346,7 +346,7 @@ trace_file_label=$( basename $Base )
 
 protodune_timing_version=v4_1_3
 rogue_version=v2_10_0_3_gfaeedd0
-protodune_wibsoft_version=v341
+protodune_wibsoft_version=v349_hack
 netio_version=v0_8_0
 ftd2xx_version=v1_2_7a
 dunepdsprce_version=v0_0_4
