@@ -79,8 +79,9 @@ dune::TriggerBoardReader::TriggerBoardReader(fhicl::ParameterSet const & ps)
 
   // if necessary, set the calibration stream
   if ( ps.has_key( "calibration_stream_output") ) {
-    _receiver -> SetCalibrationStream( ps.get<std::string>( "calibration_stream_output"),
-				       std::chrono::minutes( ps.get<unsigned int>( "calibration_update", 5 )  ) ) ;
+    _has_calibration_stream = true ; 
+    _calibration_dir = ps.get<std::string>( "calibration_stream_output") ;
+    _calibration_update = std::chrono::minutes( ps.get<unsigned int>( "calibration_update", 5 )  ) ; 
   }
 
   // complete the json configuration
@@ -112,6 +113,7 @@ dune::TriggerBoardReader::TriggerBoardReader(fhicl::ParameterSet const & ps)
  // metric parameters configuration
  _metric_TS_max = ps.get<unsigned int>( "metric_TS_interval", (unsigned int) (1. * TriggerBoardReader::CTB_Clock() / _rollover )  ) ; // number of TS words in which integrate the frequencies of the words. Default value the number of TS word in a second
 
+ _cherenkov_coincidence = ps.get<unsigned int>( "cherenkov_coincidence", 25  ) ;
 
 }
 
@@ -199,6 +201,12 @@ artdaq::Fragment* dune::TriggerBoardReader::CreateFragment() {
     ++word_counter ;
     ++_metric_Word_counter ;
 
+    if ( _close_to_good_part ) {
+      if ( temp_word.timestamp != 0 ) {
+	update_cherenkov_counter( temp_word.timestamp ) ;
+      }
+    }
+
 
     if ( CTB_Receiver::IsTSWord( temp_word ) ) {
 
@@ -215,9 +223,9 @@ artdaq::Fragment* dune::TriggerBoardReader::CreateFragment() {
 	}
       }
 
-      // increment _metric TS counter
+      // increment _metric TS counters
       ++ _metric_TS_counter ;
-
+      
       if ( _metric_TS_counter == _metric_TS_max ) {
 
 	if( artdaq::Globals::metricMan_ ) {
@@ -251,7 +259,7 @@ artdaq::Fragment* dune::TriggerBoardReader::CreateFragment() {
 	  }
 
 
-	}
+	}  // if there is a metric manager
 
 	// reset counters
 	_metric_TS_counter =
@@ -268,8 +276,6 @@ artdaq::Fragment* dune::TriggerBoardReader::CreateFragment() {
 
       }  // if it is necessary to publish the metric
 
-      // if necessary publish the metric and reset counters
-
       if ( _group_size > 0 ) {
 	if ( group_counter >= _group_size ) {
 	  TLOG( 20, "TriggerBoardReader") << "Final group_counter " << group_counter << std::endl ;
@@ -285,8 +291,64 @@ artdaq::Fragment* dune::TriggerBoardReader::CreateFragment() {
 
       const ptb::content::word::trigger_t * t = reinterpret_cast<const ptb::content::word::trigger_t *>( & temp_word  ) ;
 
-      if ( t -> IsTrigger(1) )
+      if ( t -> IsTrigger(1) ) {
 	++ _metric_good_particle_counter ;
+	_close_to_good_part = true ; 
+
+	if ( t -> timestamp > _latest_part_TS + 50 ) 
+	  _latest_part_TS = t -> timestamp ;
+      }  // this was a LLT_1
+
+
+      // always fill the cherenkov counter because 
+      // we have to evaluate a coincidence 
+      // and we cannot know if a good particle is about to come
+      if ( t -> IsTrigger(2) ) {
+	_hp_TSs.insert( t -> timestamp ) ; 
+      }  // if it is a high pressure cherenkov LLT
+
+      if ( t -> IsTrigger(3) ) {
+	_lp_TSs.insert( t -> timestamp ) ; 
+      }  // if it is a low pressure cherenkov LLT
+
+      if ( ! _is_beam_spill ) {
+
+	if ( t -> IsTrigger(6) )  {
+
+	  // this corresponds to the beginning of the beam spill
+	  _is_beam_spill = true ; 
+	
+	  // so reset spill counters 
+	  _metric_spill_h0l0_counter = 
+	    _metric_spill_h0l1_counter = 
+	    _metric_spill_h1l0_counter = 
+	    _metric_spill_h1l1_counter = 0 ;
+	  
+	}  // is trigger 6 
+      }  // we were not in beam spill
+      
+      if ( _is_beam_spill ) {
+
+	if ( ! t -> IsTrigger(6) ) {
+	  // the beam spill is over
+	  _is_beam_spill = false ; 
+	  
+	  // publish the dedicated metrics
+	  if ( artdaq::Globals::metricMan_ ) {
+	    
+	    artdaq::Globals::metricMan_->sendMetric("CTB_Spill_H0L0", (double) _metric_spill_h0l0_counter, "Particles", 0, artdaq::MetricMode::LastPoint ) ;
+	    artdaq::Globals::metricMan_->sendMetric("CTB_Spill_H0L1", (double) _metric_spill_h0l1_counter, "Particles", 0, artdaq::MetricMode::LastPoint ) ;
+	    artdaq::Globals::metricMan_->sendMetric("CTB_Spill_H1L0", (double) _metric_spill_h1l0_counter, "Particles", 0, artdaq::MetricMode::LastPoint ) ; 
+	    artdaq::Globals::metricMan_->sendMetric("CTB_Spill_H1L1", (double) _metric_spill_h1l1_counter, "Particles", 0, artdaq::MetricMode::LastPoint ) ; 
+	    
+	  } // if there is a metric manager      
+
+	}  // if it is NOT trigger 6 => the beam spill is over
+
+      } // if we were in a beam spill
+
+      
+ 
     }  // if this was a LLT
 
     else if ( temp_word.word_type == ptb::content::word::t_gt ) {
@@ -367,6 +429,21 @@ void dune::TriggerBoardReader::start() {
 
   _stop_requested = false ;
 
+  _is_beam_spill = false ; 
+
+  _close_to_good_part = false ; 
+
+  _hp_TSs.clear() ;
+  _lp_TSs.clear() ;
+
+  if ( _has_calibration_stream ) {
+    std::stringstream run;
+    run << "run" << run_number();
+    _receiver -> SetCalibrationStream( _calibration_dir ,
+                                       _calibration_update, 
+				       run.str() ) ;
+  }
+
   _frag_future =  std::async( std::launch::async, & TriggerBoardReader::_FragmentGenerator,  this ) ;
 
   _receiver -> start() ;
@@ -404,6 +481,58 @@ void dune::TriggerBoardReader::ResetBuffer() {
   _fragment_buffer.consume_all( [](auto* p){ delete p ; } ) ;
 
 }
+
+
+void dune::TriggerBoardReader::update_cherenkov_buffer( std::set<artdaq::Fragment::timestamp_t> & buffer ) {
+
+  // remove old stuff
+  
+  do {
+    if ( _latest_part_TS - *buffer.begin() > _cherenkov_coincidence ) {
+      buffer.erase( buffer.begin() ) ;
+    }
+    else break ; 
+  } while ( buffer.size() > 0 ) ;
+ 
+
+  do {
+    if ( *buffer.end() - _latest_part_TS > _cherenkov_coincidence ) {
+      buffer.erase( buffer.end() ) ;
+    }
+    else break ; 
+  } while ( buffer.size() > 0 ) ;
+
+
+}
+
+
+void dune::TriggerBoardReader::update_cherenkov_counter( const artdaq::Fragment::timestamp_t & latest ) {
+
+
+  update_cherenkov_buffer( _hp_TSs ) ;
+  update_cherenkov_buffer( _lp_TSs ) ;
+
+  if ( latest - _latest_part_TS > _cherenkov_coincidence ) {
+    _close_to_good_part = false ;
+
+    if ( _hp_TSs.size() > 0 && _lp_TSs.size() > 0 ) {
+      ++ _metric_spill_h1l1_counter ; 
+    }
+    else if ( _hp_TSs.size() == 0 && _lp_TSs.size() == 0 ) {
+      ++ _metric_spill_h0l0_counter ;
+    }
+    else if ( _hp_TSs.size() > 0 && _lp_TSs.size() == 0 ) {
+      ++ _metric_spill_h1l0_counter ;
+    }
+    else if ( _hp_TSs.size() == 0 && _lp_TSs.size() > 0 ) {
+      ++ _metric_spill_h0l1_counter ;
+    }
+
+  }
+
+  
+}
+
 
 // The following macro is defined in artdaq's GeneratorMacros.hh header
 DEFINE_ARTDAQ_COMMANDABLE_GENERATOR(dune::TriggerBoardReader)

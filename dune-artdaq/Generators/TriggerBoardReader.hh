@@ -60,7 +60,8 @@ namespace dune {
 
     // members
     std::unique_ptr<CTB_Controller> _run_controller ; 
-    std::unique_ptr<CTB_Receiver>   _receiver ; 
+    std::unique_ptr<CTB_Receiver>   _receiver ;
+    
 
     //multi thread parameters
     std::chrono::microseconds _timeout ;
@@ -94,6 +95,31 @@ namespace dune {
 
     unsigned int _metric_CS_counter = 0 ;  // channel status
 
+    // spill parameters
+    bool _is_beam_spill = false ;
+    unsigned int _metric_spill_h0l0_counter = 0;
+    unsigned int _metric_spill_h0l1_counter = 0;
+    unsigned int _metric_spill_h1l0_counter = 0;
+    unsigned int _metric_spill_h1l1_counter = 0;
+
+    bool _close_to_good_part = false ;
+    artdaq::Fragment::timestamp_t _latest_part_TS ;
+    std::set<artdaq::Fragment::timestamp_t> _hp_TSs; // high pressure TS
+    std::set<artdaq::Fragment::timestamp_t> _lp_TSs; //  low pressure TS
+    unsigned int _cherenkov_coincidence = 25 ; // half a microsecond
+
+    void update_cherenkov_buffer( std::set<artdaq::Fragment::timestamp_t> & buffer ) ; 
+    // this update the content of the buffer based on the latest_part_TS
+    // it dumps ts too old (or too new) wrt latest_part_TS xs  
+
+    void update_cherenkov_counter( const artdaq::Fragment::timestamp_t & latest ) ; 
+    // this methods should be called only when close_to_gool_part is true
+    // it updates the cherenkov buffer
+    // and if latest is after a certain amount of time from _latest_part_TS it evaluate the coincidence 
+    
+
+
+
     // metric utilities
     const std::array<std::string, 8> _metric_HLT_names  = { "CTB_HLT_0_rate",
 							    "CTB_HLT_1_rate", 
@@ -105,6 +131,11 @@ namespace dune {
 							    "CTB_HLT_7_rate" } ;
 
 
+    // calibration stream parameters
+    bool _has_calibration_stream = false ; 
+    std::string _calibration_dir ; 
+    std::chrono::minutes _calibration_update ; 
+    
   };
 
   inline bool TriggerBoardReader::CanCreateFragments() {
