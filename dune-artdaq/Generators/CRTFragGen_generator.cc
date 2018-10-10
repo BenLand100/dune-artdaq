@@ -97,6 +97,8 @@ bool CRT::FragGen::getNext_(
     TLOG(TLVL_DEBUG, "CRT") << "CRT getNext_ is returning with no data\n";
     return true; // this means "keep taking data"
   }
+  TLOG(TLVL_DEBUG, "CRT") << "Looks like the CRT board reader found something "
+                          << "to read, so not returning from GetNext_() just yet.\n";
 
   assert(sizeof timestamp_ == 8);
 
@@ -127,10 +129,12 @@ bool CRT::FragGen::getNext_(
   // moment we skip over intermediate data when we unpause (we start
   // with the most recent file from the backend, where files are about
   // 5 seconds long).
-  if(lowertime < oldlowertime) uppertime++;
+  if(lowertime +10000000 < oldlowertime) uppertime++;
   oldlowertime = lowertime;
 
   timestamp_ = ((uint64_t)uppertime << 32) + lowertime + runstarttime;
+  TLOG(TLVL_DEBUG, "CRT") << "Constructing a timestamps with uppertime = " << uppertime << ", lowertime = " << lowertime 
+                          << ", and runstarttime = " << runstarttime << "\n";
 
   // And also copy the repaired timestamp into the buffer itself.  Not sure
   // which timestamp code downstream is going to read (timestamp_ or
@@ -198,7 +202,7 @@ void CRT::FragGen::getRunStartTime()
   runstarttime = ((uint64_t)rst_h << 32) + rst_l;
 
   TLOG(TLVL_INFO, "CRT") << "CRT got run start time " << runstarttime << "\n";
-  printf("CRT got run start time 0x%lx\n", runstarttime);
+  //printf("CRT got run start time 0x%lx\n", runstarttime);
 }
 
 void CRT::FragGen::start()
@@ -207,7 +211,8 @@ void CRT::FragGen::start()
 
   getRunStartTime();
 
-  uppertime = 0;
+  //Matt Strait: Empirically we start 1 cycle off, so start at 1 even though 0 seems correct
+  uppertime = 1;
   oldlowertime = 0;
 }
 

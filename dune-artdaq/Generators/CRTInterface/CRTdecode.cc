@@ -1,5 +1,7 @@
 /* Author: Matthew Strait <mstrait@fnal.gov> */
 
+#include "artdaq/DAQdata/Globals.hh" //For TRACE debugging
+
 #include <stdint.h>
 #include <string.h>
 #include <stdio.h>
@@ -159,8 +161,7 @@ unsigned int serialize(char * cooked, const decoded_packet & packet,
        + sizeof packet.hits[0].charge + sizeof packet.hits[0].channel);
 
   if(size_needed > max_cooked){
-    printf("Can't write packet of size %d with max %d\n",
-            size_needed, max_cooked);
+    TLOG(TLVL_DEBUG, "CRTdecode") << "Can't write packet of size " << size_needed << " with max " << max_cooked << "\n";
     return 0;
   }
 
@@ -182,8 +183,7 @@ unsigned int serialize(char * cooked, const decoded_packet & packet,
   }
 
   if(bytes != size_needed)
-    fprintf(stderr, "CRT: size mismatch %d != %d\n", bytes, size_needed);
-
+    TLOG(TLVL_DEBUG, "CRTdecode") << "size mismatch " << bytes << " != " << size_needed << "\n";
   return bytes;
 }
 
@@ -223,7 +223,7 @@ unsigned int make_a_packet(char * cooked, std::deque<uint16_t> & raw,
   // First word of all packets other than unix timestamp packets is 0xffff
   // If there's any junk before 0xffff, discard it.
   while(!raw.empty() && raw[0] != 0xffff){
-    printf("CRT: Discarding word 0x%04x appearing before 0xffff\n", raw[0]);
+    TLOG(TLVL_DEBUG, "CRTdecode") << "Discarding word 0x" << raw[0] << " appearing before 0xffff\n";
     raw.pop_front();
   }
 
@@ -231,7 +231,7 @@ unsigned int make_a_packet(char * cooked, std::deque<uint16_t> & raw,
 
   unsigned int len = raw[ADC_WIDX_MODLEN] & 0xff;
   if(len == 0){
-    printf("CRT: Discarding packet with declared length zero.\n");
+    TLOG(TLVL_DEBUG, "CRT") << "Discarding packet with declared length zero.\n";
     raw.clear();
     return 0;
   }
@@ -240,7 +240,7 @@ unsigned int make_a_packet(char * cooked, std::deque<uint16_t> & raw,
   if(raw.size() < len + 1) return 0;
 
   if(!(raw[ADC_WIDX_MODLEN] >> 15)){
-    printf("CRT: Non-ADC packet found, skipping\n");
+    TLOG(TLVL_DEBUG, "CRT") << "Non-ADC packet found, skipping\n";
 
     // Throw out what we have so far, and then rely upon looking for
     // the leading 0xffff data word to throw out the rest of whatever
@@ -273,8 +273,7 @@ unsigned int make_a_packet(char * cooked, std::deque<uint16_t> & raw,
         if(hit.channel < numChannels && packet.module < maxModules)
           hit.charge -= baselines[packet.module][hit.channel];
         else
-          fprintf(stderr, "Not applying baseline to bad module/channel "
-                  "number %d/%d\n", packet.module, hit.channel);
+          TLOG(TLVL_DEBUG, "CRT") << "Not applying baseline to bad module/channel number " << packet.module << "/" << hit.channel << "\n";
 
         packet.hits.push_back(hit);
       }
@@ -287,7 +286,7 @@ unsigned int make_a_packet(char * cooked, std::deque<uint16_t> & raw,
   for(unsigned int i = 0; i < len + 1; i++) raw.pop_front();
 
   if(!goodparity){
-    printf("CRT: Parity error.  Dropping packet.\n");
+    TLOG(TLVL_DEBUG, "CRT") << "Parity error.  Dropping packet.\n";
     return 0;
   }
 
@@ -358,8 +357,7 @@ unsigned int raw2cook(char * const cooked_data,
       }
     }
     else{
-      printf("CRT: corrupted data: expected counter %d, got %d\n",
-              expcounter, counter);
+      TLOG(TLVL_DEBUG, "CRT") << "corrupted data: expected counter " << expcounter << ", got " << counter << "\n";
       expcounter = 0;
     }
   }
@@ -367,14 +365,12 @@ unsigned int raw2cook(char * const cooked_data,
   // Rotate buffer in the most wasteful way possible, by actually moving
   // the undecoded bytes to the front.
   if(used_raw_bytes){
-    printf("Used %u bytes, and rotating %ld to front for later use.\n",
-           used_raw_bytes,
-           next_raw_byte - rawfromhardware - used_raw_bytes);
+    TLOG(TLVL_DEBUG, "CRT") << "Used " << used_raw_bytes << "bytes, and rotating " << next_raw_byte - rawfromhardware - used_raw_bytes << " to front for later use.\n";
     memmove(rawfromhardware, rawfromhardware + used_raw_bytes,
             next_raw_byte - rawfromhardware - used_raw_bytes);
   }
   else{
-    printf("Used 0 bytes\n");
+    TLOG(TLVL_DEBUG, "CRT") << "Used 0 bytes\n";
   }
 
   next_raw_byte -= used_raw_bytes;

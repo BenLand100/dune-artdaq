@@ -323,6 +323,7 @@ void CRTInterface::FillBuffer(char* cooked_data, size_t* bytes_ret)
     if((*bytes_ret = read_everything_from_file(cooked_data))) return;
   }
 
+  TLOG(TLVL_DEBUG, "CRTInterface") << "Got past CRT_DRAIN_BUFFER and CRT_READ_MORE states.\n";
   // This should only happen when we open the first file.  Otherwise,
   // the first read to a new file is handled below.
   if(state & CRT_WAIT){
