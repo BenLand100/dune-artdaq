@@ -84,6 +84,13 @@ dune::TriggerBoardReader::TriggerBoardReader(fhicl::ParameterSet const & ps)
     _calibration_update = std::chrono::minutes( ps.get<unsigned int>( "calibration_update", 5 )  ) ; 
   }
 
+  if ( ps.has_key( "run_trigger_output") ) {
+    _has_run_trigger_report = true ; 
+    _run_trigger_dir = ps.get<std::string>( "run_trigger_output") ;
+    if ( _run_trigger_dir.back() != '/' ) _run_trigger_dir += '/' ;
+
+  }
+
   // complete the json configuration
   // with the receiver host which is the machines where the board reader is running
   const std::string receiver_address = boost::asio::ip::host_name() ;
@@ -261,6 +268,9 @@ artdaq::Fragment* dune::TriggerBoardReader::CreateFragment() {
 
 	}  // if there is a metric manager
 
+	// transfer HLT counters to run counters
+	_run_HLT_counter += _metric_HLT_counter ; 
+	
 	// reset counters
 	_metric_TS_counter =
 	  _metric_Word_counter =
@@ -271,6 +281,7 @@ artdaq::Fragment* dune::TriggerBoardReader::CreateFragment() {
 	  _metric_CS_counter  = 0 ;
 
 	for ( unsigned short i = 0 ; i < _metric_HLT_names.size() ; ++i ) {
+	  _run_HLT_counters[i] += _metric_HLT_counters[i] ;
 	  _metric_HLT_counters[i] = 0 ;
 	}
 
@@ -292,11 +303,11 @@ artdaq::Fragment* dune::TriggerBoardReader::CreateFragment() {
       const ptb::content::word::trigger_t * t = reinterpret_cast<const ptb::content::word::trigger_t *>( & temp_word  ) ;
 
       if ( t -> IsTrigger(1) ) {
-	++ _metric_good_particle_counter ;
 	_close_to_good_part = true ; 
 
-	if ( t -> timestamp > _latest_part_TS + 50 ) 
+	if ( t -> timestamp > _latest_part_TS + 2*_cherenkov_coincidence )  
 	  _latest_part_TS = t -> timestamp ;
+	++ _metric_good_particle_counter ;
       }  // this was a LLT_1
 
 
@@ -436,6 +447,11 @@ void dune::TriggerBoardReader::start() {
   _hp_TSs.clear() ;
   _lp_TSs.clear() ;
 
+  _run_HLT_counter = 0 ;
+  for ( unsigned int i = 0 ; i < _metric_HLT_names.size() ; ++i ) {
+    _run_HLT_counters[i] = 0 ; 
+  }
+
   if ( _has_calibration_stream ) {
     std::stringstream run;
     run << "run" << run_number();
@@ -473,6 +489,8 @@ void dune::TriggerBoardReader::stop() {
 
   ResetBuffer() ;
 
+  store_run_trigger_counters( run_number() ) ; 
+
 }
 
 
@@ -487,22 +505,13 @@ void dune::TriggerBoardReader::update_cherenkov_buffer( std::set<artdaq::Fragmen
 
   // remove old stuff
   
-  do {
-    if ( _latest_part_TS - *buffer.begin() > _cherenkov_coincidence ) {
+  while ( buffer.size() > 0 ) {
+    if ( _latest_part_TS > _cherenkov_coincidence + *buffer.begin() ) {
       buffer.erase( buffer.begin() ) ;
     }
     else break ; 
-  } while ( buffer.size() > 0 ) ;
+  } 
  
-
-  do {
-    if ( *buffer.end() - _latest_part_TS > _cherenkov_coincidence ) {
-      buffer.erase( buffer.end() ) ;
-    }
-    else break ; 
-  } while ( buffer.size() > 0 ) ;
-
-
 }
 
 
@@ -512,7 +521,7 @@ void dune::TriggerBoardReader::update_cherenkov_counter( const artdaq::Fragment:
   update_cherenkov_buffer( _hp_TSs ) ;
   update_cherenkov_buffer( _lp_TSs ) ;
 
-  if ( latest - _latest_part_TS > _cherenkov_coincidence ) {
+  if ( latest > _cherenkov_coincidence + _latest_part_TS ) {
     _close_to_good_part = false ;
 
     if ( _hp_TSs.size() > 0 && _lp_TSs.size() > 0 ) {
@@ -531,6 +540,25 @@ void dune::TriggerBoardReader::update_cherenkov_counter( const artdaq::Fragment:
   }
 
   
+}
+
+
+bool dune::TriggerBoardReader::store_run_trigger_counters( unsigned int run_number, const std::string & prefix ) const {
+
+  if ( ! _has_run_trigger_report ) {
+    return false ;
+  }
+
+  std::stringstream out_name ;
+  out_name << _run_trigger_dir << prefix << "run_" << run_number << "_triggers.txt";
+  std::ofstream out( out_name.str() ) ;
+
+  out << "Total \t " << _run_HLT_counter << std::endl ;
+  for ( unsigned int i = 0; i < _metric_HLT_names.size() ; ++i ) {
+    out << "HLT " << i << " \t " << _run_HLT_counters[i] << std::endl ;
+  }
+  
+  return true ; 
 }
 
 
