@@ -219,7 +219,7 @@ artdaq::Fragment* dune::TriggerBoardReader::CreateFragment() {
       if ( temp_word.timestamp != 0 ) {
 	
 	if ( temp_word.timestamp > _spill_start + _spill_width ) {
-	  // the beam spill is over
+	  TLOG( 20, "TriggerBoardReader") << "End of a beam spill at: " <<  temp_word.timestamp << " => Started at " << _spill_start << std::endl ;
 	  _is_beam_spill = false ; 
 	  
 	  // publish the dedicated metrics
@@ -232,7 +232,7 @@ artdaq::Fragment* dune::TriggerBoardReader::CreateFragment() {
 	    
 	  } // if there is a metric manager      
 	  
-	}  // if it is NOT trigger 6 => the beam spill is over
+	}  // if the beam is over
 	
       }  // if valid timestamp
       
@@ -292,6 +292,7 @@ artdaq::Fragment* dune::TriggerBoardReader::CreateFragment() {
 	}  // if there is a metric manager
 
 	// transfer HLT counters to run counters
+	_run_gool_part_counter += _metric_good_particle_counter ;
 	_run_HLT_counter += _metric_HLT_counter ; 
 	
 	// reset counters
@@ -349,7 +350,8 @@ artdaq::Fragment* dune::TriggerBoardReader::CreateFragment() {
 
 	if ( t -> IsTrigger(6) )  {
 
-	  // this corresponds to the beginning of the beam spill
+	  TLOG( 20, "TriggerBoardReader") << "Start of a beam spill at: " <<  t -> timestamp << std::endl ;
+
 	  _is_beam_spill = true ; 
 	  _spill_start = t -> timestamp ;
 	
@@ -449,6 +451,7 @@ void dune::TriggerBoardReader::start() {
   _hp_TSs.clear() ;
   _lp_TSs.clear() ;
 
+  _run_gool_part_counter = 0 ;
   _run_HLT_counter = 0 ;
   for ( unsigned int i = 0 ; i < _metric_HLT_names.size() ; ++i ) {
     _run_HLT_counters[i] = 0 ; 
@@ -555,11 +558,13 @@ bool dune::TriggerBoardReader::store_run_trigger_counters( unsigned int run_numb
   out_name << _run_trigger_dir << prefix << "run_" << run_number << "_triggers.txt";
   std::ofstream out( out_name.str() ) ;
 
-  out << "Total \t " << _run_HLT_counter << std::endl ;
+  out << "Good Part\t " << _run_gool_part_counter << std::endl 
+      << "Total HLT\t " << _run_HLT_counter << std::endl ;
   for ( unsigned int i = 0; i < _metric_HLT_names.size() ; ++i ) {
     out << "HLT " << i << " \t " << _run_HLT_counters[i] << std::endl ;
   }
-  
+
+
   return true ; 
 }
 
