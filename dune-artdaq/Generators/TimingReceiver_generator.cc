@@ -55,10 +55,10 @@ using namespace dune;
 
 // SetUHALLog is an attempt at a fiddle.  It is a class that does nothing except that it's
 // constructor calls the uhal singleton to change the logging level to Notice.   The problem
-// is that otherwise, when the constructor for the TimingReceiver is called, it creates the 
+// is that otherwise, when the constructor for the TimingReceiver is called, it creates the
 // connection manager before we have the opportunity to use the singleton, so the connection
 // managers creation happens at full verbosity!   By listing the SetUHALLog logFiddle_ before
-// the connectionManager_ in the class definition for TimingReceiver, we can make it call 
+// the connectionManager_ in the class definition for TimingReceiver, we can make it call
 // in the right order.
 dune::SetUHALLog::SetUHALLog(int) {
   uhal::setLogLevelTo(uhal::Notice());
@@ -72,7 +72,7 @@ dune::TimingReceiver::TimingReceiver(fhicl::ParameterSet const & ps):
   ,throttling_state_(0)
   ,stopping_state_(0)
   ,inhibitget_timer_(ps.get<uint32_t>("inhibit_get_timer",5000000))    // 3 secs TODO: Should make this a ps.get()
-  ,logFiddle_(0)             // This is a fudge, see explanation above  
+  ,logFiddle_(0)             // This is a fudge, see explanation above
   ,connectionsFile_(ps.get<std::string>("connections_file", "/home/artdaq1/giles/a_vm_mbp/dune-artdaq/Generators/timingBoard/connections.xml"))
   ,bcmc_( "file://" + connectionsFile_ )   // a string (non-const)
   ,connectionManager_(bcmc_)
@@ -116,9 +116,14 @@ dune::TimingReceiver::TimingReceiver(fhicl::ParameterSet const & ps):
     // - Board set up (clocks running and checked, etc)  [in hw_init, with initsoftness_=0]
     // - Timestamp set (if we ever do time-of-day stuff) [not done yet]
     // - Triggers from trigger enabled and gaps set      [not done yet]
-    // - Command generators set up                       [done here] 
+    // - Command generators set up                       [done here]
     // - Spills or fake spills enabled                   [wait for firmware upgrade]
 
+
+    if(ps.has_key("run_trigger_output")) {
+      trigger_outfile_dir_ = ps.get<std::string>( "run_trigger_output") ;
+      if ( trigger_outfile_dir_.back() != '/' ) trigger_outfile_dir_ += '/' ;
+    }
 
     // AT: Ensure that the hardware is up and running.
     // Check that the board is reachable
@@ -170,8 +175,8 @@ dune::TimingReceiver::TimingReceiver(fhicl::ParameterSet const & ps):
     // - Set the command mask                            [done here, repeated at start()]
     // - Enable triggers                                 [Not done until inhibit lifted (in get_next_())]
 
-    // Enable/disable the sending of spill start/stop 
-    uint32_t fragment_mask = 0; 
+    // Enable/disable the sending of spill start/stop
+    uint32_t fragment_mask = 0;
     if(enable_spill_commands_){
       fragment_mask |= (1 << (int)dune::TimingCommand::RunStart);
       fragment_mask |= (1 << (int)dune::TimingCommand::SpillStart);
@@ -260,9 +265,49 @@ void dune::TimingReceiver::stop(void)
 {
     DAQLogger::LogInfo(instance_name_) << "stop() called";
 
-    stopping_flag_ = 1;   // We do want this here, if we don't use an 
-                          // atomic<int> for stopping_flag_ (see header 
-                          // file comments) 
+    stopping_flag_ = 1;   // We do want this here, if we don't use an
+                          // atomic<int> for stopping_flag_ (see header
+                          // file comments)
+
+    std::stringstream outfile_name ;
+    outfile_name << trigger_outfile_dir_  << "run_" << run_number() << "_timing_board_triggers.txt";
+    std::ofstream out( outfile_name.str() ) ;
+
+    std::vector<std::string> commandNames={
+      "TimeSync",
+      "Echo",
+      "SpillStart",
+      "SpillStop",
+      "RunStart",
+      "RunStop",
+      "WibCalib",
+      "SSPCalib",
+      "FakeTrig0",
+      "FakeTrig1",
+      "FakeTrig2",
+      "FakeTrig3",
+      "BeamTrig",
+      "NoBeamTrig",
+      "ExtFakeTrig"
+    };
+
+    for(size_t i=0; i<commandNames.size(); ++i){
+      out << commandNames[i] << "\t";
+      if (met_accepted_trig_count_.size() > i){
+        out << met_accepted_trig_count_.at(i) << "\t";
+      }
+      else{
+        out << "0\t";
+      }
+      if (met_rejected_trig_count_.size() > i){
+        out << met_rejected_trig_count_.at(i) << "\t";
+      }
+      else{
+        out << "0\t";
+      }
+      out << std::endl;
+    }
+    
 }
 
 
@@ -346,7 +391,7 @@ bool dune::TimingReceiver::checkHWStatus_()
             }
         }
     }
-    
+
 
     return true;
 }
@@ -356,15 +401,15 @@ bool dune::TimingReceiver::checkHWStatus_()
 #define D(a)
 #define E(a) a
 
-bool dune::TimingReceiver::getNext_(artdaq::FragmentPtrs &frags) 
+bool dune::TimingReceiver::getNext_(artdaq::FragmentPtrs &frags)
 {
   // GetNext can return in three ways:
   //  (1) We have some events [return true with events in the frags vector]
-  //  (2) Normal case when no events happened to arrive [return true with 
+  //  (2) Normal case when no events happened to arrive [return true with
   //      empty frags vector]
-  //  (3) Case at end of run, continue to return true until we are sure there 
+  //  (3) Case at end of run, continue to return true until we are sure there
   //      are no more events, then return false
-  // To avoid the 100% issue, for case (2), i.e. no events are available, this 
+  // To avoid the 100% issue, for case (2), i.e. no events are available, this
   // routine should sleep for a bit
 
   // Notes (2017-03-09)
@@ -374,8 +419,8 @@ bool dune::TimingReceiver::getNext_(artdaq::FragmentPtrs &frags)
   int max_counter = 3; // this should be sensible N;
   int max_timeout = 50;  // millisecs
 
-  // Technique: Use a generic loop (i.e. exit is from break or return statements, 
-  // not from a while (condition).  This allows us to easily reorder the sequence 
+  // Technique: Use a generic loop (i.e. exit is from break or return statements,
+  // not from a while (condition).  This allows us to easily reorder the sequence
   // of actions to get them right
   while (true) {
     int timeout = max_timeout;  // If no event found we wait this time
@@ -395,17 +440,17 @@ bool dune::TimingReceiver::getNext_(artdaq::FragmentPtrs &frags)
       // will instantly go out of sync.
       // The basic ‘master control’ is run start / stop
       // """
-      // 
+      //
       // So we won't disable the partition here
       // master_partition().enable(0, true);
-      
+
     // Order is first (1) disable trig_en, (2) request run stop, (3) wait for run to stop, (4) check no more to read from buffer, (5) disable buff, (6) disable part
 
       hw_.dispatch();
       throttling_state_ = 0;  // Note for now, we remove XOFF immediately at end
                               // of run, discuss with hw people if that is right.
       stopping_state_ = 1;    // HW has been told to stop, may have more data
-      usleep(end_run_wait_);  // Wait the max time spec for hardware to push more events 
+      usleep(end_run_wait_);  // Wait the max time spec for hardware to push more events
                               // after a run has stopped
     }
 
@@ -521,7 +566,7 @@ bool dune::TimingReceiver::getNext_(artdaq::FragmentPtrs &frags)
           int pubSuccess = fragment_publisher_->PublishFragment(f.get(), &fo);
           if(!pubSuccess)
               DAQLogger::LogInfo(instance_name_) << "Publishing fragment to ZeroMQ failed";
-          
+
           frags.emplace_back(std::move(f));
           // We only increment the event counter for events we send out
           ev_counter_inc();
@@ -548,13 +593,13 @@ bool dune::TimingReceiver::getNext_(artdaq::FragmentPtrs &frags)
           break;
         };
 
-        havedata = false;    // Combined with the while above, we could make havedata an integer 
+        havedata = false;    // Combined with the while above, we could make havedata an integer
                              // and read multiple events at once (so use "havedata -= 6;")
-        
+
         this->update_met_variables(fo);
 
         // TODO:  Update when we know what the spill start type is
-        if (fo.get_scmd() == 0) this->reset_met_variables(true);  // true = only per-spill variables 
+        if (fo.get_scmd() == 0) this->reset_met_variables(true);  // true = only per-spill variables
 
       }  // end while
     } else if (stopping_state_ > 0) { // We now know there is no more data at the stop
@@ -573,15 +618,15 @@ bool dune::TimingReceiver::getNext_(artdaq::FragmentPtrs &frags)
       break;
     } else {
        std::this_thread::sleep_for(std::chrono::milliseconds(timeout));
-       //usleep(timeout);   
+       //usleep(timeout);
     }
 
     // Check for throttling change
     // Do not allow a throttling change after the run has been requested to stop
     do {     // do {} while(false); allows pleasing use of break to get out without lots of nesting
-      if (stopping_flag_ != 0) break;      // throttling change not desired after run stop request.      
+      if (stopping_flag_ != 0) break;      // throttling change not desired after run stop request.
       uint32_t tf = InhibitGet_get();      // Can give 0=No change, 1=OK, 2=Not OK)
-      uint32_t bit = 1;                    // If we change, this is the value to set. 1=running 
+      uint32_t bit = 1;                    // If we change, this is the value to set. 1=running
       TLOG(TLVL_TIMING) << "Received value " << tf << " from InhibitGet_get()\n";
       if (tf == 0) break;                  // No change, so no need to do anything
 
@@ -597,26 +642,26 @@ bool dune::TimingReceiver::getNext_(artdaq::FragmentPtrs &frags)
         break;                             // Treat as no change
       }
       std::stringstream change_msg;
-      change_msg << "Throttle state change: Writing " << bit 
+      change_msg << "Throttle state change: Writing " << bit
                                            << " to trig_en.  [Throttling state was " << throttling_state_
                                            << "]\n";
       TLOG(TLVL_TIMING) << change_msg.str();
-      if (debugprint_ > 0) { 
+      if (debugprint_ > 0) {
         DAQLogger::LogInfo(instance_name_) << change_msg.str();
       }
       master_partition().enableTriggers(bit); // Set XOFF or XON as requested
       throttling_state_ = bit ^ 0x1;       // throttling_state is the opposite of bit
     } while (false);                       // Do loop once only (mainly to have lots of 'break's above)
 
-    // Limit the number of tests we do before returning 
+    // Limit the number of tests we do before returning
     if (!(counter<max_counter)) break;
     ++counter;
   }
 
   this->send_met_variables();
 
-  if (stopping_state_ == 2) return false;    // stopping_state = 2 means we know there is no more data 
-  return true;   // Note: This routine can return (with a false) from inside loop (when 
+  if (stopping_state_ == 2) return false;    // stopping_state = 2 means we know there is no more data
+  return true;   // Note: This routine can return (with a false) from inside loop (when
                  // run has stopped and we know there is no more data)
 }
 
@@ -674,7 +719,7 @@ void dune::TimingReceiver::update_met_variables(dune::TimingFragment& fo) {
   met_tstamp_ = fo.get_tstamp();
   int64_t diff = met_tstamp_ - told;
   if (diff >  2000000000) diff =  2000000000;  // Make value fit in int32 for metric
-  if (diff < -2000000000) diff = -2000000000; 
+  if (diff < -2000000000) diff = -2000000000;
   met_sevent_++;
   if (met_rintmin_ > diff) met_rintmin_ = diff;
   if (met_sintmin_ > diff) met_sintmin_ = diff;
@@ -694,7 +739,7 @@ void dune::TimingReceiver::send_met_variables() {
   }
 
 // Metrics:  Parameters to the sendMetric call are:
-//  (1) name, (2) value (string, int, double, float or long uint), (3) units, 
+//  (1) name, (2) value (string, int, double, float or long uint), (3) units,
 //  (4) level, (5) bool accumulate (default true), (6) ... more with good defaults
 
 // All our variables should be int, except the timestamp which is long uint
@@ -729,7 +774,7 @@ void dune::TimingReceiver::send_met_variables() {
   std::stringstream acc_msg, rej_msg;
   acc_msg << "Acc. counts: ";
   rej_msg << "Rej. counts: ";
-      
+
   // send the trigger counts
   for(size_t i=0; i<16; ++i){
       if (met_accepted_trig_count_.size() > i){
@@ -757,4 +802,4 @@ void dune::TimingReceiver::send_met_variables() {
 }
 
 // The following macro is defined in artdaq's GeneratorMacros.hh header
-DEFINE_ARTDAQ_COMMANDABLE_GENERATOR(dune::TimingReceiver) 
+DEFINE_ARTDAQ_COMMANDABLE_GENERATOR(dune::TimingReceiver)
