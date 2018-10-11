@@ -124,6 +124,9 @@ dune::TimingReceiver::TimingReceiver(fhicl::ParameterSet const & ps):
       trigger_outfile_dir_ = ps.get<std::string>( "run_trigger_output") ;
       if ( trigger_outfile_dir_.back() != '/' ) trigger_outfile_dir_ += '/' ;
     }
+    else{
+      trigger_outfile_dir_ = "";
+    }
 
     // AT: Ensure that the hardware is up and running.
     // Check that the board is reachable
@@ -269,43 +272,45 @@ void dune::TimingReceiver::stop(void)
                           // atomic<int> for stopping_flag_ (see header
                           // file comments)
 
-    std::stringstream outfile_name ;
-    outfile_name << trigger_outfile_dir_  << "run_" << run_number() << "_timing_board_triggers.txt";
-    std::ofstream out( outfile_name.str() ) ;
-
-    std::vector<std::string> commandNames={
-      "TimeSync",
-      "Echo",
-      "SpillStart",
-      "SpillStop",
-      "RunStart",
-      "RunStop",
-      "WibCalib",
-      "SSPCalib",
-      "FakeTrig0",
-      "FakeTrig1",
-      "FakeTrig2",
-      "FakeTrig3",
-      "BeamTrig",
-      "NoBeamTrig",
-      "ExtFakeTrig"
-    };
-
-    for(size_t i=0; i<commandNames.size(); ++i){
-      out << commandNames[i] << "\t";
-      if (met_accepted_trig_count_.size() > i){
-        out << met_accepted_trig_count_.at(i) << "\t";
+    if(trigger_outfile_dir_!=""){
+      std::stringstream outfile_name;
+      outfile_name << trigger_outfile_dir_  << "run_" << run_number() << "_timing_board_triggers.txt";
+      std::ofstream out( outfile_name.str() ) ;
+      
+      std::vector<std::string> commandNames={
+        "TimeSync",
+        "Echo",
+        "SpillStart",
+        "SpillStop",
+        "RunStart",
+        "RunStop",
+        "WibCalib",
+        "SSPCalib",
+        "FakeTrig0",
+        "FakeTrig1",
+        "FakeTrig2",
+        "FakeTrig3",
+        "BeamTrig",
+        "NoBeamTrig",
+        "ExtFakeTrig"
+      };
+      
+      for(size_t i=0; i<commandNames.size(); ++i){
+        out << commandNames[i] << "\t";
+        if (met_accepted_trig_count_.size() > i){
+          out << met_accepted_trig_count_.at(i) << "\t";
+        }
+        else{
+          out << "0\t";
+        }
+        if (met_rejected_trig_count_.size() > i){
+          out << met_rejected_trig_count_.at(i) << "\t";
+        }
+        else{
+          out << "0\t";
+        }
+        out << std::endl;
       }
-      else{
-        out << "0\t";
-      }
-      if (met_rejected_trig_count_.size() > i){
-        out << met_rejected_trig_count_.at(i) << "\t";
-      }
-      else{
-        out << "0\t";
-      }
-      out << std::endl;
     }
     
 }
