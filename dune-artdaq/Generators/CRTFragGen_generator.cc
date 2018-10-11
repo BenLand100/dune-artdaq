@@ -129,8 +129,14 @@ bool CRT::FragGen::getNext_(
   // moment we skip over intermediate data when we unpause (we start
   // with the most recent file from the backend, where files are about
   // 5 seconds long).
+  //TODO: What happens if we get sync pulses?
   if(lowertime +10000000 < oldlowertime) uppertime++;
   oldlowertime = lowertime;
+
+  //TODO: It seems like that "Dropping Fragment" message assumes that every timestamp in the buffer is makes sense and 
+  //      compares all of our Fragments to the one with the largest timestamp.  So, I suspect that we are ending up with 
+  //      a handful of outliar Fragments that are getting rid of our other Fragments.   So, I think our objective for 
+  //      now is to just create timestamps that don't jump.  
 
   timestamp_ = ((uint64_t)uppertime << 32) + lowertime + runstarttime;
   TLOG(TLVL_DEBUG, "CRT") << "Constructing a timestamps with uppertime = " << uppertime << ", lowertime = " << lowertime 
@@ -212,7 +218,8 @@ void CRT::FragGen::start()
   getRunStartTime();
 
   //Matt Strait: Empirically we start 1 cycle off, so start at 1 even though 0 seems correct
-  uppertime = 1;
+  //uppertime = 1;
+  uppertime = 0;
   oldlowertime = 0;
 }
 
