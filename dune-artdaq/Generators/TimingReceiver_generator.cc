@@ -47,6 +47,8 @@
                                  // partition, from the
                                  // protodune_timing UPS product
 
+#pragma GCC diagnostic pop
+
 #include "artdaq/Application/BoardReaderCore.hh"
 
 using namespace dune;
@@ -744,6 +746,11 @@ void dune::TimingReceiver::send_met_variables() {
           rej_msg << ((int)met_rejected_trig_count_.at(i)) << ",";
       }
   }
+
+  uint64_t last_spillstart=((uint64_t)last_spillstart_tstamph_ << 32) |  (uint64_t)last_spillstart_tstampl_;
+  artdaq::Globals::metricMan_->sendMetric("TimingSys Last SpillStart", last_spillstart, "ticks", 1, artdaq::MetricMode::LastPoint);
+  uint64_t last_spillend=((uint64_t)last_spillend_tstamph_ << 32) |  (uint64_t)last_spillend_tstampl_;
+  artdaq::Globals::metricMan_->sendMetric("TimingSys Last SpillEnd", last_spillend, "ticks", 1, artdaq::MetricMode::LastPoint);
 
   TLOG(TLVL_TIMING) << acc_msg.str();
   TLOG(TLVL_TIMING) << rej_msg.str();
