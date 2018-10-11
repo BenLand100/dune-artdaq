@@ -88,7 +88,7 @@ std::string find_wr_file(const std::string & indir,
   struct dirent * de = NULL;
   while(errno = 0, (de = readdir(dp)) != NULL){
     char suffix[7];
-    snprintf(suffix, 7, "_%2d.wr", usbnumber);
+    snprintf(suffix, 7, "_%d.wr", usbnumber);
 
     // Does this file name end in "_NN.wr", where NN is the usbnumber?
     //
@@ -152,7 +152,11 @@ bool CRTInterface::try_open_file()
     find_wr_file(indir + "/binary/", usbnumber);
   const char * filename = cplusplusiscrazy.c_str();
 
-  if(strlen(filename) == 0) return false;
+  if(strlen(filename) == 0) 
+  {
+    TLOG(TLVL_DEBUG, "CRTInterface") << "Failed to find input file " << filename << " in directory " << indir << "/binary/ for raw data.\n";
+    return false;
+  }
 
   const std::string fullfilename = indir + "/binary/" + filename;
 
@@ -199,6 +203,7 @@ bool CRTInterface::try_open_file()
 */
 bool CRTInterface::check_events()
 {
+  //TODO: Looks like this check is always failing in every other run.  
   char filechange[sizeof(struct inotify_event) + NAME_MAX + 1];
 
   ssize_t inotify_bread = 0;
@@ -208,7 +213,11 @@ bool CRTInterface::check_events()
      (inotify_bread = read(inotifyfd, &filechange, sizeof(filechange)))){
 
     // If there are no events, we get this error
-    if(errno == EAGAIN) return false;
+    if(errno == EAGAIN) 
+    {
+      TLOG(TLVL_DEBUG, "CRTInterface") << "Returning false from check_events() because of an EAGAIN error from inotify.\n";
+      return false;
+    }
 
     // Anything else maybe should be a fatal error.  If we can't read from
     // inotify once, we probably won't be able to again.
@@ -218,6 +227,7 @@ bool CRTInterface::check_events()
   if(inotify_bread == 0){
     // This means that the file has not changed, so we have no new data
     // (or maybe this never happens because we'd get EAGAIN above).
+    TLOG(TLVL_DEBUG, "CRTInterface") << "Returning false from check_events() because \"The file has no changed\".\n";
     return false;
   }
 
@@ -297,6 +307,8 @@ size_t CRTInterface::read_everything_from_file(char * cooked_data)
 
   if(bytesleft > 0) state |= CRT_DRAIN_BUFFER;
 
+  /*return CRT::raw2cook(cooked_data, COOKEDBUFSIZE,
+                       rawfromhardware, next_raw_byte, baselines);*/
   return CRT::raw2cook(cooked_data, COOKEDBUFSIZE,
                        rawfromhardware, next_raw_byte, baselines);
 }
@@ -323,7 +335,7 @@ void CRTInterface::FillBuffer(char* cooked_data, size_t* bytes_ret)
     if((*bytes_ret = read_everything_from_file(cooked_data))) return;
   }
 
-  TLOG(TLVL_DEBUG, "CRTInterface") << "Got past CRT_DRAIN_BUFFER and CRT_READ_MORE states.\n";
+  //TLOG(TLVL_DEBUG, "CRTInterface") << "Got past CRT_DRAIN_BUFFER and CRT_READ_MORE states.\n";
   // This should only happen when we open the first file.  Otherwise,
   // the first read to a new file is handled below.
   if(state & CRT_WAIT){
@@ -337,9 +349,12 @@ void CRTInterface::FillBuffer(char* cooked_data, size_t* bytes_ret)
     return;
   }
 
+  //TLOG(TLVL_DEBUG, "CRTInterface") << "Got past CRT_WAIT.\n";
+
   // If we're here, it means we have an open file which we've previously
   // read and decoded all available data from.  Check if it has changed.
   if(!check_events()) return;
+  //TLOG(TLVL_DEBUG, "CRTInterface") << "Got past !check_events()\n";
 
   // Ok, it has either been written to or renamed.  Because we first get
   // notified about the last write to a file and then about its renaming
@@ -350,6 +365,7 @@ void CRTInterface::FillBuffer(char* cooked_data, size_t* bytes_ret)
   // Either the file is already open and we can go ahead, or it isn't,
   // and we either find a new file and immediately try to read it, or return.
   if(state != CRT_READ_ACTIVE && !try_open_file()) return;
+  //TLOG(TLVL_DEBUG, "CRTInterface") << "Got past state != CRT_READ_ACTIVE and !try_open_file(), so we have to read_everything_from_file() from here.\n";
 
   *bytes_ret = read_everything_from_file(cooked_data);
 }
