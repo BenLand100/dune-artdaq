@@ -214,27 +214,50 @@ artdaq::Fragment* dune::TriggerBoardReader::CreateFragment() {
       }
     }
 
-
+    if ( _is_beam_spill ) {
+    
+      if ( temp_word.timestamp != 0 ) {
+	
+	if ( temp_word.timestamp > _spill_start + _spill_width ) {
+	  // the beam spill is over
+	  _is_beam_spill = false ; 
+	  
+	  // publish the dedicated metrics
+	  if ( artdaq::Globals::metricMan_ ) {
+	    
+	    artdaq::Globals::metricMan_->sendMetric("CTB_Spill_H0L0", (double) _metric_spill_h0l0_counter, "Particles", 0, artdaq::MetricMode::Accumulate ) ;
+	    artdaq::Globals::metricMan_->sendMetric("CTB_Spill_H0L1", (double) _metric_spill_h0l1_counter, "Particles", 0, artdaq::MetricMode::Accumulate ) ;
+	    artdaq::Globals::metricMan_->sendMetric("CTB_Spill_H1L0", (double) _metric_spill_h1l0_counter, "Particles", 0, artdaq::MetricMode::Accumulate ) ;
+	    artdaq::Globals::metricMan_->sendMetric("CTB_Spill_H1L1", (double) _metric_spill_h1l1_counter, "Particles", 0, artdaq::MetricMode::Accumulate ) ;
+	    
+	  } // if there is a metric manager      
+	  
+	}  // if it is NOT trigger 6 => the beam spill is over
+	
+      }  // if valid timestamp
+      
+    } // if we were in a beam spill
+    
     if ( CTB_Receiver::IsTSWord( temp_word ) ) {
-
+      
       --(_receiver -> N_TS_Words()) ;
       ++group_counter ;
-
+      
       if ( temp_word.timestamp != 0 ) {
 	_last_timestamp = temp_word.timestamp ;
 	_has_last_TS = true ;
-
+	
 	if ( ! has_TS ) {
 	  has_TS = true ;
 	  timestamp = _last_timestamp ;
 	}
       }
-
+      
       // increment _metric TS counters
       ++ _metric_TS_counter ;
       
       if ( _metric_TS_counter == _metric_TS_max ) {
-
+	
 	if( artdaq::Globals::metricMan_ ) {
 	  // evaluate word rates
 	  double word_rate = _metric_Word_counter * TriggerBoardReader::CTB_Clock() / _metric_TS_max / _rollover ;
@@ -328,6 +351,7 @@ artdaq::Fragment* dune::TriggerBoardReader::CreateFragment() {
 
 	  // this corresponds to the beginning of the beam spill
 	  _is_beam_spill = true ; 
+	  _spill_start = t -> timestamp ;
 	
 	  // so reset spill counters 
 	  _metric_spill_h0l0_counter = 
@@ -338,28 +362,6 @@ artdaq::Fragment* dune::TriggerBoardReader::CreateFragment() {
 	}  // is trigger 6 
       }  // we were not in beam spill
       
-      if ( _is_beam_spill ) {
-
-	if ( ! t -> IsTrigger(6) ) {
-	  // the beam spill is over
-	  _is_beam_spill = false ; 
-	  
-	  // publish the dedicated metrics
-	  if ( artdaq::Globals::metricMan_ ) {
-	    
-	    artdaq::Globals::metricMan_->sendMetric("CTB_Spill_H0L0", (double) _metric_spill_h0l0_counter, "Particles", 0, artdaq::MetricMode::LastPoint ) ;
-	    artdaq::Globals::metricMan_->sendMetric("CTB_Spill_H0L1", (double) _metric_spill_h0l1_counter, "Particles", 0, artdaq::MetricMode::LastPoint ) ;
-	    artdaq::Globals::metricMan_->sendMetric("CTB_Spill_H1L0", (double) _metric_spill_h1l0_counter, "Particles", 0, artdaq::MetricMode::LastPoint ) ; 
-	    artdaq::Globals::metricMan_->sendMetric("CTB_Spill_H1L1", (double) _metric_spill_h1l1_counter, "Particles", 0, artdaq::MetricMode::LastPoint ) ; 
-	    
-	  } // if there is a metric manager      
-
-	}  // if it is NOT trigger 6 => the beam spill is over
-
-      } // if we were in a beam spill
-
-      
- 
     }  // if this was a LLT
 
     else if ( temp_word.word_type == ptb::content::word::t_gt ) {

@@ -101,6 +101,8 @@ namespace dune {
     unsigned long _run_HLT_counters[8] = {0};
 
     // spill parameters
+    const uint64_t _spill_width = 240000000 ;  //4.8 s
+    artdaq::Fragment::timestamp_t _spill_start ;
     bool _is_beam_spill = false ;
     unsigned int _metric_spill_h0l0_counter = 0;
     unsigned int _metric_spill_h0l1_counter = 0;
