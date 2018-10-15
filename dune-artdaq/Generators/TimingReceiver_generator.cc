@@ -432,6 +432,7 @@ bool dune::TimingReceiver::getNext_(artdaq::FragmentPtrs &frags)
 
     // Check for stop run
     if (stopping_state_ == 0 && stopping_flag_ != 0) {
+      DAQLogger::LogInfo(instance_name_) << "getNext_ saw stopping_flag with value " << (uint32_t)stopping_flag_;
       // Stop the run, disable buffer and triggers
       master_partition().stop();
       // Disable the partition.
@@ -452,6 +453,7 @@ bool dune::TimingReceiver::getNext_(artdaq::FragmentPtrs &frags)
     // Order is first (1) disable trig_en, (2) request run stop, (3) wait for run to stop, (4) check no more to read from buffer, (5) disable buff, (6) disable part
 
       hw_.dispatch();
+      DAQLogger::LogInfo(instance_name_) << "Partition stopped. Waiting " << end_run_wait_ << "us for straggling events";
       throttling_state_ = 0;  // Note for now, we remove XOFF immediately at end
                               // of run, discuss with hw people if that is right.
       stopping_state_ = 1;    // HW has been told to stop, may have more data
@@ -664,6 +666,12 @@ bool dune::TimingReceiver::getNext_(artdaq::FragmentPtrs &frags)
   }
 
   this->send_met_variables();
+
+  static int nStoppingLoops=0;
+  if(stopping_flag_ != 0){
+    ++nStoppingLoops;
+    DAQLogger::LogInfo(instance_name_) << "Completed " << nStoppingLoops << " getNext_() loops while stopping_flag was high";
+  }
 
   if (stopping_state_ == 2) return false;    // stopping_state = 2 means we know there is no more data
   return true;   // Note: This routine can return (with a false) from inside loop (when
