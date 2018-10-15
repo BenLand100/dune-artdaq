@@ -93,7 +93,7 @@ bool CRT::FragGen::getNext_(
     return false;
   }
 
-  const size_t maxFrags = 2; //Maximum number of Fragments allowed per 
+  const size_t maxFrags = 1024; //Maximum number of Fragments allowed per 
                              //GetNext_() call.  I think we should keep 
                              //this as small as possible while making sure 
                              //this Fragment Generator can keep up.
@@ -122,7 +122,7 @@ bool CRT::FragGen::getNext_(
     //memcpy(frags.back()->dataBeginBytes(), readout_buffer_, bytes_read); //aolivier@ur.rochester.edu moved this before emplace_back() so that it can be encapsulated in buildFragment().
   } //for each Fragment
 
-  if(fragIt)
+  if(fragIt) //If we read at least one Fragment
   {
     if (metricMan /* What is this? */ != nullptr)
       metricMan->sendMetric("Fragments Sent", ev_counter(), "Events", 3 /* ? */,
@@ -132,8 +132,7 @@ bool CRT::FragGen::getNext_(
     ev_counter_inc(); // from base CommandableFragmentGenerator
 
     TLOG(TLVL_INFO, "CRT") << "CRT getNext_ is returning with hits\n";
-  }
-  else TLOG(TLVL_INFO, "CRT") << "CRT getNext_ is returning with no data\n";
+  } else TLOG(TLVL_INFO, "CRT") << "CRT getNext_ is returning with no data\n";
 
   return true;
 }
@@ -169,7 +168,20 @@ std::unique_ptr<artdaq::Fragment> CRT::FragGen::buildFragment(const size_t& byte
   // moment we skip over intermediate data when we unpause (we start
   // with the most recent file from the backend, where files are about
   // 5 seconds long).
-  if((uint64_t)(lowertime +100000000) < oldlowertime) 
+  const uint64_t rolloverThreshold = 100000000; 
+  // In practice, we don't seem to be getting strictly time-ordered data.  So, 
+  // we sometimes got lower timestamps from the backend that were just 1 or 2 
+  // ticks different and were causing rollovers below.  I've introduced 
+  // rolloverThreshold to combat out-of-order data causing rollovers in the 
+  // timestamp.  Now, the difference between timestamps has to be > 
+  // rolloverThreshold for a rollover to be detected.  
+  //
+  // aolivier@ur.rochester.edu tuned rolloverThreshold by increasing it by 
+  // orders of magnitude until I saw the number of rollovers so far match
+  // the total run time.  Lots of things have changed since the last tuning, 
+  // so we can probably back off on rolloverThreshold.  Whatever we do, 
+  // it should never be > std::numeric_limits<uint32_t>::max().  
+  if((uint64_t)(lowertime +rolloverThreshold) < oldlowertime) 
   {
     TLOG(TLVL_DEBUG, "CRT") << "lowertime " << lowertime << " and oldlowertime " << oldlowertime << " caused a rollover.  uppertime is now " << uppertime << ".\n";
     uppertime++;
@@ -177,8 +189,8 @@ std::unique_ptr<artdaq::Fragment> CRT::FragGen::buildFragment(const size_t& byte
   oldlowertime = lowertime;
 
   timestamp_ = ((uint64_t)uppertime << 32) + lowertime + runstarttime;
-  TLOG(TLVL_DEBUG, "CRT") << "Constructing a timestamp with uppertime = " << uppertime << ", lowertime = " << lowertime 
-                                     << ", and runstarttime = " << runstarttime << "\n";
+  TLOG(TLVL_INFO, "CRT") << "Constructing a timestamp with uppertime = " << uppertime << ", lowertime = " << lowertime 
+                         << ", and runstarttime = " << runstarttime << ".\n  Timestamp is " << timestamp_ << "\n";
 
   // And also copy the repaired timestamp into the buffer itself.  Not sure
   // which timestamp code downstream is going to read (timestamp_ or
@@ -200,6 +212,7 @@ std::unique_ptr<artdaq::Fragment> CRT::FragGen::buildFragment(const size_t& byte
   fragptr->setTimestamp( timestamp_ );
   memcpy(fragptr->dataBeginBytes(), readout_buffer_, bytes_read);
 
+  TLOG(TLVL_INFO, "CRT") << "Returning with a new Fragment that has timestamp " << fragptr->timestamp() << " ticks.\n";
   return fragptr; //TODO: Make sure this becomes an rvalue reference so that no memory is copied.  
                   //      Iirc, unique_ptr<> won't let it be otherwise anyway...
 }
