@@ -320,7 +320,18 @@ void dune::TimingReceiver::stopNoMutex(void)
 {
     DAQLogger::LogInfo(instance_name_) << "stopNoMutex called";
 
-    stopping_flag_ = 1;    // Tells the getNext_() while loop to stop the run
+    // (PAR 2018-10-15) Change this to *not* set stopping_flag_: that
+    // variable is a bare int (not std::atomic) and stopnoMutex() is
+    // called from a different thread from getNext_(). So this means
+    // that stopping_flag_ can change in the middle of a getNext_()
+    // call, which would break the logic of getNext_() and may be
+    // causing the "getNext: std::exception caught: Failed to stop
+    // after 5000 milliseconds" errors.
+    //
+    // This flag is instead set in stop(), which is guaranteed to not
+    // be called while getNext_() is running
+
+    // stopping_flag_ = 1;    // Tells the getNext_() while loop to stop the run
 }
 
 
