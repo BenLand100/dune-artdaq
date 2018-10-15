@@ -258,7 +258,7 @@ unsigned int make_a_packet(char * cooked, std::deque<uint16_t> & raw,
     parity ^= raw[wordi];
 
     if(wordi == ADC_WIDX_CLKHI) {
-      packet.time16ns |= (raw[wordi] << 16);
+      packet.time16ns |= ((uint32_t)raw[wordi] << 16);
     }
     else if(wordi == ADC_WIDX_CLKLO) {
       packet.time16ns |= raw[wordi];
@@ -365,12 +365,12 @@ unsigned int raw2cook(char * const cooked_data,
   // Rotate buffer in the most wasteful way possible, by actually moving
   // the undecoded bytes to the front.
   if(used_raw_bytes){
-    TLOG(TLVL_DEBUG, "CRT") << "Used " << used_raw_bytes << "bytes, and rotating " << next_raw_byte - rawfromhardware - used_raw_bytes << " to front for later use.\n";
+    //TLOG(TLVL_DEBUG, "CRT") << "Used " << used_raw_bytes << "bytes, and rotating " << next_raw_byte - rawfromhardware - used_raw_bytes << " to front for later use.\n";
     memmove(rawfromhardware, rawfromhardware + used_raw_bytes,
             next_raw_byte - rawfromhardware - used_raw_bytes);
   }
   else{
-    TLOG(TLVL_DEBUG, "CRT") << "Used 0 bytes\n";
+    //TLOG(TLVL_DEBUG, "CRT") << "Used 0 bytes\n";
   }
 
   next_raw_byte -= used_raw_bytes;
