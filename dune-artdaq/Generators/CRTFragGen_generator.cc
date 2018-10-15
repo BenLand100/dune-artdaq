@@ -34,10 +34,16 @@ CRT::FragGen::FragGen(fhicl::ParameterSet const& ps) :
   , runstarttime(0)
   , partition_number(ps.get<int>("partition_number"))
   , startbackend(ps.get<bool>("startbackend"))
+  , fUSBString(ps.get<std::string>("usbnumber"))
   , timingXMLfilename(ps.get<std::string>("connections_file",
     "/nfs/sw/control_files/timing/connections_v4b4.xml"))
   , hardwarename(ps.get<std::string>("hardware_select", "CRT_EPT"))
 {
+  TLOG(TLVL_DEBUG, "CRT") << "JCF, Oct-12-2018: this is a test that we can turn on the trace with name \"CRT\", level TLVL_DEBUG (3)\n";
+  TLOG(TLVL_INFO, "CRT") << "JCF, Oct-14-2018: this is a test that we can see the trace with name \"CRT\", level TLVL_INFO (2)\n";
+  TLOG(TLVL_INFO) << "JCF, Oct-14-2018: this is a test that we can see the trace with the default name, level TLVL_INFO (2)\n";
+  TLOG(TLVL_DEBUG) << "JCF, Oct-14-2018: this is a test that we can see the trace with the default name, level TLVL_DEBUG\n";
+
   hardware_interface_->AllocateReadoutBuffer(&readout_buffer_);
 
   // If we are the designated process to do so, start up Camillo's backend DAQ
@@ -65,7 +71,7 @@ CRT::FragGen::~FragGen()
 {
   // Stop the backend DAQ.
   if(system(("source /nfs/sw/crt/readout_linux/script/setup.sh; "
-              "nohup stopallboards.pl " + sqltable + "&").c_str())){
+              "nohup stopallboards.pl " + sqltable + " &").c_str())){
     TLOG(TLVL_WARNING, "CRT") << "Failed in call to stopallboards.pl\n";
   }
 
@@ -87,19 +93,53 @@ bool CRT::FragGen::getNext_(
     return false;
   }
 
-  std::size_t bytes_read = 0;
-  hardware_interface_->FillBuffer(readout_buffer_, &bytes_read);
+  const size_t maxFrags = 2; //Maximum number of Fragments allowed per 
+                             //GetNext_() call.  I think we should keep 
+                             //this as small as possible while making sure 
+                             //this Fragment Generator can keep up.
+  size_t fragIt = 0; //TODO: FHICL parameter for easy tuning?
+  for(; fragIt < maxFrags; ++fragIt)
+  {
+    std::size_t bytes_read = 0;
+    hardware_interface_->FillBuffer(readout_buffer_, &bytes_read);
 
-  if(bytes_read == 0){
-    // Pause for a little bit if we didn't get anything to keep load down.
-    usleep(10000);
+    if(bytes_read == 0){
+      // Pause for a little bit if we didn't get anything to keep load down.
+      usleep(10000);
 
-    TLOG(TLVL_DEBUG, "CRT") << "CRT getNext_ is returning with no data\n";
-    return true; // this means "keep taking data"
+      //TLOG(TLVL_INFO, "CRT") << "CRT getNext_ is returning with no data\n";
+      //return true; // this means "keep taking data"
+      break; //So that we still record metrics if we didn't write maxFrags but wrote at least one.  
+    }
+
+    // I have kept the following NOTE for historical purposes.  This 
+    // loop generalizes what it suggests.  
+    // NOTE: we are always returning zero or one fragments, but we
+    // could return more at the cost of some complexity, maybe getting
+    // an efficiency gain.  Check back here if things are too slow.
+    frags.emplace_back(buildFragment(bytes_read));
+
+    //memcpy(frags.back()->dataBeginBytes(), readout_buffer_, bytes_read); //aolivier@ur.rochester.edu moved this before emplace_back() so that it can be encapsulated in buildFragment().
+  } //for each Fragment
+
+  if(fragIt)
+  {
+    if (metricMan /* What is this? */ != nullptr)
+      metricMan->sendMetric("Fragments Sent", ev_counter(), "Events", 3 /* ? */,
+          artdaq::MetricMode::LastPoint);
+
+    //TODO: Do I need to do this once for each Fragment?
+    ev_counter_inc(); // from base CommandableFragmentGenerator
+
+    TLOG(TLVL_INFO, "CRT") << "CRT getNext_ is returning with hits\n";
   }
-  TLOG(TLVL_DEBUG, "CRT") << "Looks like the CRT board reader found something "
-                          << "to read, so not returning from GetNext_() just yet.\n";
+  else TLOG(TLVL_INFO, "CRT") << "CRT getNext_ is returning with no data\n";
 
+  return true;
+}
+
+std::unique_ptr<artdaq::Fragment> CRT::FragGen::buildFragment(const size_t& bytes_read)
+{
   assert(sizeof timestamp_ == 8);
 
   // A module packet must at least have the magic number (1B), hit count
@@ -129,18 +169,16 @@ bool CRT::FragGen::getNext_(
   // moment we skip over intermediate data when we unpause (we start
   // with the most recent file from the backend, where files are about
   // 5 seconds long).
-  //TODO: What happens if we get sync pulses?
-  if(lowertime +10000000 < oldlowertime) uppertime++;
+  if((uint64_t)(lowertime +100000000) < oldlowertime) 
+  {
+    TLOG(TLVL_DEBUG, "CRT") << "lowertime " << lowertime << " and oldlowertime " << oldlowertime << " caused a rollover.  uppertime is now " << uppertime << ".\n";
+    uppertime++;
+  }
   oldlowertime = lowertime;
 
-  //TODO: It seems like that "Dropping Fragment" message assumes that every timestamp in the buffer is makes sense and 
-  //      compares all of our Fragments to the one with the largest timestamp.  So, I suspect that we are ending up with 
-  //      a handful of outliar Fragments that are getting rid of our other Fragments.   So, I think our objective for 
-  //      now is to just create timestamps that don't jump.  
-
   timestamp_ = ((uint64_t)uppertime << 32) + lowertime + runstarttime;
-  TLOG(TLVL_DEBUG, "CRT") << "Constructing a timestamps with uppertime = " << uppertime << ", lowertime = " << lowertime 
-                          << ", and runstarttime = " << runstarttime << "\n";
+  TLOG(TLVL_DEBUG, "CRT") << "Constructing a timestamp with uppertime = " << uppertime << ", lowertime = " << lowertime 
+                                     << ", and runstarttime = " << runstarttime << "\n";
 
   // And also copy the repaired timestamp into the buffer itself.  Not sure
   // which timestamp code downstream is going to read (timestamp_ or
@@ -160,24 +198,10 @@ bool CRT::FragGen::getNext_(
   fragptr->setFragmentID( fragment_id() ); // Ditto
   fragptr->setUserType( dune::detail::CRT );
   fragptr->setTimestamp( timestamp_ );
+  memcpy(fragptr->dataBeginBytes(), readout_buffer_, bytes_read);
 
-  // NOTE: we are always returning zero or one fragments, but we
-  // could return more at the cost of some complexity, maybe getting
-  // an efficiency gain.  Check back here if things are too slow.
-  frags.emplace_back(std::move(fragptr));
-
-  memcpy(frags.back()->dataBeginBytes(), readout_buffer_, bytes_read);
-
-
-  if (metricMan /* What is this? */ != nullptr)
-    metricMan->sendMetric("Fragments Sent", ev_counter(), "Events", 3 /* ? */,
-        artdaq::MetricMode::LastPoint);
-
-  ev_counter_inc(); // from base CommandableFragmentGenerator
-
-  TLOG(TLVL_DEBUG, "CRT") << "CRT getNext_ is returning with hits\n";
-
-  return true;
+  return fragptr; //TODO: Make sure this becomes an rvalue reference so that no memory is copied.  
+                  //      Iirc, unique_ptr<> won't let it be otherwise anyway...
 }
 
 void CRT::FragGen::getRunStartTime()
