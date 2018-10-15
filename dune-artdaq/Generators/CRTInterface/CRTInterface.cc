@@ -111,8 +111,12 @@ std::string find_wr_file(const std::string & indir,
       struct stat thestat;
 
       if(-1 == stat((indir + de->d_name).c_str(), &thestat)){
-	throw cet::exception("CRTInterface")
-           << "find_wr_file stat: Couldn't get timestamp of " << (indir + de->d_name).c_str() << ": " << strerror(errno);
+        // We noticed this failure mode during testing when a file was renamed 
+        // between being found above and getting its timestamp.  Unless someone 
+        // is messing with the CRT data directory, this probably means that the 
+        // file we found *was* a .wr file, but the backend moved it.  Since it's 
+        // no longer the .wr file, it isn't the most recent file anyway.  
+        continue;
       }
 
       if(thestat.st_mtime > most_recent_time){
@@ -352,6 +356,7 @@ size_t CRTInterface::read_everything_from_file(char * cooked_data)
 
 void CRTInterface::FillBuffer(char* cooked_data, size_t* bytes_ret)
 {
+  TLOG(TLVL_INFO, "CRTInterface") << "Upon entering FillBuffer(), state = " << state << "\n";
   *bytes_ret = 0;
 
   // First see if we can decode another module packet out of the data already
@@ -438,6 +443,8 @@ void CRTInterface::FillBuffer(char* cooked_data, size_t* bytes_ret)
 
   if(state == CRT_READ_ACTIVE) TLOG(TLVL_INFO, "CRTInterface") << "Read data from " << datafile_name << " because found a new file at time(nullptr) = " << time(nullptr) << ".  Buffer had " << bytesBefore << " bytes in it before read.\n";
   *bytes_ret = read_everything_from_file(cooked_data);
+  TLOG(TLVL_INFO, "CRTInterface") << "Returning with " << bytes_ret << " bytes at the very end of FillBuffer()'s scope.\n";
+  return;
 }
 
 void CRTInterface::SetBaselines()
