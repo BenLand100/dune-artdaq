@@ -102,6 +102,11 @@ private:
   bool try_open_file();
   bool check_events();
   size_t read_everything_from_file(char * );
+
+  //TODO: Remove me
+  size_t fNumInotifyModifies; //Number of times we saw a "modified" event from inotify
+  size_t fNumInotifyOthers; //Number of times we saw an event other than "modified" from inotify
+  size_t fNumInotifyEvents; //Total number of inotify events seen
 };
 
 #endif
