@@ -246,7 +246,13 @@ bool CRTInterface::try_open_file()
 */
 bool CRTInterface::check_events()
 {
-  char filechange[4096]; //[sizeof(struct inotify_event) + NAME_MAX + 1];
+  // It is nice to be able to read more than one inotify event at a time so
+  // that we can log the extra ones.  Eight is an arbitrary number; we've seen
+  // as many as two come at once.  The man page's example is to use a buffer of size
+  // 4096, which seems like bad practice!
+  const size_t inotifybufsize = 8*(sizeof(struct inotify_event) + NAME_MAX + 1);
+  char filechange[inotifybufsize]
+    __attribute__ ((aligned(__alignof__(struct inotify_event))));
 
   ssize_t inotify_bread = 0;
 
@@ -274,8 +280,10 @@ bool CRTInterface::check_events()
 
   fNumInotifyEvents += inotify_bread/(sizeof(struct inotify_event));
 
-  //Try to read all of the inotify events to figure out what we're missing.  
-  if(inotify_bread == 4096) TLOG(TLVL_WARNING, "CRTInterface") << "Filled up 4096 byte buffer when reading from inotify!  We might have missed some events.\n";
+  //Try to read all of the inotify events to figure out what we're missing.
+  if(inotify_bread == inotifybufsize)
+    TLOG(TLVL_WARNING, "CRTInterface")
+      << "Filled buf when reading from inotify!  We might have missed some events.\n";
   const struct inotify_event* event;
   for(auto ptr = filechange;
       ptr < filechange + inotify_bread;
