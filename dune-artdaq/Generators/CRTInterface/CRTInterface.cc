@@ -33,10 +33,7 @@ static char * next_raw_byte = rawfromhardware;
 CRTInterface::CRTInterface(fhicl::ParameterSet const& ps) :
   indir(ps.get<std::string>("indir")),
   usbnumber(ps.get<unsigned int>("usbnumber")),
-  state(CRT_WAIT),
-  fNumInotifyModifies(0),
-  fNumInotifyOthers(0),
-  fNumInotifyEvents(0)
+  state(CRT_WAIT)
 {
 }
 
@@ -258,22 +255,13 @@ bool CRTInterface::check_events()
      (inotify_bread = read(inotifyfd, &filechange, sizeof(filechange)))){
 
     // If there are no events, we get this error
-    if(errno == EAGAIN){
-      TLOG(TLVL_DEBUG, "CRTInterface")
-        << "Returning false from check_events() because of an EAGAIN error "
-        "from inotify.  We've seen " << fNumInotifyModifies
-        << " modify events and " << fNumInotifyOthers << " other events.  There"
-        << " have been " << fNumInotifyEvents << " inotify events in total.\n";
-      return false;
-    }
+    if(errno == EAGAIN) return false;
 
     // Anything else maybe should be a fatal error.  If we can't read from
     // inotify once, we probably won't be able to again.
     throw cet::exception("CRTInterface")
       << "CRTInterface::FillBuffer: " << strerror(errno);
   }
-
-  fNumInotifyEvents += inotify_bread/(sizeof(struct inotify_event));
 
   //Try to read all of the inotify events to figure out what we're missing.
   if(inotify_bread == inotifybufsize)
@@ -289,8 +277,6 @@ bool CRTInterface::check_events()
     #pragma GCC diagnostic ignored "-Wstrict-aliasing"
       const uint32_t mask = ((struct inotify_event *)filechange)->mask;
     #pragma GCC diagnostic pop
-    if(mask & IN_MODIFY) fNumInotifyModifies++;
-    else ++fNumInotifyOthers;
   }
 
   if(inotify_bread == 0){
@@ -502,11 +488,11 @@ void CRTInterface::SetBaselines()
         // File isn't there.  This probably means that we are not the process
         // that started up the backend. We'll just wait for the backend to
         // finish starting and the file to appear.
-	TLOG(TLVL_INFO, "CRTInterface") << "Waiting for baseline file to appear\n";
+        TLOG(TLVL_INFO, "CRTInterface") << "Waiting for baseline file to appear\n";
         sleep(1);
       }
       else{
-	throw cet::exception("CRTInterface") << "Can't open baseline file: "
+        throw cet::exception("CRTInterface") << "Can't open baseline file: "
           << strerror(errno) << "\n";
       }
     }
