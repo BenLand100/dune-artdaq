@@ -14,11 +14,6 @@ if ! [[ "$HOSTNAME" =~ ^np04-srv ]]; then
     exit 1
 fi
 
-if [[ "$HOSTNAME" == "np04-srv-001" || "$HOSTNAME" == "np04-srv-009" || "$HOSTNAME" == "np04-srv-010" || "$HOSTNAME" == "np04-srv-024" ]]; then
-    echo "Host $HOSTNAME doesn't physically have enough processors for a speedy build; try another host (e.g., np04-srv-014)"
-    exit 1
-fi
-
 if [[ -e /nfs/sw/artdaq/products/setup ]]; then
     . /nfs/sw/artdaq/products/setup
 else
@@ -325,7 +320,7 @@ ftd2xx_version=v1_2_7a
 dunepdsprce_version=v0_0_4
 jsoncpp_version=v1_8_0
 dune_artdaq_InhibitMaster_version=v0_01_01
-artdaq_dim_plugin_version=v0_02_07
+artdaq_dim_plugin_version=v0_02_08
 artdaq_mpich_plugin_version=v1_00_03a
 TRACE_version=v3_13_07
 
