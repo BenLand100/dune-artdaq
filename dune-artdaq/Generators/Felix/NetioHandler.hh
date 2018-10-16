@@ -68,7 +68,7 @@ public:
   void doCompress(bool doIt) {
     m_doCompress = doIt;
     // QzCompressor qzc(QzCompressor::QzAlgo::Deflate, compression_level, hw_bufsize_kb);
-    m_compressionFacility = std::make_unique<QzCompressor>(QzCompressor::QzAlgo::Deflate, 6, 64);
+    m_compressionFacility = std::make_unique<QzCompressor>(QzCompressor::QzAlgo::Deflate, 4, 64);
   }
   int  initQAT() {
     // If this fails, doCompression will fall back to 0.
