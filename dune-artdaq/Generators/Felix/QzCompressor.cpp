@@ -14,7 +14,8 @@ QzCompressor::QzCompressor(
 	qzsession_.totalIn = 0;
 	qzsession_.totalOut = 0;
 
-	qzparams_.huffmanHdr      = QZ_HUFF_HDR_DEFAULT;
+	//qzparams_.huffmanHdr      = QZ_HUFF_HDR_DEFAULT;
+        qzparams_.huffmanHdr      = QZ_DYNAMIC_HDR;
 	qzparams_.direction       = QZ_DIR_COMPRESS;
 	qzparams_.compLvl         = QZ_COMP_LEVEL_DEFAULT;
 	qzparams_.compAlgorithm   = QZ_COMP_ALGOL_DEFAULT;

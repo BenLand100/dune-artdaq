@@ -173,10 +173,15 @@ int CTB_Receiver::_word_receiver() {
 
 
 bool CTB_Receiver::SetCalibrationStream( const std::string & string_dir,
-					 const std::chrono::minutes & interval ) {
+					 const std::chrono::minutes & interval, 
+					 const std::string & prefix ) {
 
   _calibration_dir = string_dir ;
   if ( _calibration_dir.back() != '/' ) _calibration_dir += '/' ;
+
+  _calibration_prefix = prefix ; 
+  if ( prefix.size() > 0 ) 
+    _calibration_prefix += '_' ; 
 
   _calibration_file_interval = interval ;
 
@@ -227,9 +232,9 @@ void CTB_Receiver::_init_calibration_file() {
 
   struct tm * timeinfo = localtime( & rawtime ) ;
 
-  strftime( file_name, sizeof(file_name), "%F.%T.calib.txt", timeinfo );
+  strftime( file_name, sizeof(file_name), "%F_%H.%M.%S.calib", timeinfo );
 
-  std::string global_name = _calibration_dir + file_name ;
+  std::string global_name = _calibration_dir + _calibration_prefix + file_name ;
 
   _calibration_file.open( global_name, std::ofstream::binary ) ;
 

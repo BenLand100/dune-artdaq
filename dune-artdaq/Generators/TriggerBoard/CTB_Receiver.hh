@@ -42,7 +42,8 @@ public:
   auto & N_TS_Words() { return _n_TS_words ; }  
   
   bool SetCalibrationStream( const std::string & string_dir, 
-			     const std::chrono::minutes & interval ) ; 
+			     const std::chrono::minutes & interval, 
+			     const std::string & prefix = "" ) ; 
 
   bool stop() ; 
   bool start() ;
@@ -81,6 +82,7 @@ private:
   // members related to calibration stream
   bool _has_calibration_stream ; 
   std::string _calibration_dir ; 
+  std::string _calibration_prefix ; 
   std::chrono::minutes _calibration_file_interval ;  
   std::ofstream _calibration_file   ;
   std::chrono::steady_clock::time_point _last_calibration_file_update ;
