@@ -181,6 +181,13 @@ bool CRTInterface::try_open_file()
 
   TLOG(TLVL_INFO, "CRTInterface") << "Found input file: " << filename << "\nAdding watch on it at " << fullfilename.c_str() << "\n";
 
+  // At this point, we've succeeded in finding a new file.  We're not interested in 
+  // reading the old file anymore, and we're about to overwrite the file descriptor 
+  // for watching it with inotify.  So, remove the inotify watch on the old file.  
+  inotify_rm_watch(inotifyfd, inotify_watchfd);
+
+  // Start watching the new file for IN_MODIFY (and IN_MOVE_SELF) events.  If we can't 
+  // set a watch on it, try again later.  
   if(-1 == (inotify_watchfd =
             inotify_add_watch(inotifyfd, fullfilename.c_str(),
                               IN_MODIFY | IN_MOVE_SELF))){
@@ -197,6 +204,8 @@ bool CRTInterface::try_open_file()
     }
   }
 
+  // Open the new file.  If it's already gone, try again later to find a new 
+  // file.  
   if(-1 == (datafile_fd = open(fullfilename.c_str(), O_RDONLY))){
     if(errno == ENOENT){
       // The file we just set a watch on might already be gone, as above.
@@ -342,7 +351,7 @@ size_t CRTInterface::read_everything_from_file(char * cooked_data)
 
   if(read_bread == -1){
     // All read() errors other than *maybe* EINTR should be fatal.
-    throw cet::exception("CRTInterface") << "CRTInterface::FillBuffer: " << strerror(errno);
+    throw cet::exception("CRTInterface") << "CRTInterface::read_everything_from_file: " << strerror(errno);
   }
 
   const int bytesleft = next_raw_byte - rawfromhardware;
@@ -398,7 +407,6 @@ void CRTInterface::FillBuffer(char* cooked_data, size_t* bytes_ret)
     TLOG(TLVL_INFO, "CRTInterface") << "Read data from " << datafile_name << " because a new file was found at time(nullptr) = " << time(nullptr) << ".  Buffer had " << bytesBefore << " bytes in it before read.\n";
     //*bytes_ret = read_everything_from_file(cooked_data);
 
-    //TODO: Experimental change.  Decide whether it's a stupid idea and definitely get Matt's opinion.  
     // The backend started writing files during the CONFIGURE transition, but lots of things could have happened since then.  
     // Some time has almost certainly passed, so we'll probably get to the first file as the backend is in the middle of 
     // writing it.  To avoid introducing a hard-to-predict offset into all of the data read for the rest of this run, 
