@@ -1,4 +1,6 @@
-/* Author: Matthew Strait <mstrait@fnal.gov> */
+/* Author: Matthew Strait <mstrait@fnal.gov>
+ *         Andrew Olivier <aolivier@ur.rochester.edu>
+ */
 
 #include "dune-artdaq/Generators/CRTFragGen.hh"
 
@@ -37,13 +39,8 @@ CRT::FragGen::FragGen(fhicl::ParameterSet const& ps) :
   , fUSBString(ps.get<std::string>("usbnumber"))
   , timingXMLfilename(ps.get<std::string>("connections_file",
     "/nfs/sw/control_files/timing/connections_v4b4.xml"))
-  , hardwarename(ps.get<std::string>("hardware_select", "CRT_EPT"))
+  , timinghardwarename(ps.get<std::string>("hardware_select", "CRT_EPT"))
 {
-  TLOG(TLVL_DEBUG, "CRT") << "JCF, Oct-12-2018: this is a test that we can turn on the trace with name \"CRT\", level TLVL_DEBUG (3)\n";
-  TLOG(TLVL_INFO, "CRT") << "JCF, Oct-14-2018: this is a test that we can see the trace with name \"CRT\", level TLVL_INFO (2)\n";
-  TLOG(TLVL_INFO) << "JCF, Oct-14-2018: this is a test that we can see the trace with the default name, level TLVL_INFO (2)\n";
-  TLOG(TLVL_DEBUG) << "JCF, Oct-14-2018: this is a test that we can see the trace with the default name, level TLVL_DEBUG\n";
-
   hardware_interface_->AllocateReadoutBuffer(&readout_buffer_);
 
   // If we are the designated process to do so, start up Camillo's backend DAQ
@@ -62,9 +59,6 @@ CRT::FragGen::FragGen(fhicl::ParameterSet const& ps) :
   // If we aren't the process that starts the backend, this will block
   // until the baselines are available.
   hardware_interface_->SetBaselines();
-
-  // TODO: Start up the timing "pdtbutler" here once Alessandro gives me the
-  // required magic words later on 2018-08-27, we hope.
 }
 
 CRT::FragGen::~FragGen()
@@ -78,52 +72,42 @@ CRT::FragGen::~FragGen()
   hardware_interface_->FreeReadoutBuffer(readout_buffer_);
 }
 
-
-// NOTE: Ok to return up to, say, 10s of old data on start up.
-// This gets buffered outside of my code and discarded if it isn't
-// wanted.
-
-// We don't have to check if we're keeping up because the artdaq system
-// does that for us.
 bool CRT::FragGen::getNext_(
   std::list< std::unique_ptr<artdaq::Fragment> > & frags)
 {
   if(should_stop()){
-    TLOG(TLVL_INFO, "CRT") << "CRT getNext_ returning on should_stop()\n";
+    TLOG(TLVL_INFO, "CRT") << "getNext_ returning on should_stop()\n";
     return false;
   }
 
-  const size_t maxFrags = 1024; //Maximum number of Fragments allowed per 
-                             //GetNext_() call.  I think we should keep 
-                             //this as small as possible while making sure 
-                             //this Fragment Generator can keep up.
-  size_t fragIt = 0; //TODO: FHICL parameter for easy tuning?
-  for(; fragIt < maxFrags; ++fragIt)
-  {
-    std::size_t bytes_read = 0;
+  // Maximum number of Fragments allowed per GetNext_() call.  I think we
+  // should keep this as small as possible while making sure this Fragment
+  // Generator can keep up.
+  const size_t maxFrags = 1024;
+
+  size_t fragIt = 0;
+  for(; fragIt < maxFrags; ++fragIt){
+    size_t bytes_read = 0;
     hardware_interface_->FillBuffer(readout_buffer_, &bytes_read);
 
     if(bytes_read == 0){
       // Pause for a little bit if we didn't get anything to keep load down.
       usleep(10000);
 
-      //TLOG(TLVL_INFO, "CRT") << "CRT getNext_ is returning with no data\n";
-      //return true; // this means "keep taking data"
-      break; //So that we still record metrics if we didn't write maxFrags but wrote at least one.  
+      // So that we still record metrics if we didn't write maxFrags but wrote
+      // at least one.
+      break;
     }
 
-    // I have kept the following NOTE for historical purposes.  This 
-    // loop generalizes what it suggests.  
-    // NOTE: we are always returning zero or one fragments, but we
-    // could return more at the cost of some complexity, maybe getting
-    // an efficiency gain.  Check back here if things are too slow.
+    // I have kept the following NOTE for historical purposes.  This
+    // loop generalizes what it suggests.
+    //     NOTE: we are always returning zero or one fragments, but we
+    //     could return more at the cost of some complexity, maybe getting
+    //     an efficiency gain.  Check back here if things are too slow.
     frags.emplace_back(buildFragment(bytes_read));
-
-    //memcpy(frags.back()->dataBeginBytes(), readout_buffer_, bytes_read); //aolivier@ur.rochester.edu moved this before emplace_back() so that it can be encapsulated in buildFragment().
   } //for each Fragment
 
-  if(fragIt) //If we read at least one Fragment
-  {
+  if(fragIt > 0){//If we read at least one Fragment
     if (metricMan /* What is this? */ != nullptr)
       metricMan->sendMetric("Fragments Sent", ev_counter(), "Events", 3 /* ? */,
           artdaq::MetricMode::LastPoint);
@@ -131,8 +115,11 @@ bool CRT::FragGen::getNext_(
     //TODO: Do I need to do this once for each Fragment?
     ev_counter_inc(); // from base CommandableFragmentGenerator
 
-    TLOG(TLVL_INFO, "CRT") << "CRT getNext_ is returning with hits\n";
-  } else TLOG(TLVL_INFO, "CRT") << "CRT getNext_ is returning with no data\n";
+    TLOG(TLVL_INFO, "CRT") << "getNext_ is returning with hits\n";
+  }
+  else{
+    TLOG(TLVL_INFO, "CRT") << "getNext_ is returning with no data\n";
+  }
 
   return true;
 }
@@ -149,52 +136,44 @@ std::unique_ptr<artdaq::Fragment> CRT::FragGen::buildFragment(const size_t& byte
        << " < " << minsize << " bytes from CRTInterface::FillBuffer.\n";
   }
 
-  // Repair the CRT timestamp.  First get the lower bits that the CRT
-  // provides.  Then check if they rolled over and increment our stored
-  // upper bits if needed, and finally concatenate the two.
-  // This works because the CRT data comes strictly time ordered in
-  // each USB stream [citation: Camillo 2018-08-03].
+  // Repair the CRT timestamp.  First get the lower bits that the CRT provides.
+  // Then check if they rolled over and increment our stored upper bits if
+  // needed, and finally concatenate the two.  Data does *not* come strictly
+  // ordered in each USB stream (despite what Camillo told us on 2018-08-03),
+  // but the trigger rate is sufficiently high and the data sufficiently close
+  // to ordered that rollovers are pretty unambiguous.
+  //
+  // This only works if the CRT takes data continuously.  If we don't see data
+  // for more than one 32-bit epoch, which is about 86 seconds, we'll fall out
+  // of sync.  With additional work this could be fixed, since we leave the
+  // backend DAQ running during pauses, but at the moment we skip over
+  // intermediate data when we unpause (we start with the most recent file from
+  // the backend, where files are about 5 seconds long).
   const uint64_t lowertime = *(uint32_t*)(readout_buffer_ + 4 + sizeof(uint64_t));
 
-  // Store the first non-zero raw hardware timestamp that we see.  This is
-  // only needed for debugging.  If the first timestamp happens to be zero,
-  // in principle we could take that, but it's not important.
-  if(firstlowertime == 0) firstlowertime = lowertime;
+  // rolloverThreshold combats out-of-order data causing rollovers in the
+  // timestamp.  Tuned by increasing by orders of magnitude until I saw the
+  // number of rollovers so far match the total run time.  Lots of things have
+  // changed since the last tuning, so we can probably back off on
+  // rolloverThreshold.  Whatever we do, it should never be >
+  // std::numeric_limits<uint32_t>::max().
+  const uint64_t rolloverThreshold = 100000000;
 
-  // This only works if the CRT takes data continuously.  If we don't
-  // see data for more than one 32-bit epoch, which is about 86 seconds,
-  // we'll fall out of sync.  With additional work this could be fixed,
-  // since we leave the backend DAQ running during pauses, but at the
-  // moment we skip over intermediate data when we unpause (we start
-  // with the most recent file from the backend, where files are about
-  // 5 seconds long).
-  const uint64_t rolloverThreshold = 100000000; 
-  // In practice, we don't seem to be getting strictly time-ordered data.  So, 
-  // we sometimes got lower timestamps from the backend that were just 1 or 2 
-  // ticks different and were causing rollovers below.  I've introduced 
-  // rolloverThreshold to combat out-of-order data causing rollovers in the 
-  // timestamp.  Now, the difference between timestamps has to be > 
-  // rolloverThreshold for a rollover to be detected.  
-  //
-  // aolivier@ur.rochester.edu tuned rolloverThreshold by increasing it by 
-  // orders of magnitude until I saw the number of rollovers so far match
-  // the total run time.  Lots of things have changed since the last tuning, 
-  // so we can probably back off on rolloverThreshold.  Whatever we do, 
-  // it should never be > std::numeric_limits<uint32_t>::max().  
-  if((uint64_t)(lowertime +rolloverThreshold) < oldlowertime) 
-  {
-    TLOG(TLVL_DEBUG, "CRT") << "lowertime " << lowertime << " and oldlowertime " << oldlowertime << " caused a rollover.  uppertime is now " << uppertime << ".\n";
+  if((uint64_t)(lowertime + rolloverThreshold) < oldlowertime){
+    TLOG(TLVL_DEBUG, "CRT") << "lowertime " << lowertime
+      << " and oldlowertime " << oldlowertime << " caused a rollover.  "
+      "uppertime is now " << uppertime << ".\n";
     uppertime++;
   }
   oldlowertime = lowertime;
 
   timestamp_ = ((uint64_t)uppertime << 32) + lowertime + runstarttime;
-  TLOG(TLVL_INFO, "CRT") << "Constructing a timestamp with uppertime = " << uppertime << ", lowertime = " << lowertime 
-                         << ", and runstarttime = " << runstarttime << ".\n  Timestamp is " << timestamp_ << "\n";
+  TLOG(TLVL_DEBUG, "CRT") << "Constructing a timestamp with uppertime = "
+    << uppertime << ", lowertime = " << lowertime << ", and runstarttime = "
+    << runstarttime << ".\n  Timestamp is " << timestamp_ << "\n";
 
-  // And also copy the repaired timestamp into the buffer itself.  Not sure
-  // which timestamp code downstream is going to read (timestamp_ or
-  // from the raw buffer, a.k.a. the fragment), but both will always be
+  // And also copy the repaired timestamp into the buffer itself.
+  // Code downstream in artdaq reads timestamp_, but both will always be
   // the same.
   memcpy(readout_buffer_ + 4, &timestamp_, sizeof(uint64_t));
 
@@ -212,9 +191,12 @@ std::unique_ptr<artdaq::Fragment> CRT::FragGen::buildFragment(const size_t& byte
   fragptr->setTimestamp( timestamp_ );
   memcpy(fragptr->dataBeginBytes(), readout_buffer_, bytes_read);
 
-  TLOG(TLVL_INFO, "CRT") << "Returning with a new Fragment that has timestamp " << fragptr->timestamp() << " ticks.\n";
-  return fragptr; //TODO: Make sure this becomes an rvalue reference so that no memory is copied.  
-                  //      Iirc, unique_ptr<> won't let it be otherwise anyway...
+  TLOG(TLVL_DEBUG, "CRT") << "Returning with a new Fragment with timestamp "
+    << fragptr->timestamp() << " ticks.\n";
+
+  //TODO: Make sure this becomes an rvalue reference so that no memory is
+  //      copied.  Iirc, unique_ptr<> won't let it be otherwise anyway...
+  return fragptr;
 }
 
 void CRT::FragGen::getRunStartTime()
@@ -222,7 +204,7 @@ void CRT::FragGen::getRunStartTime()
   std::string filepath = "file://" + timingXMLfilename;
   uhal::setLogLevelTo(uhal::Error());
   static uhal::ConnectionManager timeConnMan(filepath);
-  static uhal::HwInterface timinghw(timeConnMan.getDevice(hardwarename));
+  static uhal::HwInterface timinghw(timeConnMan.getDevice(timinghardwarename));
 
   // Tell the timing board what partition we are running in.
   // It's ok to do this in all four CRT processes.
@@ -244,8 +226,7 @@ void CRT::FragGen::getRunStartTime()
 
   runstarttime = ((uint64_t)rst_h << 32) + rst_l;
 
-  TLOG(TLVL_INFO, "CRT") << "CRT got run start time " << runstarttime << "\n";
-  //printf("CRT got run start time 0x%lx\n", runstarttime);
+  TLOG(TLVL_INFO, "CRT") << "Got run start time " << runstarttime << "\n";
 }
 
 void CRT::FragGen::start()
@@ -254,8 +235,6 @@ void CRT::FragGen::start()
 
   getRunStartTime();
 
-  //Matt Strait: Empirically we start 1 cycle off, so start at 1 even though 0 seems correct
-  //uppertime = 1;
   uppertime = 0;
   oldlowertime = 0;
 }
