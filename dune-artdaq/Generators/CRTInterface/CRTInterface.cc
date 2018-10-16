@@ -267,7 +267,7 @@ bool CRTInterface::check_events()
   if(inotify_bread == inotifybufsize)
     TLOG(TLVL_WARNING, "CRTInterface")
       << "Filled buf when reading from inotify!  We might have missed some events.\n";
-  const struct inotify_event* event;
+  /*const struct inotify_event* event;
   for(auto ptr = filechange;
       ptr < filechange + inotify_bread;
       ptr += sizeof(struct inotify_event) + event->len){
@@ -277,7 +277,7 @@ bool CRTInterface::check_events()
     #pragma GCC diagnostic ignored "-Wstrict-aliasing"
       const uint32_t mask = ((struct inotify_event *)filechange)->mask;
     #pragma GCC diagnostic pop
-  }
+  }*/
 
   if(inotify_bread == 0){
     // This means that the file has not changed, so we have no new data
