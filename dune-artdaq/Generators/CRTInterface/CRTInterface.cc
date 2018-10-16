@@ -43,12 +43,14 @@ CRTInterface::CRTInterface(fhicl::ParameterSet const& ps) :
 void CRTInterface::StartDatataking()
 {
   if(inotifyfd != -1){
-    TLOG(TLVL_WARNING, "CRTInterface") << "inotify already init'd. Ok if we\nstopped and restarted data taking.\n";
+    TLOG(TLVL_WARNING, "CRTInterface")
+      << "inotify already init'd. Ok if we\nstopped and restarted data taking.\n";
     return;
   }
 
   if(-1 == (inotifyfd = inotify_init())){
-    throw cet::exception("CRTInterface") << "CRTInterface::StartDatataking: " << strerror(errno);
+    throw cet::exception("CRTInterface")
+      << "CRTInterface::StartDatataking: " << strerror(errno);
   }
 
   // Set the file descriptor to non-blocking so that we can immediately
@@ -59,7 +61,8 @@ void CRTInterface::StartDatataking()
 void CRTInterface::StopDatataking()
 {
   if(-1 == inotify_rm_watch(inotifyfd, inotify_watchfd)){
-    TLOG(TLVL_WARNING, "CRTInterface") << "CRTInterface::StopDatataking: " << strerror(errno);
+    TLOG(TLVL_WARNING, "CRTInterface")
+      << "CRTInterface::StopDatataking: " << strerror(errno);
   }
 }
 
@@ -73,7 +76,8 @@ std::string find_wr_file(const std::string & indir,
   errno = 0;
   if((dp = opendir(indir.c_str())) == NULL){
     if(errno == ENOENT){
-      TLOG(TLVL_WARNING, "CRTInterface") << "No such directory " << indir << ", but will wait for it\n";
+      TLOG(TLVL_WARNING, "CRTInterface") << "No such directory "
+        << indir << ", but will wait for it\n";
       usleep(100000);
       return NULL;
     }
@@ -81,7 +85,8 @@ std::string find_wr_file(const std::string & indir,
       // Other conditions we are unlikely to recover from: permission denied,
       // too many file descriptors in use, too many files open, out of memory,
       // or the name isn't a directory.
-      throw cet::exception("CRTInterface") << "find_wr_file opendir: " << strerror(errno);
+      throw cet::exception("CRTInterface")
+        << "find_wr_file opendir: " << strerror(errno);
     }
   }
 
@@ -111,11 +116,11 @@ std::string find_wr_file(const std::string & indir,
       struct stat thestat;
 
       if(-1 == stat((indir + de->d_name).c_str(), &thestat)){
-        // We noticed this failure mode during testing when a file was renamed 
-        // between being found above and getting its timestamp.  Unless someone 
-        // is messing with the CRT data directory, this probably means that the 
-        // file we found *was* a .wr file, but the backend moved it.  Since it's 
-        // no longer the .wr file, it isn't the most recent file anyway.  
+        // We noticed this failure mode during testing when a file was renamed
+        // between being found above and getting its timestamp.  Unless someone
+        // is messing with the CRT data directory, this probably means that the
+        // file we found *was* a .wr file, but the backend moved it.  Since it's
+        // no longer the .wr file, it isn't the most recent file anyway.
         continue;
       }
 
@@ -135,7 +140,8 @@ std::string find_wr_file(const std::string & indir,
   errno = 0;
   closedir(dp);
   if(errno)
-    throw cet::exception("CRTInterface") << "find_wr_file closedir: " << strerror(errno);
+    throw cet::exception("CRTInterface")
+      << "find_wr_file closedir: " << strerror(errno);
 
   // slow down if the directory is there, but the file isn't yet
   if(most_recent_file == "") usleep(100000);
@@ -159,35 +165,41 @@ bool CRTInterface::try_open_file()
     find_wr_file(indir + "/binary/", usbnumber);
   const char * filename = cplusplusiscrazy.c_str();
 
-  //Since I'm now using this to detect the backend going to a new file, don't 
-  //open the same file again!  We're probably causing a problem if this is happening 
-  //often.   
-  if(cplusplusiscrazy == datafile_name) 
+  //Since I'm now using this to detect the backend going to a new file, don't
+  //open the same file again!  We're probably causing a problem if this is happening
+  //often.
+  if(cplusplusiscrazy == datafile_name)
   {
-    TLOG(TLVL_DEBUG, "CRTInterface") << "Looked for a new file from the backend, but found the current file instead!  "
-                                     << "This could become a problem by slowing down the board reader if it's happening "
-                                     << "too often.\n";
+    TLOG(TLVL_DEBUG, "CRTInterface")
+      << "Looked for a new file from the backend, but found the current file instead!  "
+      << "This could become a problem by slowing down the board reader if it's "
+      << "happening too often.\n";
     return false;
   }
 
-  if(strlen(filename) == 0) 
+  if(strlen(filename) == 0)
   {
-    TLOG(TLVL_DEBUG, "CRTInterface") << "Failed to find input file " << filename << " in directory " << indir << "/binary/ for raw data.\n";
+    TLOG(TLVL_DEBUG, "CRTInterface") << "Failed to find input file "
+      << filename << " in directory " << indir << "/binary/ for raw data.\n";
     return false;
   }
-  else TLOG(TLVL_DEBUG, "CRTInterface") << "Found file " << filename << " in directory " << indir << "/binary/ for raw data.\n";
+  else{
+    TLOG(TLVL_DEBUG, "CRTInterface") << "Found file " << filename
+      << " in directory " << indir << "/binary/ for raw data.\n";
+  }
 
   const std::string fullfilename = indir + "/binary/" + filename;
 
-  TLOG(TLVL_INFO, "CRTInterface") << "Found input file: " << filename << "\nAdding watch on it at " << fullfilename.c_str() << "\n";
+  TLOG(TLVL_INFO, "CRTInterface") << "Found input file: " << filename
+    << "\nAdding watch on it at " << fullfilename.c_str() << "\n";
 
-  // At this point, we've succeeded in finding a new file.  We're not interested in 
-  // reading the old file anymore, and we're about to overwrite the file descriptor 
-  // for watching it with inotify.  So, remove the inotify watch on the old file.  
+  // At this point, we've succeeded in finding a new file.  We're not interested in
+  // reading the old file anymore, and we're about to overwrite the file descriptor
+  // for watching it with inotify.  So, remove the inotify watch on the old file.
   inotify_rm_watch(inotifyfd, inotify_watchfd);
 
-  // Start watching the new file for IN_MODIFY (and IN_MOVE_SELF) events.  If we can't 
-  // set a watch on it, try again later.  
+  // Start watching the new file for IN_MODIFY (and IN_MOVE_SELF) events.  If we can't
+  // set a watch on it, try again later.
   if(-1 == (inotify_watchfd =
             inotify_add_watch(inotifyfd, fullfilename.c_str(),
                               IN_MODIFY | IN_MOVE_SELF))){
@@ -195,17 +207,19 @@ bool CRTInterface::try_open_file()
       // It's possible that the file we just found has vanished by the time
       // we get here, probably by being renamed without the ".wr".  That's
       // OK, we'll just try again in a moment.
-      TLOG(TLVL_WARNING, "CRTInterface") << "File has vanished. We'll wait for another\n";
+      TLOG(TLVL_WARNING, "CRTInterface")
+        << "File has vanished. We'll wait for another\n";
       return false;
     }
     else{
       // But other inotify_add_watch errors we probably can't recover from
-      throw cet::exception("CRTInterface") << "CRTInterface: Could not open " << filename << ": " << strerror(errno);
+      throw cet::exception("CRTInterface") << "CRTInterface: Could not open "
+        << filename << ": " << strerror(errno);
     }
   }
 
-  // Open the new file.  If it's already gone, try again later to find a new 
-  // file.  
+  // Open the new file.  If it's already gone, try again later to find a new
+  // file.
   if(-1 == (datafile_fd = open(fullfilename.c_str(), O_RDONLY))){
     if(errno == ENOENT){
       // The file we just set a watch on might already be gone, as above.
@@ -214,7 +228,8 @@ bool CRTInterface::try_open_file()
       return false;
     }
     else{
-      throw cet::exception("CRTInterface") << "CRTInterface::StartDatataking: " << strerror(errno);
+      throw cet::exception("CRTInterface") << "CRTInterface::StartDatataking: "
+        << strerror(errno);
     }
   }
 
@@ -231,7 +246,6 @@ bool CRTInterface::try_open_file()
 */
 bool CRTInterface::check_events()
 {
-  //TLOG(TLVL_WARNING, "CRTInterface") << "In check_events(), presumably checking for events on " << datafile_name << "\n"; //Clearly, datafile_name is becoming stale.  
   char filechange[4096]; //[sizeof(struct inotify_event) + NAME_MAX + 1];
 
   ssize_t inotify_bread = 0;
@@ -242,17 +256,20 @@ bool CRTInterface::check_events()
      (inotify_bread = read(inotifyfd, &filechange, sizeof(filechange)))){
 
     // If there are no events, we get this error
-    if(errno == EAGAIN) 
+    if(errno == EAGAIN)
     {
-      TLOG(TLVL_DEBUG, "CRTInterface") << "Returning false from check_events() because of an EAGAIN error from inotify.  We've seen " 
-                                       << fNumInotifyModifies << " modify events and " << fNumInotifyOthers << " other events.  There"
-                                       << " have been " << fNumInotifyEvents << " inotify events in total.\n";
+      TLOG(TLVL_DEBUG, "CRTInterface")
+        << "Returning false from check_events() because of an EAGAIN error "
+        "from inotify.  We've seen " << fNumInotifyModifies
+        << " modify events and " << fNumInotifyOthers << " other events.  There"
+        << " have been " << fNumInotifyEvents << " inotify events in total.\n";
       return false;
     }
 
     // Anything else maybe should be a fatal error.  If we can't read from
     // inotify once, we probably won't be able to again.
-    throw cet::exception("CRTInterface") << "CRTInterface::FillBuffer: " << strerror(errno);
+    throw cet::exception("CRTInterface")
+      << "CRTInterface::FillBuffer: " << strerror(errno);
   }
 
   fNumInotifyEvents += inotify_bread/(sizeof(struct inotify_event));
@@ -260,7 +277,9 @@ bool CRTInterface::check_events()
   //Try to read all of the inotify events to figure out what we're missing.  
   if(inotify_bread == 4096) TLOG(TLVL_WARNING, "CRTInterface") << "Filled up 4096 byte buffer when reading from inotify!  We might have missed some events.\n";
   const struct inotify_event* event;
-  for(auto ptr = filechange; ptr < filechange + inotify_bread; ptr += sizeof(struct inotify_event) + event->len)
+  for(auto ptr = filechange;
+      ptr < filechange + inotify_bread;
+      ptr += sizeof(struct inotify_event) + event->len)
   {
     event = (const struct inotify_event*)ptr;
 
@@ -276,12 +295,12 @@ bool CRTInterface::check_events()
   if(inotify_bread == 0){
     // This means that the file has not changed, so we have no new data
     // (or maybe this never happens because we'd get EAGAIN above).
-    //TLOG(TLVL_DEBUG, "CRTInterface") << "Returning false from check_events() because \"The file has not changed\".\n";
     return false;
   }
 
   if(inotify_bread < (ssize_t)sizeof(struct inotify_event)){
-    throw cet::exception("CRTInterface") << "Non-zero, yet wrong number (" << inotify_bread << ") of bytes from inotify\n";
+    throw cet::exception("CRTInterface") << "Non-zero, yet wrong number ("
+      << inotify_bread << ") of bytes from inotify\n";
   }
 
 #pragma GCC diagnostic push
@@ -291,32 +310,38 @@ bool CRTInterface::check_events()
 
   if(mask == IN_MODIFY){
     // Active file has been modified again
-    TLOG(TLVL_WARNING, "CRTInterface") << "Got a \"modified\" event from inotify.\n";
+    TLOG(TLVL_WARNING, "CRTInterface")
+      << "Got a \"modified\" event from inotify.\n";
     if(state == CRT_READ_ACTIVE) return true;
     else{
-      TLOG(TLVL_WARNING, "CRTInterface") << "File modified, but not watching an open file...\n";
+      TLOG(TLVL_WARNING, "CRTInterface")
+        << "File modified, but not watching an open file...\n";
       return false; // Should be fatal?
     }
-  } //TODO: The block below this never seems to happen.  Can I provide a substitute for its logic somehwere else?
+  } //TODO: The block below this never seems to happen.  Can I provide a
+    //      substitute for its logic somehwere else?
   else /* mask == IN_MOVE_SELF */ {
     // Active file has been renamed, meaning we already heard about the
     // last write to it and read all the data. it will no longer be
     // written to.  We should find the next file.
-    //TODO: The above assumption seems to be wrong.  I only ever see inotify modify events.  Does 
-    //      inotify even send events about file moves?  
-    TLOG(TLVL_WARNING, "CRTInterface") << "Got an event from inotify that isn't \"file modified\".\n";
+    //TODO: The above assumption seems to be wrong.  I only ever see inotify
+    //      modify events.  Does inotify even send events about file moves?
+    TLOG(TLVL_WARNING, "CRTInterface")
+      << "Got an event from inotify that isn't \"file modified\".\n";
     if(state == CRT_READ_ACTIVE){
       close(datafile_fd);
 
       // Is this desired?  I think so.
       unlink(datafile_name.c_str());
-      TLOG(TLVL_INFO, "CRTInterface") << "Deleted data file after reading it.\n";
+      TLOG(TLVL_INFO, "CRTInterface")
+        << "Deleted data file after reading it.\n";
 
       state = CRT_WAIT;
       return true;
     }
     else{
-      TLOG(TLVL_WARNING, "CRTInterface") << "Not reached.  Closed file renamed.\n";
+      TLOG(TLVL_WARNING, "CRTInterface")
+        << "Not reached.  Closed file renamed.\n";
       return false; // should be fatal?
     }
   }
@@ -351,11 +376,13 @@ size_t CRTInterface::read_everything_from_file(char * cooked_data)
 
   if(read_bread == -1){
     // All read() errors other than *maybe* EINTR should be fatal.
-    throw cet::exception("CRTInterface") << "CRTInterface::read_everything_from_file: " << strerror(errno);
+    throw cet::exception("CRTInterface")
+      << "CRTInterface::read_everything_from_file: " << strerror(errno);
   }
 
   const int bytesleft = next_raw_byte - rawfromhardware;
-  TLOG(TLVL_INFO, "CRTInterface") << bytesleft << " bytes in raw buffer after read.\n";
+  TLOG(TLVL_INFO, "CRTInterface")
+    << bytesleft << " bytes in raw buffer after read.\n";
 
   if(bytesleft > 0) state |= CRT_DRAIN_BUFFER;
 
@@ -372,14 +399,9 @@ void CRTInterface::FillBuffer(char* cooked_data, size_t* bytes_ret)
   // read from the input files.
   const auto bytesBefore = next_raw_byte - rawfromhardware;
   if(state & CRT_DRAIN_BUFFER){
-    //TLOG(TLVL_INFO, "CRTInterface") << (next_raw_byte - rawfromhardware) << " bytes in raw buffer before read.\n";
-
     if((*bytes_ret = CRT::raw2cook(cooked_data, COOKEDBUFSIZE,
                                    rawfromhardware, next_raw_byte, baselines)))
-    {
-      //TLOG(TLVL_INFO, "CRTInterface") << "Read data from " << datafile_name << " to drain buffer.  Buffer had " << bytesBefore << " bytes in it before read.\n";
       return;
-    }
     else
       state &= ~CRT_DRAIN_BUFFER;
   }
@@ -387,12 +409,14 @@ void CRTInterface::FillBuffer(char* cooked_data, size_t* bytes_ret)
   // Then see if we need to read more out of the file, and do so
   if(state & CRT_READ_MORE){
     state &= ~CRT_READ_MORE;
-    TLOG(TLVL_INFO, "CRTInterface") << "Read data from " << datafile_name << " because there was more to read from file.  Buffer had " << bytesBefore << " bytes in it before read.\n";
+    TLOG(TLVL_INFO, "CRTInterface") << "Read data from " << datafile_name
+      << " because there was more to read from file.  Buffer had "
+      << bytesBefore << " bytes in it before read.\n";
     if((*bytes_ret = read_everything_from_file(cooked_data))) return;
   }
 
-  // It seems like we don't have anything else to read in the current file 
-  // at this point.  If the file has been modified, that might need to change.  
+  // It seems like we don't have anything else to read in the current file
+  // at this point.  If the file has been modified, that might need to change.
 
   TLOG(TLVL_DEBUG, "CRTInterface") << "Got past CRT_DRAIN_BUFFER and CRT_READ_MORE states.\n";
   // This should only happen when we open the first file.  Otherwise,
@@ -404,14 +428,21 @@ void CRTInterface::FillBuffer(char* cooked_data, size_t* bytes_ret)
     // to it previous to when we set the inotify watch.  If there's nothing
     // there yet, don't bother checking the events until the next call to
     // FillBuffer(), because it's unlikely any will have come in yet.
-    TLOG(TLVL_INFO, "CRTInterface") << "Read data from " << datafile_name << " because a new file was found at time(nullptr) = " << time(nullptr) << ".  Buffer had " << bytesBefore << " bytes in it before read.\n";
+    TLOG(TLVL_INFO, "CRTInterface") << "Read data from " << datafile_name
+      << " because a new file was found at time(nullptr) = " << time(nullptr)
+      << ".  Buffer had " << bytesBefore << " bytes in it before read.\n";
     //*bytes_ret = read_everything_from_file(cooked_data);
 
-    // The backend started writing files during the CONFIGURE transition, but lots of things could have happened since then.  
-    // Some time has almost certainly passed, so we'll probably get to the first file as the backend is in the middle of 
-    // writing it.  To avoid introducing a hard-to-predict offset into all of the data read for the rest of this run, 
-    // skip all of the data in the backend's file when we first find it and wait for the next update to read anything.
-    TLOG(TLVL_WARNING, "CRTInterface") << "Detected that this is the first input file, so skipping to the end of " << datafile_name << "\n";
+    // The backend started writing files during the CONFIGURE transition, but
+    // lots of things could have happened since then.  Some time has almost
+    // certainly passed, so we'll probably get to the first file as the backend
+    // is in the middle of writing it.  To avoid introducing a hard-to-predict
+    // offset into all of the data read for the rest of this run, skip all of
+    // the data in the backend's file when we first find it and wait for the
+    // next update to read anything.
+    TLOG(TLVL_WARNING, "CRTInterface")
+      << "Detected that this is the first input file, so skipping to the end of "
+      << datafile_name << "\n";
     lseek(datafile_fd, 0, SEEK_END);
     return;
   }
@@ -420,23 +451,26 @@ void CRTInterface::FillBuffer(char* cooked_data, size_t* bytes_ret)
 
   // If we're here, it means we have an open file which we've previously
   // read and decoded all available data from.  Check if it has changed.
-  // TODO: This assumes that we will be told about a file rename.  That 
-  //       assumption seems to be wrong.  
-  //       
-  //       If we're at this point, we think we've read everything we can 
-  //       from the current file.  If check_events() returns false, that's 
-  //       still true.  
+  // TODO: This assumes that we will be told about a file rename.  That
+  //       assumption seems to be wrong.
   //
-  //       Should we keep waiting for this file to change or just go to 
-  //       the next one?  I know something else about how readout works: 
-  //       When it creates a new .wr file, the old file is done being 
-  //       written to forever.  So, can I try to look for a new file 
+  //       If we're at this point, we think we've read everything we can
+  //       from the current file.  If check_events() returns false, that's
+  //       still true.
+  //
+  //       Should we keep waiting for this file to change or just go to
+  //       the next one?  I know something else about how readout works:
+  //       When it creates a new .wr file, the old file is done being
+  //       written to forever.  So, can I try to look for a new file
   //       anyway when there are no events?
-  if(!check_events() && !try_open_file()) return; //If there are no pending events on the current file, look for a new file.  
-                                                  //If a new .wr file exists for this USB board, then the old file is no longer 
-                                                  //being written to, and we are done with it here.  Otherwise, readout could 
-                                                  //still write to the current file, and we should return with no bytes so that 
-                                                  //we try to read from it again.   
+  //
+  // If there are no pending events on the current file, look for a new file.
+  // If a new .wr file exists for this USB board, then the old file is no longer
+  // being written to, and we are done with it here.  Otherwise, readout could
+  // still write to the current file, and we should return with no bytes so that
+  // we try to read from it again.
+  if(!check_events() && !try_open_file()) return;
+
   TLOG(TLVL_DEBUG, "CRTInterface") << "Got past !check_events()\n";
 
   // Ok, it has either been written to or renamed.  Because we first get
@@ -449,10 +483,13 @@ void CRTInterface::FillBuffer(char* cooked_data, size_t* bytes_ret)
   // and we either find a new file and immediately try to read it, or return.
   if(state != CRT_READ_ACTIVE && !try_open_file()) return;
 
-  if(state == CRT_READ_ACTIVE) TLOG(TLVL_INFO, "CRTInterface") << "Read data from " << datafile_name << " because found a new file at time(nullptr) = " << time(nullptr) << ".  Buffer had " << bytesBefore << " bytes in it before read.\n";
+  if(state == CRT_READ_ACTIVE)
+    TLOG(TLVL_INFO, "CRTInterface") << "Read data from " << datafile_name
+      << " because found a new file at time(nullptr) = " << time(nullptr)
+      << ".  Buffer had " << bytesBefore << " bytes in it before read.\n";
   *bytes_ret = read_everything_from_file(cooked_data);
-  TLOG(TLVL_INFO, "CRTInterface") << "Returning with " << bytes_ret << " bytes at the very end of FillBuffer()'s scope.\n";
-  return;
+  TLOG(TLVL_INFO, "CRTInterface") << "Returning with " << bytes_ret
+    << " bytes at the very end of FillBuffer()'s scope.\n";
 }
 
 void CRTInterface::SetBaselines()
@@ -476,7 +513,8 @@ void CRTInterface::SetBaselines()
         sleep(1);
       }
       else{
-	throw cet::exception("CRTInterface") << "Can't open CRT baseline file: " << strerror(errno) << "\n";
+	throw cet::exception("CRTInterface") << "Can't open CRT baseline file: "
+          << strerror(errno) << "\n";
       }
     }
     else{
@@ -497,34 +535,40 @@ void CRTInterface::SetBaselines()
             // the reported line number will be wrong.
 
     if(nconverted != 5){
-      TLOG(TLVL_WARNING, "CRTInterface") << "Warning: skipping invalid line " << line << " in baseline file";
+      TLOG(TLVL_WARNING, "CRTInterface") << "Warning: skipping invalid line "
+        << line << " in baseline file";
       continue;
     }
 
     if(module >= 64){
       TLOG(TLVL_WARNING, "CRTInterface")
-         << "Warning: skipping baseline with invalid module number " << module << ".  Valid range is 0-63\n";
+         << "Warning: skipping baseline with invalid module number "
+         << module << ".  Valid range is 0-63\n";
       continue;
     }
 
     if(channel >= 64){
       TLOG(TLVL_WARNING, "CRTInterface")
-         << "Warning: skipping baseline with invalid channel number " << module << ".  Valid range is 0-63\n";
+         << "Warning: skipping baseline with invalid channel number "
+         << module << ".  Valid range is 0-63\n";
       continue;
     }
 
     if(nhit < 100)
-      TLOG(TLVL_WARNING, "CRTInterface") << "Warning: using baseline based on only " << nhit << " hits\n";
+      TLOG(TLVL_WARNING, "CRTInterface")
+        << "Warning: using baseline based on only " << nhit << " hits\n";
 
     if(stddev > 5.0)
-      TLOG(TLVL_WARNING, "CRTInterface") << "Warning: using baseline with large error: " << stddev << " ADC counts\n";
+      TLOG(TLVL_WARNING, "CRTInterface")
+        << "Warning: using baseline with large error: " << stddev << " ADC counts\n";
 
     baselines[module][channel] = int(fbaseline + 0.5);
   }
 
   errno = 0;
   if(fclose(in) == EOF)
-    throw cet::exception("CRTInterface") << "Can't close CRT baseline file: " << strerror(errno) << "\n";
+    throw cet::exception("CRTInterface") << "Can't close CRT baseline file: "
+      << strerror(errno) << "\n";
 }
 
 void CRTInterface::AllocateReadoutBuffer(char** cooked_data)
