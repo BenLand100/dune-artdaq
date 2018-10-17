@@ -1,3 +1,4 @@
+#define _GNU_SOURCE // This is needed for trace.h to be able to see sched_getcpu()
 #include "zmq.h"
 #include "string.h"
 #include <sys/time.h>
