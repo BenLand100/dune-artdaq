@@ -33,7 +33,7 @@ static char * next_raw_byte = rawfromhardware;
 CRTInterface::CRTInterface(fhicl::ParameterSet const& ps) :
   indir(ps.get<std::string>("indir")),
   usbnumber(ps.get<unsigned int>("usbnumber")),
-  state(CRT_WAIT)
+  state(CRT_FIRST_FILE | CRT_WAIT)
 {
 }
 
@@ -297,7 +297,7 @@ bool CRTInterface::check_events()
 
   if(mask == IN_MODIFY){
     // Active file has been modified
-    TLOG(TLVL_DEBUG, "CRTInterface") << "Got a \"modified\" event from inotify.\n";
+    TLOG(TLVL_INFO, "CRTInterface") << "Got a \"modified\" event from inotify.\n";
     if(state == CRT_READ_ACTIVE){
        return true;
     }
@@ -305,15 +305,14 @@ bool CRTInterface::check_events()
       TLOG(TLVL_WARNING, "CRTInterface") << "File modified, but not watching a file!\n";
       return false; // Should be fatal?
     }
-  } //TODO: The block below this never seems to happen.  Can I provide a
-    //      substitute for its logic somehwere else?
+  } 
   else /* mask == IN_MOVE_SELF */ {
     // Active file has been renamed, meaning we already heard about the
     // last write to it and read all the data. it will no longer be
     // written to.  We should find the next file.
     //TODO: The above assumption seems to be wrong.  I only ever see inotify
     //      modify events.  Does inotify even send events about file moves?
-    TLOG(TLVL_WARNING, "CRTInterface")
+    TLOG(TLVL_INFO, "CRTInterface")
       << "Got an event from inotify that isn't \"file modified\".\n";
     if(state == CRT_READ_ACTIVE){
       close(datafile_fd);
@@ -378,6 +377,7 @@ size_t CRTInterface::read_everything_from_file(char * cooked_data)
 
 void CRTInterface::FillBuffer(char* cooked_data, size_t* bytes_ret)
 {
+  TLOG(TLVL_INFO, "CRTInterface") << "state is " << state << "\n";
   *bytes_ret = 0;
 
   // First see if we can decode another module packet out of the data already
@@ -406,27 +406,35 @@ void CRTInterface::FillBuffer(char* cooked_data, size_t* bytes_ret)
   // This should only happen when we open the first file.  Otherwise,
   // the first read to a new file is handled below.
   if(state & CRT_WAIT){
+    const auto oldState = state; //try_open_file() will probably assign to state, 
+                                 //so make sure we remember whether this is the first 
+                                 //file.  
     if(!try_open_file()) return;
+
+    if(oldState & CRT_FIRST_FILE)
+    {
+      // The backend started writing files during the CONFIGURE transition, but
+      // lots of things could have happened since then.  Some time has almost
+      // certainly passed, so we'll probably get to the first file as the backend
+      // is in the middle of writing it.  To avoid introducing a hard-to-predict
+      // offset into all of the data read for the rest of this run, skip all of
+      // the data in the backend's file when we first find it and wait for the
+      // next update to read anything.
+      TLOG(TLVL_INFO, "CRTInterface")
+        << "First input file, skipping to end: " << datafile_name << "\n";
+      lseek(datafile_fd, 0, SEEK_END);
+      state &= ~CRT_FIRST_FILE;
+      return;
+    }
 
     // Immediately read from the file, since we won't hear about writes
     // to it previous to when we set the inotify watch.  If there's nothing
     // there yet, don't bother checking the events until the next call to
     // FillBuffer(), because it's unlikely any will have come in yet.
-    TLOG(TLVL_DEBUG, "CRTInterface") << "Read data from " << datafile_name
+    TLOG(TLVL_INFO, "CRTInterface") << "Read data from " << datafile_name
       << " because a new file was found at Unix time " << time(nullptr)
       << ".  Buffer had " << bytesBefore << " bytes in it before read.\n";
-    //*bytes_ret = read_everything_from_file(cooked_data);
-
-    // The backend started writing files during the CONFIGURE transition, but
-    // lots of things could have happened since then.  Some time has almost
-    // certainly passed, so we'll probably get to the first file as the backend
-    // is in the middle of writing it.  To avoid introducing a hard-to-predict
-    // offset into all of the data read for the rest of this run, skip all of
-    // the data in the backend's file when we first find it and wait for the
-    // next update to read anything.
-    TLOG(TLVL_INFO, "CRTInterface")
-      << "First input file, skipping to end: " << datafile_name << "\n";
-    lseek(datafile_fd, 0, SEEK_END);
+    *bytes_ret = read_everything_from_file(cooked_data);
     return;
   }
 
