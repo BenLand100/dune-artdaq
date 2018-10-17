@@ -110,11 +110,12 @@ int main(int argn, char** argv) {
   ps.put<int>("debug_print", 3);
   ps.put<int>("partition_number", partition);
   ps.put<bool>("enable_spill_commands", enable_spill_commands);
-  std::vector<int> firmware_versions{0x50000};
+  std::vector<int> firmware_versions{0x050100};
   ps.put<std::vector<int>>("valid_firmware_versions", firmware_versions);
   ps.put<std::string>("connections_file", "/nfs/sw/control_files/timing/connections_v5a1.xml");
   ps.put<std::string>("hardware_select", "PROD_FANOUT_1");
   ps.put<std::string>("zmq_connection", "tcp://localhost:5601");
+  ps.put<std::string>("run_trigger_output", "/tmp/");
   dune::TimingReceiver trg(ps);       // (1) This does the configure step
   trgp = &trg;                        // Set this global variable to complete the fiddle at the start
   std::this_thread::sleep_for(std::chrono::milliseconds(1000));
