@@ -83,7 +83,7 @@ bool CRT::FragGen::getNext_(
   // Maximum number of Fragments allowed per GetNext_() call.  I think we
   // should keep this as small as possible while making sure this Fragment
   // Generator can keep up.
-  const size_t maxFrags = 1024;
+  const size_t maxFrags = 64;
 
   size_t fragIt = 0;
   for(; fragIt < maxFrags; ++fragIt){
@@ -115,10 +115,10 @@ bool CRT::FragGen::getNext_(
     //TODO: Do I need to do this once for each Fragment?
     ev_counter_inc(); // from base CommandableFragmentGenerator
 
-    TLOG(TLVL_INFO, "CRT") << "getNext_ is returning with hits\n";
+    //TLOG(TLVL_INFO, "CRT") << "getNext_ is returning with hits\n";
   }
   else{
-    TLOG(TLVL_INFO, "CRT") << "getNext_ is returning with no data\n";
+    //TLOG(TLVL_INFO, "CRT") << "getNext_ is returning with no data\n";
   }
 
   return true;
@@ -160,15 +160,15 @@ std::unique_ptr<artdaq::Fragment> CRT::FragGen::buildFragment(const size_t& byte
   const uint64_t rolloverThreshold = 100000000;
 
   if((uint64_t)(lowertime + rolloverThreshold) < oldlowertime){
-    TLOG(TLVL_DEBUG, "CRT") << "lowertime " << lowertime
+    /*TLOG(TLVL_DEBUG, "CRT") << "lowertime " << lowertime
       << " and oldlowertime " << oldlowertime << " caused a rollover.  "
-      "uppertime is now " << uppertime << ".\n";
+      "uppertime is now " << uppertime << ".\n";*/
     uppertime++;
   }
   oldlowertime = lowertime;
 
   timestamp_ = ((uint64_t)uppertime << 32) + lowertime + runstarttime;
-  TLOG(TLVL_DEBUG, "CRT") << "Constructing a timestamp with uppertime = "
+  TLOG(TLVL_INFO, "CRT") << "Constructing a timestamp with uppertime = "
     << uppertime << ", lowertime = " << lowertime << ", and runstarttime = "
     << runstarttime << ".\n  Timestamp is " << timestamp_ << "\n";
 
@@ -191,11 +191,6 @@ std::unique_ptr<artdaq::Fragment> CRT::FragGen::buildFragment(const size_t& byte
   fragptr->setTimestamp( timestamp_ );
   memcpy(fragptr->dataBeginBytes(), readout_buffer_, bytes_read);
 
-  TLOG(TLVL_DEBUG, "CRT") << "Returning with a new Fragment with timestamp "
-    << fragptr->timestamp() << " ticks.\n";
-
-  //TODO: Make sure this becomes an rvalue reference so that no memory is
-  //      copied.  Iirc, unique_ptr<> won't let it be otherwise anyway...
   return fragptr;
 }
 

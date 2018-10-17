@@ -111,7 +111,7 @@ namespace CRT
     const std::string fUSBString; 
 
     std::string timingXMLfilename;
-    std::string hardwarename;
+    std::string timinghardwarename;
   };
 }
 
