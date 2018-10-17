@@ -345,9 +345,9 @@ cd $Base
         setup netio $netio_version -q e15:prof:s64
 # RSIPOS 03/07/18 -> Infiniband workaround for FELIX BR build
         #source /nfs/sw/felix/HACK-FELIX-BR-BUILD.sh
-        export ICP_ROOT=/nfs/sw/sysadmin/QAT/QAT2.0
-        export LD_LIBRARY_PATH=\$LD_LIBRARY_PATH:/nfs/sw/sysadmin/QAT/QAT2.0/build
-        export LD_LIBRARY_PATH=\$LD_LIBRARY_PATH:/nfs/sw/sysadmin/QAT/QAT2.0/qatzip2/qatzip/src
+        export ICP_ROOT=/nfs/sw/felix/QAT/QAT2.0
+        export LD_LIBRARY_PATH=\$LD_LIBRARY_PATH:/nfs/sw/felix/QAT/QAT2.0/build
+        export LD_LIBRARY_PATH=\$LD_LIBRARY_PATH:/nfs/sw/felix/QAT/QAT2.0/qatzip2/qatzip/src
 
 
         setup ftd2xx $ftd2xx_version
@@ -543,9 +543,9 @@ source /nfs/sw/artdaq/products/setup
         setup netio $netio_version -q e15:prof:s64
 # RSIPOS 03/07/18 -> Infiniband workaround for FELIX BR build
         #source /nfs/sw/felix/HACK-FELIX-BR-BUILD.sh
-        export ICP_ROOT=/nfs/sw/sysadmin/QAT/QAT2.0
-        export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/nfs/sw/sysadmin/QAT/QAT2.0/build
-        export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/nfs/sw/sysadmin/QAT/QAT2.0/qatzip2/qatzip/src
+        export ICP_ROOT=/nfs/sw/felix/QAT/QAT2.0
+        export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/nfs/sw/felix/QAT/QAT2.0/build
+        export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/nfs/sw/felix/QAT/QAT2.0/qatzip2/qatzip/src
 
         setup ftd2xx $ftd2xx_version
         setup dunepdsprce $dunepdsprce_version -q e15:gen:prof
