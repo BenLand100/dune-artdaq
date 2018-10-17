@@ -95,7 +95,15 @@ namespace dune {
 
     unsigned int _metric_CS_counter = 0 ;  // channel status
 
+
+    // total trigger counter
+    unsigned long _run_gool_part_counter = 0;
+    unsigned long _run_HLT_counter = 0;
+    unsigned long _run_HLT_counters[8] = {0};
+
     // spill parameters
+    const uint64_t _spill_width = 240000000 ;  //4.8 s
+    artdaq::Fragment::timestamp_t _spill_start ;
     bool _is_beam_spill = false ;
     unsigned int _metric_spill_h0l0_counter = 0;
     unsigned int _metric_spill_h0l1_counter = 0;
@@ -117,8 +125,7 @@ namespace dune {
     // it updates the cherenkov buffer
     // and if latest is after a certain amount of time from _latest_part_TS it evaluate the coincidence 
     
-
-
+    bool store_run_trigger_counters( unsigned int run_number, const std::string & prefix = "" ) const ; 
 
     // metric utilities
     const std::array<std::string, 8> _metric_HLT_names  = { "CTB_HLT_0_rate",
@@ -136,6 +143,10 @@ namespace dune {
     std::string _calibration_dir ; 
     std::chrono::minutes _calibration_update ; 
     
+    // run trigger counters
+    bool _has_run_trigger_report = false ;
+    std::string _run_trigger_dir ;
+
   };
 
   inline bool TriggerBoardReader::CanCreateFragments() {
