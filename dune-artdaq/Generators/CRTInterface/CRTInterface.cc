@@ -183,8 +183,8 @@ bool CRTInterface::try_open_file()
 
   const std::string fullfilename = indir + "/binary/" + filename;
 
-  TLOG(TLVL_INFO, "CRTInterface") << "Found input file: " << filename
-    << " Adding watch on it at " << fullfilename.c_str() << "\n";
+  /*TLOG(TLVL_INFO, "CRTInterface") << "Found input file: " << filename
+    << " Adding watch on it at " << fullfilename.c_str() << "\n";*/
 
   // At this point, we've succeeded in finding a new file.  We're not interested in
   // reading the old file anymore, and we're about to overwrite the file descriptor
@@ -297,7 +297,7 @@ bool CRTInterface::check_events()
 
   if(mask == IN_MODIFY){
     // Active file has been modified
-    TLOG(TLVL_INFO, "CRTInterface") << "Got a \"modified\" event from inotify.\n";
+    //TLOG(TLVL_INFO, "CRTInterface") << "Got a \"modified\" event from inotify.\n";
     if(state == CRT_READ_ACTIVE){
        return true;
     }
@@ -312,8 +312,8 @@ bool CRTInterface::check_events()
     // written to.  We should find the next file.
     //TODO: The above assumption seems to be wrong.  I only ever see inotify
     //      modify events.  Does inotify even send events about file moves?
-    TLOG(TLVL_INFO, "CRTInterface")
-      << "Got an event from inotify that isn't \"file modified\".\n";
+    /*TLOG(TLVL_INFO, "CRTInterface")
+      << "Got an event from inotify that isn't \"file modified\".\n";*/
     if(state == CRT_READ_ACTIVE){
       close(datafile_fd);
 
@@ -377,7 +377,6 @@ size_t CRTInterface::read_everything_from_file(char * cooked_data)
 
 void CRTInterface::FillBuffer(char* cooked_data, size_t* bytes_ret)
 {
-  TLOG(TLVL_INFO, "CRTInterface") << "state is " << state << "\n";
   *bytes_ret = 0;
 
   // First see if we can decode another module packet out of the data already
@@ -471,12 +470,12 @@ void CRTInterface::FillBuffer(char* cooked_data, size_t* bytes_ret)
   if(state != CRT_READ_ACTIVE && !try_open_file()) return;
 
   if(state == CRT_READ_ACTIVE)
-    TLOG(TLVL_DEBUG, "CRTInterface") << "Read data from " << datafile_name
-      << " because found a new file at Unix time " << time(nullptr)
-      << ".  Buffer had " << bytesBefore << " bytes in it before read.\n";
+    TLOG(TLVL_INFO, "CRTInterface") << "Read data from " << datafile_name
+                                    << " because found a new file at Unix time " << time(nullptr)
+                                    << ".  Buffer had " << bytesBefore << " bytes in it before read.\n";
   *bytes_ret = read_everything_from_file(cooked_data);
   TLOG(TLVL_DEBUG, "CRTInterface") << "Returning with " << bytes_ret
-    << " bytes at the very end of FillBuffer()'s scope.\n";
+                                   << " bytes at the very end of FillBuffer()'s scope.\n";
 }
 
 void CRTInterface::SetBaselines()
