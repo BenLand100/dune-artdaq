@@ -92,7 +92,7 @@ bool CRT::FragGen::getNext_(
 
     if(bytes_read == 0){
       // Pause for a little bit if we didn't get anything to keep load down.
-      usleep(10000);
+      usleep(100); //Used to be 10000 usec, but that's more than 3 TPC readout windows!  
 
       // So that we still record metrics if we didn't write maxFrags but wrote
       // at least one.
@@ -112,13 +112,12 @@ bool CRT::FragGen::getNext_(
       metricMan->sendMetric("Fragments Sent", ev_counter(), "Events", 3 /* ? */,
           artdaq::MetricMode::LastPoint);
 
-    //TODO: Do I need to do this once for each Fragment?
     ev_counter_inc(); // from base CommandableFragmentGenerator
 
-    //TLOG(TLVL_INFO, "CRT") << "getNext_ is returning with hits\n";
+    TLOG(TLVL_INFO, "CRT") << "getNext_ is returning with hits\n";
   }
   else{
-    //TLOG(TLVL_INFO, "CRT") << "getNext_ is returning with no data\n";
+    TLOG(TLVL_INFO, "CRT") << "getNext_ is returning with no data\n";
   }
 
   return true;
@@ -170,7 +169,7 @@ std::unique_ptr<artdaq::Fragment> CRT::FragGen::buildFragment(const size_t& byte
   timestamp_ = ((uint64_t)uppertime << 32) + lowertime + runstarttime;
   TLOG(TLVL_INFO, "CRT") << "Constructing a timestamp with uppertime = "
     << uppertime << ", lowertime = " << lowertime << ", and runstarttime = "
-    << runstarttime << ".\n  Timestamp is " << timestamp_ << "\n";
+    << runstarttime << ".  Timestamp is " << timestamp_ << "\n";
 
   // And also copy the repaired timestamp into the buffer itself.
   // Code downstream in artdaq reads timestamp_, but both will always be
@@ -214,14 +213,31 @@ void CRT::FragGen::getRunStartTime()
       << std::hex << (int)status << ", can't read run start time\n";
   }
 
-  uhal::ValWord<uint32_t> rst_l = timinghw.getNode("endpoint0.pulse.ts_l").read();
-  timinghw.dispatch();
-  uhal::ValWord<uint32_t> rst_h = timinghw.getNode("endpoint0.pulse.ts_h").read();
-  timinghw.dispatch();
+  static constexpr size_t maxTimingTries = 20;
+  static constexpr decltype(runstarttime) maxTimeDiff = 10*60; //10 minutes in seconds
+  uint64_t deltaT = std::numeric_limits<uint64_t>::max();
+  for(size_t attempt = 0; attempt < maxTimingTries; ++attempt)
+  {
+    uhal::ValWord<uint32_t> rst_l = timinghw.getNode("endpoint0.pulse.ts_l").read();
+    timinghw.dispatch();
+    uhal::ValWord<uint32_t> rst_h = timinghw.getNode("endpoint0.pulse.ts_h").read();
+    timinghw.dispatch();
 
-  runstarttime = ((uint64_t)rst_h << 32) + rst_l;
+    runstarttime = ((uint64_t)rst_h << 32) + rst_l;
+    deltaT = abs(runstarttime*20/1.e9 - time(nullptr));
+    if(deltaT < maxTimeDiff) //Hardcoded 20 ns per timestamp tick for ProtoDUNE-SP timing system
+    {
+      TLOG(TLVL_INFO, "CRT") << "Got run start time " << runstarttime << " after " << attempt+1 << " attempt(s).\n";
+      return;
+    }
+    
+    //Don't hit the timing endpoint too often.  Give it some time for its configuration to change?
+    usleep(10); //Sleep for 10 microseconds.  man usleep
+  }
 
-  TLOG(TLVL_INFO, "CRT") << "Got run start time " << runstarttime << "\n";
+  throw cet::exception("CRT") << "CRT board reader failed to get reasonable run start time from timing endpoint after " 
+                              << maxTimingTries << " tries.  Difference from UNIX time of " << deltaT
+                              << " > tolerance of " << maxTimeDiff << "\n";
 }
 
 void CRT::FragGen::start()
