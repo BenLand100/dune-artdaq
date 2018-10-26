@@ -232,7 +232,7 @@ void CRT::FragGen::getRunStartTime()
     }
     
     //Don't hit the timing endpoint too often.  Give it some time for its configuration to change?
-    usleep(10); //Sleep for 10 microseconds.  man usleep
+    usleep(1000); //Sleep for 1 millisecond.  man usleep
   }
 
   throw cet::exception("CRT") << "CRT board reader failed to get reasonable run start time from timing endpoint after " 
