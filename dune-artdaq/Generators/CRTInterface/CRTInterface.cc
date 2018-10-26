@@ -228,6 +228,7 @@ bool CRTInterface::try_open_file()
 
   state = CRT_READ_ACTIVE;
   datafile_name = filename;
+  TLOG(TLVL_INFO, "CRTInterface") << "Just opened and now reading from file " << datafile_name << ".\n";
 
   return true;
 }
@@ -298,7 +299,7 @@ bool CRTInterface::check_events()
   if(mask == IN_MODIFY){
     // Active file has been modified
     //TLOG(TLVL_INFO, "CRTInterface") << "Got a \"modified\" event from inotify.\n";
-    if(state == CRT_READ_ACTIVE){
+    if(state & CRT_READ_ACTIVE){
        return true;
     }
     else{
@@ -314,7 +315,7 @@ bool CRTInterface::check_events()
     //      modify events.  Does inotify even send events about file moves?
     /*TLOG(TLVL_INFO, "CRTInterface")
       << "Got an event from inotify that isn't \"file modified\".\n";*/
-    if(state == CRT_READ_ACTIVE){
+    if(state & CRT_READ_ACTIVE){
       close(datafile_fd);
 
       // Is this desired?  I think so.
@@ -467,9 +468,9 @@ void CRTInterface::FillBuffer(char* cooked_data, size_t* bytes_ret)
 
   // Either the file is already open and we can go ahead, or it isn't,
   // and we either find a new file and immediately try to read it, or return.
-  if(state != CRT_READ_ACTIVE && !try_open_file()) return;
+  if(!(state & CRT_READ_ACTIVE) && !try_open_file()) return;
 
-  if(state == CRT_READ_ACTIVE)
+  if(!(state & CRT_READ_ACTIVE))
     TLOG(TLVL_INFO, "CRTInterface") << "Read data from " << datafile_name
                                     << " because found a new file at Unix time " << time(nullptr)
                                     << ".  Buffer had " << bytesBefore << " bytes in it before read.\n";
