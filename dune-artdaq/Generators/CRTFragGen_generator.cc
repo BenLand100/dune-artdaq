@@ -231,6 +231,8 @@ void CRT::FragGen::getRunStartTime()
       return;
     }
     
+    TLOG(TLVL_INFO, "CRT") << "Got run start time of " << runstarttime << ", but it is different from the current UNIX time "
+                           << "by " << deltaT << " seconds on " << attempt << "th attempt.  So, waiting 1ms and trying again...\n";
     //Don't hit the timing endpoint too often.  Give it some time for its configuration to change?
     usleep(1000); //Sleep for 1 millisecond.  man usleep
   }
