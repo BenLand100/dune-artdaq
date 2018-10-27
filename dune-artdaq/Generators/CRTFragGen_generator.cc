@@ -40,6 +40,7 @@ CRT::FragGen::FragGen(fhicl::ParameterSet const& ps) :
   , timingXMLfilename(ps.get<std::string>("connections_file",
     "/nfs/sw/control_files/timing/connections_v4b4.xml"))
   , timinghardwarename(ps.get<std::string>("hardware_select", "CRT_EPT"))
+  , gotRunStartTime(false)
 {
   hardware_interface_->AllocateReadoutBuffer(&readout_buffer_);
 
@@ -75,6 +76,8 @@ CRT::FragGen::~FragGen()
 bool CRT::FragGen::getNext_(
   std::list< std::unique_ptr<artdaq::Fragment> > & frags)
 {
+  if(!gotRunStartTime) getRunStartTime();
+
   if(should_stop()){
     TLOG(TLVL_INFO, "CRT") << "getNext_ returning on should_stop()\n";
     return false;
@@ -213,40 +216,33 @@ void CRT::FragGen::getRunStartTime()
       << std::hex << (int)status << ", can't read run start time\n";
   }
 
-  static constexpr size_t maxTimingTries = 20;
-  static constexpr decltype(runstarttime) maxTimeDiff = 10*60; //10 minutes in seconds
-  uint64_t deltaT = std::numeric_limits<uint64_t>::max();
-  for(size_t attempt = 0; attempt < maxTimingTries; ++attempt)
-  {
-    uhal::ValWord<uint32_t> rst_l = timinghw.getNode("endpoint0.pulse.ts_l").read();
-    timinghw.dispatch();
-    uhal::ValWord<uint32_t> rst_h = timinghw.getNode("endpoint0.pulse.ts_h").read();
-    timinghw.dispatch();
+  uhal::ValWord<uint32_t> rst_l = timinghw.getNode("endpoint0.pulse.ts_l").read();
+  timinghw.dispatch();
+  uhal::ValWord<uint32_t> rst_h = timinghw.getNode("endpoint0.pulse.ts_h").read();
+  timinghw.dispatch();
+  runstarttime = ((uint64_t)rst_h << 32) + rst_l;
 
-    runstarttime = ((uint64_t)rst_h << 32) + rst_l;
-    deltaT = abs(runstarttime*20/1.e9 - time(nullptr));
-    if(deltaT < maxTimeDiff) //Hardcoded 20 ns per timestamp tick for ProtoDUNE-SP timing system
-    {
-      TLOG(TLVL_INFO, "CRT") << "Got run start time " << runstarttime << " after " << attempt+1 << " attempt(s).\n";
-      return;
-    }
-    
-    TLOG(TLVL_INFO, "CRT") << "Got run start time of " << runstarttime << ", but it is different from the current UNIX time "
-                           << "by " << deltaT << " seconds on " << attempt << "th attempt.  So, waiting 1ms and trying again...\n";
-    //Don't hit the timing endpoint too often.  Give it some time for its configuration to change?
-    usleep(1000); //Sleep for 1 millisecond.  man usleep
+  //Make sure runstarttime isn't too different from current UNIX timestamp.  If it 
+  //is, then we probably won't write any useful data. When maintaining this code,  
+  //remember that the timing endpoint won't give us a good runstarttime until 
+  //everything has finished the start() transition.
+  constexpr decltype(runstarttime) maxTimeDiff = 10*60; //10 minutes in seconds
+  const auto deltaT = abs(runstarttime*20/1.e9 - time(nullptr));
+  if(deltaT > maxTimeDiff) //Hardcoded 20 ns per timestamp tick for ProtoDUNE-SP timing system
+  {
+    throw cet::exception("CRT") << "CRT board reader failed to get reasonable run start time "
+                                << "from timing endpoint.  Difference from UNIX time of " << deltaT
+                                << " > tolerance of " << maxTimeDiff << "\n";
   }
 
-  throw cet::exception("CRT") << "CRT board reader failed to get reasonable run start time from timing endpoint after " 
-                              << maxTimingTries << " tries.  Difference from UNIX time of " << deltaT
-                              << " > tolerance of " << maxTimeDiff << "\n";
+  gotRunStartTime = true;
 }
 
 void CRT::FragGen::start()
 {
   hardware_interface_->StartDatataking();
 
-  getRunStartTime();
+  //getRunStartTime();
 
   uppertime = 0;
   oldlowertime = 0;

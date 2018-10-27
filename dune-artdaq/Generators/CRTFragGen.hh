@@ -112,6 +112,9 @@ namespace CRT
 
     std::string timingXMLfilename;
     std::string timinghardwarename;
+
+    //Have we set runstarttime yet?
+    bool gotRunStartTime;
   };
 }
 
