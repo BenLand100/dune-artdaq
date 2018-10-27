@@ -194,11 +194,11 @@ bool CRTInterface::try_open_file()
   TLOG(TLVL_INFO, "CRTInterface") << "Closed file " << datafile_name << " and "
                                   << "removed inotify watch on it.\n";
 
-  // Start watching the new file for IN_MODIFY (and IN_MOVE_SELF) events.  If we can't
+  // Start watching the new file for IN_MODIFY events.  If we can't
   // set a watch on it, try again later.
   if(-1 == (inotify_watchfd =
             inotify_add_watch(inotifyfd, fullfilename.c_str(),
-                              IN_MODIFY | IN_MOVE_SELF))){
+                              IN_MODIFY))){
     if(errno == ENOENT){
       // It's possible that the file we just found has vanished by the time
       // we get here, probably by being renamed without the ".wr".  That's
@@ -270,10 +270,10 @@ bool CRTInterface::check_events()
 
   //Try to read all of the inotify events to figure out what we're missing.
   if(inotify_bread == inotifybufsize)
-    TLOG(TLVL_INFO, "CRTInterface")
+    TLOG(TLVL_WARNING, "CRTInterface")
       << "Filled buf when reading from inotify!  We might have missed some events.\n";
-  TLOG(TLVL_INFO, "CRTInterface") << "Got " << inotify_bread/(sizeof(struct inotify_event) + NAME_MAX + 1) << " inotify events.\n";
-  const struct inotify_event* event;
+  TLOG(TLVL_INFO, "CRTInterface") << "Got " << inotify_bread/sizeof(struct inotify_event) << " inotify events.\n";
+  /*const struct inotify_event* event;
   for(auto ptr = filechange;
       ptr < filechange + inotify_bread;
       ptr += sizeof(struct inotify_event) + event->len){
@@ -285,7 +285,7 @@ bool CRTInterface::check_events()
     #pragma GCC diagnostic pop
 
     TLOG(TLVL_INFO, "CRTInterface") << "Got inotify event with mask " << mask << "\n";
-  }
+  }*/
 
   if(inotify_bread == 0){
     // This means that the file has not changed, so we have no new data
@@ -298,48 +298,20 @@ bool CRTInterface::check_events()
       << inotify_bread << ") of bytes from inotify\n";
   }
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wstrict-aliasing"
-  const uint32_t mask = ((struct inotify_event *)filechange)->mask;
-#pragma GCC diagnostic pop
-
-  if(mask == IN_MODIFY){
-    // Active file has been modified
-    TLOG(TLVL_INFO, "CRTInterface") << "Got a \"modified\" event from inotify.\n";
-    if(state & CRT_READ_ACTIVE){
-       return true;
-    }
-    else{
-      TLOG(TLVL_WARNING, "CRTInterface") << "File modified, but not watching a file!\n";
-      return false; // Should be fatal?
-    }
-  } 
-  else /* mask == IN_MOVE_SELF */ {
-    // Active file has been renamed, meaning we already heard about the
-    // last write to it and read all the data. it will no longer be
-    // written to.  We should find the next file.
-    //TODO: The above assumption seems to be wrong.  I only ever see inotify
-    //      modify events.  Does inotify even send events about file moves?
-    TLOG(TLVL_INFO, "CRTInterface")
-      << "Got an event from inotify that isn't \"file modified\".\n";
-    if(state & CRT_READ_ACTIVE){
-      //close(datafile_fd);
-
-      // Is this desired?  I think so.
-      //TODO: I think this should be deleting the temporary .wr file.  Isn't the backend supposed to do that?!
-      /*unlink(datafile_name.c_str());
-      TLOG(TLVL_INFO, "CRTInterface") << "Deleted file " << datafile_name << " after reading it.\n";
-
-      state = CRT_WAIT;
-      return true;*/
-      return false;
-    }
-    else{
-      TLOG(TLVL_WARNING, "CRTInterface")
-        << "Not reached.  Closed file renamed.\n";
-      return false; // should be fatal?
-    }
-  }
+  //If we got this far, then we've got a valid event from inotify.  We are only 
+  //reacting to IN_MODIFIED events in the first place, so just ASSUME that we 
+  //got an IN_MODIFIED event and react accordingly.  
+  //TODO: Should we check what kind of event we got from inotify?  Since we're 
+  //      only using inotify to check for events, we could probably just try a 
+  //      non-blocking read on the backend file every time FillBuffer() is 
+  //      called and return like we currently do based on the number of bytes.  
+  TLOG(TLVL_INFO, "CRTInterface") << "Got a \"modified\" event from inotify.\n";
+  if(state & CRT_READ_ACTIVE) return true; //Note: Without the below error check, we remove an 
+                                           //      if statement by returning state & CRT_READ_ACTIVE
+                                           //      cast to bool directly.  
+  
+  TLOG(TLVL_WARNING, "CRTInterface") << "...but not watching a file!\n";
+  return false;
 }
 
 /*
