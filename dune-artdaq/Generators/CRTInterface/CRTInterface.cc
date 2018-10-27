@@ -139,7 +139,7 @@ std::string find_wr_file(const std::string & indir,
       << "find_wr_file closedir: " << strerror(errno);
 
   // slow down if the directory is there, but the file isn't yet
-  if(most_recent_file == "") usleep(100000);
+  if(most_recent_file == "") usleep(100);
 
   return most_recent_file; // even if it is "", which means none
 }
@@ -190,6 +190,9 @@ bool CRTInterface::try_open_file()
   // reading the old file anymore, and we're about to overwrite the file descriptor
   // for watching it with inotify.  So, remove the inotify watch on the old file.
   inotify_rm_watch(inotifyfd, inotify_watchfd);
+  close(datafile_fd);
+  TLOG(TLVL_INFO, "CRTInterface") << "Closed file " << datafile_name << " and "
+                                  << "removed inotify watch on it.\n";
 
   // Start watching the new file for IN_MODIFY (and IN_MOVE_SELF) events.  If we can't
   // set a watch on it, try again later.
@@ -228,7 +231,8 @@ bool CRTInterface::try_open_file()
 
   state = CRT_READ_ACTIVE;
   datafile_name = filename;
-  TLOG(TLVL_INFO, "CRTInterface") << "Just opened and now reading from file " << datafile_name << ".\n";
+  TLOG(TLVL_INFO, "CRTInterface") << "Just opened and now reading from file " << datafile_name << ".  Found it at time " 
+                                  << time(nullptr) << "\n";
 
   return true;
 }
@@ -266,9 +270,10 @@ bool CRTInterface::check_events()
 
   //Try to read all of the inotify events to figure out what we're missing.
   if(inotify_bread == inotifybufsize)
-    TLOG(TLVL_WARNING, "CRTInterface")
+    TLOG(TLVL_INFO, "CRTInterface")
       << "Filled buf when reading from inotify!  We might have missed some events.\n";
-  /*const struct inotify_event* event;
+  TLOG(TLVL_INFO, "CRTInterface") << "Got " << inotify_bread/(sizeof(struct inotify_event) + NAME_MAX + 1) << " inotify events.\n";
+  const struct inotify_event* event;
   for(auto ptr = filechange;
       ptr < filechange + inotify_bread;
       ptr += sizeof(struct inotify_event) + event->len){
@@ -278,7 +283,9 @@ bool CRTInterface::check_events()
     #pragma GCC diagnostic ignored "-Wstrict-aliasing"
       const uint32_t mask = ((struct inotify_event *)filechange)->mask;
     #pragma GCC diagnostic pop
-  }*/
+
+    TLOG(TLVL_INFO, "CRTInterface") << "Got inotify event with mask " << mask << "\n";
+  }
 
   if(inotify_bread == 0){
     // This means that the file has not changed, so we have no new data
@@ -298,7 +305,7 @@ bool CRTInterface::check_events()
 
   if(mask == IN_MODIFY){
     // Active file has been modified
-    //TLOG(TLVL_INFO, "CRTInterface") << "Got a \"modified\" event from inotify.\n";
+    TLOG(TLVL_INFO, "CRTInterface") << "Got a \"modified\" event from inotify.\n";
     if(state & CRT_READ_ACTIVE){
        return true;
     }
@@ -313,17 +320,19 @@ bool CRTInterface::check_events()
     // written to.  We should find the next file.
     //TODO: The above assumption seems to be wrong.  I only ever see inotify
     //      modify events.  Does inotify even send events about file moves?
-    /*TLOG(TLVL_INFO, "CRTInterface")
-      << "Got an event from inotify that isn't \"file modified\".\n";*/
+    TLOG(TLVL_INFO, "CRTInterface")
+      << "Got an event from inotify that isn't \"file modified\".\n";
     if(state & CRT_READ_ACTIVE){
-      close(datafile_fd);
+      //close(datafile_fd);
 
       // Is this desired?  I think so.
-      unlink(datafile_name.c_str());
-      TLOG(TLVL_INFO, "CRTInterface") << "Deleted file after reading it.\n";
+      //TODO: I think this should be deleting the temporary .wr file.  Isn't the backend supposed to do that?!
+      /*unlink(datafile_name.c_str());
+      TLOG(TLVL_INFO, "CRTInterface") << "Deleted file " << datafile_name << " after reading it.\n";
 
       state = CRT_WAIT;
-      return true;
+      return true;*/
+      return false;
     }
     else{
       TLOG(TLVL_WARNING, "CRTInterface")
@@ -395,8 +404,8 @@ void CRTInterface::FillBuffer(char* cooked_data, size_t* bytes_ret)
   if(state & CRT_READ_MORE){
     state &= ~CRT_READ_MORE;
     TLOG(TLVL_DEBUG, "CRTInterface") << "Read data from " << datafile_name
-      << " because there was more to read from file.  Buffer had "
-      << bytesBefore << " bytes in it before read.\n";
+                                     << " because there was more to read from file.  Buffer had "
+                                     << bytesBefore << " bytes in it before read.\n";
     if((*bytes_ret = read_everything_from_file(cooked_data))) return;
   }
 
@@ -431,9 +440,10 @@ void CRTInterface::FillBuffer(char* cooked_data, size_t* bytes_ret)
     // to it previous to when we set the inotify watch.  If there's nothing
     // there yet, don't bother checking the events until the next call to
     // FillBuffer(), because it's unlikely any will have come in yet.
-    TLOG(TLVL_INFO, "CRTInterface") << "Read data from " << datafile_name
-      << " because a new file was found at Unix time " << time(nullptr)
-      << ".  Buffer had " << bytesBefore << " bytes in it before read.\n";
+    TLOG(TLVL_DEBUG, "CRTInterface") << "Read data from " << datafile_name
+                                     << " because a new file was found.  ";
+    TLOG(TLVL_INFO, "CRTInterface") << "Buffer had " << bytesBefore 
+                                    << " bytes in it before read from new file\n";
     *bytes_ret = read_everything_from_file(cooked_data);
     return;
   }
@@ -470,10 +480,6 @@ void CRTInterface::FillBuffer(char* cooked_data, size_t* bytes_ret)
   // and we either find a new file and immediately try to read it, or return.
   if(!(state & CRT_READ_ACTIVE) && !try_open_file()) return;
 
-  if(!(state & CRT_READ_ACTIVE))
-    TLOG(TLVL_INFO, "CRTInterface") << "Read data from " << datafile_name
-                                    << " because found a new file at Unix time " << time(nullptr)
-                                    << ".  Buffer had " << bytesBefore << " bytes in it before read.\n";
   *bytes_ret = read_everything_from_file(cooked_data);
   TLOG(TLVL_DEBUG, "CRTInterface") << "Returning with " << bytes_ret
                                    << " bytes at the very end of FillBuffer()'s scope.\n";
