@@ -12,6 +12,7 @@
 #include <random>
 #include <vector>
 #include <atomic>
+#include <memory> //For std::unique_ptr
 
 #include "uhal/uhal.hpp"
 
@@ -66,6 +67,11 @@ namespace CRT
     // from a timing board and puts it in runstarttime.
     void getRunStartTime();
 
+    // Emits one Fragment from hardware_interface_.  It seems like we'll ideally 
+    // only call this once in GetNext_(), but we can call it multiple times when 
+    // able to speed things up if we're too slow. 
+    std::unique_ptr<artdaq::Fragment> buildFragment(const size_t& bytes_read); 
+
     std::unique_ptr<CRTInterface> hardware_interface_;
 
     // uint64_t (after unwinding a few layers of typedefs) for the
@@ -85,11 +91,6 @@ namespace CRT
     // rolled over and need to increment uppertime.
     uint32_t oldlowertime = 0;
 
-    // The first 32-bit timestamp we see coming from the hardware.  This is
-    // only needed for testing purposes and should not affect anything in
-    // normal running.
-    uint32_t firstlowertime;
-
     // The 64-bit global timestamp of the start of the run. We need to
     // retrieve and store this to repair the CRT's internal 32-bit time.
     uint64_t runstarttime;
@@ -101,8 +102,17 @@ namespace CRT
     // True if this process is the one designated to start the backend DAQ.
     bool startbackend;
 
+    //Keep track of which USB board this board reader is reading from for debugging
+    const std::string fUSBString; 
+
     std::string timingXMLfilename;
-    std::string hardwarename;
+    std::string timinghardwarename;
+
+    uhal::ConnectionManager timeConnMan;
+    uhal::HwInterface timinghw;
+
+    //Have we set runstarttime yet?
+    bool gotRunStartTime;
   };
 }
 

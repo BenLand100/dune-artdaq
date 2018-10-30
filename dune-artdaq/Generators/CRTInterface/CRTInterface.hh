@@ -27,41 +27,46 @@ CRT_READ_MORE = 0x04,
 // We've read some data into our internal buffer and it may decode
 // to one or more module packets, so read it before going back to
 // the input files.
-CRT_DRAIN_BUFFER = 0x08;
+CRT_DRAIN_BUFFER = 0x08,
+
+// On the very first file, we don't want to read everything when we 
+// first find it.  So, create a special state to which CRTInterface 
+// is initialized and which is never set again. 
+CRT_FIRST_FILE = 0x10;
 
 class CRTInterface
 {
 public:
 
-	explicit CRTInterface(fhicl::ParameterSet const& ps);
+  explicit CRTInterface(fhicl::ParameterSet const& ps);
 
-	void StartDatataking();
+  void StartDatataking();
 
-	void StopDatataking();
+  void StopDatataking();
 
-	/**
-	 * \brief Fills a buffer with data from the CRT, if available.
+  /**
+   * \brief Fills a buffer with data from the CRT, if available.
    *
    * Provides zero or one "module packet", a collection of hits from
    * a single module sharing a time stamp.
    *
-	 * \param buffer Buffer that is filled with data
-	 * \param bytes_read Number of bytes passed back in buffer.  Nonzero
+   * \param buffer Buffer that is filled with data
+   * \param bytes_read Number of bytes passed back in buffer.  Nonzero
    * if and only if a module packet is returned in 'buffer'.
-	 */
-	void FillBuffer(char* buffer, size_t* bytes_read);
+   */
+  void FillBuffer(char* buffer, size_t* bytes_read);
 
-	/**
-	 * \brief Request a buffer from the hardware
-	 * \param buffer (output) Pointer to buffer
-	 */
-	void AllocateReadoutBuffer(char** buffer);
+  /**
+   * \brief Request a buffer from the hardware
+   * \param buffer (output) Pointer to buffer
+   */
+  void AllocateReadoutBuffer(char** buffer);
 
-	/**
-	 * \brief Release the given buffer to the hardware
-	 * \param buffer Buffer to release
-	 */
-	void FreeReadoutBuffer(char* buffer);
+  /**
+   * \brief Release the given buffer to the hardware
+   * \param buffer Buffer to release
+   */
+  void FreeReadoutBuffer(char* buffer);
 
   void SetBaselines();
 
@@ -98,7 +103,7 @@ private:
   // Name of the data file we are reading
   std::string datafile_name;
 
-  // Private functions documented in the implementation.
+  // Documented in the implementation.
   bool try_open_file();
   bool check_events();
   size_t read_everything_from_file(char * );

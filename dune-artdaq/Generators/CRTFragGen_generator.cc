@@ -1,4 +1,6 @@
-/* Author: Matthew Strait <mstrait@fnal.gov> */
+/* Author: Matthew Strait <mstrait@fnal.gov>
+ *         Andrew Olivier <aolivier@ur.rochester.edu>
+ */
 
 #include "dune-artdaq/Generators/CRTFragGen.hh"
 
@@ -34,10 +36,21 @@ CRT::FragGen::FragGen(fhicl::ParameterSet const& ps) :
   , runstarttime(0)
   , partition_number(ps.get<int>("partition_number"))
   , startbackend(ps.get<bool>("startbackend"))
+  , fUSBString(ps.get<std::string>("usbnumber"))
   , timingXMLfilename(ps.get<std::string>("connections_file",
     "/nfs/sw/control_files/timing/connections_v4b4.xml"))
-  , hardwarename(ps.get<std::string>("hardware_select", "CRT_EPT"))
+  , timinghardwarename(ps.get<std::string>("hardware_select", "CRT_EPT"))
+  , timeConnMan("file://"+timingXMLfilename)
+  , timinghw(timeConnMan.getDevice(timinghardwarename))
+  , gotRunStartTime(false)
 {
+  uhal::setLogLevelTo(uhal::Error());
+
+  // Tell the timing board what partition we are running in.
+  // It's ok to do this in all four CRT processes.
+  timinghw.getNode("endpoint0.csr.ctrl.tgrp").write(partition_number);
+  timinghw.dispatch();
+
   hardware_interface_->AllocateReadoutBuffer(&readout_buffer_);
 
   // If we are the designated process to do so, start up Camillo's backend DAQ
@@ -49,55 +62,109 @@ CRT::FragGen::FragGen(fhicl::ParameterSet const& ps) :
   // Yes, a call to system() is awful.  We could improve this.
   if(startbackend &&
      system(("source /nfs/sw/crt/readout_linux/script/setup.sh; "
-              "startallboards_shortbaseline.pl " + sqltable).c_str())){
+              "startallboards.pl " + sqltable).c_str())){
     throw cet::exception("CRT") << "Failed to start up CRT backend\n";
   }
 
   // If we aren't the process that starts the backend, this will block
   // until the baselines are available.
   hardware_interface_->SetBaselines();
-
-  // TODO: Start up the timing "pdtbutler" here once Alessandro gives me the
-  // required magic words later on 2018-08-27, we hope.
 }
 
 CRT::FragGen::~FragGen()
 {
   // Stop the backend DAQ.
   if(system(("source /nfs/sw/crt/readout_linux/script/setup.sh; "
-              "stopallboards.pl " + sqltable).c_str())){
+              "nohup stopallboards.pl " + sqltable + " &").c_str())){
     TLOG(TLVL_WARNING, "CRT") << "Failed in call to stopallboards.pl\n";
   }
 
   hardware_interface_->FreeReadoutBuffer(readout_buffer_);
 }
 
-
-// NOTE: Ok to return up to, say, 10s of old data on start up.
-// This gets buffered outside of my code and discarded if it isn't
-// wanted.
-
-// We don't have to check if we're keeping up because the artdaq system
-// does that for us.
 bool CRT::FragGen::getNext_(
   std::list< std::unique_ptr<artdaq::Fragment> > & frags)
 {
+  if(!gotRunStartTime) 
+  {
+    getRunStartTime();
+
+    //Make sure runstarttime isn't too different from current UNIX timestamp.  If it 
+    //is, then we probably won't write any useful data. When maintaining this code,  
+    //remember that the timing endpoint won't give us a good runstarttime until 
+    //everything has finished the start() transition.
+    constexpr decltype(runstarttime) maxTimeDiff = 10*60; //10 minutes in seconds
+    const auto deltaT = abs(runstarttime*20/1.e9 - time(nullptr));
+    if(deltaT > maxTimeDiff) //Hardcoded 20 ns per timestamp tick for ProtoDUNE-SP timing system
+    {
+      TLOG(TLVL_WARNING, "CRT") << "CRT board reader failed to get reasonable run start time "
+                                << "from timing endpoint.  Difference from UNIX time of " << deltaT
+                                << " > tolerance of " << maxTimeDiff << "\n";
+    }
+    else 
+    {
+      TLOG(TLVL_INFO, "CRT") << "Set run start time to " << runstarttime << ", or " 
+                                << (uint64_t)(runstarttime*20./1.e9) << " seconds at UNIX timestamp of "
+                                << time(nullptr) << " seconds.\n";
+      gotRunStartTime = true;
+    }
+  }
+                                                                                                     
   if(should_stop()){
-    TLOG(TLVL_INFO, "CRT") << "CRT getNext_ returning on should_stop()\n";
+    TLOG(TLVL_INFO, "CRT") << "getNext_ returning on should_stop()\n";
     return false;
   }
 
-  std::size_t bytes_read = 0;
-  hardware_interface_->FillBuffer(readout_buffer_, &bytes_read);
+  // Maximum number of Fragments allowed per GetNext_() call.  I think we
+  // should keep this as small as possible while making sure this Fragment
+  // Generator can keep up.
+  const int maxFrags = 64;
 
-  if(bytes_read == 0){
-    // Pause for a little bit if we didn't get anything to keep load down.
-    usleep(10000);
+  int fragIt = 0;
+  for(; fragIt < maxFrags; ++fragIt){
+    size_t bytes_read = 0;
+    hardware_interface_->FillBuffer(readout_buffer_, &bytes_read);
 
-    TLOG(TLVL_DEBUG, "CRT") << "CRT getNext_ is returning with no data\n";
-    return true; // this means "keep taking data"
+    if(bytes_read == 0){
+      // Pause for a little bit if we didn't get anything to keep load down.
+      usleep(100); //Used to be 10000 usec, but that's more than 3 TPC readout windows!  
+
+      // So that we still record metrics if we didn't write maxFrags but wrote
+      // at least one.
+      break;
+    }
+
+    // I have kept the following NOTE for historical purposes.  This
+    // loop generalizes what it suggests.
+    //     NOTE: we are always returning zero or one fragments, but we
+    //     could return more at the cost of some complexity, maybe getting
+    //     an efficiency gain.  Check back here if things are too slow.
+    frags.emplace_back(buildFragment(bytes_read));
+  } //for each Fragment
+
+  if(metricMan != nullptr)
+  {
+    metricMan->sendMetric("Fragments Made", fragIt, "Fragments", 1, artdaq::MetricMode::Accumulate);
   }
 
+  if(fragIt > 0){//If we read at least one Fragment
+    if (metricMan /* What is this? */ != nullptr)
+      metricMan->sendMetric("Fragments Sent", ev_counter(), "Events", 3 /* ? */,
+          artdaq::MetricMode::LastPoint);
+
+    ev_counter_inc(); // from base CommandableFragmentGenerator
+
+    TLOG(TLVL_DEBUG, "CRT") << "getNext_ is returning with hits in " << fragIt << " Fragments\n";
+  }
+  else{
+    TLOG(TLVL_DEBUG, "CRT") << "getNext_ is returning with no data\n";
+  }
+
+  return true;
+}
+
+std::unique_ptr<artdaq::Fragment> CRT::FragGen::buildFragment(const size_t& bytes_read)
+{
   assert(sizeof timestamp_ == 8);
 
   // A module packet must at least have the magic number (1B), hit count
@@ -108,33 +175,57 @@ bool CRT::FragGen::getNext_(
        << " < " << minsize << " bytes from CRTInterface::FillBuffer.\n";
   }
 
-  // Repair the CRT timestamp.  First get the lower bits that the CRT
-  // provides.  Then check if they rolled over and increment our stored
-  // upper bits if needed, and finally concatenate the two.
-  // This works because the CRT data comes strictly time ordered in
-  // each USB stream [citation: Camillo 2018-08-03].
+  // Repair the CRT timestamp.  First get the lower bits that the CRT provides.
+  // Then check if they rolled over and increment our stored upper bits if
+  // needed, and finally concatenate the two.  Data does *not* come strictly
+  // ordered in each USB stream (despite what Camillo told us on 2018-08-03),
+  // but the trigger rate is sufficiently high and the data sufficiently close
+  // to ordered that rollovers are pretty unambiguous.
+  //
+  // This only works if the CRT takes data continuously.  If we don't see data
+  // for more than one 32-bit epoch, which is about 86 seconds, we'll fall out
+  // of sync.  With additional work this could be fixed, since we leave the
+  // backend DAQ running during pauses, but at the moment we skip over
+  // intermediate data when we unpause (we start with the most recent file from
+  // the backend, where files are about 20 seconds long).
   const uint64_t lowertime = *(uint32_t*)(readout_buffer_ + 4 + sizeof(uint64_t));
 
-  // Store the first non-zero raw hardware timestamp that we see.  This is
-  // only needed for debugging.  If the first timestamp happens to be zero,
-  // in principle we could take that, but it's not important.
-  if(firstlowertime == 0) firstlowertime = lowertime;
+  // rolloverThreshold combats out-of-order data causing rollovers in the
+  // timestamp.  Tuned by increasing by orders of magnitude until I saw the
+  // number of rollovers so far match the total run time.  Lots of things have
+  // changed since the last tuning, so we can probably back off on
+  // rolloverThreshold.  Whatever we do, it should never be >
+  // std::numeric_limits<uint32_t>::max().
+  const uint64_t rolloverThreshold = 100000000;
 
-  // This only works if the CRT takes data continuously.  If we don't
-  // see data for more than one 32-bit epoch, which is about 86 seconds,
-  // we'll fall out of sync.  With additional work this could be fixed,
-  // since we leave the backend DAQ running during pauses, but at the
-  // moment we skip over intermediate data when we unpause (we start
-  // with the most recent file from the backend, where files are about
-  // 5 seconds long).
-  if(lowertime < oldlowertime) uppertime++;
+  if((uint64_t)(lowertime + rolloverThreshold) < oldlowertime){
+    /*TLOG(TLVL_DEBUG, "CRT") << "lowertime " << lowertime
+      << " and oldlowertime " << oldlowertime << " caused a rollover.  "
+      "uppertime is now " << uppertime << ".\n";*/
+    uppertime++;
+  }
   oldlowertime = lowertime;
 
   timestamp_ = ((uint64_t)uppertime << 32) + lowertime + runstarttime;
+  /*TLOG(TLVL_INFO, "CRT") << "Constructing a timestamp with uppertime = "
+    << uppertime << ", lowertime = " << lowertime << ", and runstarttime = "
+    << runstarttime << ".  Timestamp is " << timestamp_ << "\n";*/
 
-  // And also copy the repaired timestamp into the buffer itself.  Not sure
-  // which timestamp code downstream is going to read (timestamp_ or
-  // from the raw buffer, a.k.a. the fragment), but both will always be
+  //Sanity check on timestamps
+  constexpr auto alarmDeltaT = 600; //10 minutes difference from "current" system time
+  const auto currentUNIX = time(nullptr);
+  const auto inSeconds = timestamp_*20./1.e9; //20 nanosecond ticks in the ProtoDUNE-SP timing system
+  const auto deltaT = fabs(inSeconds - currentUNIX);
+  if(deltaT > alarmDeltaT)
+  {
+    TLOG(TLVL_WARNING, "CRT") << "Got a large time difference of " << deltaT << " between CRT timestamp of " 
+                              << timestamp_ << "( " << inSeconds << " seconds) and current system time of "
+                              << currentUNIX << ".  lowertime = " << lowertime << ", uppertime = " << uppertime 
+                              << ", and runstarttime = " << runstarttime << ".\n";
+  }
+
+  // And also copy the repaired timestamp into the buffer itself.
+  // Code downstream in artdaq reads timestamp_, but both will always be
   // the same.
   memcpy(readout_buffer_ + 4, &timestamp_, sizeof(uint64_t));
 
@@ -150,38 +241,13 @@ bool CRT::FragGen::getNext_(
   fragptr->setFragmentID( fragment_id() ); // Ditto
   fragptr->setUserType( dune::detail::CRT );
   fragptr->setTimestamp( timestamp_ );
+  memcpy(fragptr->dataBeginBytes(), readout_buffer_, bytes_read);
 
-  // NOTE: we are always returning zero or one fragments, but we
-  // could return more at the cost of some complexity, maybe getting
-  // an efficiency gain.  Check back here if things are too slow.
-  frags.emplace_back(std::move(fragptr));
-
-  memcpy(frags.back()->dataBeginBytes(), readout_buffer_, bytes_read);
-
-
-  if (metricMan /* What is this? */ != nullptr)
-    metricMan->sendMetric("Fragments Sent", ev_counter(), "Events", 3 /* ? */,
-        artdaq::MetricMode::LastPoint);
-
-  ev_counter_inc(); // from base CommandableFragmentGenerator
-
-  TLOG(TLVL_DEBUG, "CRT") << "CRT getNext_ is returning with hits\n";
-
-  return true;
+  return fragptr;
 }
 
 void CRT::FragGen::getRunStartTime()
 {
-  std::string filepath = "file://" + timingXMLfilename;
-  uhal::setLogLevelTo(uhal::Error());
-  static uhal::ConnectionManager timeConnMan(filepath);
-  static uhal::HwInterface timinghw(timeConnMan.getDevice(hardwarename));
-
-  // Tell the timing board what partition we are running in.
-  // It's ok to do this in all four CRT processes.
-  timinghw.getNode("endpoint0.csr.ctrl.tgrp").write(partition_number);
-  timinghw.dispatch();
-
   uhal::ValWord<uint32_t> status
     = timinghw.getNode("endpoint0.csr.stat.ep_stat").read();
   timinghw.dispatch();
@@ -194,18 +260,12 @@ void CRT::FragGen::getRunStartTime()
   timinghw.dispatch();
   uhal::ValWord<uint32_t> rst_h = timinghw.getNode("endpoint0.pulse.ts_h").read();
   timinghw.dispatch();
-
   runstarttime = ((uint64_t)rst_h << 32) + rst_l;
-
-  TLOG(TLVL_INFO, "CRT") << "CRT got run start time " << runstarttime << "\n";
-  printf("CRT got run start time 0x%lx\n", runstarttime);
 }
 
 void CRT::FragGen::start()
 {
   hardware_interface_->StartDatataking();
-
-  getRunStartTime();
 
   uppertime = 0;
   oldlowertime = 0;
