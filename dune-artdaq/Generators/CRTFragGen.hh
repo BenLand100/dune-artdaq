@@ -12,6 +12,7 @@
 #include <random>
 #include <vector>
 #include <atomic>
+#include <memory> //For std::unique_ptr
 
 #include "uhal/uhal.hpp"
 
@@ -57,6 +58,8 @@ namespace CRT
     // Written to by the hardware interface
     char* readout_buffer_;
 
+    std::unique_ptr<CRTInterface> hardware_interface_;
+
     /*********************************************************************
        And then all the rest of the members are here to deal with fixing
        the CRT hardware's 32-bit time stamp.
@@ -65,8 +68,6 @@ namespace CRT
     // Gets the full 64-bit run start time, measured in 50MHz clock ticks,
     // from a timing board and puts it in runstarttime.
     void getRunStartTime();
-
-    std::unique_ptr<CRTInterface> hardware_interface_;
 
     // uint64_t (after unwinding a few layers of typedefs) for the
     // global clock.  For the CRT, we assemble this out of the 32-bit
@@ -85,11 +86,6 @@ namespace CRT
     // rolled over and need to increment uppertime.
     uint32_t oldlowertime = 0;
 
-    // The first 32-bit timestamp we see coming from the hardware.  This is
-    // only needed for testing purposes and should not affect anything in
-    // normal running.
-    uint32_t firstlowertime;
-
     // The 64-bit global timestamp of the start of the run. We need to
     // retrieve and store this to repair the CRT's internal 32-bit time.
     uint64_t runstarttime;
@@ -101,8 +97,11 @@ namespace CRT
     // True if this process is the one designated to start the backend DAQ.
     bool startbackend;
 
+    //Keep track of which USB board this board reader is reading from for debugging
+    const std::string fUSBString;
+
     std::string timingXMLfilename;
-    std::string hardwarename;
+    std::string timinghardwarename;
   };
 }
 

@@ -22,7 +22,7 @@ dune_raw_data 	v1_17_06a
 cetbuildtools	v7_02_01	-	only_for_build
 uhal		v2_6_0
 dune_artdaq_InhibitMaster v0_01_01
-protodune_wibsoft v349_hack
+protodune_wibsoft v349 #_hack
 end_product_list
 
 # e10 - with gcc 4.9.3a and -std=c++14
