@@ -94,20 +94,25 @@ bool CRT::FragGen::getNext_(
     //remember that the timing endpoint won't give us a good runstarttime until 
     //everything has finished the start() transition.
     constexpr decltype(runstarttime) maxTimeDiff = 10*60; //10 minutes in seconds
-    const auto deltaT = abs(runstarttime*20/1.e9 - time(nullptr));
+    const uint64_t deltaT = labs(runstarttime*20/1.e9 - time(nullptr));
     if(deltaT > maxTimeDiff) //Hardcoded 20 ns per timestamp tick for ProtoDUNE-SP timing system
     {
       TLOG(TLVL_WARNING, "CRT") << "CRT board reader failed to get reasonable run start time "
                                 << "from timing endpoint.  Difference from UNIX time of " << deltaT
                                 << " > tolerance of " << maxTimeDiff << "\n";
+      return true; //Keep trying to take data, but don't try to form any timestamps until we have 
+                   //a "good" run start time
     }
-    else 
-    {
-      TLOG(TLVL_INFO, "CRT") << "Set run start time to " << runstarttime << ", or " 
-                                << (uint64_t)(runstarttime*20./1.e9) << " seconds at UNIX timestamp of "
-                                << time(nullptr) << " seconds.\n";
-      gotRunStartTime = true;
-    }
+
+    //runstarttime is OK if we got this far, so start sending back data.  
+    //If it took more than 86 seconds to get a "good" runstarttime, then 
+    //uppertime needs to be updated. 
+    uppertime = (uint64_t)(deltaT*1e9/20)/std::numeric_limits<uint32_t>::max();
+    TLOG(TLVL_INFO, "CRT") << "Set run start time to " << runstarttime << ", or " 
+                              << (uint64_t)(runstarttime*20./1.e9) << " seconds at UNIX timestamp of "
+                              << time(nullptr) << " seconds.  Looks like we skipped " << uppertime 
+                              << " 32-bit rollovers, so set uppertime to " << uppertime << ".\n";
+    gotRunStartTime = true;
   }
                                                                                                      
   if(should_stop()){
@@ -212,11 +217,11 @@ std::unique_ptr<artdaq::Fragment> CRT::FragGen::buildFragment(const size_t& byte
     << runstarttime << ".  Timestamp is " << timestamp_ << "\n";*/
 
   //Sanity check on timestamps
-  constexpr auto alarmDeltaT = 600; //10 minutes difference from "current" system time
+  constexpr auto alarmDeltaT = 2; //2 second difference from "current" system time
   const auto currentUNIX = time(nullptr);
-  const auto inSeconds = timestamp_*20./1.e9; //20 nanosecond ticks in the ProtoDUNE-SP timing system
-  const auto deltaT = fabs(inSeconds - currentUNIX);
-  if(deltaT > alarmDeltaT)
+  const uint64_t inSeconds = timestamp_*20./1.e9; //20 nanosecond ticks in the ProtoDUNE-SP timing system
+  const int64_t deltaT = inSeconds - currentUNIX;
+  if(labs(deltaT) > alarmDeltaT)
   {
     TLOG(TLVL_WARNING, "CRT") << "Got a large time difference of " << deltaT << " between CRT timestamp of " 
                               << timestamp_ << "( " << inSeconds << " seconds) and current system time of "
