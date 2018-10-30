@@ -414,8 +414,8 @@ void CRTInterface::FillBuffer(char* cooked_data, size_t* bytes_ret)
     // FillBuffer(), because it's unlikely any will have come in yet.
     TLOG(TLVL_DEBUG, "CRTInterface") << "Read data from " << datafile_name
                                      << " because a new file was found.  ";
-    TLOG(TLVL_INFO, "CRTInterface") << "Buffer had " << bytesBefore 
-                                    << " bytes in it before read from new file\n";
+    TLOG(TLVL_DEBUG, "CRTInterface") << "Buffer had " << bytesBefore 
+                                     << " bytes in it before read from new file\n";
     *bytes_ret = read_everything_from_file(cooked_data);
     return;
   }
