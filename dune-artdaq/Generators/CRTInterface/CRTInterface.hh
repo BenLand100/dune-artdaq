@@ -27,7 +27,12 @@ CRT_READ_MORE = 0x04,
 // We've read some data into our internal buffer and it may decode
 // to one or more module packets, so read it before going back to
 // the input files.
-CRT_DRAIN_BUFFER = 0x08;
+CRT_DRAIN_BUFFER = 0x08,
+
+// On the very first file, we don't want to read everything when we 
+// first find it.  So, create a special state to which CRTInterface 
+// is initialized and which is never set again. 
+CRT_FIRST_FILE = 0x10;
 
 class CRTInterface
 {
