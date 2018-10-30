@@ -312,7 +312,7 @@ ARTDAQ_DEMO_DIR=$Base/srcs/dune_artdaq
 nprocessors=$( grep -E "processor\s+:" /proc/cpuinfo | wc -l )
 trace_file_label=$( basename $Base )
 
-protodune_timing_version=v4_1_3
+protodune_timing_version=v5_1_0
 rogue_version=v2_10_0_3_gfaeedd0
 protodune_wibsoft_version=v349_hack
 netio_version=v0_8_0
