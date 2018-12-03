@@ -46,6 +46,9 @@ simple_plugin(FelixReceiver "generator"
   dune-artdaq_DAQLogger
 )
 
+# PAR 2018-12-03: Need these definitions to get my trigger primitive
+# code to work. They have to be target-specific otherwise they
+# interfere with the RCE receiver's use of boost, below
 target_compile_definitions(dune-artdaq_Generators_FelixReceiver_generator PRIVATE BOOST_THREAD_PROVIDES_FUTURE_WHEN_ALL_WHEN_ANY=1 BOOST_THREAD_VERSION=4)
 
 add_subdirectory(ToyHardwareInterface)
