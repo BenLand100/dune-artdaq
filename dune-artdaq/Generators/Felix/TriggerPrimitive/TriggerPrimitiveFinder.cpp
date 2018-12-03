@@ -128,7 +128,8 @@ TriggerPrimitiveFinder::primitivesForTimestamp(uint64_t /* timestamp */)
 
 void TriggerPrimitiveFinder::addHitsToQueue(uint64_t timestamp)
 {
-    std::vector<TriggerPrimitiveFinder::TriggerPrimitive> hits;
+    TriggerPrimitiveFinder::WindowPrimitives prims;
+    prims.timestamp=timestamp;
 
     for(size_t j=0; j<m_nthreads; ++j){
         uint16_t chan[16], hit_start[16], hit_charge[16], hit_tover[16];
@@ -142,13 +143,13 @@ void TriggerPrimitiveFinder::addHitsToQueue(uint64_t timestamp)
             
             for(int i=0; i<16; ++i){
                 if(hit_charge[i] && chan[i]!=MAGIC){
-                    TriggerPrimitiveFinder::TriggerPrimitive tp{timestamp, chan[i], hit_start[i], hit_charge[i], hit_tover[i]};
-                    hits.push_back(tp);
+                    TriggerPrimitiveFinder::TriggerPrimitive p{chan[i], hit_start[i], hit_charge[i], hit_tover[i]};
+                    prims.triggerPrimitives.push_back(std::move(p));
                 }
             }
         }
     }
-    m_windowHits.push_back(hits);
+    m_windowHits.push_back(prims);
     if(m_windowHits.size()>1000) m_windowHits.pop_front();
 }
 

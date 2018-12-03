@@ -17,11 +17,16 @@ class TriggerPrimitiveFinder
 public:
     struct TriggerPrimitive
     {
-        uint64_t timestamp;
         uint16_t channel;
         uint16_t startTimeOffset; // relative to 64-bit timestamp
         uint16_t charge;
         uint16_t timeOverThreshold;
+    };
+
+    struct WindowPrimitives
+    {
+        uint64_t timestamp;
+        std::vector<TriggerPrimitive> triggerPrimitives;
     };
 
     TriggerPrimitiveFinder(size_t qsize, size_t timeWindowNumMessages, size_t nthreads);
@@ -46,7 +51,7 @@ private:
     size_t m_messagesReceived;
     size_t m_nthreads;
     folly::ProducerConsumerQueue<MessageCollectionADCs> m_pcq;
-    std::deque<std::vector<TriggerPrimitive>> m_windowHits;
+    std::deque<WindowPrimitives> m_windowHits;
 };
 
 #endif
