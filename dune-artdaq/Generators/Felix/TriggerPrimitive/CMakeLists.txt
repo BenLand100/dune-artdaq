@@ -7,8 +7,11 @@ art_make_library( LIBRARY_NAME dune-artdaq_Generators_Felix_TriggerPrimitive_cha
 )
 
 art_make_library( LIBRARY_NAME dune-artdaq_Generators_Felix_TriggerPrimitive
-		  SOURCE frame_expand.cpp
-                  LIBRARIES ${CMAKE_THREAD_LIBS_INIT}
+		  SOURCE frame_expand.cpp process_avx2.cpp design_fir.cpp
+                  LIBRARIES
+                  ${CMAKE_THREAD_LIBS_INIT}
+                  ${Boost_SYSTEM_LIBRARY}
+                  ${Boost_THREAD_LIBRARY}
 )
 
 add_subdirectory(tests)

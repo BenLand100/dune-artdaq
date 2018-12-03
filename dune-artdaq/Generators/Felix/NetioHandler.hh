@@ -20,6 +20,8 @@
 #include <mutex>
 #include <algorithm>
 
+#include "TriggerPrimitive/TriggerPrimitiveFinder.h"
+
 //#define MSGQ
 //#define QACHECK
 
@@ -151,7 +153,7 @@ private:
 #endif
 
   // Queues for the collection channels only: to be used in the trigger primitive finding
-  std::map<uint64_t, UniqueCollectionQueue> m_collection_pcqs;
+  std::map<uint64_t, std::unique_ptr<TriggerPrimitiveFinder>> m_tp_finders;
 
   // Threads
   std::vector<std::thread> m_netioSubscribers;

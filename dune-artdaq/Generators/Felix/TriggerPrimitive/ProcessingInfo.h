@@ -1,7 +1,6 @@
 #ifndef PROCESSINGINFO_H
 #define PROCESSINGINFO_H
 
-#define BOOST_THREAD_VERSION 4
 #define BOOST_THREAD_PROVIDES_FUTURE_CONTINUATION
 #include <boost/thread/future.hpp>
 

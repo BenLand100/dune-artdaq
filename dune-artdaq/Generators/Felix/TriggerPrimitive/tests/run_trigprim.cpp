@@ -112,7 +112,6 @@ run_subscribe(Options& opt, netio::context& ctx,
 
     messages_received.store(0);
 
-    // Thread pool idea copied from NetioHandler
     std::vector<std::thread> primfind_functors; 
     std::vector<uint16_t*> primfind_destinations;
     std::vector<std::atomic<int>> primfind_semaphores(opt.nthreads);

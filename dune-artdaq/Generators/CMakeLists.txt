@@ -29,6 +29,7 @@ simple_plugin(SSP "generator"
   )
 
 add_subdirectory(Felix)
+
 simple_plugin(FelixReceiver "generator"
   dune-raw-data_Overlays
   dune-artdaq_Generators_Felix
@@ -45,7 +46,9 @@ simple_plugin(FelixReceiver "generator"
   dune-artdaq_DAQLogger
 )
 
-  add_subdirectory(ToyHardwareInterface)
+target_compile_definitions(dune-artdaq_Generators_FelixReceiver_generator PRIVATE BOOST_THREAD_PROVIDES_FUTURE_WHEN_ALL_WHEN_ANY=1 BOOST_THREAD_VERSION=4)
+
+add_subdirectory(ToyHardwareInterface)
 simple_plugin(ToySimulator "generator"
   dune-artdaq_Generators_ToyHardwareInterface
   dune-raw-data_Overlays
