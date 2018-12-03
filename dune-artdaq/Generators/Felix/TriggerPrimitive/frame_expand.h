@@ -2,6 +2,7 @@
 #define FRAME_EXPAND_H
 #include <array>
 #include "dune-artdaq/Generators/Felix/FelixFormat.hh"
+#include "dune-artdaq/Generators/Felix/Types.hh"
 
 #include "immintrin.h"
 
@@ -18,9 +19,9 @@ static constexpr size_t BYTES_PER_REGISTER=32;
 static constexpr size_t SAMPLES_PER_REGISTER=16;
 
 static const size_t NETIO_MSG_SIZE=sizeof(FelixFrame)*FRAMES_PER_MSG;
-struct USR_CHAR_STRUCT {
-    char fragments[NETIO_MSG_SIZE];
-};
+// struct USR_CHAR_STRUCT {
+//     char fragments[NETIO_MSG_SIZE];
+// };
 
 // One netio message's worth of collection channel ADCs after
 // expansion: 12 frames per message times 8 registers per frame times
@@ -304,7 +305,7 @@ int collection_index_to_offline(int index)
 }
 
 //======================================================================
-RegisterArray<REGISTERS_PER_FRAME*FRAMES_PER_MSG> expand_message_adcs(const USR_CHAR_STRUCT& ucs)
+RegisterArray<REGISTERS_PER_FRAME*FRAMES_PER_MSG> expand_message_adcs(const SUPERCHUNK_CHAR_STRUCT& ucs)
 {
     RegisterArray<REGISTERS_PER_FRAME*FRAMES_PER_MSG> adcs;
     for(size_t iframe=0; iframe<FRAMES_PER_MSG; ++iframe){

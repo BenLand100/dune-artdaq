@@ -26,7 +26,7 @@ int main(int, char**)
     taps.push_back(0); // Make it 8 long so it's a power of two
 
     for(size_t imsg=0; imsg<nmessages; ++imsg){
-        USR_CHAR_STRUCT* ucs=reinterpret_cast<USR_CHAR_STRUCT*>(frame+imsg*FRAMES_PER_MSG);
+        SUPERCHUNK_CHAR_STRUCT* ucs=reinterpret_cast<SUPERCHUNK_CHAR_STRUCT*>(frame+imsg*FRAMES_PER_MSG);
         RegisterArray<REGISTERS_PER_FRAME*FRAMES_PER_MSG> expanded=expand_message_adcs(*ucs);
         MessageCollectionADCs* mca=reinterpret_cast<MessageCollectionADCs*>(expanded.data());
         mcas[imsg%timeWindowNumMessages]=*mca;

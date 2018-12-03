@@ -157,7 +157,7 @@ run_subscribe(Options& opt, netio::context& ctx,
         socket.recv(m);
 
         if (m.size() == msize) {
-            USR_CHAR_STRUCT ucs;
+            SUPERCHUNK_CHAR_STRUCT ucs;
             m.serialize_to_usr_buffer((void*)&ucs);
             RegisterArray<REGISTERS_PER_FRAME*FRAMES_PER_MSG> expanded=expand_message_adcs(ucs);
             MessageCollectionADCs* mca=reinterpret_cast<MessageCollectionADCs*>(expanded.data());

@@ -4,6 +4,7 @@
 #include "ReusableThread.hh"
 #include "FelixReorder.hh"
 
+#include "dune-artdaq/Generators/Felix/TriggerPrimitive/frame_expand.h"
 //#include <libxmlrpc.h>
 
 #include <ctime>
@@ -314,6 +315,14 @@ void NetioHandler::startSubscribers(){
 	  else {
 	    SUPERCHUNK_CHAR_STRUCT ics;
 	    msg.serialize_to_usr_buffer((void*)&ics);
+
+            RegisterArray<REGISTERS_PER_FRAME*FRAMES_PER_MSG> expanded=expand_message_adcs(ics);
+            MessageCollectionADCs* mca=reinterpret_cast<MessageCollectionADCs*>(expanded.data());
+
+            // if(!m_pcq.write( std::move(*mca) )){
+            //     std::cout << "Queue full" << std::endl;
+            // }
+
 	    bool storeOk = m_pcqs[m_channels[chn]]->write( std::move(ics) ); // RS -> Add possibility for dry_run! (No push mode.)
 	    if (!storeOk) {
               //DAQLogger::LogWarning("NetioHandler::subscriber") << " Fragments queue is full. Lost: " << lostData;
