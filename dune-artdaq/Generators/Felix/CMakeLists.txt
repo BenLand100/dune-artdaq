@@ -60,3 +60,4 @@ else()
     )
 endif()
 
+add_subdirectory(TriggerPrimitive)
