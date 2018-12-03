@@ -120,10 +120,18 @@ void TriggerPrimitiveFinder::process_window()
 }
 
 std::vector<TriggerPrimitiveFinder::TriggerPrimitive>
-TriggerPrimitiveFinder::primitivesForTimestamp(uint64_t /* timestamp */)
+TriggerPrimitiveFinder::primitivesForTimestamp(uint64_t timestamp)
 {
-    // TODO: Implement
-    return std::vector<TriggerPrimitiveFinder::TriggerPrimitive>();
+    std::vector<TriggerPrimitiveFinder::TriggerPrimitive> ret;
+    const int64_t signed_ts=timestamp;
+    // 3ms (the readout window) in 50 MHz ticks
+    const int64_t readout_window=150000;
+    for(auto const& wp: m_windowHits){
+        if(std::abs(signed_ts-wp.timestamp)<readout_window){
+            ret.insert(ret.end(), wp.triggerPrimitives.begin(), wp.triggerPrimitives.end());
+        }
+    }
+    return ret;;
 }
 
 void TriggerPrimitiveFinder::addHitsToQueue(uint64_t timestamp)
