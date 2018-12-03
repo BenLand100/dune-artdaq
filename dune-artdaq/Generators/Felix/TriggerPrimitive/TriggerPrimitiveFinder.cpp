@@ -75,6 +75,9 @@ void TriggerPrimitiveFinder::process_window()
     // ...and then copy the data into the working area
     auto copy_future=waiter.then(boost::launch::deferred,
                                  [&](decltype(waiter) f){
+                                     // Copy out the hits from the last go-round
+                                     // TODO: Real timestamp
+                                     addHitsToQueue(0);
                                      // Copy the window into the temporary working area
                                      for(size_t j = 0; j < m_timeWindowNumMessages; j++){
                                          m_pcq.read(m_primfind_tmp[j]);
@@ -114,7 +117,39 @@ void TriggerPrimitiveFinder::process_window()
                                                 return process_window_avx2(fin.get()[ithread]);
                                             });
     }
+}
 
+std::vector<TriggerPrimitiveFinder::TriggerPrimitive>
+TriggerPrimitiveFinder::primitivesForTimestamp(uint64_t /* timestamp */)
+{
+    // TODO: Implement
+    return std::vector<TriggerPrimitiveFinder::TriggerPrimitive>();
+}
+
+void TriggerPrimitiveFinder::addHitsToQueue(uint64_t timestamp)
+{
+    std::vector<TriggerPrimitiveFinder::TriggerPrimitive> hits;
+
+    for(size_t j=0; j<m_nthreads; ++j){
+        uint16_t chan[16], hit_start[16], hit_charge[16], hit_tover[16];
+        uint16_t* input_loc=m_primfind_destinations[j];
+        
+        while(*input_loc!=MAGIC){
+            for(int i=0; i<16; ++i) chan[i]       = collection_index_to_offline(*input_loc++);
+            for(int i=0; i<16; ++i) hit_start[i]  = *input_loc++;
+            for(int i=0; i<16; ++i) hit_charge[i] = *input_loc++;
+            for(int i=0; i<16; ++i) hit_tover[i]  = *input_loc++;
+            
+            for(int i=0; i<16; ++i){
+                if(hit_charge[i] && chan[i]!=MAGIC){
+                    TriggerPrimitiveFinder::TriggerPrimitive tp{timestamp, chan[i], hit_start[i], hit_charge[i], hit_tover[i]};
+                    hits.push_back(tp);
+                }
+            }
+        }
+    }
+    m_windowHits.push_back(hits);
+    if(m_windowHits.size()>1000) m_windowHits.pop_front();
 }
 
 /* Local Variables:  */
