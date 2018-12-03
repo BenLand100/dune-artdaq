@@ -150,6 +150,9 @@ private:
   std::map<uint64_t, UniqueFrameQueue> m_pcqs;
 #endif
 
+  // Queues for the collection channels only: to be used in the trigger primitive finding
+  std::map<uint64_t, UniqueCollectionQueue> m_collection_pcqs;
+
   // Threads
   std::vector<std::thread> m_netioSubscribers;
   //std::vector<std::unique_ptr<NetioSubscriber>> m_subscribers;

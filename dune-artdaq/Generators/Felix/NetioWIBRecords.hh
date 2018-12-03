@@ -10,11 +10,26 @@
 #include <x86intrin.h>
 #include <emmintrin.h>
 
+#include "FelixFormat.hh"
 
 /* NetioWIBRecords
  * Author: Roland.Sipos@cern.ch
  * Description: WIB specific structures for NetioHandler
 */
+
+// How many frames are concatenated in one netio message
+static constexpr size_t FRAMES_PER_MSG=12;
+// How many collection-wire AVX2 registers are returned per
+// frame. This is slightly more than needed because each register
+// contains some junk entries. Could consider consolidating them
+// further, but that's for another time
+static constexpr size_t REGISTERS_PER_FRAME=8;
+// How many bytes are in an AVX2 register
+static constexpr size_t BYTES_PER_REGISTER=32;
+// How many samples are in a register
+static constexpr size_t SAMPLES_PER_REGISTER=16;
+
+static const size_t NETIO_MSG_SIZE=sizeof(FelixFrame)*FRAMES_PER_MSG;
 
 // FELIX Header
 struct FromFELIXHeader
@@ -44,6 +59,14 @@ struct SUPERCHUNK_CHAR_STRUCT {
   char fragments[SUPERCHUNK_FRAME_SIZE];
 };
 static_assert(sizeof(struct SUPERCHUNK_CHAR_STRUCT) == 5568, "Check your assumptions on SUPERCHUNK_CHAR_STRUCT");
+
+// One netio message's worth of collection channel ADCs after
+// expansion: 12 frames per message times 8 registers per frame times
+// 32 bytes (256 bits) per register
+static const size_t collection_adcs_size=BYTES_PER_REGISTER*REGISTERS_PER_FRAME*FRAMES_PER_MSG;
+struct MessageCollectionADCs {
+    char fragments[collection_adcs_size];
+};
 
 /*
 static void printHexChars(const WIB_CHAR_STRUCT& wct){

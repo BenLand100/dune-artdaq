@@ -49,6 +49,7 @@ else()
         artdaq-core_Data
         dune-artdaq_DAQLogger
 	dune-raw-data_Overlays
+        dune-artdaq_Generators_Felix_TriggerPrimitive
         ${netio_LIBRARY_DIR}/libnetio.so
         ${netio_LIBRARY_DIR}/libfabric.so
         $ENV{ICP_ROOT}/qatzip2/qatzip/src/libqatzip.so

@@ -51,6 +51,7 @@ NetioHandler::~NetioHandler() {
   //m_sub_sockets.clear();
 
   m_pcqs.clear(); 
+  m_collection_pcqs.clear();
   if (m_verbose) { 
     DAQLogger::LogInfo("NetioHandler::~NetioHandler")
       << "NIOH terminated. Clean shutdown."; 
@@ -319,9 +320,10 @@ void NetioHandler::startSubscribers(){
             RegisterArray<REGISTERS_PER_FRAME*FRAMES_PER_MSG> expanded=expand_message_adcs(ics);
             MessageCollectionADCs* mca=reinterpret_cast<MessageCollectionADCs*>(expanded.data());
 
-            // if(!m_pcq.write( std::move(*mca) )){
-            //     std::cout << "Queue full" << std::endl;
-            // }
+            bool storeCollOk = m_collection_pcqs[m_channels[chn]]->write( std::move(*mca) );
+            if(!storeCollOk){
+              // Do something useful here
+            }
 
 	    bool storeOk = m_pcqs[m_channels[chn]]->write( std::move(ics) ); // RS -> Add possibility for dry_run! (No push mode.)
 	    if (!storeOk) {
@@ -410,6 +412,7 @@ bool NetioHandler::addChannel(uint64_t chn, uint16_t tag, std::string host, uint
   m_port=port;
   m_channels.push_back(chn);
   m_pcqs[chn] = std::make_unique<FrameQueue>(queueSize);
+  m_collection_pcqs[chn] = std::make_unique<CollectionQueue>(500);
   if (m_extract) {
   try {
     netio::sockcfg cfg = netio::sockcfg::cfg(); 
