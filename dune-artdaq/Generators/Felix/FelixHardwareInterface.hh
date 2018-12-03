@@ -76,6 +76,7 @@ private:
   unsigned window_;
   unsigned window_offset_;
   bool reordering_;
+  bool trigger_primitive_finding_;
   bool compression_;
   std::string requester_address_;
   std::string request_address_;

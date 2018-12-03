@@ -41,6 +41,7 @@ FelixHardwareInterface::FelixHardwareInterface(fhicl::ParameterSet const& ps) :
   window_offset_ = hps.get<unsigned>("trigger_matching_offset_ticks");
   reordering_ = hps.get<bool>("reordering", false);
   compression_ = hps.get<bool>("compression", false);  
+  trigger_primitive_finding_ = hps.get<bool>("trigger_primitive_finding", false);
   requester_address_ = ps.get<std::string>("zmq_fragment_connection_out");
   
 
@@ -105,6 +106,9 @@ FelixHardwareInterface::FelixHardwareInterface(fhicl::ParameterSet const& ps) :
       fragment_meta_.compressed = 0;
     }
   }
+
+  // Trigger primitive finding
+  nioh_.doTPFinding(trigger_primitive_finding_);
 
   // metadata settings
   uint32_t framesPerMsg = message_size_/nioh_.getFrameSize(); // will be 12 for a looong time.

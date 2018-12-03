@@ -76,6 +76,7 @@ public:
     if (ret!=0) { m_doCompress=false; }
     return ret;
   }
+  void doTPFinding(bool doIt) { m_doTPFinding=doIt; }
   void shutdownQAT() { m_compressionFacility->shutdown(); }
   void recalculateByteSizes();
   void recalculateFragmentSizes();
@@ -131,6 +132,7 @@ private:
   size_t m_windowOffset;
   bool m_doReorder;
   bool m_doCompress;
+  bool m_doTPFinding;
   bool m_qatReady;
   bool m_extract;
   bool m_verbose;
