@@ -3,78 +3,107 @@
 #include <iostream>
 #include <sstream>
 
+#include <boost/lambda/bind.hpp>
+#include <boost/lambda/lambda.hpp>
+
 using boost::asio::ip::tcp;
+using boost::lambda::bind;
+using boost::lambda::var;
 
 namespace dune {
 namespace rce {
 
-typedef boost::system::error_code ErrorCode;
-
 RceComm::RceComm(const std::string& host, short port, size_t timeout) :
-   _timer  (_io_context),
-   _socket (_io_context)
+   _deadline (_io_context),
+   _socket   (_io_context),
+   _timeout  (boost::posix_time::milliseconds(timeout))
 {
-   std::cout << port << " " << timeout << std::endl;
 
-   tcp::resolver resolver(_io_context);
-   auto endpoints = resolver.resolve(host, "8090");
-   boost::asio::async_connect(_socket, endpoints,
-         [this](boost::system::error_code ec, tcp::endpoint endpoint)
-         {
-         if (!ec) {
-            std::cout << "Connected to " << endpoint << std::endl;
-         }
-         });
-   _io_context.run();
-   _io_context.reset();
+   _deadline.expires_at(boost::posix_time::pos_infin);
+   _check_deadline();
+
+   // Connect to RCE
+   auto endpoints = tcp::resolver(_io_context).resolve(host, std::to_string(port));
+
+   _deadline.expires_from_now(_timeout);
+
+   boost::system::error_code ec = boost::asio::error::would_block;
+   boost::asio::async_connect(_socket, endpoints, var(ec) = boost::lambda::_1);
+  
+   do _io_context.run_one(); while (ec == boost::asio::error::would_block);
+
+   if (ec || !_socket.is_open())
+      throw boost::system::system_error(
+            ec ? ec : boost::asio::error::operation_aborted);
+
    flush();
 }
 
-RceComm::~RceComm()
+void RceComm::_check_deadline()
 {
-   boost::asio::post(_io_context, [this]() { _socket.close(); });
-   //std::cout << "Closed" << std::endl;
+   if (_deadline.expires_at() <= boost::asio::deadline_timer::traits_type::now()) {
+      boost::system::error_code ignored_ec;
+      _socket.close(ignored_ec);
+      _deadline.expires_at(boost::posix_time::pos_infin);
+    }
+
+    _deadline.async_wait(bind(&RceComm::_check_deadline, this));
 }
 
-std::string RceComm::read()
+size_t RceComm::read(std::string& msg)
 {
-   boost::asio::streambuf streambuf;
-   boost::asio::async_read_until( _socket, streambuf, '\f',
-         [this](const ErrorCode &ec, size_t bytes)
-         {
-            if (!ec) {
-            }
-               std::cout << "Read " << bytes << " bytes" << std::endl;
-         });
-   _io_context.run();
    _io_context.reset();
+   _deadline.expires_from_now(_timeout);
+
+   boost::system::error_code ec = boost::asio::error::would_block;
+   std::size_t bytes = 0;
+
+   boost::asio::streambuf streambuf;
+   boost::asio::async_read_until(_socket, streambuf, '\f',
+         boost::bind(&RceComm::_handle_rw, _1, _2, &ec, &bytes));
+
+   do _io_context.run_one(); while (ec == boost::asio::error::would_block);
+
+   if (ec)
+      throw boost::system::system_error(ec);
 
    // convert streambuf to std::string
+   msg = "";
    if (streambuf.size() > 0)
    {
       auto buf       = streambuf.data();
       auto buf_begin = boost::asio::buffers_begin(buf);
       auto buf_end   = buf_begin + streambuf.size() - 1;
 
-      return std::string(buf_begin, buf_end);
+      msg = std::string(buf_begin, buf_end);
    }
-   return "";
+   return bytes;
+}
+
+size_t RceComm::read()
+{
+   std::string tmp;
+   return this->read(tmp);
 }
 
 size_t RceComm::send(const std::string &msg)
 {
-   boost::asio::async_write(_socket, boost::asio::buffer(msg),
-         [this](const ErrorCode& ec, size_t bytes)
-         {
-            if (!ec) {
-               std::cout << "Sent " << bytes << " bytes" << std::endl;
-            }
-         });
-
-   _io_context.run();
    _io_context.reset();
+   _deadline.expires_from_now(_timeout);
 
-   return 0;
+   boost::system::error_code ec = boost::asio::error::would_block;
+   std::size_t bytes = 0;
+
+   boost::asio::streambuf streambuf;
+   boost::asio::async_write(_socket, boost::asio::buffer(msg),
+         boost::bind(&RceComm::_handle_rw, _1, _2, &ec, &bytes));
+
+   do _io_context.run_one(); while (ec == boost::asio::error::would_block);
+
+   if (ec)
+      throw boost::system::system_error(ec);
+
+   return bytes;
 }
 
 void RceComm::flush()
@@ -147,4 +176,41 @@ void RceComm::set_daq_host(const std::string &addr)
    send_cfg("DataDpm.DataBuffer.DaqHost", addr);
 }
 
-}} // namespace dune::rc
+void RceComm::blowoff_hls(unsigned int flag)
+{
+   send_cfg("DataDpm.DataDpmHlsMon.Blowoff", flag);
+}
+
+void RceComm::blowoff_wib(bool flag)
+{
+   send_cfg("DataDpm.DataDpmWib.Blowoff", flag ? "True" : "False");
+}
+
+void RceComm::set_readout(size_t duration, size_t pretrigger)
+{
+
+   boost::property_tree::ptree pt;
+   pt.add("DataDpm.DataBuffer.Duration",   duration);
+   pt.add("DataDpm.DataBuffer.PreTrigger", pretrigger);
+   
+   boost::property_tree::ptree cfg;
+   cfg.add_child("system.config", pt);
+
+   send(cfg);
+   read();
+}
+
+RceStatus RceComm::get_status()
+{
+   send("<system><command><ReadStatus/></command></system>\n\f");
+
+   std::string msg;
+   std::this_thread::sleep_for(std::chrono::milliseconds(300));
+
+   read(msg);
+   std::this_thread::sleep_for(std::chrono::milliseconds(300));
+
+   return RceStatus(msg);
+}
+
+}} // namespace dune::rce
