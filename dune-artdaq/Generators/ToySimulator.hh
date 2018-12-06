@@ -30,9 +30,6 @@
 #include <vector>
 #include <atomic>
 
-//include for the InhibitMaster StatusPublisher
-#include "dune-artdaq-InhibitMaster/StatusPublisher.hh"
-
 using namespace dune;
 
 namespace dune {    
@@ -77,12 +74,6 @@ namespace dune {
 
     FragmentType fragment_type_;
     bool throw_exception_;
-
-    artdaq::StatusPublisher status_pub_;
-    std::chrono::time_point<std::chrono::high_resolution_clock> prev_ih_report_time_;
-    int inhibit_report_freq_ms_;
-    int inhibit_rndm_mod_;
-    std::random_device rd_;
   };
 }
 

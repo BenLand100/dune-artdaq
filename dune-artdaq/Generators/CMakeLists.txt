@@ -45,25 +45,24 @@ simple_plugin(SSP "generator"
 #   dune-artdaq_DAQLogger
 # )
 
-#   add_subdirectory(ToyHardwareInterface)
-# simple_plugin(ToySimulator "generator"
-#   dune-artdaq_Generators_ToyHardwareInterface
-#   dune-raw-data_Overlays
-#   dune-artdaq_DAQLogger
-#   InhibitMaster_CommonTools
-#   artdaq_Application
-#   artdaq_DAQdata
-#   artdaq-core_Utilities
-#   artdaq-core_Data
-#   artdaq-utilities_Plugins
-#   ${CANVAS}
-#   ${FHICLCPP}
-#   ${MF_MESSAGELOGGER}
-#   ${MF_UTILITIES}
-#   ${CETLIB}
-#   ${CETLIB_EXCEPT}
-#   boost_system
-#   )
+  add_subdirectory(ToyHardwareInterface)
+simple_plugin(ToySimulator "generator"
+  dune-artdaq_Generators_ToyHardwareInterface
+  dune-raw-data_Overlays
+  dune-artdaq_DAQLogger
+  artdaq_Application
+  artdaq_DAQdata
+  artdaq-core_Utilities
+  artdaq-core_Data
+  artdaq-utilities_Plugins
+  ${CANVAS}
+  ${FHICLCPP}
+  ${MF_MESSAGELOGGER}
+  ${MF_UTILITIES}
+  ${CETLIB}
+  ${CETLIB_EXCEPT}
+  boost_system
+  )
 
   add_subdirectory(anlBoard)
   
