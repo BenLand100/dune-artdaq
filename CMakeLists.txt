@@ -87,7 +87,6 @@ find_ups_product( libxml2 v2_9_1a )
 find_ups_product( TRACE v3_07_00 )
 find_ups_product( protodune_timing v4_0_1 )
 
-find_ups_product( dune_artdaq_InhibitMaster v0_01_00 )
 
 set(netio_INCLUDE_DIR $ENV{NETIO_INC})
 set(netio_LIBRARY_DIR $ENV{NETIO_LIB})
