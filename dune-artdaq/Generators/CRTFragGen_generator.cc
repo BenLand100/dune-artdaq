@@ -93,21 +93,25 @@ bool CRT::FragGen::getNext_(
     //is, then we probably won't write any useful data. When maintaining this code,  
     //remember that the timing endpoint won't give us a good runstarttime until 
     //everything has finished the start() transition.
-    constexpr decltype(runstarttime) maxTimeDiff = 10*60; //10 minutes in seconds
-    const auto deltaT = abs(runstarttime*20/1.e9 - time(nullptr));
-    if(deltaT > maxTimeDiff) //Hardcoded 20 ns per timestamp tick for ProtoDUNE-SP timing system
+    const uint64_t deltaT = labs(runstarttime*20/1.e9 - time(nullptr));
+    if(deltaT > alarmDeltaT) //Hardcoded 20 ns per timestamp tick for ProtoDUNE-SP timing system
     {
       TLOG(TLVL_WARNING, "CRT") << "CRT board reader failed to get reasonable run start time "
                                 << "from timing endpoint.  Difference from UNIX time of " << deltaT
-                                << " > tolerance of " << maxTimeDiff << "\n";
+                                << " > tolerance of " << alarmDeltaT << "\n";
+      return true; //Keep trying to take data, but don't try to form any timestamps until we have 
+                   //a "good" run start time
     }
-    else 
-    {
-      TLOG(TLVL_INFO, "CRT") << "Set run start time to " << runstarttime << ", or " 
-                                << (uint64_t)(runstarttime*20./1.e9) << " seconds at UNIX timestamp of "
-                                << time(nullptr) << " seconds.\n";
-      gotRunStartTime = true;
-    }
+
+    //runstarttime is OK if we got this far, so start sending back data.  
+    //If it took more than 86 seconds to get a "good" runstarttime, then 
+    //uppertime needs to be updated. 
+    uppertime = (uint64_t)(deltaT*1e9/20)/std::numeric_limits<uint32_t>::max();
+    TLOG(TLVL_INFO, "CRT") << "Set run start time to " << runstarttime << ", or " 
+                              << (uint64_t)(runstarttime*20./1.e9) << " seconds at UNIX timestamp of "
+                              << time(nullptr) << " seconds.  Looks like we skipped " << uppertime 
+                              << " 32-bit rollovers, so set uppertime to " << uppertime << ".\n";
+    gotRunStartTime = true;
   }
                                                                                                      
   if(should_stop()){
@@ -197,32 +201,37 @@ std::unique_ptr<artdaq::Fragment> CRT::FragGen::buildFragment(const size_t& byte
   // rolloverThreshold.  Whatever we do, it should never be >
   // std::numeric_limits<uint32_t>::max().
   const uint64_t rolloverThreshold = 100000000;
+  uint64_t newUppertime = uppertime;
 
   if((uint64_t)(lowertime + rolloverThreshold) < oldlowertime){
     /*TLOG(TLVL_DEBUG, "CRT") << "lowertime " << lowertime
       << " and oldlowertime " << oldlowertime << " caused a rollover.  "
       "uppertime is now " << uppertime << ".\n";*/
-    uppertime++;
+    newUppertime++;
   }
   oldlowertime = lowertime;
 
-  timestamp_ = ((uint64_t)uppertime << 32) + lowertime + runstarttime;
+  timestamp_ = ((uint64_t)newUppertime << 32) + lowertime + runstarttime;
   /*TLOG(TLVL_INFO, "CRT") << "Constructing a timestamp with uppertime = "
     << uppertime << ", lowertime = " << lowertime << ", and runstarttime = "
     << runstarttime << ".  Timestamp is " << timestamp_ << "\n";*/
 
   //Sanity check on timestamps
-  constexpr auto alarmDeltaT = 600; //10 minutes difference from "current" system time
   const auto currentUNIX = time(nullptr);
-  const auto inSeconds = timestamp_*20./1.e9; //20 nanosecond ticks in the ProtoDUNE-SP timing system
-  const auto deltaT = fabs(inSeconds - currentUNIX);
-  if(deltaT > alarmDeltaT)
+  const uint64_t inSeconds = timestamp_*20./1.e9; //20 nanosecond ticks in the ProtoDUNE-SP timing system
+  const int64_t deltaT = inSeconds - currentUNIX; //In seconds
+  if(labs(deltaT) > alarmDeltaT) //Print a warning and don't update uppertime.  This might make us 
+                                 //a little more robust against one or two boards having internal timing 
+                                 //problems.  If it happens to all boards for too long, I won't try to 
+                                 //recover.  
   {
     TLOG(TLVL_WARNING, "CRT") << "Got a large time difference of " << deltaT << " between CRT timestamp of " 
                               << timestamp_ << "( " << inSeconds << " seconds) and current system time of "
                               << currentUNIX << ".  lowertime = " << lowertime << ", uppertime = " << uppertime 
-                              << ", and runstarttime = " << runstarttime << ".\n";
+                              << ", and runstarttime = " << runstarttime << ".  Throwing out this Fragment to "
+                              << "prevent a single bad board from ruining all of our data.\n";
   }
+  else uppertime = newUppertime; //This timestamp "makes sense", so keep track of 32-bit rollovers.
 
   // And also copy the repaired timestamp into the buffer itself.
   // Code downstream in artdaq reads timestamp_, but both will always be

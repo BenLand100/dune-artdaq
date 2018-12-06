@@ -113,6 +113,9 @@ namespace CRT
 
     //Have we set runstarttime yet?
     bool gotRunStartTime;
+
+    //When should we get worried about timestamps getting out of sync?  In seconds
+    static constexpr int64_t alarmDeltaT = 2; 
   };
 }
 
