@@ -128,8 +128,9 @@ void TpcRceReceiver::start(void)
    // validate config
 
    // connect receiver
-   _receiver.reset(new rce::RssiReceiver (_rce_host_addr, 8192));
-  
+   if (_receiver == nullptr || !_receiver->is_open())
+     _receiver.reset(new rce::RssiReceiver (_rce_host_addr, 8192));
+
    // drain buffer
 
    // re-enable wib and hls
