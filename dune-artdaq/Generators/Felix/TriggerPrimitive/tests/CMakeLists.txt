@@ -10,6 +10,11 @@ set(TP_LIBS dune-artdaq_Generators_Felix_TriggerPrimitive_channelmap
   ${netio_LIBRARY_DIR}/libnetio.so
   ${netio_LIBRARY_DIR}/libfabric.so
   ${CMAKE_THREAD_LIBS_INIT}
+  dune-artdaq_DAQLogger
+  ${MF_MESSAGELOGGER}
+  ${MF_UTILITIES}
+  ${CETLIB}
+  ${FHICLCPP}
 )
 
 cet_make_exec(run_on_fragment 
@@ -45,4 +50,15 @@ cet_make_exec(find_collection
 cet_make_exec(number_collection
   SOURCE number_collection.cpp
   LIBRARIES ${TP_LIBS}
+)
+
+cet_make_exec(make_unique_tpf
+  SOURCE make_unique_tpf.cpp
+  LIBRARIES ${TP_LIBS}
+)
+
+cet_make_exec(main_loop
+  SOURCE main_loop.cc
+  LIBRARIES ${TP_LIBS}
+  dune-artdaq_Generators_FelixReceiver_generator
 )
