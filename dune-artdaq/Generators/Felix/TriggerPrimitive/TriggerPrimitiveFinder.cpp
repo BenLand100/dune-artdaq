@@ -6,7 +6,9 @@ TriggerPrimitiveFinder::TriggerPrimitiveFinder(size_t qsize, size_t timeWindowNu
       m_timeWindowNumFrames(timeWindowNumMessages*FRAMES_PER_MSG),
       m_messagesReceived(1), // Set to 1 not zero as a hack to not process a window on the first message received
       m_nthreads(nthreads),
-      m_pcq(qsize)
+      m_pcq(qsize),
+      m_nWindowsProcessed(0),
+      m_nPrimsFound(0)
 {
 
     const uint8_t registers_per_thread=REGISTERS_PER_FRAME/m_nthreads;
@@ -45,7 +47,7 @@ void TriggerPrimitiveFinder::addMessage(SUPERCHUNK_CHAR_STRUCT& ucs)
     if(!m_pcq.write( std::move(*mca) )){
         std::cout << "Queue full" << std::endl;
     }
-    if(m_messagesReceived%m_timeWindowNumMessages==0){
+    if(++m_messagesReceived%m_timeWindowNumMessages==0){
         process_window();
     }
 }
@@ -117,6 +119,8 @@ void TriggerPrimitiveFinder::process_window()
                                                 return process_window_avx2(fin.get()[ithread]);
                                             });
     }
+
+    ++m_nWindowsProcessed;
 }
 
 std::vector<TriggerPrimitiveFinder::TriggerPrimitive>
@@ -131,7 +135,7 @@ TriggerPrimitiveFinder::primitivesForTimestamp(uint64_t timestamp)
             ret.insert(ret.end(), wp.triggerPrimitives.begin(), wp.triggerPrimitives.end());
         }
     }
-    return ret;;
+    return ret;
 }
 
 void TriggerPrimitiveFinder::addHitsToQueue(uint64_t timestamp)
@@ -152,6 +156,7 @@ void TriggerPrimitiveFinder::addHitsToQueue(uint64_t timestamp)
             for(int i=0; i<16; ++i){
                 if(hit_charge[i] && chan[i]!=MAGIC){
                     TriggerPrimitiveFinder::TriggerPrimitive p{chan[i], hit_start[i], hit_charge[i], hit_tover[i]};
+                    ++m_nPrimsFound;
                     prims.triggerPrimitives.push_back(std::move(p));
                 }
             }

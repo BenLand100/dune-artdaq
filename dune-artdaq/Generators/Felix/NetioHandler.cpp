@@ -363,6 +363,16 @@ void NetioHandler::startSubscribers(){
           << subsummary.str()
           << " -> Failed timestamp distances (expected distance between messages: " << expDist << ")\n";
           //<< distsummary.str();
+
+        for(auto const& it: m_tp_finders){
+            const uint64_t id=it.first;
+            const TriggerPrimitiveFinder& tpf=*(it.second);
+            DAQLogger::LogInfo("NetioHandler::subscriber")
+                << "Primitive finder  " << id << '\n'
+                << "  messages received: " << tpf.getNMessages()  << '\n'
+                << "  windows processed: " << tpf.getNWindowsProcessed() << '\n'
+                << "  primitives found:  " << tpf.getNPrimitivesFound() << '\n';
+        }
 	})
 				 );
     set_thread_name(m_netioSubscribers[i], "nioh-sub", i);

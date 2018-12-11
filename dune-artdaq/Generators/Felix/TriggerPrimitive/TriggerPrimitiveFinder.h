@@ -39,6 +39,10 @@ public:
   
     std::vector<TriggerPrimitive> primitivesForTimestamp(uint64_t timestamp);
 
+    size_t getNMessages() const { return m_messagesReceived; }
+    size_t getNWindowsProcessed() const { return m_nWindowsProcessed; }
+    size_t getNPrimitivesFound() const { return m_nPrimsFound; }
+
 private:
 
     void addHitsToQueue(uint64_t timestamp);
@@ -52,6 +56,8 @@ private:
     size_t m_nthreads;
     folly::ProducerConsumerQueue<MessageCollectionADCs> m_pcq;
     std::deque<WindowPrimitives> m_windowHits;
+    size_t m_nWindowsProcessed;
+    size_t m_nPrimsFound;
 };
 
 #endif
