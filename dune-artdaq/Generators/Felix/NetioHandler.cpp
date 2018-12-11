@@ -64,6 +64,7 @@ bool NetioHandler::setupContext(std::string contextStr) {
   m_context = new netio::context(contextStr);
   m_netio_bg_thread = std::thread( [&](){m_context->event_loop()->run_forever();} );
   set_thread_name(m_netio_bg_thread, "nioh-bg", 0);
+  DAQLogger::LogInfo("NetioHandler::setupContext") << "done";
   return true;
 }
 

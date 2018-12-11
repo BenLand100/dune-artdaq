@@ -1,5 +1,9 @@
 #include "TriggerPrimitiveFinder.h"
 
+#include "dune-artdaq/DAQLogger/DAQLogger.hh"
+
+using namespace dune;
+
 TriggerPrimitiveFinder::TriggerPrimitiveFinder(size_t qsize, size_t timeWindowNumMessages, size_t nthreads)
     : m_primfind_tmp(new MessageCollectionADCs[m_nthreads*m_timeWindowNumMessages]),
       m_timeWindowNumMessages(timeWindowNumMessages),
@@ -10,7 +14,7 @@ TriggerPrimitiveFinder::TriggerPrimitiveFinder(size_t qsize, size_t timeWindowNu
       m_nWindowsProcessed(0),
       m_nPrimsFound(0)
 {
-
+    DAQLogger::LogInfo("TriggerPrimitiveFinder::TriggerPrimitiveFinder") << "Starting TriggerPrimitiveFinder with " << m_nthreads << " threads";
     const uint8_t registers_per_thread=REGISTERS_PER_FRAME/m_nthreads;
     
     const int multiplier=1<<6;
@@ -42,12 +46,17 @@ TriggerPrimitiveFinder::~TriggerPrimitiveFinder()
 
 void TriggerPrimitiveFinder::addMessage(SUPERCHUNK_CHAR_STRUCT& ucs)
 {
+    static bool first=true;
+    if(first){
+        DAQLogger::LogInfo("TriggerPrimitiveFinder::addMessage") << "First call";
+        first=false;
+    }
     RegisterArray<REGISTERS_PER_FRAME*FRAMES_PER_MSG> expanded=expand_message_adcs(ucs);
     MessageCollectionADCs* mca=reinterpret_cast<MessageCollectionADCs*>(expanded.data());
     if(!m_pcq.write( std::move(*mca) )){
         std::cout << "Queue full" << std::endl;
     }
-    if(++m_messagesReceived%m_timeWindowNumMessages==0){
+    if((++m_messagesReceived)%m_timeWindowNumMessages==0){
         process_window();
     }
 }
@@ -55,6 +64,9 @@ void TriggerPrimitiveFinder::addMessage(SUPERCHUNK_CHAR_STRUCT& ucs)
 void TriggerPrimitiveFinder::process_window()
 {
     static bool firstMessage=true;
+    if(firstMessage){
+        DAQLogger::LogInfo("TriggerPrimitiveFinder::process_window") << "First call";
+    }
     // We've got enough frames to reorder them. First, copy
     // the data into a working area for the thread.  Given the
     // way expand_message_adcs orders the data, this results

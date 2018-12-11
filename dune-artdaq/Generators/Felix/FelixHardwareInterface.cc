@@ -142,6 +142,8 @@ void FelixHardwareInterface::StartDatataking() {
   for ( auto const & link : link_parameters_ ){ // Add channels
     nioh_.addChannel(link.id_, link.tag_, link.host_, link.port_, queue_size_, zerocopy_); 
   }
+  DAQLogger::LogInfo("dune::FelixHardwareInterface::FelixHardwareInterface")
+    << "Links added";
 
   // GLM: start listening to trigger before data stream, else data stream fills up
 
