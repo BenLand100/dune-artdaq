@@ -29,7 +29,7 @@ public:
         std::vector<TriggerPrimitive> triggerPrimitives;
     };
 
-    TriggerPrimitiveFinder(size_t qsize, size_t timeWindowNumMessages, size_t nthreads);
+    TriggerPrimitiveFinder(uint32_t qsize, size_t timeWindowNumMessages, size_t nthreads);
   
     ~TriggerPrimitiveFinder();
 
