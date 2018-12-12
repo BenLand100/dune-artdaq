@@ -5,16 +5,26 @@
 using namespace dune;
 
 TriggerPrimitiveFinder::TriggerPrimitiveFinder(size_t qsize, size_t timeWindowNumMessages, size_t nthreads)
-    : m_primfind_tmp(new MessageCollectionADCs[m_nthreads*m_timeWindowNumMessages]),
-      m_timeWindowNumMessages(timeWindowNumMessages),
-      m_timeWindowNumFrames(timeWindowNumMessages*FRAMES_PER_MSG),
-      m_messagesReceived(1), // Set to 1 not zero as a hack to not process a window on the first message received
-      m_nthreads(nthreads),
-      m_pcq(qsize),
-      m_nWindowsProcessed(0),
-      m_nPrimsFound(0)
+    // : m_primfind_tmp(new MessageCollectionADCs[m_nthreads*m_timeWindowNumMessages]),
+    //   m_timeWindowNumMessages(timeWindowNumMessages),
+    //   m_timeWindowNumFrames(timeWindowNumMessages*FRAMES_PER_MSG),
+    //   m_messagesReceived(1), // Set to 1 not zero as a hack to not process a window on the first message received
+    //   m_nthreads(nthreads),
+    //   m_pcq(qsize),
+    //   m_nWindowsProcessed(0),
+    //   m_nPrimsFound(0)
 {
     DAQLogger::LogInfo("TriggerPrimitiveFinder::TriggerPrimitiveFinder") << "Starting TriggerPrimitiveFinder with " << m_nthreads << " threads";
+    m_primfind_tmp = new MessageCollectionADCs[m_nthreads*m_timeWindowNumMessages];
+    m_timeWindowNumMessages = timeWindowNumMessages;
+    m_timeWindowNumFrames = timeWindowNumMessages*FRAMES_PER_MSG;
+    m_messagesReceived = 1; // Set to 1 not zero as a hack to not process a window on the first message received
+    m_nthreads = nthreads;
+    m_pcq = qsize;
+    m_nWindowsProcessed = 0;
+    m_nPrimsFound = 0;
+    DAQLogger::LogInfo("TriggerPrimitiveFinder::TriggerPrimitiveFinder") << "Did initialization list";
+
     const uint8_t registers_per_thread=REGISTERS_PER_FRAME/m_nthreads;
     
     const int multiplier=1<<6;
@@ -22,6 +32,7 @@ TriggerPrimitiveFinder::TriggerPrimitiveFinder(size_t qsize, size_t timeWindowNu
     taps.push_back(0); // Make it 8 long so it's a power of two
     
     for(size_t i=0; i<m_nthreads; ++i){
+        DAQLogger::LogInfo("TriggerPrimitiveFinder::TriggerPrimitiveFinder") << "Setting up thread " << i;
         m_primfind_destinations.push_back(new uint16_t[m_timeWindowNumFrames*100]);
       
         ProcessingInfo pi(m_primfind_tmp,
