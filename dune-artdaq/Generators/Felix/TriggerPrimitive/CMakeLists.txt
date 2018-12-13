@@ -13,6 +13,8 @@ art_make_library( LIBRARY_NAME dune-artdaq_Generators_Felix_TriggerPrimitive
                   ${CMAKE_THREAD_LIBS_INIT}
                   ${Boost_SYSTEM_LIBRARY}
                   ${Boost_THREAD_LIBRARY}
+                  ${CETLIB}
+                  artdaq-core_Data
 )
 
 add_subdirectory(tests)

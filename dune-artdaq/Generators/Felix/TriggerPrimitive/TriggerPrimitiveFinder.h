@@ -13,6 +13,11 @@
 
 #include <deque>
 
+namespace artdaq
+{
+    class Fragment;
+}
+
 class TriggerPrimitiveFinder
 {
 public:
@@ -38,11 +43,14 @@ public:
 
     void process_window();
   
-    std::vector<TriggerPrimitive> primitivesForTimestamp(uint64_t timestamp);
+    std::vector<TriggerPrimitive> primitivesForTimestamp(uint64_t timestamp, uint32_t window_size);
 
     size_t getNMessages() const { return m_messagesReceived; }
     size_t getNWindowsProcessed() const { return m_nWindowsProcessed; }
     size_t getNPrimitivesFound() const { return m_nPrimsFound; }
+
+    // Find all the hits around `timestamp` and write them into the fragment at fragPtr
+    void hitsToFragment(uint64_t timestamp, uint32_t windowSize, artdaq::Fragment* fragPtr);
 
 private:
 

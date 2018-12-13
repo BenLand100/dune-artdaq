@@ -1,6 +1,7 @@
 #include "TriggerPrimitiveFinder.h"
 
 #include "dune-artdaq/DAQLogger/DAQLogger.hh"
+#include "artdaq-core/Data/Fragment.hh"
 
 using namespace dune;
 
@@ -158,14 +159,12 @@ void TriggerPrimitiveFinder::process_window()
 }
 
 std::vector<TriggerPrimitiveFinder::TriggerPrimitive>
-TriggerPrimitiveFinder::primitivesForTimestamp(uint64_t timestamp)
+TriggerPrimitiveFinder::primitivesForTimestamp(uint64_t timestamp, uint32_t window_size)
 {
     std::vector<TriggerPrimitiveFinder::TriggerPrimitive> ret;
     const int64_t signed_ts=timestamp;
-    // 3ms (the readout window) in 50 MHz ticks
-    const int64_t readout_window=150000;
     for(auto const& wp: m_windowHits){
-        if(std::abs(signed_ts-wp.timestamp)<readout_window){
+        if(std::abs(signed_ts-wp.timestamp)<window_size){
             ret.insert(ret.end(), wp.triggerPrimitives.begin(), wp.triggerPrimitives.end());
         }
     }
@@ -198,6 +197,24 @@ void TriggerPrimitiveFinder::addHitsToQueue(uint64_t timestamp)
     }
     m_windowHits.push_back(prims);
     if(m_windowHits.size()>1000) m_windowHits.pop_front();
+}
+
+void TriggerPrimitiveFinder::hitsToFragment(uint64_t timestamp, uint32_t window_size, artdaq::Fragment* fragPtr)
+{
+    std::vector<TriggerPrimitive> tps=primitivesForTimestamp(timestamp, window_size);
+    // The data payload of the fragment will be:
+    // uint64_t timestamp
+    // uint32_t nhits
+    // N*TriggerPrimitive
+    fragPtr->resizeBytes(sizeof(uint64_t)+sizeof(uint32_t)+tps.size()*sizeof(TriggerPrimitive));
+    // TODO: Put this logic into the FelixHitFragment somehow so this code can be less terrifying
+    uint8_t* bytes = fragPtr->dataBeginBytes();
+    *(reinterpret_cast<uint64_t*>(bytes)) = timestamp;
+    *(reinterpret_cast<uint32_t*>(bytes+sizeof(uint64_t))) = tps.size();
+    TriggerPrimitive* tps_out=reinterpret_cast<TriggerPrimitive*>(bytes+sizeof(uint64_t)+sizeof(uint32_t));
+    for(size_t i=0; i<tps.size(); ++i){
+        tps_out[i]=tps[i];
+    }
 }
 
 /* Local Variables:  */
