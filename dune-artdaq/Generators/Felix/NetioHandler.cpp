@@ -419,7 +419,7 @@ bool NetioHandler::addChannel(uint64_t chn, uint16_t tag, std::string host, uint
   m_channels.push_back(chn);
   m_pcqs[chn] = std::make_unique<FrameQueue>(queueSize);
   try{
-      m_tp_finders[chn]=std::make_unique<TriggerPrimitiveFinder>(5000, 128, 4);
+      m_tp_finders[chn]=std::make_unique<TriggerPrimitiveFinder>(50000, 128, 4);
   }
   catch(std::bad_alloc& e){
       DAQLogger::LogInfo("NetioHandler::addChannel") << "std::bad_alloc thrown in make_unique: " << e.what();
