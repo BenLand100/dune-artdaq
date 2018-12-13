@@ -43,6 +43,7 @@ TriggerPrimitiveFinder::TriggerPrimitiveFinder(uint32_t qsize, size_t timeWindow
   
 TriggerPrimitiveFinder::~TriggerPrimitiveFinder()
 {
+    for(auto& f: m_futures) f.wait();
     delete[] m_primfind_tmp;
     for(auto& d: m_primfind_destinations) delete[] d;
 }
@@ -94,13 +95,24 @@ void TriggerPrimitiveFinder::process_window()
     // ...
     // ...                                         ... (register 7, time timeWindowNumFrames-1)
     // Wait till all the currently running jobs are done...
-    auto waiter=boost::when_all(m_futures.begin(), m_futures.end()).share();
+
+    // auto waiter=boost::when_all(m_futures.begin(), m_futures.end()).share();
+
+    // boost::when_all spawns a new thread, which might be a
+    // bottleneck(?). Write our own version using the executor to get
+    // around that
+    std::vector<boost::shared_future<ProcessingInfo>> tmp_futures=m_futures;
+    auto manual_waiter=boost::async(m_threadpool, [tmp_futures](){
+            for(auto& f: tmp_futures) f.wait();
+            return tmp_futures;
+        }).share();
+
     // ...and then copy the data into the working area
-    auto copy_future=waiter.then(m_threadpool,
-                                 [&](decltype(waiter) f){
+    auto copy_future=manual_waiter.then(m_threadpool,
+                                 [&](decltype(manual_waiter) f){
                                      // Copy out the hits from the last go-round
                                      // TODO: Real timestamp
-                                     addHitsToQueue(0);
+                                     if(m_anyWindowsProcessedYet.load()) addHitsToQueue(0);
                                      // Copy the window into the temporary working area
                                      for(size_t j = 0; j < m_timeWindowNumMessages; j++){
                                          m_pcq.read(m_primfind_tmp[j]);
