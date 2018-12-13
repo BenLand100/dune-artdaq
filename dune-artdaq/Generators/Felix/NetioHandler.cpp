@@ -413,12 +413,28 @@ void NetioHandler::lockSubsToCPUs(uint32_t offset) {
 }
 
 bool NetioHandler::addChannel(uint64_t chn, uint16_t tag, std::string host, uint16_t port, size_t queueSize, bool zerocopy){
+    DAQLogger::LogInfo("NetioHandler::addChannel") << "entering...";
   m_host=host;
   m_port=port;
   m_channels.push_back(chn);
   m_pcqs[chn] = std::make_unique<FrameQueue>(queueSize);
-  m_tp_finders[chn]=std::make_unique<TriggerPrimitiveFinder>(500, 128, 1);
+  try{
+      m_tp_finders[chn]=std::make_unique<TriggerPrimitiveFinder>(5000, 128, 4);
+  }
+  catch(std::bad_alloc& e){
+      DAQLogger::LogInfo("NetioHandler::addChannel") << "std::bad_alloc thrown in make_unique: " << e.what();
+      throw;
+  }
+  catch(std::exception& e){
+      DAQLogger::LogInfo("NetioHandler::addChannel") << "std::exception thrown in make_unique: " << e.what();
+      throw;
+  }
+  catch(...){
+      DAQLogger::LogInfo("NetioHandler::addChannel") << "exception thrown in make_unique";
+      throw;
+  }
 
+  DAQLogger::LogInfo("NetioHandler::addChannel") << "setting up netio...";
   if (m_extract) {
   try {
     netio::sockcfg cfg = netio::sockcfg::cfg(); 
