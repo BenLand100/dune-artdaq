@@ -12,8 +12,9 @@ TriggerPrimitiveFinder::TriggerPrimitiveFinder(uint32_t qsize, size_t timeWindow
       m_nthreads(nthreads),
       m_pcq(qsize),
       m_nWindowsProcessed(0),
-      m_nPrimsFound(0)
-
+      m_nPrimsFound(0),
+      m_threadpool(nthreads+2),
+      m_anyWindowsProcessedYet(false)
 {
     DAQLogger::LogInfo("TriggerPrimitiveFinder::TriggerPrimitiveFinder") << "Starting TriggerPrimitiveFinder with " << m_nthreads << " threads";
 
@@ -49,6 +50,7 @@ TriggerPrimitiveFinder::~TriggerPrimitiveFinder()
 void TriggerPrimitiveFinder::addMessage(SUPERCHUNK_CHAR_STRUCT& ucs)
 {
     static bool first=true;
+    static int nFullPrint=0;
     if(first){
         DAQLogger::LogInfo("TriggerPrimitiveFinder::addMessage") << "First call";
         first=false;
@@ -56,7 +58,13 @@ void TriggerPrimitiveFinder::addMessage(SUPERCHUNK_CHAR_STRUCT& ucs)
     RegisterArray<REGISTERS_PER_FRAME*FRAMES_PER_MSG> expanded=expand_message_adcs(ucs);
     MessageCollectionADCs* mca=reinterpret_cast<MessageCollectionADCs*>(expanded.data());
     if(!m_pcq.write( std::move(*mca) )){
-        std::cout << "Queue full" << std::endl;
+        ++nFullPrint;
+        if(nFullPrint<10){
+            DAQLogger::LogInfo("TriggerPrimitiveFinder::addMessage") << "Queue full";
+        }
+        else if(nFullPrint%1024==0){
+            DAQLogger::LogInfo("TriggerPrimitiveFinder::addMessage") << "1024 more \"queue full\" messages suppressed";
+        }
     }
     if((++m_messagesReceived)%m_timeWindowNumMessages==0){
         process_window();
@@ -65,9 +73,8 @@ void TriggerPrimitiveFinder::addMessage(SUPERCHUNK_CHAR_STRUCT& ucs)
 
 void TriggerPrimitiveFinder::process_window()
 {
-    static bool firstMessage=true;
-    if(firstMessage){
-        DAQLogger::LogInfo("TriggerPrimitiveFinder::process_window") << "First call";
+    if(!m_anyWindowsProcessedYet.load()){
+        DAQLogger::LogInfo("TriggerPrimitiveFinder::process_window") << "First call to process_window";
     }
     // We've got enough frames to reorder them. First, copy
     // the data into a working area for the thread.  Given the
@@ -89,7 +96,7 @@ void TriggerPrimitiveFinder::process_window()
     // Wait till all the currently running jobs are done...
     auto waiter=boost::when_all(m_futures.begin(), m_futures.end()).share();
     // ...and then copy the data into the working area
-    auto copy_future=waiter.then(boost::launch::deferred,
+    auto copy_future=waiter.then(m_threadpool,
                                  [&](decltype(waiter) f){
                                      // Copy out the hits from the last go-round
                                      // TODO: Real timestamp
@@ -102,7 +109,8 @@ void TriggerPrimitiveFinder::process_window()
                                      // If this is the first message we've processed,
                                      // set the pedestals, otherwise just copy
                                      // the ProcessingInfo unchanged from the input
-                                     if(firstMessage){
+                                     if(!m_anyWindowsProcessedYet.load()){
+                                         DAQLogger::LogInfo("TriggerPrimitiveFinder::process_window") << "Processing first window";
                                          // WindowCollectionADCs window(opt.timeWindowNumMessages, primfind_tmp);
                                          for(size_t i=0; i<m_nthreads; ++i){
                                              // make a copy of the ProcessingInfo which we'll update
@@ -110,7 +118,7 @@ void TriggerPrimitiveFinder::process_window()
                                              pi.setState(m_primfind_tmp);
                                              pis.push_back(pi);
                                          }
-                                         firstMessage=false;
+                                         m_anyWindowsProcessedYet.store(true);
                                      }
                                      else{
                                          for(size_t i=0; i<m_nthreads; ++i){
@@ -127,7 +135,7 @@ void TriggerPrimitiveFinder::process_window()
     // futures. What happens to the old ones? Does the futures
     // system keep hold of them somehow?
     for(size_t ithread=0; ithread<m_nthreads; ++ithread){
-        m_futures[ithread]=copy_future.then(boost::launch::deferred,
+        m_futures[ithread]=copy_future.then(m_threadpool,
                                             [ithread](auto fin)
                                             {
                                                 return process_window_avx2(fin.get()[ithread]);

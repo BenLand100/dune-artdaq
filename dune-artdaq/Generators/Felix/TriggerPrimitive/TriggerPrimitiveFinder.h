@@ -9,6 +9,7 @@
 #include "dune-artdaq/Generators/Felix/Types.hh"
 
 #include "boost/thread/future.hpp"
+#include "boost/thread/executors/basic_thread_pool.hpp"
 
 #include <deque>
 
@@ -58,6 +59,7 @@ private:
     std::deque<WindowPrimitives> m_windowHits;
     size_t m_nWindowsProcessed;
     size_t m_nPrimsFound;
+    boost::basic_thread_pool m_threadpool;
 };
 
 #endif
