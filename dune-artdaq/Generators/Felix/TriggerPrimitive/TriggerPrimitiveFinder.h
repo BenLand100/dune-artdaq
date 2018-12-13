@@ -60,6 +60,7 @@ private:
     size_t m_nWindowsProcessed;
     size_t m_nPrimsFound;
     boost::basic_thread_pool m_threadpool;
+    std::atomic<bool> m_anyWindowsProcessedYet;
 };
 
 #endif
