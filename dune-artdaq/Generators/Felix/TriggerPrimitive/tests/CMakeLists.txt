@@ -62,3 +62,8 @@ cet_make_exec(main_loop
   LIBRARIES ${TP_LIBS}
   dune-artdaq_Generators_FelixReceiver_generator
 )
+
+cet_make_exec(test_tpf
+  SOURCE test_tpf.cpp
+  LIBRARIES ${TP_LIBS}
+)
