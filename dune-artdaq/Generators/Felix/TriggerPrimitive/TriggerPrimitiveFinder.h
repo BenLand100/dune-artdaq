@@ -7,6 +7,7 @@
 
 #include "dune-artdaq/Generators/Felix/FelixFormat.hh"
 #include "dune-artdaq/Generators/Felix/Types.hh"
+#include "dune-raw-data/Overlays/FelixHitFormat.hh"
 
 #include "boost/thread/future.hpp"
 #include "boost/thread/executors/basic_thread_pool.hpp"
@@ -21,18 +22,18 @@ namespace artdaq
 class TriggerPrimitiveFinder
 {
 public:
-    struct TriggerPrimitive
-    {
-        uint16_t channel;
-        uint16_t startTimeOffset; // relative to 64-bit timestamp
-        uint16_t charge;
-        uint16_t timeOverThreshold;
-    };
+    // struct TriggerPrimitive
+    // {
+    //     uint16_t channel;
+    //     uint16_t startTimeOffset; // relative to 64-bit timestamp
+    //     uint16_t charge;
+    //     uint16_t timeOverThreshold;
+    // };
 
     struct WindowPrimitives
     {
         uint64_t timestamp;
-        std::vector<TriggerPrimitive> triggerPrimitives;
+        std::vector<dune::TriggerPrimitive> triggerPrimitives;
     };
 
     TriggerPrimitiveFinder(uint32_t qsize, size_t timeWindowNumMessages, size_t nthreads);
@@ -43,7 +44,7 @@ public:
 
     void process_window();
   
-    std::vector<TriggerPrimitive> primitivesForTimestamp(uint64_t timestamp, uint32_t window_size);
+    std::vector<dune::TriggerPrimitive> primitivesForTimestamp(uint64_t timestamp, uint32_t window_size);
 
     size_t getNMessages() const { return m_messagesReceived; }
     size_t getNWindowsProcessed() const { return m_nWindowsProcessed; }

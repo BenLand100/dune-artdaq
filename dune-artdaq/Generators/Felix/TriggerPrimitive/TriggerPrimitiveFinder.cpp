@@ -2,6 +2,9 @@
 
 #include "dune-artdaq/DAQLogger/DAQLogger.hh"
 #include "artdaq-core/Data/Fragment.hh"
+#include "dune-raw-data/Overlays/FelixHitFragment.hh"
+
+#include <cstddef> // For offsetof
 
 using namespace dune;
 
@@ -158,10 +161,10 @@ void TriggerPrimitiveFinder::process_window()
     ++m_nWindowsProcessed;
 }
 
-std::vector<TriggerPrimitiveFinder::TriggerPrimitive>
+std::vector<dune::TriggerPrimitive>
 TriggerPrimitiveFinder::primitivesForTimestamp(uint64_t timestamp, uint32_t window_size)
 {
-    std::vector<TriggerPrimitiveFinder::TriggerPrimitive> ret;
+    std::vector<dune::TriggerPrimitive> ret;
     const int64_t signed_ts=timestamp;
     for(auto const& wp: m_windowHits){
         if(std::abs(signed_ts-wp.timestamp)<window_size){
@@ -188,7 +191,7 @@ void TriggerPrimitiveFinder::addHitsToQueue(uint64_t timestamp)
             
             for(int i=0; i<16; ++i){
                 if(hit_charge[i] && chan[i]!=MAGIC){
-                    TriggerPrimitiveFinder::TriggerPrimitive p{chan[i], hit_start[i], hit_charge[i], hit_tover[i]};
+                    dune::TriggerPrimitive p{chan[i], hit_start[i], hit_charge[i], hit_tover[i]};
                     ++m_nPrimsFound;
                     prims.triggerPrimitives.push_back(std::move(p));
                 }
@@ -201,19 +204,17 @@ void TriggerPrimitiveFinder::addHitsToQueue(uint64_t timestamp)
 
 void TriggerPrimitiveFinder::hitsToFragment(uint64_t timestamp, uint32_t window_size, artdaq::Fragment* fragPtr)
 {
-    std::vector<TriggerPrimitive> tps=primitivesForTimestamp(timestamp, window_size);
+    std::vector<dune::TriggerPrimitive> tps=primitivesForTimestamp(timestamp, window_size);
     // The data payload of the fragment will be:
     // uint64_t timestamp
     // uint32_t nhits
     // N*TriggerPrimitive
-    fragPtr->resizeBytes(sizeof(uint64_t)+sizeof(uint32_t)+tps.size()*sizeof(TriggerPrimitive));
-    // TODO: Put this logic into the FelixHitFragment somehow so this code can be less terrifying
-    uint8_t* bytes = fragPtr->dataBeginBytes();
-    *(reinterpret_cast<uint64_t*>(bytes)) = timestamp;
-    *(reinterpret_cast<uint32_t*>(bytes+sizeof(uint64_t))) = tps.size();
-    TriggerPrimitive* tps_out=reinterpret_cast<TriggerPrimitive*>(bytes+sizeof(uint64_t)+sizeof(uint32_t));
+    fragPtr->resizeBytes(sizeof(dune::FelixHitFragment::Body)+tps.size()*sizeof(TriggerPrimitive));
+    dune::FelixHitFragment hitFrag(*fragPtr);
+    hitFrag.set_timestamp(timestamp);
+    hitFrag.set_nhits(tps.size());
     for(size_t i=0; i<tps.size(); ++i){
-        tps_out[i]=tps[i];
+        hitFrag.get_primitive(i)=tps[i];
     }
 }
 
