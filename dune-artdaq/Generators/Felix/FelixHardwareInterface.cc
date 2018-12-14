@@ -197,7 +197,7 @@ void FelixHardwareInterface::StopDatataking() {
     << "Datataking stopped.";
 }
 
-bool FelixHardwareInterface::FillFragment( std::unique_ptr<artdaq::Fragment>& frag ){
+bool FelixHardwareInterface::FillFragment( std::unique_ptr<artdaq::Fragment>& frag, std::unique_ptr<artdaq::Fragment>& fraghits ){
   if (taking_data_) {
     //DAQLogger::LogInfo("dune::FelixHardwareInterface::FillFragment") << "Fill fragment at: " << &frag;
 
@@ -230,15 +230,18 @@ bool FelixHardwareInterface::FillFragment( std::unique_ptr<artdaq::Fragment>& fr
       //uint64_t requestSeqId = reqMap.cbegin()->first;
       //uint64_t requestTimestamp = reqMap.cbegin()->second;
 
-      bool success = nioh_.triggerWorkers(requestTimestamp, requestSeqId, frag);
+      bool success = nioh_.triggerWorkers(requestTimestamp, requestSeqId, frag, fraghits);
       if (success) {
         frag->setSequenceID(requestSeqId);
         frag->setTimestamp(requestTimestamp);
         frag->updateMetadata(fragment_meta_);
+        fraghits->setSequenceID(requestSeqId);
+        fraghits->setTimestamp(requestTimestamp);
+
 	if (frag->dataSizeBytes() == 0) {
 	  DAQLogger::LogWarning("dune::FelixHardwareInterface::FillFragment")
 	    << "Returning empty fragment for TS = " << requestTimestamp << ", seqID = " << requestSeqId;
-	}  
+	}
 	else {
           std::ostringstream oss;
           frag->print(oss); 

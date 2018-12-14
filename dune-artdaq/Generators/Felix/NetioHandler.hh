@@ -99,7 +99,9 @@ public:
   
   // ArtDAQ specific
   //void setReadoutBuffer(char* buffPtr, size_t* bytePtr) { m_bufferPtr=&buffPtr; m_bytesReadPtr=&bytePtr; };
-  bool triggerWorkers(uint64_t timestamp, uint64_t sequence_id, std::unique_ptr<artdaq::Fragment>& frag);
+  bool triggerWorkers(uint64_t timestamp, uint64_t sequence_id,
+                      std::unique_ptr<artdaq::Fragment>& frag,
+                      std::unique_ptr<artdaq::Fragment>& fraghits);
 
   // Queue utils if needed
   size_t getNumOfChannels() { return m_activeChannels; } // Get the number of active channels.
@@ -176,6 +178,7 @@ private:
   uint64_t m_triggerTimestamp;
   uint64_t m_triggerSequenceId;
   artdaq::Fragment* m_fragmentPtr;
+  artdaq::Fragment* m_fragmentPtrHits;
 
   // Thread control
   std::atomic<bool> m_stop_trigger;

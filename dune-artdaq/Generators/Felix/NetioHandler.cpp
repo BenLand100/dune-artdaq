@@ -215,6 +215,9 @@ void NetioHandler::startTriggerMatchers(){
           }
         }
          
+        if(m_doTPFinding){
+            m_tp_finders[tid]->hitsToFragment(m_triggerTimestamp, m_timeWindowNumFrames, m_fragmentPtrHits);
+        }
         /*m_fragmentPtr->resizeBytes( m_msgsize*(2 + m_timeWindow/framesPerMsg) );
         for(unsigned i=0; i<(m_timeWindow/framesPerMsg)+2; i++) //read out 21 messages
         {
@@ -264,12 +267,15 @@ bool NetioHandler::busy(){
   return (busyLinks != 0) ? true : false;
 }
 
-bool NetioHandler::triggerWorkers(uint64_t timestamp, uint64_t sequence_id, std::unique_ptr<artdaq::Fragment>& frag) {
+bool NetioHandler::triggerWorkers(uint64_t timestamp, uint64_t sequence_id,
+                                  std::unique_ptr<artdaq::Fragment>& frag,
+                                  std::unique_ptr<artdaq::Fragment>& fraghits) {
   if (m_stop_trigger.load()) return false; // check if we should proceed with the trigger.
  
   m_triggerTimestamp = timestamp;
   m_triggerSequenceId = sequence_id;
   m_fragmentPtr = frag.get();
+  m_fragmentPtrHits = fraghits.get();
 
   // Set functors for extractors.
   for (uint32_t i=0; i<m_activeChannels; ++i){
@@ -469,7 +475,7 @@ void NetioHandler::recalculateByteSizes()
      m_timeWindowByteSizeIn = m_msgsize * m_timeWindowNumMessages;
      m_timeWindowNumFrames = m_timeWindowByteSizeIn / FelixReorder::m_num_bytes_per_frame;
  
-     //if (m_do_reorder)
+     //if (m_doreorder)
      //    m_timeWindowByteSizeOut = m_timeWindowByteSizeIn 
      //        * FelixReorderer::num_bytes_per_reord_frame / FelixReorderer::num_bytes_per_frame;
      //else

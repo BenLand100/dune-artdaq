@@ -36,7 +36,7 @@ public:
   // Functionalities
   void StartDatataking();
   void StopDatataking();
-  bool FillFragment( std::unique_ptr<artdaq::Fragment>& frag );
+    bool FillFragment( std::unique_ptr<artdaq::Fragment>& frag, std::unique_ptr<artdaq::Fragment>& fraghits );
 
   // Info
   int SerialNumber() const;
