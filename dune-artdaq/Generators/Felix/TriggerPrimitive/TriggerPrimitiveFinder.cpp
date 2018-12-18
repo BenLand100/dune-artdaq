@@ -19,7 +19,8 @@ TriggerPrimitiveFinder::TriggerPrimitiveFinder(uint32_t qsize, size_t timeWindow
       m_nPrimsFound(0),
       m_threadpool(nthreads+2),
 //      m_threadpool2(nthreads),
-      m_anyWindowsProcessedYet(false)
+      m_anyWindowsProcessedYet(false),
+      m_channelMapService("../data/protoDUNETPCChannelMap_RCE_v4.txt", "../data/protoDUNETPCChannelMap_FELIX_v4.txt")
 {
     DAQLogger::LogInfo("TriggerPrimitiveFinder::TriggerPrimitiveFinder") << "Starting TriggerPrimitiveFinder with " << m_nthreads << " threads";
 
@@ -80,6 +81,7 @@ void TriggerPrimitiveFinder::addMessage(SUPERCHUNK_CHAR_STRUCT& ucs)
     static int nFullPrint=0;
     if(first){
         DAQLogger::LogInfo("TriggerPrimitiveFinder::addMessage") << "First call";
+        m_offlineChannelOffset=getOfflineChannel(ucs, 0);
         first=false;
     }
     RegisterArray<REGISTERS_PER_FRAME*FRAMES_PER_MSG> expanded=expand_message_adcs(ucs);
@@ -231,7 +233,7 @@ void TriggerPrimitiveFinder::addHitsToQueue(uint64_t timestamp)
         uint16_t* input_loc=m_primfind_destinations[j];
         
         while(*input_loc!=MAGIC){
-            for(int i=0; i<16; ++i) chan[i]       = collection_index_to_offline(*input_loc++);
+            for(int i=0; i<16; ++i) chan[i]       = m_offlineChannelOffset+collection_index_to_offline(*input_loc++);
             for(int i=0; i<16; ++i) hit_start[i]  = *input_loc++;
             for(int i=0; i<16; ++i) hit_charge[i] = *input_loc++;
             for(int i=0; i<16; ++i) hit_tover[i]  = *input_loc++;
@@ -263,6 +265,38 @@ void TriggerPrimitiveFinder::hitsToFragment(uint64_t timestamp, uint32_t window_
     for(size_t i=0; i<tps.size(); ++i){
         hitFrag.get_primitive(i)=tps[i];
     }
+}
+
+//======================================================================
+uint16_t TriggerPrimitiveFinder::getOfflineChannel(SUPERCHUNK_CHAR_STRUCT& ucs, unsigned int ch)
+{
+    const dune::FelixFrame* frame=reinterpret_cast<const dune::FelixFrame*>(&ucs);
+    // handle 256 channels on two fibers -- use the channel
+    // map that assumes 128 chans per fiber (=FEMB) (Copied
+    // from PDSPTPCRawDecoder_module.cc)
+    int crate = frame->crate_no();
+    int slot = frame->slot_no();
+    int fiber = frame->fiber_no();
+
+    unsigned int fiberloc = 0;
+    if (fiber == 1){
+        fiberloc = 1;
+    }
+    else if(fiber == 2){
+        fiberloc = 3;
+    }
+    else{
+        std::cout << " Fiber number " << (int) fiber << " is expected to be 1 or 2 -- revisit logic" << std::endl;
+        fiberloc = 1;
+    }
+
+    unsigned int chloc = ch;
+    if (chloc > 127){
+        chloc -= 128;
+        fiberloc++;
+    }
+    unsigned int crateloc = crate;
+    return m_channelMapService.GetOfflineNumberFromDetectorElements(crateloc, slot, fiberloc, chloc, PdspChannelMapService::kFELIX);
 }
 
 /* Local Variables:  */

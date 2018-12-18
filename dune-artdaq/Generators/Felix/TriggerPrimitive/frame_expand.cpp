@@ -208,7 +208,7 @@ int collection_index_to_offline(int index)
     // smallest collection wire channel in the frame. There's some
     // extra pattern here that I'm too lazy to work out. This list was
     // made by munging the output of number_collection.cpp
-    int offlines[128]={
+    const int offlines[128]={
         12,   14,  16,  18,  23,  21,  20,  22, 19,  17,  15,   13, -1, -1, -1, -1,
         0,     2,   4,   6,  11,   9,   8,  10,   7,   5,   3,   1, -1, -1, -1, -1,
         24,   26,  28,  30,  35,  33,  32,  34,  31,  29,  27,  25, -1, -1, -1, -1,

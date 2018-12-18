@@ -4,6 +4,7 @@
 #include "frame_expand.h"
 #include "process_avx2.h"
 #include "design_fir.h"
+#include "PdspChannelMapService.h"
 
 #include "dune-artdaq/Generators/Felix/FelixFormat.hh"
 #include "dune-artdaq/Generators/Felix/Types.hh"
@@ -56,6 +57,7 @@ public:
     void waitForJobs() { for(auto& f: m_futures) f.wait(); }
 private:
 
+    uint16_t getOfflineChannel(SUPERCHUNK_CHAR_STRUCT& ucs, unsigned int ch);
     void addHitsToQueue(uint64_t timestamp);
 
     std::vector<uint16_t*> m_primfind_destinations;
@@ -72,6 +74,8 @@ private:
     boost::basic_thread_pool m_threadpool;
     // boost::basic_thread_pool m_threadpool2;
     std::atomic<bool> m_anyWindowsProcessedYet;
+    PdspChannelMapService m_channelMapService;
+    uint16_t m_offlineChannelOffset;
 };
 
 #endif

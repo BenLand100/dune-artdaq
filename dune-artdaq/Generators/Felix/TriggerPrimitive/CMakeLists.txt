@@ -9,6 +9,7 @@ art_make_library( LIBRARY_NAME dune-artdaq_Generators_Felix_TriggerPrimitive_cha
 art_make_library( LIBRARY_NAME dune-artdaq_Generators_Felix_TriggerPrimitive
 		  SOURCE frame_expand.cpp process_avx2.cpp design_fir.cpp TriggerPrimitiveFinder.cpp
                   LIBRARIES
+                  dune-artdaq_Generators_Felix_TriggerPrimitive_channelmap
                   dune-artdaq_DAQLogger
                   ${CMAKE_THREAD_LIBS_INIT}
                   ${Boost_SYSTEM_LIBRARY}
