@@ -75,6 +75,10 @@ void print256(__m256i var);
 void print256_as16(__m256i var);
 
 //==============================================================================
+// Print a 256-bit register interpreting it as packed 16-bit values
+void print256_as16_dec(__m256i var);
+
+//==============================================================================
 // Abortive attempt at expanding just the collection channels, instead
 // of expanding all channels and then picking out just the collection
 // ones. 
