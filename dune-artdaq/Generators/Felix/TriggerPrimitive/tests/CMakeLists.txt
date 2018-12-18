@@ -67,3 +67,8 @@ cet_make_exec(test_tpf
   SOURCE test_tpf.cpp
   LIBRARIES ${TP_LIBS}
 )
+
+cet_make_exec(test_tpf_data_from_file
+  SOURCE test_tpf_data_from_file.cpp
+  LIBRARIES ${TP_LIBS}
+)
