@@ -61,8 +61,9 @@ process_window_avx2(ProcessingInfo info_in)
     const __m256i adcMax=_mm256_set1_epi16(info.adcMax);
 
     __m256i tap_256[NTAPS];
-    for(size_t i=0; i<NTAPS; ++i) tap_256[i]= _mm256_set1_epi16(info.taps[i]);
-
+    for(size_t i=0; i<NTAPS; ++i){
+        tap_256[i]= _mm256_set1_epi16(info.taps[i]);
+    }
     // Pointer to keep track of where we'll write the next output hit
     __m256i* output_loc=(__m256i*)(info.output);
 
@@ -149,6 +150,7 @@ process_window_avx2(ProcessingInfo info_in)
 
             // Find the interquartile range
             __m256i sigma = _mm256_sub_epi16(quantile75, quantile25);
+            // __m256i sigma = _mm256_set1_epi16(2000); // 20 ADC
             // --------------------------------------------------------------
             // Filtering
             // --------------------------------------------------------------
@@ -219,7 +221,17 @@ process_window_avx2(ProcessingInfo info_in)
             // cmplt functions set their epi16 parts to 0xff or 0x0,
             // so treating everything as epi8 works the same
             __m256i to_add_charge=_mm256_blendv_epi8(_mm256_set1_epi16(0), filt, is_over);
-            hit_charge=_mm256_adds_epi16(hit_charge, to_add_charge);
+            // Divide by the multiplier before adding (implemented as a shift-right)
+            hit_charge=_mm256_adds_epi16(hit_charge, _mm256_srai_epi16(to_add_charge, info.tap_exponent));
+
+            // if(ireg==info.first_register){
+            //     printf("itime=%ld\n", itime);
+            //     printf("s:             "); print256_as16_dec(s);             printf("\n");
+            //     printf("sigma:         "); print256_as16_dec(sigma);         printf("\n");
+            //     printf("filt:          "); print256_as16_dec(filt);          printf("\n");
+            //     printf("to_add_charge: "); print256_as16_dec(to_add_charge); printf("\n");
+            //     printf("hit_charge:    "); print256_as16_dec(hit_charge);    printf("\n");
+            // }
 
             __m256i to_add_tover=_mm256_blendv_epi8(_mm256_set1_epi16(0), _mm256_set1_epi16(1), is_over);
             hit_tover=_mm256_adds_epi16(hit_tover, to_add_tover);
