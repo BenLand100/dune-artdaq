@@ -76,7 +76,7 @@ bool dune::FelixReceiver::getNext_(artdaq::FragmentPtrs & frags) {
     );
     std::unique_ptr<artdaq::Fragment> fragptrhits(
       artdaq::Fragment::FragmentBytes(0, ev_no, fragment_id(),
-                                      fragment_type_, metadata_, timestamp_)
+                                      toFragmentType("FELIXHITS"), metadata_, timestamp_)
     );
 
     //std::unique_ptr<artdaq::Fragment> fragptr(ev_counter(), fragment_id(),fragment_type_);
