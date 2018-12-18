@@ -53,8 +53,8 @@ struct ProcessingInfo
                    uint8_t last_register_,
                    uint16_t* __restrict__ output_,
                    const int16_t* __restrict__ taps_,
-                   int16_t /* ntaps_ */,
-                   const int16_t multiplier_,
+                   int16_t ntaps_,
+                   const uint8_t tap_exponent_,
                    size_t nhits_)
         : input(input_),
           timeWindowNumFrames(timeWindowNumFrames_),
@@ -62,8 +62,10 @@ struct ProcessingInfo
           last_register(last_register_),
           output(output_),
           taps(taps_),
-          multiplier(multiplier_),
-          adcMax(INT16_MAX/multiplier_),
+          ntaps(ntaps_),
+          tap_exponent(tap_exponent_),
+          multiplier(1 << tap_exponent),
+          adcMax(INT16_MAX/multiplier),
           nhits(nhits_)
     {
     }
@@ -88,6 +90,7 @@ struct ProcessingInfo
     uint16_t* __restrict__ output;
     const int16_t* __restrict__ taps;
     int16_t ntaps;
+    uint8_t tap_exponent;
     int16_t multiplier;
     int16_t adcMax;
     size_t nhits;

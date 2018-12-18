@@ -42,7 +42,7 @@ public:
 
     void addMessage(SUPERCHUNK_CHAR_STRUCT& ucs);
 
-    void process_window();
+    void process_window(uint64_t timestamp);
   
     std::vector<dune::TriggerPrimitive> primitivesForTimestamp(uint64_t timestamp, uint32_t window_size);
 
@@ -67,8 +67,9 @@ private:
     folly::ProducerConsumerQueue<MessageCollectionADCs> m_pcq;
     std::deque<WindowPrimitives> m_windowHits;
     size_t m_nWindowsProcessed;
-    size_t m_nPrimsFound;
+    std::atomic<size_t> m_nPrimsFound;
     boost::basic_thread_pool m_threadpool;
+    // boost::basic_thread_pool m_threadpool2;
     std::atomic<bool> m_anyWindowsProcessedYet;
 };
 
