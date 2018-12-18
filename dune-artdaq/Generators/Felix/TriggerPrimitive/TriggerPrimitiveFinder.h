@@ -53,6 +53,7 @@ public:
     // Find all the hits around `timestamp` and write them into the fragment at fragPtr
     void hitsToFragment(uint64_t timestamp, uint32_t windowSize, artdaq::Fragment* fragPtr);
 
+    void waitForJobs() { for(auto& f: m_futures) f.wait(); }
 private:
 
     void addHitsToQueue(uint64_t timestamp);

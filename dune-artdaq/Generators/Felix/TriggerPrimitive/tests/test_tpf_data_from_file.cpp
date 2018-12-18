@@ -6,7 +6,7 @@ int main(int, char**)
 {
     // auto t0=std::chrono::steady_clock::now();
     mf::setStandAloneMessageThreshold({"DEBUG"});
-    auto tpf=std::make_unique<TriggerPrimitiveFinder>(50000, 128, 2);
+    auto tpf=std::make_unique<TriggerPrimitiveFinder>(50000, 128, 1);
 
     FrameFile f("/nfs/sw/work_dirs/phrodrig/felixcosmics.dat");
     char* fragment=reinterpret_cast<char*>(f.fragment(0));
@@ -18,6 +18,7 @@ int main(int, char**)
         tpf->addMessage(*scs);
         if(imessage%2048==0) std::this_thread::sleep_for(std::chrono::microseconds(1024));
     }
+    tpf->waitForJobs();
     // auto t1=std::chrono::steady_clock::now();
     // auto ms=std::chrono::duration_cast<std::chrono::milliseconds>(t1-t0).count();
     // auto ms_processed=1000*N*FRAMES_PER_MSG/2e6;
