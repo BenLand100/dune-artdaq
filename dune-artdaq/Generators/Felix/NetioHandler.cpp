@@ -374,6 +374,7 @@ void NetioHandler::startSubscribers(){
         for(auto const& it: m_tp_finders){
             const uint64_t id=it.first;
             const TriggerPrimitiveFinder& tpf=*(it.second);
+            tpf.waitForJobs();
             DAQLogger::LogInfo("NetioHandler::subscriber")
                 << "Primitive finder  " << id << '\n'
                 << "  messages received: " << tpf.getNMessages()  << '\n'
