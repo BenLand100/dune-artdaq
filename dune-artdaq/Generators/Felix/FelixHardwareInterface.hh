@@ -36,7 +36,7 @@ public:
   // Functionalities
   void StartDatataking();
   void StopDatataking();
-    bool FillFragment( std::unique_ptr<artdaq::Fragment>& frag, std::unique_ptr<artdaq::Fragment>& fraghits );
+  bool FillFragment( std::unique_ptr<artdaq::Fragment>& frag, std::unique_ptr<artdaq::Fragment>& fraghits );
 
   // Info
   int SerialNumber() const;
@@ -98,6 +98,7 @@ private:
   // Fragment related
   dune::FragmentType fragment_type_;
   dune::FelixFragmentBase::Metadata fragment_meta_;
+  dune::FelixFragmentBase::Metadata fragment_hits_meta_;
 
   std::size_t usecs_between_sends_;
   

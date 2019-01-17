@@ -81,6 +81,11 @@ FelixHardwareInterface::FelixHardwareInterface(fhicl::ParameterSet const& ps) :
   fragment_meta_.reordered = 0;
   fragment_meta_.compressed = 0;
 
+  fragment_hits_meta_.control_word = 0xcba;
+  fragment_hits_meta_.version = 1;
+  fragment_hits_meta_.reordered = 0;
+  fragment_hits_meta_.compressed = 0;
+
   // Reordering
   if (reordering_) { // from config
     nioh_.doReorder(true, false);
@@ -237,6 +242,7 @@ bool FelixHardwareInterface::FillFragment( std::unique_ptr<artdaq::Fragment>& fr
         frag->updateMetadata(fragment_meta_);
         fraghits->setSequenceID(requestSeqId);
         fraghits->setTimestamp(requestTimestamp);
+        fraghits->updateMetadata(fragment_hits_meta_);
 
 	if (frag->dataSizeBytes() == 0) {
 	  DAQLogger::LogWarning("dune::FelixHardwareInterface::FillFragment")
