@@ -3,6 +3,7 @@
 #include "dune-artdaq/DAQLogger/DAQLogger.hh"
 #include "artdaq-core/Data/Fragment.hh"
 #include "dune-raw-data/Overlays/FelixHitFragment.hh"
+#include "dune-raw-data/Overlays/FelixFragment.hh"
 
 #include <cstddef> // For offsetof
 
