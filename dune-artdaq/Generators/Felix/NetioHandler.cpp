@@ -216,7 +216,7 @@ void NetioHandler::startTriggerMatchers(){
         }
          
         if(m_doTPFinding){
-            m_tp_finders[tid]->hitsToFragment(m_triggerTimestamp, m_timeWindowNumFrames, m_fragmentPtrHits);
+            m_tp_finders[tid]->hitsToFragment(m_triggerTimestamp, m_tickdist*m_timeWindowNumFrames, m_fragmentPtrHits);
         }
         /*m_fragmentPtr->resizeBytes( m_msgsize*(2 + m_timeWindow/framesPerMsg) );
         for(unsigned i=0; i<(m_timeWindow/framesPerMsg)+2; i++) //read out 21 messages
