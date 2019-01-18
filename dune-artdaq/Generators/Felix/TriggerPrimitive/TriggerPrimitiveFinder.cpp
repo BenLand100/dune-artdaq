@@ -9,6 +9,7 @@
 
 using namespace dune;
 
+//======================================================================
 TriggerPrimitiveFinder::TriggerPrimitiveFinder(uint32_t qsize, size_t timeWindowNumMessages, size_t nthreads)
     : m_primfind_tmp(new MessageCollectionADCs[nthreads*timeWindowNumMessages]),
       m_timeWindowNumMessages(timeWindowNumMessages),
@@ -21,6 +22,7 @@ TriggerPrimitiveFinder::TriggerPrimitiveFinder(uint32_t qsize, size_t timeWindow
       m_threadpool(nthreads+2),
 //      m_threadpool2(nthreads),
       m_anyWindowsProcessedYet(false),
+      m_latestProcessedTimestamp(0),
       m_channelMapService("../data/protoDUNETPCChannelMap_RCE_v4.txt", "../data/protoDUNETPCChannelMap_FELIX_v4.txt")
 {
     DAQLogger::LogInfo("TriggerPrimitiveFinder::TriggerPrimitiveFinder") << "Starting TriggerPrimitiveFinder with " << m_nthreads << " threads";
@@ -54,7 +56,8 @@ TriggerPrimitiveFinder::TriggerPrimitiveFinder(uint32_t qsize, size_t timeWindow
     } // end for(i=0 to nThreads)
     
 }
-  
+
+//======================================================================  
 TriggerPrimitiveFinder::~TriggerPrimitiveFinder()
 {
     for(auto& f: m_futures){
@@ -76,6 +79,7 @@ TriggerPrimitiveFinder::~TriggerPrimitiveFinder()
     for(auto& d: m_primfind_destinations) delete[] d;
 }
 
+//======================================================================
 void TriggerPrimitiveFinder::addMessage(SUPERCHUNK_CHAR_STRUCT& ucs)
 {
     static bool first=true;
@@ -102,6 +106,7 @@ void TriggerPrimitiveFinder::addMessage(SUPERCHUNK_CHAR_STRUCT& ucs)
     }
 }
 
+//======================================================================
 void TriggerPrimitiveFinder::process_window(uint64_t timestamp)
 {
     if(!m_anyWindowsProcessedYet.load()){
@@ -209,9 +214,16 @@ void TriggerPrimitiveFinder::process_window(uint64_t timestamp)
     ++m_nWindowsProcessed;
 }
 
+//======================================================================
 std::vector<dune::TriggerPrimitive>
 TriggerPrimitiveFinder::primitivesForTimestamp(uint64_t timestamp, uint32_t window_size)
 {
+    // Wait for the processing to catch up with the requested timestamp
+    // TODO: Add a timeout
+    while(m_latestProcessedTimestamp.load()<timestamp+window_size){
+        std::this_thread::sleep_for(std::chrono::microseconds(100));
+    }
+
     std::vector<dune::TriggerPrimitive> ret;
     const int64_t signed_ts=timestamp;
     // TODO: m_windowHits might be accessed from another thread in
@@ -235,6 +247,7 @@ TriggerPrimitiveFinder::primitivesForTimestamp(uint64_t timestamp, uint32_t wind
     return ret;
 }
 
+//======================================================================
 void TriggerPrimitiveFinder::addHitsToQueue(uint64_t timestamp)
 {
     TriggerPrimitiveFinder::WindowPrimitives prims;
@@ -260,6 +273,8 @@ void TriggerPrimitiveFinder::addHitsToQueue(uint64_t timestamp)
         }
     }
     m_windowHits.push_back(prims);
+    // Update the "most recent timestamp processed" variable
+    update_maximum(m_latestProcessedTimestamp, timestamp);
     if(m_windowHits.size()>1000) m_windowHits.pop_front();
 }
 

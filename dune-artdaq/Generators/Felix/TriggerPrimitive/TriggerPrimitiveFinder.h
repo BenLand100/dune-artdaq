@@ -57,6 +57,16 @@ public:
     void waitForJobs() { for(auto& f: m_futures) f.wait(); }
 private:
 
+    // Update a maximum counter atomically
+    // From https://stackoverflow.com/questions/16190078
+    void update_maximum(std::atomic<uint64_t>& maximum_value, uint64_t const& value) noexcept
+    {
+        uint64_t prev_value = maximum_value;
+        while(prev_value < value &&
+              !maximum_value.compare_exchange_weak(prev_value, value))
+            ;
+    }
+
     uint16_t getOfflineChannel(SUPERCHUNK_CHAR_STRUCT& ucs, unsigned int ch);
     void addHitsToQueue(uint64_t timestamp);
 
@@ -74,6 +84,7 @@ private:
     boost::basic_thread_pool m_threadpool;
     // boost::basic_thread_pool m_threadpool2;
     std::atomic<bool> m_anyWindowsProcessedYet;
+    std::atomic<uint64_t> m_latestProcessedTimestamp;
     PdspChannelMapService m_channelMapService;
     uint16_t m_offlineChannelOffset;
 };
