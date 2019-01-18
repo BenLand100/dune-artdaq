@@ -217,8 +217,19 @@ TriggerPrimitiveFinder::primitivesForTimestamp(uint64_t timestamp, uint32_t wind
     // TODO: m_windowHits might be accessed from another thread in
     // addHitsToQueue. Deal with this somehow
     for(auto const& wp: m_windowHits){
-        if(std::abs(signed_ts-wp.timestamp)<window_size){
-            ret.insert(ret.end(), wp.triggerPrimitives.begin(), wp.triggerPrimitives.end());
+        // Convert the timestamp of each TP to be relative to the
+        // requested timestamp, instead of being relative to the
+        // timestamp of its window
+        int64_t delta_ts=signed_ts-wp.timestamp;
+        if(std::abs(delta_ts)<window_size){
+            for(auto const& tp: wp.triggerPrimitives){
+                int64_t this_tp_delta_ts=tp.startTimeOffset-delta_ts;
+                if(this_tp_delta_ts>0){
+                    dune::TriggerPrimitive new_tp(tp);
+                    new_tp.startTimeOffset=(uint16_t)std::min((int64_t)UINT16_MAX, this_tp_delta_ts);
+                    ret.push_back(new_tp);
+                }
+            }
         }
     }
     return ret;
@@ -252,6 +263,7 @@ void TriggerPrimitiveFinder::addHitsToQueue(uint64_t timestamp)
     if(m_windowHits.size()>1000) m_windowHits.pop_front();
 }
 
+//======================================================================
 void TriggerPrimitiveFinder::hitsToFragment(uint64_t timestamp, uint32_t window_size, artdaq::Fragment* fragPtr)
 {
     std::vector<dune::TriggerPrimitive> tps=primitivesForTimestamp(timestamp, window_size);
