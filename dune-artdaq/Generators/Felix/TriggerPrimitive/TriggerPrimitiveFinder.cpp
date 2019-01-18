@@ -262,12 +262,11 @@ void TriggerPrimitiveFinder::hitsToFragment(uint64_t timestamp, uint32_t window_
     fragPtr->resizeBytes(sizeof(dune::FelixHitFragment::Body)+tps.size()*sizeof(TriggerPrimitive));
     dune::FelixFragmentHits hitFrag(*fragPtr);
 
-    // TODO: make this work with the new FelixFragmentHits
-    // hitFrag.set_timestamp(timestamp);
-    // hitFrag.set_nhits(tps.size());
-    // for(size_t i=0; i<tps.size(); ++i){
-    //     hitFrag.get_primitive(i)=tps[i];
-    // }
+    hitFrag.set_timestamp(timestamp);
+    hitFrag.set_nhits(tps.size());
+    for(size_t i=0; i<tps.size(); ++i){
+        hitFrag.get_primitive(i)=tps[i];
+    }
 }
 
 //======================================================================
