@@ -7,6 +7,8 @@
 
 #include <cstddef> // For offsetof
 
+const int64_t clocksPerTPCTick=25;
+
 using namespace dune;
 
 //======================================================================
@@ -102,7 +104,9 @@ void TriggerPrimitiveFinder::addMessage(SUPERCHUNK_CHAR_STRUCT& ucs)
     }
     if((++m_messagesReceived)%m_timeWindowNumMessages==0){
         const dune::WIBHeader* wh = reinterpret_cast<const dune::WIBHeader*>(&ucs);
-        process_window(wh->timestamp());
+        // wh->timestamp() is the timestamp of the last message in
+        // this window. We want the timestamp of the first message
+        process_window(wh->timestamp()-m_timeWindowNumFrames*clocksPerTPCTick);
     }
 }
 
@@ -233,7 +237,6 @@ TriggerPrimitiveFinder::primitivesForTimestamp(uint64_t timestamp, uint32_t wind
     std::stringstream msg;
     msg << "Adding windows for ts " << timestamp << " ws " << window_size << ": ";
 
-    const int64_t clocksPerTPCTick=25;
     {
         std::lock_guard<std::mutex> lock(m_windowHitsMutex);
 
