@@ -233,6 +233,7 @@ TriggerPrimitiveFinder::primitivesForTimestamp(uint64_t timestamp, uint32_t wind
     std::stringstream msg;
     msg << "Adding windows for ts " << timestamp << " ws " << window_size << ": ";
 
+    const int64_t clocksPerTPCTick=25;
     {
         std::lock_guard<std::mutex> lock(m_windowHitsMutex);
 
@@ -244,10 +245,10 @@ TriggerPrimitiveFinder::primitivesForTimestamp(uint64_t timestamp, uint32_t wind
             if(std::abs(delta_ts)<window_size){
                 msg << wp.timestamp << ", ";
                 for(auto const& tp: wp.triggerPrimitives){
-                    int64_t this_tp_delta_ts=25*tp.startTimeOffset-delta_ts;
+                    int64_t this_tp_delta_ts=clocksPerTPCTick*tp.startTimeOffset-delta_ts;
                     if(this_tp_delta_ts>0){
                         dune::TriggerPrimitive new_tp(tp);
-                        new_tp.startTimeOffset=(uint16_t)std::min((int64_t)UINT16_MAX, this_tp_delta_ts);
+                        new_tp.startTimeOffset=(uint16_t)std::min((int64_t)UINT16_MAX, this_tp_delta_ts/clocksPerTPCTick);
                         ret.push_back(new_tp);
                         
                     }
