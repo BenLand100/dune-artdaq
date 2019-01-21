@@ -14,6 +14,7 @@
 #include "boost/thread/executors/basic_thread_pool.hpp"
 
 #include <deque>
+#include <mutex>
 
 namespace artdaq
 {

@@ -220,30 +220,41 @@ TriggerPrimitiveFinder::primitivesForTimestamp(uint64_t timestamp, uint32_t wind
 {
     // Wait for the processing to catch up with the requested timestamp
     // TODO: Add a timeout
+    std::chrono::high_resolution_clock::time_point t0 = std::chrono::high_resolution_clock::now();
     while(m_latestProcessedTimestamp.load()<timestamp+window_size){
         std::this_thread::sleep_for(std::chrono::microseconds(100));
     }
+    auto tdelta = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now() - t1);
+    DAQLogger::LogInfo("TriggerPrimitiveFinder::primitivesForTimestamp") << "Waited " << std::chrono::milliseconds(tdelta).count() << "ms for data to be processed";
 
     std::vector<dune::TriggerPrimitive> ret;
     const int64_t signed_ts=timestamp;
-    // TODO: m_windowHits might be accessed from another thread in
-    // addHitsToQueue. Deal with this somehow
-    for(auto const& wp: m_windowHits){
-        // Convert the timestamp of each TP to be relative to the
-        // requested timestamp, instead of being relative to the
-        // timestamp of its window
-        int64_t delta_ts=signed_ts-wp.timestamp;
-        if(std::abs(delta_ts)<window_size){
-            for(auto const& tp: wp.triggerPrimitives){
-                int64_t this_tp_delta_ts=tp.startTimeOffset-delta_ts;
-                if(this_tp_delta_ts>0){
-                    dune::TriggerPrimitive new_tp(tp);
-                    new_tp.startTimeOffset=(uint16_t)std::min((int64_t)UINT16_MAX, this_tp_delta_ts);
-                    ret.push_back(new_tp);
+
+    std::stringstream msg;
+    msg << "Adding windows for ts " << timestamp << " ws " << window_size << ": ";
+
+    {
+        std::lock_guard<std::mutex> lock(m_windowHitsMutex);
+
+        for(auto const& wp: m_windowHits){
+            // Convert the timestamp of each TP to be relative to the
+            // requested timestamp, instead of being relative to the
+            // timestamp of its window
+            int64_t delta_ts=signed_ts-wp.timestamp;
+            if(std::abs(delta_ts)<window_size){
+                msg << wp.timestamp << ", ";
+                for(auto const& tp: wp.triggerPrimitives){
+                    int64_t this_tp_delta_ts=25*tp.startTimeOffset-delta_ts;
+                    if(this_tp_delta_ts>0){
+                        dune::TriggerPrimitive new_tp(tp);
+                        new_tp.startTimeOffset=(uint16_t)std::min((int64_t)UINT16_MAX, this_tp_delta_ts);
+                        ret.push_back(new_tp);
+                    }
                 }
             }
         }
     }
+    DAQLogger::LogInfo("TriggerPrimitiveFinder::primitivesForTimestamp") << msg.str();
     return ret;
 }
 
@@ -272,10 +283,16 @@ void TriggerPrimitiveFinder::addHitsToQueue(uint64_t timestamp)
             }
         }
     }
-    m_windowHits.push_back(prims);
+
+
+    {
+        std::lock_guard<std::mutex> lock(m_windowHitsMutex);
+        m_windowHits.push_back(prims);
+        if(m_windowHits.size()>1000) m_windowHits.pop_front();
+    }
+
     // Update the "most recent timestamp processed" variable
     update_maximum(m_latestProcessedTimestamp, timestamp);
-    if(m_windowHits.size()>1000) m_windowHits.pop_front();
 }
 
 //======================================================================
