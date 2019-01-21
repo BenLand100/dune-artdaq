@@ -224,8 +224,8 @@ TriggerPrimitiveFinder::primitivesForTimestamp(uint64_t timestamp, uint32_t wind
     while(m_latestProcessedTimestamp.load()<timestamp+window_size){
         std::this_thread::sleep_for(std::chrono::microseconds(100));
     }
-    auto tdelta = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now() - t1);
-    DAQLogger::LogInfo("TriggerPrimitiveFinder::primitivesForTimestamp") << "Waited " << std::chrono::milliseconds(tdelta).count() << "ms for data to be processed";
+    auto tdelta = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now() - t0);
+    DAQLogger::LogInfo("TriggerPrimitiveFinder::primitivesForTimestamp") << "Waited " << std::chrono::microseconds(tdelta).count() << "us for data to be processed";
 
     std::vector<dune::TriggerPrimitive> ret;
     const int64_t signed_ts=timestamp;
@@ -249,11 +249,13 @@ TriggerPrimitiveFinder::primitivesForTimestamp(uint64_t timestamp, uint32_t wind
                         dune::TriggerPrimitive new_tp(tp);
                         new_tp.startTimeOffset=(uint16_t)std::min((int64_t)UINT16_MAX, this_tp_delta_ts);
                         ret.push_back(new_tp);
+                        
                     }
                 }
             }
         }
     }
+    msg << ret.size() << " hits";
     DAQLogger::LogInfo("TriggerPrimitiveFinder::primitivesForTimestamp") << msg.str();
     return ret;
 }

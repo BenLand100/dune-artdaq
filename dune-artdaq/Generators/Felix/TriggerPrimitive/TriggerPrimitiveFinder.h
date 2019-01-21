@@ -88,6 +88,7 @@ private:
     std::atomic<uint64_t> m_latestProcessedTimestamp;
     PdspChannelMapService m_channelMapService;
     uint16_t m_offlineChannelOffset;
+    std::mutex m_windowHitsMutex; // Mutex to protect m_windowHits
 };
 
 #endif
