@@ -72,3 +72,8 @@ cet_make_exec(test_tpf_data_from_file
   SOURCE test_tpf_data_from_file.cpp
   LIBRARIES ${TP_LIBS}
 )
+
+cet_make_exec(benchmark_tpf_rate
+  SOURCE benchmark_tpf_rate.cpp
+  LIBRARIES ${TP_LIBS}
+)
