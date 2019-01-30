@@ -11,6 +11,8 @@ const int64_t clocksPerTPCTick=25;
 
 using namespace dune;
 
+void setname(boost::basic_thread_pool&) { pthread_setname_np(pthread_self(), "threadpool"); }
+
 //======================================================================
 TriggerPrimitiveFinder::TriggerPrimitiveFinder(uint32_t qsize, size_t timeWindowNumMessages, size_t nthreads)
     : m_primfind_tmp(new MessageCollectionADCs[nthreads*timeWindowNumMessages]),
@@ -21,7 +23,7 @@ TriggerPrimitiveFinder::TriggerPrimitiveFinder(uint32_t qsize, size_t timeWindow
       m_pcq(qsize),
       m_nWindowsProcessed(0),
       m_nPrimsFound(0),
-      m_threadpool(nthreads+2),
+      m_threadpool(nthreads, *setname),
 //      m_threadpool2(nthreads),
       m_anyWindowsProcessedYet(false),
       m_latestProcessedTimestamp(0),
