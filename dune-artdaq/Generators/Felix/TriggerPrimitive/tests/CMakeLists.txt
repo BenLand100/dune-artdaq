@@ -77,3 +77,14 @@ cet_make_exec(benchmark_tpf_rate
   SOURCE benchmark_tpf_rate.cpp
   LIBRARIES ${TP_LIBS}
 )
+
+
+cet_make_exec(dump_link
+  SOURCE dump_link.cpp
+  LIBRARIES ${TP_LIBS}
+)
+
+cet_make_exec(read_raw_file
+  SOURCE read_raw_file.cpp
+  LIBRARIES ${TP_LIBS}
+)
