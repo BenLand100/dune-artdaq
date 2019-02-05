@@ -103,10 +103,18 @@ __m256i expand_two_segments(const ColdataSegment* first_segment);
 RegisterArray<2> get_block_collection_adcs(const ColdataBlock& block);
 
 //==============================================================================
+// As above, for all collection and induction ADCs
+RegisterArray<4> get_block_all_adcs(const ColdataBlock& block);
+
+//==============================================================================
 //
 // TODO: We could further compact the values into 6 registers instead
 // of 8, getting rid of the dummy values. Is it worth it?
 RegisterArray<8> get_frame_collection_adcs(const FelixFrame* frame);
+
+//==============================================================================
+// As above, for all collection and induction ADCs
+RegisterArray<16> get_frame_all_adcs(const FelixFrame* frame);
 
 //==============================================================================
 int collection_index_to_offline(int index);

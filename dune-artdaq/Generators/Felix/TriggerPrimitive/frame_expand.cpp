@@ -185,6 +185,16 @@ RegisterArray<2> get_block_collection_adcs(const ColdataBlock& block)
 }
 
 //==============================================================================
+RegisterArray<4> get_block_all_adcs(const ColdataBlock& block)
+{
+    RegisterArray<4> expanded_all;
+    for(int j=0; j<4; ++j){
+        expanded_all.set_ymm(j, expand_two_segments(&block.segments[2*j]));
+    }
+    return expanded_all;
+}
+
+//==============================================================================
 //
 // TODO: We could further compact the values into 6 registers instead
 // of 8, getting rid of the dummy values. Is it worth it?
@@ -195,6 +205,20 @@ RegisterArray<8> get_frame_collection_adcs(const FelixFrame* frame)
         RegisterArray<2> block_adcs=get_block_collection_adcs(frame->block(i));
         adcs.set_ymm(2*i, block_adcs.ymm(0));
         adcs.set_ymm(2*i+1, block_adcs.ymm(1));
+    }
+    return adcs;
+}
+
+//==============================================================================
+RegisterArray<16> get_frame_all_adcs(const FelixFrame* frame)
+{
+    RegisterArray<16> adcs;
+    for(int i=0; i<4; ++i){
+        RegisterArray<4> block_adcs=get_block_all_adcs(frame->block(i));
+        adcs.set_ymm(4*i, block_adcs.ymm(0));
+        adcs.set_ymm(4*i+1, block_adcs.ymm(1));
+        adcs.set_ymm(4*i+2, block_adcs.ymm(2));
+        adcs.set_ymm(4*i+3, block_adcs.ymm(3));
     }
     return adcs;
 }
