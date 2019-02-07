@@ -58,6 +58,7 @@ int main(int argc, char** argv)
     // Cleanup
 
     std::cout << "Stopping" << std::endl;
+    sub_socket->unsubscribe(elink, netio::endpoint(host, port));
     context->event_loop()->stop();
     netio_bg_thread.join();
     delete context;
