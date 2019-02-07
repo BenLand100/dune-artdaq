@@ -6,6 +6,29 @@
 #include "../TriggerPrimitiveFinder.h"
 #include "../process_avx2.h"
 
+//==============================================================================
+void addHitsToQueue(const uint16_t* input_loc,
+                    folly::ProducerConsumerQueue<dune::TriggerPrimitive>& primitive_queue)
+{
+    uint16_t chan[16], hit_start[16], hit_charge[16], hit_tover[16];
+    
+    while(*input_loc!=MAGIC){
+        // for(int i=0; i<16; ++i) chan[i]       = m_offlineChannelOffset+collection_index_to_offline(*input_loc++);
+        for(int i=0; i<16; ++i) chan[i]       = *input_loc++;
+        for(int i=0; i<16; ++i) hit_start[i]  = *input_loc++;
+        for(int i=0; i<16; ++i) hit_charge[i] = *input_loc++;
+        for(int i=0; i<16; ++i) hit_tover[i]  = *input_loc++;
+        
+        for(int i=0; i<16; ++i){
+            if(hit_charge[i] && chan[i]!=MAGIC){
+                dune::TriggerPrimitive p{chan[i], hit_start[i], hit_charge[i], hit_tover[i]};
+                primitive_queue.write(std::move(p));
+            }
+        }
+    }
+}
+
+//==============================================================================
 void processing_thread(void* context, uint8_t first_register, uint8_t last_register)
 {
     pthread_setname_np(pthread_self(), "processing");
@@ -38,7 +61,11 @@ void processing_thread(void* context, uint8_t first_register, uint8_t last_regis
     int16_t* taps_p=new int16_t[taps.size()];
     for(size_t i=0; i<taps.size(); ++i) taps_p[i]=taps[i];
 
+    // Temporary place to stash the hits
     uint16_t* primfind_dest=new uint16_t[100000];
+    
+    // Place to put the hits more tidily for later retrieval
+    folly::ProducerConsumerQueue<dune::TriggerPrimitive> primitive_queue(100000);
       
     ProcessingInfo pi(nullptr,
                       FRAMES_PER_MSG, // We'll just process one message
@@ -66,7 +93,12 @@ void processing_thread(void* context, uint8_t first_register, uint8_t last_regis
             first=false;
         }
         pi.input=mcadc;
+        // "Empty" the list of hits
+        *primfind_dest=MAGIC;
+        // Do the processing
         process_window_avx2(pi);
+        // Create dune::TriggerPrimitives from the hits and put them in the queue for later retrieval
+        addHitsToQueue(primfind_dest, primitive_queue);
     }
     std::cout << "Received " << nmsg << " messages. Found " << pi.nhits << " hits" << std::endl;
 
@@ -74,10 +106,10 @@ void processing_thread(void* context, uint8_t first_register, uint8_t last_regis
     // Cleanup
 
     delete primfind_dest;
-
     zmq_close(subscriber);
 }
 
+//==============================================================================
 int main()
 {
     // -------------------------------------------------------- 
