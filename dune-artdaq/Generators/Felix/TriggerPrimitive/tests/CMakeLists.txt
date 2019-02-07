@@ -88,3 +88,8 @@ cet_make_exec(read_raw_file
   SOURCE read_raw_file.cpp
   LIBRARIES ${TP_LIBS}
 )
+
+cet_make_exec(test_unwindowed_zmq
+  SOURCE test_unwindowed_zmq.cpp
+  LIBRARIES ${TP_LIBS} zmq
+)
