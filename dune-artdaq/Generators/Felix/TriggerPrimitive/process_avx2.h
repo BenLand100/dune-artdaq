@@ -10,7 +10,7 @@ void
 frugal_accum_update_avx2(__m256i& median, const __m256i s, __m256i& accum, const int16_t acclimit,
                               const __m256i mask);
 
-ProcessingInfo
-process_window_avx2(ProcessingInfo info_in);
+void
+process_window_avx2(ProcessingInfo& info);
 
 #endif

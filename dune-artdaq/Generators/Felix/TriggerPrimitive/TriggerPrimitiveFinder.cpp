@@ -113,7 +113,7 @@ void TriggerPrimitiveFinder::addMessage(SUPERCHUNK_CHAR_STRUCT& ucs)
 }
 
 //======================================================================
-void TriggerPrimitiveFinder::process_window(uint64_t timestamp)
+void TriggerPrimitiveFinder::process_window(uint64_t /* timestamp */)
 {
     if(!m_anyWindowsProcessedYet.load()){
         DAQLogger::LogInfo("TriggerPrimitiveFinder::process_window") << "First call to process_window";
@@ -137,87 +137,87 @@ void TriggerPrimitiveFinder::process_window(uint64_t timestamp)
     // ...                                         ... (register 7, time timeWindowNumFrames-1)
 
 
-    // -----------------------------------------------------------------
-    // Wait till all the currently running jobs are done...
-    auto waiter=boost::when_all(m_futures.begin(), m_futures.end()).share();
+    // // -----------------------------------------------------------------
+    // // Wait till all the currently running jobs are done...
+    // auto waiter=boost::when_all(m_futures.begin(), m_futures.end()).share();
 
-    // boost::when_all spawns a new thread, which might be a
-    // bottleneck(?). Write our own version using the executor to get
-    // around that. NB: This has to go on a different executor to the
-    // other futures, otherwise we get deadlock when there are more
-    // outstanding tasks than threads in the pool
+    // // boost::when_all spawns a new thread, which might be a
+    // // bottleneck(?). Write our own version using the executor to get
+    // // around that. NB: This has to go on a different executor to the
+    // // other futures, otherwise we get deadlock when there are more
+    // // outstanding tasks than threads in the pool
 
-    // std::vector<boost::shared_future<ProcessingInfo>> tmp_futures=m_futures;
-    // auto manual_waiter=boost::async(m_threadpool2, [tmp_futures](){
-    //         for(auto& f: tmp_futures) f.wait();
-    //         return tmp_futures;
-    //     }).share();
+    // // std::vector<boost::shared_future<ProcessingInfo>> tmp_futures=m_futures;
+    // // auto manual_waiter=boost::async(m_threadpool2, [tmp_futures](){
+    // //         for(auto& f: tmp_futures) f.wait();
+    // //         return tmp_futures;
+    // //     }).share();
 
 
-    // -----------------------------------------------------------------
-    // ...and then copy the data into the working area.
-    //
-    // We do different things depending on whether this is the first
-    // time process_window() has been called: on the first call, we
-    // have to "seed" the ProcessingInfo's with pedestal values etc;
-    // on the subsequent calls, we take the previous ProcessingInfo
-    // and pass it in
-    typedef std::function<std::vector<ProcessingInfo>(decltype(waiter))> copy_func_t;
+    // // -----------------------------------------------------------------
+    // // ...and then copy the data into the working area.
+    // //
+    // // We do different things depending on whether this is the first
+    // // time process_window() has been called: on the first call, we
+    // // have to "seed" the ProcessingInfo's with pedestal values etc;
+    // // on the subsequent calls, we take the previous ProcessingInfo
+    // // and pass it in
+    // typedef std::function<std::vector<ProcessingInfo>(decltype(waiter))> copy_func_t;
 
-    // The function for the first call
-    copy_func_t copy_lambda_first=[this](decltype(waiter) f){
-        for(size_t j = 0; j < m_timeWindowNumMessages; j++){
-            m_pcq.read(m_primfind_tmp[j]);
-        }
-        std::vector<ProcessingInfo> pis;
-        DAQLogger::LogInfo("TriggerPrimitiveFinder::process_window") << "Processing first window";
-        for(size_t i=0; i<m_nthreads; ++i){
-            // make a copy of the ProcessingInfo which we'll update
-            ProcessingInfo pi=f.get()[i].get();
-            DAQLogger::LogInfo("TriggerPrimitiveFinder::process_window") << "Got ProcessingInfo with nhits=" << pi.nhits;
-            pi.setState(m_primfind_tmp);
-            pis.push_back(pi);
-        }
-        m_anyWindowsProcessedYet.store(true);
+    // // The function for the first call
+    // copy_func_t copy_lambda_first=[this](decltype(waiter) f){
+    //     for(size_t j = 0; j < m_timeWindowNumMessages; j++){
+    //         m_pcq.read(m_primfind_tmp[j]);
+    //     }
+    //     std::vector<ProcessingInfo> pis;
+    //     DAQLogger::LogInfo("TriggerPrimitiveFinder::process_window") << "Processing first window";
+    //     for(size_t i=0; i<m_nthreads; ++i){
+    //         // make a copy of the ProcessingInfo which we'll update
+    //         ProcessingInfo pi=f.get()[i].get();
+    //         DAQLogger::LogInfo("TriggerPrimitiveFinder::process_window") << "Got ProcessingInfo with nhits=" << pi.nhits;
+    //         pi.setState(m_primfind_tmp);
+    //         pis.push_back(pi);
+    //     }
+    //     m_anyWindowsProcessedYet.store(true);
         
-        return pis;
-    };
+    //     return pis;
+    // };
 
-    // The function for subsequent calls
-    copy_func_t copy_lambda_nonfirst=[this, timestamp](decltype(waiter) f){
-        addHitsToQueue(timestamp);
-        // Copy the window into the temporary working area
-        for(size_t j = 0; j < m_timeWindowNumMessages; j++){
-            m_pcq.read(m_primfind_tmp[j]);
-        }
-        std::vector<ProcessingInfo> pis;
+    // // The function for subsequent calls
+    // copy_func_t copy_lambda_nonfirst=[this, timestamp](decltype(waiter) f){
+    //     addHitsToQueue(timestamp);
+    //     // Copy the window into the temporary working area
+    //     for(size_t j = 0; j < m_timeWindowNumMessages; j++){
+    //         m_pcq.read(m_primfind_tmp[j]);
+    //     }
+    //     std::vector<ProcessingInfo> pis;
 
-        for(size_t i=0; i<m_nthreads; ++i){
-            ProcessingInfo pi=f.get()[i].get();
-            pis.push_back(pi);
-        }
-        return pis;
-    };
-    // Set the appropriate function going on the thread pool
-    auto copy_future=waiter.then(m_threadpool,
-                                 m_anyWindowsProcessedYet.load() ?
-                                 std::forward<copy_func_t>(copy_lambda_nonfirst) :
-                                 std::forward<copy_func_t>(copy_lambda_first)).share();
+    //     for(size_t i=0; i<m_nthreads; ++i){
+    //         ProcessingInfo pi=f.get()[i].get();
+    //         pis.push_back(pi);
+    //     }
+    //     return pis;
+    // };
+    // // Set the appropriate function going on the thread pool
+    // auto copy_future=waiter.then(m_threadpool,
+    //                              m_anyWindowsProcessedYet.load() ?
+    //                              std::forward<copy_func_t>(copy_lambda_nonfirst) :
+    //                              std::forward<copy_func_t>(copy_lambda_first)).share();
 
-    m_anyWindowsProcessedYet.store(true);
-    // ...and *then* set all the jobs going again. Each of the
-    // new futures waits on the copy task, which is what we want.
-    for(size_t ithread=0; ithread<m_nthreads; ++ithread){
-        m_futures[ithread]=copy_future.then(m_threadpool,
-                                            [this, ithread](auto fin)
-                                            {
-                                                // MAGIC is the terminator for the list of hits, so this line "empties" the list
-                                                *m_primfind_destinations[ithread]=MAGIC;
-                                                return process_window_avx2(fin.get()[ithread]);
-                                            });
-    }
+    // m_anyWindowsProcessedYet.store(true);
+    // // ...and *then* set all the jobs going again. Each of the
+    // // new futures waits on the copy task, which is what we want.
+    // for(size_t ithread=0; ithread<m_nthreads; ++ithread){
+    //     m_futures[ithread]=copy_future.then(m_threadpool,
+    //                                         [this, ithread](auto fin)
+    //                                         {
+    //                                             // MAGIC is the terminator for the list of hits, so this line "empties" the list
+    //                                             *m_primfind_destinations[ithread]=MAGIC;
+    //                                             return process_window_avx2(fin.get()[ithread]);
+    //                                         });
+    // }
 
-    ++m_nWindowsProcessed;
+    // ++m_nWindowsProcessed;
 }
 
 //======================================================================

@@ -27,11 +27,6 @@ cet_make_exec(read_frames
   LIBRARIES ${TP_LIBS}
 )
 
-cet_make_exec(run_trigprim
-  SOURCE run_trigprim.cpp
-  LIBRARIES ${TP_LIBS}
-)
-
 cet_make_exec(collection_reorder 
   SOURCE collection_reorder.cpp
   LIBRARIES ${TP_LIBS}

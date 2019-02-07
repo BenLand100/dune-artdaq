@@ -54,8 +54,8 @@ int main(int, char**)
                               0);
             pi_avx2.setState(mcas.data());
 
-            process_window_naive(std::move(pi));
-            process_window_avx2(std::move(pi_avx2));
+            process_window_naive(pi);
+            process_window_avx2(pi_avx2);
         }
     }
     save_naive_hits(output_naive.data(), "naive-hits.txt");

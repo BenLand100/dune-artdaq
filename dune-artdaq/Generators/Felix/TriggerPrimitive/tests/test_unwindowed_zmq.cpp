@@ -52,13 +52,12 @@ void processing_thread(void* context, uint8_t first_register, uint8_t last_regis
     // -------------------------------------------------------- 
     // Actually process
     int nmsg=0;
-    int nhits=0;
     bool first=true;
     while(true){
         SUPERCHUNK_CHAR_STRUCT* scs=0;
         zmq_recv(subscriber, &scs, sizeof(scs), 0);
         ++nmsg;
-        // std::cout << "Got 0x" << std::hex << (void*)scs << std::dec << std::endl;
+        // A value of zero means "end of messages"
         if(!scs) break;
         RegisterArray<REGISTERS_PER_FRAME*FRAMES_PER_MSG> expanded=expand_message_adcs(*scs);
         MessageCollectionADCs* mcadc=reinterpret_cast<MessageCollectionADCs*>(expanded.data());
@@ -67,10 +66,12 @@ void processing_thread(void* context, uint8_t first_register, uint8_t last_regis
             first=false;
         }
         pi.input=mcadc;
-        pi=process_window_avx2(pi);
-        nhits+=pi.nhits;
+        process_window_avx2(pi);
     }
-    std::cout << "Received " << nmsg << " messages. Found " << nhits << " hits" << std::endl;
+    std::cout << "Received " << nmsg << " messages. Found " << pi.nhits << " hits" << std::endl;
+
+    // -------------------------------------------------------- 
+    // Cleanup
 
     delete primfind_dest;
 
@@ -79,6 +80,9 @@ void processing_thread(void* context, uint8_t first_register, uint8_t last_regis
 
 int main()
 {
+    // -------------------------------------------------------- 
+    // Set up the ZeroMQ socket on which we'll send new tasks
+
     void* context=zmq_ctx_new();
     void* publisher=zmq_socket(context, ZMQ_PUB);
     int sndhwm=0;
@@ -88,12 +92,18 @@ int main()
     rc=zmq_bind(publisher, "inproc://messages");
     if(rc!=0) std::cout << "Error binding publisher" << std::endl;
 
-    std::thread t1(processing_thread, context, 0,                     REGISTERS_PER_FRAME/2);
-    std::thread t2(processing_thread, context, REGISTERS_PER_FRAME/2, REGISTERS_PER_FRAME);
+    // -------------------------------------------------------- 
+    // Set the processing thread going
+
+    std::thread t1(processing_thread, context, 0, REGISTERS_PER_FRAME);
 
     pthread_setname_np(pthread_self(), "main");
 
+    // Wait for the zeromq socket to bind
     std::this_thread::sleep_for(std::chrono::seconds(1));
+
+    // -------------------------------------------------------- 
+    // Actually send the messages
 
     FrameFile f("/nfs/sw/work_dirs/phrodrig/felixcosmics.dat");
     char* fragment=reinterpret_cast<char*>(f.fragment(0));
@@ -115,9 +125,12 @@ int main()
     SUPERCHUNK_CHAR_STRUCT* scs=0;
     zmq_send(publisher, &scs, sizeof(scs), 0);
 
+    // -------------------------------------------------------- 
+    // Wait for the processing to finish
     t1.join();
-    t2.join();
 
+    // -------------------------------------------------------- 
+    // Print summary and cleanup
     auto time1=std::chrono::steady_clock::now();
     auto ms=std::chrono::duration_cast<std::chrono::milliseconds>(time1-time0).count();
     auto ms_processed=1000*n_repeats*n_messages*FRAMES_PER_MSG/2e6;

@@ -47,10 +47,9 @@ void frugal_accum_update_avx2(__m256i& median, const __m256i s, __m256i& accum, 
     accum = _mm256_blendv_epi8(accum, _mm256_setzero_si256(), need_reset);
 }
 
-ProcessingInfo
-process_window_avx2(ProcessingInfo info_in)
+void
+process_window_avx2(ProcessingInfo& info)
 {
-    ProcessingInfo info=info_in;
     // Start with taps as floats that add to 1. Multiply by some
     // power of two (2**N) and round to int. Before filtering, cap the
     // value of the input to INT16_MAX/(2**N)
@@ -292,6 +291,5 @@ process_window_avx2(ProcessingInfo info_in)
     } // end loop over ireg (the 8 registers in this frame)
     // Store the output
     for(int i=0; i<4; ++i) _mm256_storeu_si256(output_loc++, _mm256_set1_epi16(MAGIC));
-    info.nhits=nhits;
-    return info;
+    info.nhits+=nhits;
 }
