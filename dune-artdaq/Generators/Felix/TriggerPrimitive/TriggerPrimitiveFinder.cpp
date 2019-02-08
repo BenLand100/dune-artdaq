@@ -39,6 +39,8 @@ void TriggerPrimitiveFinder::hitsToFragment(uint64_t timestamp, uint32_t window_
 {
     std::vector<dune::TriggerPrimitive> tps=getHitsForWindow(m_triggerPrimitives,
                                                              timestamp, timestamp+window_size);
+    DAQLogger::LogInfo("TriggerPrimitiveFinder::hitsToFragment") << "Got " << tps.size() << " hits for timestamp 0x" << std::hex << timestamp << std::dec;
+
     // The data payload of the fragment will be:
     // uint64_t timestamp
     // uint32_t nhits
@@ -100,7 +102,7 @@ void TriggerPrimitiveFinder::addHitsToQueue(uint64_t timestamp,
         
         for(int i=0; i<16; ++i){
             if(hit_charge[i] && chan[i]!=MAGIC){
-                primitive_queue.emplace_back(chan[i], timestamp+hit_start[i], hit_charge[i], hit_tover[i]);
+                primitive_queue.emplace_back(chan[i], timestamp+clocksPerTPCTick*hit_start[i], hit_charge[i], hit_tover[i]);
             }
         }
     }
@@ -146,9 +148,17 @@ void TriggerPrimitiveFinder::processing_thread(void* context, uint8_t first_regi
     // Actually process
     int nmsg=0;
     bool first=true;
+    uint64_t prev_timestamp=0;
     while(true){
         bool should_stop;
         ItemToProcess item=receiver.recvItem(should_stop);
+        // Crappy detection of whether we're getting behind: if we get
+        // far behind, the sockets will reach their high water mark
+        // and the publisher will drop messages, so the gap between
+        // the previous timestamp and this timestamp will be larger
+        if(item.timestamp>prev_timestamp+FRAMES_PER_MSG*clocksPerTPCTick && prev_timestamp!=0){
+            DAQLogger::LogInfo("TriggerPrimitiveFinder::processing_thread") << "Looks like a skipped message! this timestamp: 0x" << std::hex << item.timestamp << " prev timestamp: 0x" << prev_timestamp << std::dec;
+        }
         ++nmsg;
         if(should_stop) break;
         RegisterArray<REGISTERS_PER_FRAME*FRAMES_PER_MSG> expanded=expand_message_adcs(*item.scs);
@@ -165,6 +175,8 @@ void TriggerPrimitiveFinder::processing_thread(void* context, uint8_t first_regi
         // Create dune::TriggerPrimitives from the hits and put them in the queue for later retrieval
         addHitsToQueue(item.timestamp, primfind_dest, m_triggerPrimitives);
         m_latestProcessedTimestamp.store(item.timestamp);
+
+        prev_timestamp=item.timestamp;
     }
     std::cout << "Received " << nmsg << " messages. Found " << pi.nhits << " hits" << std::endl;
 
