@@ -68,10 +68,10 @@ cet_make_exec(number_collection
 #   LIBRARIES ${TP_LIBS}
 # )
 
-# cet_make_exec(benchmark_tpf_rate
-#   SOURCE benchmark_tpf_rate.cpp
-#   LIBRARIES ${TP_LIBS}
-# )
+cet_make_exec(benchmark_tpf_rate
+  SOURCE benchmark_tpf_rate.cpp
+  LIBRARIES ${TP_LIBS}
+)
 
 
 cet_make_exec(dump_link
