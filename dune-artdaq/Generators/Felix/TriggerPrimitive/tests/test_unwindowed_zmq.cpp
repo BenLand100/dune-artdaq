@@ -6,6 +6,12 @@
 #include "../TriggerPrimitiveFinder.h"
 #include "../process_avx2.h"
 
+struct ItemToProcess
+{
+    uint64_t timestamp;
+    SUPERCHUNK_CHAR_STRUCT* scs;
+};
+
 //==============================================================================
 void addHitsToQueue(const uint16_t* input_loc,
                     folly::ProducerConsumerQueue<dune::TriggerPrimitive>& primitive_queue)
@@ -81,12 +87,12 @@ void processing_thread(void* context, uint8_t first_register, uint8_t last_regis
     int nmsg=0;
     bool first=true;
     while(true){
-        SUPERCHUNK_CHAR_STRUCT* scs=0;
-        zmq_recv(subscriber, &scs, sizeof(scs), 0);
+        ItemToProcess item;
+        zmq_recv(subscriber, &item, sizeof(ItemToProcess), 0);
         ++nmsg;
         // A value of zero means "end of messages"
-        if(!scs) break;
-        RegisterArray<REGISTERS_PER_FRAME*FRAMES_PER_MSG> expanded=expand_message_adcs(*scs);
+        if(!item.scs) break;
+        RegisterArray<REGISTERS_PER_FRAME*FRAMES_PER_MSG> expanded=expand_message_adcs(*item.scs);
         MessageCollectionADCs* mcadc=reinterpret_cast<MessageCollectionADCs*>(expanded.data());
         if(first){
             pi.setState(mcadc);
@@ -148,14 +154,17 @@ int main()
     for(int irep=0; irep<n_repeats; ++irep){
         for(size_t imessage=0; imessage<n_messages; ++imessage){
             SUPERCHUNK_CHAR_STRUCT* scs=reinterpret_cast<SUPERCHUNK_CHAR_STRUCT*>(fragment+imessage*NETIO_MSG_SIZE);
-            zmq_send(publisher, &scs, sizeof(scs), 0);
+            // The first frame in the message
+            FelixFrame* frame=reinterpret_cast<FelixFrame*>(fragment+imessage*NETIO_MSG_SIZE);
+            ItemToProcess item{frame->timestamp(), scs};
+            zmq_send(publisher, &item, sizeof(ItemToProcess), 0);
             // std::this_thread::sleep_for(std::chrono::microseconds(1024));
         }
     }
     
     // Send 0 as an "end-of-stream" message
-    SUPERCHUNK_CHAR_STRUCT* scs=0;
-    zmq_send(publisher, &scs, sizeof(scs), 0);
+    ItemToProcess item{0, 0};
+    zmq_send(publisher, &item, sizeof(ItemToProcess), 0);
 
     // -------------------------------------------------------- 
     // Wait for the processing to finish
