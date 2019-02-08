@@ -5,15 +5,10 @@
 #include "FrameFile.h"
 #include "../TriggerPrimitiveFinder.h"
 #include "../process_avx2.h"
+#include "../ProcessingTasks.h"
 
 std::atomic<uint64_t> last_ts_processed{0};
 std::mutex hit_queue_mutex;
-
-struct ItemToProcess
-{
-    uint64_t timestamp;
-    SUPERCHUNK_CHAR_STRUCT* scs;
-};
 
 //==============================================================================
 void addHitsToQueue(uint64_t timestamp,
@@ -73,20 +68,7 @@ void processing_thread(void* context, uint8_t first_register, uint8_t last_regis
 {
     pthread_setname_np(pthread_self(), "processing");
 
-    // -------------------------------------------------------- 
-    // Set up the ZeroMQ socket on which we'll listen for new tasks
-
-    void* subscriber=zmq_socket(context, ZMQ_SUB);
-    int rc=zmq_connect(subscriber, "inproc://messages");
-    if(rc!=0) std::cout << "Error connecting subscriber" << std::endl;
-    rc=zmq_setsockopt(subscriber, ZMQ_SUBSCRIBE,
-                      NULL, 0); // Subscribe to all messages
-    if(rc!=0) std::cout << "Error subscribing to tag" << std::endl;
-    int rcvhwm=0;
-    rc=zmq_setsockopt(subscriber, ZMQ_RCVHWM,
-                      &rcvhwm, sizeof(int)); // Infinite HWM
-    if(rc!=0) std::cout << "Error setting rcv HWM" << std::endl;
-
+    ItemReceiver receiver(context);
     // -------------------------------------------------------- 
     // Set up the processing info
     
@@ -121,11 +103,10 @@ void processing_thread(void* context, uint8_t first_register, uint8_t last_regis
     int nmsg=0;
     bool first=true;
     while(true){
-        ItemToProcess item;
-        zmq_recv(subscriber, &item, sizeof(ItemToProcess), 0);
+        bool should_stop;
+        ItemToProcess item=receiver.recvItem(should_stop);
         ++nmsg;
-        // A value of zero means "end of messages"
-        if(!item.scs) break;
+        if(should_stop) break;
         RegisterArray<REGISTERS_PER_FRAME*FRAMES_PER_MSG> expanded=expand_message_adcs(*item.scs);
         MessageCollectionADCs* mcadc=reinterpret_cast<MessageCollectionADCs*>(expanded.data());
         if(first){
@@ -145,9 +126,8 @@ void processing_thread(void* context, uint8_t first_register, uint8_t last_regis
 
     // -------------------------------------------------------- 
     // Cleanup
-
+    receiver.closeSocket();
     delete primfind_dest;
-    zmq_close(subscriber);
 }
 
 //==============================================================================
@@ -157,14 +137,7 @@ int main()
     // Set up the ZeroMQ socket on which we'll send new tasks
 
     void* context=zmq_ctx_new();
-    void* publisher=zmq_socket(context, ZMQ_PUB);
-    int sndhwm=0;
-    int rc=zmq_setsockopt(publisher, ZMQ_SNDHWM,
-                          &sndhwm, sizeof(int));
-    if(rc!=0) std::cout << "Error setting send HWM" << std::endl;
-    rc=zmq_bind(publisher, "inproc://messages");
-    if(rc!=0) std::cout << "Error binding publisher" << std::endl;
-
+    ItemPublisher pub(context);
     // -------------------------------------------------------- 
     // Set the processing thread going
 
@@ -191,15 +164,15 @@ int main()
             SUPERCHUNK_CHAR_STRUCT* scs=reinterpret_cast<SUPERCHUNK_CHAR_STRUCT*>(fragment+imessage*NETIO_MSG_SIZE);
             // The first frame in the message
             FelixFrame* frame=reinterpret_cast<FelixFrame*>(fragment+imessage*NETIO_MSG_SIZE);
-            ItemToProcess item{frame->timestamp(), scs};
-            zmq_send(publisher, &item, sizeof(ItemToProcess), 0);
+            // ItemToProcess item{frame->timestamp(), scs};
+            // zmq_send(publisher, &item, sizeof(ItemToProcess), 0);
+            pub.publishItem(frame->timestamp(), scs);
             // std::this_thread::sleep_for(std::chrono::microseconds(1024));
         }
     }
     
-    // Send 0 as an "end-of-stream" message
-    ItemToProcess item{0, 0};
-    zmq_send(publisher, &item, sizeof(ItemToProcess), 0);
+    // Send an "end-of-stream" message
+    pub.publishStop();
 
     // -------------------------------------------------------- 
     // Wait for the processing to finish
@@ -212,6 +185,6 @@ int main()
     auto ms_processed=1000*n_repeats*n_messages*FRAMES_PER_MSG/2e6;
     std::cout << "Processed " << ms_processed << "ms of data in " << ms << "ms" << std::endl;
 
-    zmq_close(publisher);
+    pub.closeSocket();
     zmq_ctx_destroy(context);
 }
