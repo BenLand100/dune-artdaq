@@ -64,7 +64,7 @@ int main(int argc, char** argv)
     delete context;
     delete sub_socket;
 
-    const FelixFrame* framearray=reinterpret_cast<const FelixFrame*>(&ics[0]);
+    const dune::FelixFrame* framearray=reinterpret_cast<const dune::FelixFrame*>(&ics[0]);
 
     // =============================================================================
     // Write binary output file
@@ -90,7 +90,7 @@ int main(int argc, char** argv)
 
         for(unsigned int i=0; i<n_msgs*FRAMES_PER_MSG; ++i){
             if(i%1000000==0) std::cout << (i/1000000) << "m " << std::flush;
-            const FelixFrame* frame=framearray+i;
+            const dune::FelixFrame* frame=framearray+i;
             RegisterArray<16> adcs=get_frame_all_adcs(frame);
             fout.write((char*)adcs.data(), n_channels*sizeof(uint16_t));
         }

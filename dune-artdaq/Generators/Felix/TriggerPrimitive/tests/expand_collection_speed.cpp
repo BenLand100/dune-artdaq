@@ -2,7 +2,7 @@
 #include <fstream>
 #include <chrono>
 
-#include "dune-artdaq/Generators/Felix/FelixFormat.hh"
+#include "dune-raw-data/Overlays/FelixFormat.hh"
 #include "../frame_expand.h"
 
 int main(int, char**)
@@ -19,7 +19,7 @@ int main(int, char**)
     size_t nrep=100000000;
     for(size_t j=0; j<nrep; ++j){
         for(int i=0; i<12; ++i){
-            FelixFrame* frame=reinterpret_cast<FelixFrame*>(buffer)+i;
+            dune::FelixFrame* frame=reinterpret_cast<dune::FelixFrame*>(buffer)+i;
             RegisterArray<8> collection_adcs=get_frame_collection_adcs(frame);
             tot+=(size_t)collection_adcs.data();
         }

@@ -1,5 +1,5 @@
 #include "frames2array.h"
-#include "dune-artdaq/Generators/Felix/FelixFormat.hh"
+#include "dune-raw-data/Overlays/FelixFormat.hh"
 #include "FrameFile.h"
 
 #include <fstream>
@@ -52,12 +52,12 @@ int main(int, char**)
     FrameFile f("/data/lar/dunedaq/rodrigues/protodune-noise/felixcosmics.dat");
     // FrameFile f("/data/lar/dunedaq/rodrigues/protodune-noise/frames-from-real-link.dat");
     for(size_t ifragment=0; ifragment<f.num_fragments(); ++ifragment){
-        FelixFrame* frame=f.fragment(ifragment);
+        dune::FelixFrame* frame=f.fragment(ifragment);
 
-        uint16_t* array=new uint16_t[FelixFrame::num_ch_per_frame*frames_per_fragment];
+        uint16_t* array=new uint16_t[dune::FelixFrame::num_ch_per_frame*frames_per_fragment];
         std::vector<uint16_t> chans;
         fragment_frames_to_array(frame, frames_per_fragment, array, chans);
-        assert(chans.size()==FelixFrame::num_ch_per_frame);
+        assert(chans.size()==dune::FelixFrame::num_ch_per_frame);
         // Save everything from the fragment to file
         std::string filename("/data/lar/dunedaq/rodrigues/protodune-noise/felixcosmics-fragment");
         filename+=std::to_string(ifragment);
@@ -72,7 +72,7 @@ int main(int, char**)
             uint16_t channel=chans[chan_index];
             fout << channel << " ";
             for(size_t itime=0; itime<frames_per_fragment; ++itime){
-                fout << array[FelixFrame::num_ch_per_frame*itime+chan_index] << " ";
+                fout << array[dune::FelixFrame::num_ch_per_frame*itime+chan_index] << " ";
             }
             fout << std::endl;
 
@@ -81,7 +81,7 @@ int main(int, char**)
                 printf("ch % 5d, plane % 3d: ", channel, channelMap.PlaneFromOfflineChannel(channel));
 
                 for(size_t itime=0; itime<5; ++itime){
-                    printf("% 5d ", array[FelixFrame::num_ch_per_frame*itime+chan_index]);
+                    printf("% 5d ", array[dune::FelixFrame::num_ch_per_frame*itime+chan_index]);
                 }
                 std::cout << std::endl;
             }

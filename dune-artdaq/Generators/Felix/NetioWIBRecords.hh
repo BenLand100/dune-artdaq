@@ -10,7 +10,7 @@
 #include <x86intrin.h>
 #include <emmintrin.h>
 
-#include "FelixFormat.hh"
+#include "dune-raw-data/Overlays/FelixFormat.hh"
 
 /* NetioWIBRecords
  * Author: Roland.Sipos@cern.ch
@@ -29,7 +29,7 @@ static constexpr size_t BYTES_PER_REGISTER=32;
 // How many samples are in a register
 static constexpr size_t SAMPLES_PER_REGISTER=16;
 
-static const size_t NETIO_MSG_SIZE=sizeof(FelixFrame)*FRAMES_PER_MSG;
+static const size_t NETIO_MSG_SIZE=sizeof(dune::FelixFrame)*FRAMES_PER_MSG;
 
 // FELIX Header
 struct FromFELIXHeader

@@ -1,5 +1,5 @@
 #include "frames2array.h"
-#include "dune-artdaq/Generators/Felix/FelixFormat.hh"
+#include "dune-raw-data/Overlays/FelixFormat.hh"
 #include "FrameFile.h"
 
 #include <fstream>
@@ -34,7 +34,7 @@ int main(int, char**)
     const size_t frames_per_fragment=15024;
 
     FrameFile f("/data/lar/dunedaq/rodrigues/protodune-noise/felixcosmics.dat");
-    FelixFrame* frame=f.fragment(0);
+    dune::FelixFrame* frame=f.fragment(0);
 
     const size_t apaNum=3;
     const size_t chanPerAPA=2560;
@@ -43,7 +43,7 @@ int main(int, char**)
     // offline number minus 3*2560 (because the FELIX APA is offline
     // 3). Set the induction channels to 0xfff so they show up if we
     // get them in the output
-    for(size_t ich=0; ich<FelixFrame::num_ch_per_frame; ++ich){
+    for(size_t ich=0; ich<dune::FelixFrame::num_ch_per_frame; ++ich){
         unsigned int offline=getOfflineChannel(channelMap, frame, ich);
         if(offline%2560>=1600){
             frame->set_channel(ich, offline-offset);
@@ -55,7 +55,7 @@ int main(int, char**)
 
     // Get the collection channels into the output array using
     // (indirectly) get_frame_collection_adcs()
-    uint16_t* array=new uint16_t[FelixFrame::num_ch_per_frame*frames_per_fragment];
+    uint16_t* array=new uint16_t[dune::FelixFrame::num_ch_per_frame*frames_per_fragment];
     fragment_frames_to_array_collection(frame, frames_per_fragment, array);
 
     std::cout << std::endl;

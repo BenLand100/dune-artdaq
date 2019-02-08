@@ -4,17 +4,16 @@
 #include "frame_expand.h"
 #include "process_avx2.h"
 #include "design_fir.h"
-#include "PdspChannelMapService.h"
+#include "ProcessingTasks.h"
 
-#include "dune-artdaq/Generators/Felix/FelixFormat.hh"
+// #include "dune-artdaq/Generators/Felix/FelixFormat.hh"
 #include "dune-artdaq/Generators/Felix/Types.hh"
 #include "dune-raw-data/Overlays/FelixHitFormat.hh"
 
-#include "boost/thread/future.hpp"
-#include "boost/thread/executors/basic_thread_pool.hpp"
-
 #include <deque>
 #include <mutex>
+
+#include "zmq.h"
 
 namespace artdaq
 {
@@ -24,39 +23,22 @@ namespace artdaq
 class TriggerPrimitiveFinder
 {
 public:
-    // struct TriggerPrimitive
-    // {
-    //     uint16_t channel;
-    //     uint16_t startTimeOffset; // relative to 64-bit timestamp
-    //     uint16_t charge;
-    //     uint16_t timeOverThreshold;
-    // };
-
-    struct WindowPrimitives
-    {
-        uint64_t timestamp;
-        std::vector<dune::TriggerPrimitive> triggerPrimitives;
-    };
-
-    TriggerPrimitiveFinder(uint32_t qsize, size_t timeWindowNumMessages, size_t nthreads);
+    TriggerPrimitiveFinder();
   
     ~TriggerPrimitiveFinder();
 
     void addMessage(SUPERCHUNK_CHAR_STRUCT& ucs);
 
-    void process_window(uint64_t timestamp);
-  
-    std::vector<dune::TriggerPrimitive> primitivesForTimestamp(uint64_t timestamp, uint32_t window_size);
-
-    size_t getNMessages() const { return m_messagesReceived; }
-    size_t getNWindowsProcessed() const { return m_nWindowsProcessed; }
-    size_t getNPrimitivesFound() const { return m_nPrimsFound; }
-
     // Find all the hits around `timestamp` and write them into the fragment at fragPtr
     void hitsToFragment(uint64_t timestamp, uint32_t windowSize, artdaq::Fragment* fragPtr);
 
-    void waitForJobs() { for(auto& f: m_futures) f.wait(); }
+    // void waitForJobs() { for(auto& f: m_futures) f.wait(); }
 private:
+
+    void processing_thread(void* context, uint8_t first_register, uint8_t last_register);
+
+    std::vector<dune::TriggerPrimitive> getHitsForWindow(const std::deque<dune::TriggerPrimitive>& primitive_queue,
+                                                         uint64_t start_ts, uint64_t end_ts);
 
     // Update a maximum counter atomically
     // From https://stackoverflow.com/questions/16190078
@@ -68,27 +50,19 @@ private:
             ;
     }
 
-    uint16_t getOfflineChannel(SUPERCHUNK_CHAR_STRUCT& ucs, unsigned int ch);
-    void addHitsToQueue(uint64_t timestamp);
+    void addHitsToQueue(uint64_t timestamp,
+                        const uint16_t* input_loc,
+                        std::deque<dune::TriggerPrimitive>& primitive_queue);
 
-    std::vector<uint16_t*> m_primfind_destinations;
-    std::vector<boost::shared_future<ProcessingInfo>> m_futures;
-    MessageCollectionADCs* m_primfind_tmp;
-    size_t m_timeWindowNumMessages;
-    size_t m_timeWindowNumFrames;
-    size_t m_messagesReceived;
-    size_t m_nthreads;
-    folly::ProducerConsumerQueue<MessageCollectionADCs> m_pcq;
-    std::deque<WindowPrimitives> m_windowHits;
-    size_t m_nWindowsProcessed;
-    std::atomic<size_t> m_nPrimsFound;
-    boost::basic_thread_pool m_threadpool;
-    // boost::basic_thread_pool m_threadpool2;
-    std::atomic<bool> m_anyWindowsProcessedYet;
+
+    // The queue of trigger primitives found, and a mutex to protect it
+    std::deque<dune::TriggerPrimitive> m_triggerPrimitives;
+    std::mutex m_triggerPrimitiveMutex;
+
     std::atomic<uint64_t> m_latestProcessedTimestamp;
-    PdspChannelMapService m_channelMapService;
-    uint16_t m_offlineChannelOffset;
-    std::mutex m_windowHitsMutex; // Mutex to protect m_windowHits
+    void* m_zmq_context;
+    std::thread m_processingThread;
+    ItemPublisher m_itemPublisher;
 };
 
 #endif

@@ -5,7 +5,7 @@
 #include <iostream>
 #include <memory> // for unique_ptr
 #include <array>
-#include "dune-artdaq/Generators/Felix/FelixFormat.hh"
+#include "dune-raw-data/Overlays/FelixFormat.hh"
 
 // Quoth Milo (stitched together from a Slack DM on  2018-11-21):
 //
@@ -31,7 +31,7 @@ class FrameFile
 public:
     // We could try to learn this value by parsing the file, but meh
     static constexpr size_t frames_per_fragment=15024;
-    static constexpr size_t buffer_size=frames_per_fragment*sizeof(FelixFrame);
+    static constexpr size_t buffer_size=frames_per_fragment*sizeof(dune::FelixFrame);
 
     FrameFile(const char* filename)
         : m_file(filename, std::ifstream::binary),
@@ -59,17 +59,17 @@ public:
     // Read the ith fragment into the buffer and return a pointer to
     // the first frame in the fragment. Subsequent calls will
     // overwrite the buffer with a different fragment
-    FelixFrame* fragment(size_t i)
+    dune::FelixFrame* fragment(size_t i)
     {
         if(i>=num_fragments()) return nullptr;
         // Seek to the right place in the file
-        m_file.seekg(i*frames_per_fragment*sizeof(FelixFrame));
+        m_file.seekg(i*frames_per_fragment*sizeof(dune::FelixFrame));
         // Check we didn't go past the end
         if(m_file.bad() || m_file.eof()) return nullptr;
         // Actually read the fragment into the buffer
         m_file.read(m_buffer,buffer_size);
         if(m_file.bad() || m_file.eof()) return nullptr;
-        return reinterpret_cast<FelixFrame*>(m_buffer);
+        return reinterpret_cast<dune::FelixFrame*>(m_buffer);
     }
 
 protected:

@@ -28,7 +28,7 @@ void print256_as16_dec(__m256i var)
 // Abortive attempt at expanding just the collection channels, instead
 // of expanding all channels and then picking out just the collection
 // ones. 
-RegisterArray<2> expand_segment_collection(const ColdataBlock& block)
+RegisterArray<2> expand_segment_collection(const dune::ColdataBlock& block)
 {
     const __m256i* coldata_start=reinterpret_cast<const __m256i*>(&block.segments[0]);
     __m256i raw0=_mm256_lddqu_si256(coldata_start+0);
@@ -85,7 +85,7 @@ RegisterArray<2> expand_segment_collection(const ColdataBlock& block)
 // format and rearrange them into 16-bit values in channel order. A
 // 256-bit register holds 21-and-a-bit 12-bit values: we expand 16 of
 // them into 16-bit values
-__m256i expand_two_segments(const ColdataSegment* first_segment)
+__m256i expand_two_segments(const dune::ColdataSegment* first_segment)
 {
     const __m256i* segments_start=reinterpret_cast<const __m256i*>(first_segment);
     __m256i raw=_mm256_lddqu_si256(segments_start);
@@ -143,14 +143,14 @@ __m256i expand_two_segments(const ColdataSegment* first_segment)
 
 //==============================================================================
 
-// Get all the collection channel values from a ColdataBlock as 16-bit
+// Get all the collection channel values from a dune::ColdataBlock as 16-bit
 // values into 2 256-bit registers. Implemented by expanding all the
 // values using expand_two_segments, and then picking out the
 // collection channels with a blend. There are only 12 collection
-// channels in a ColdataBlock, so we shuffle valid values into the
+// channels in a dune::ColdataBlock, so we shuffle valid values into the
 // 0-11 entries of the register, and leave 4 invalid values at the end of each
 // register
-RegisterArray<2> get_block_collection_adcs(const ColdataBlock& block)
+RegisterArray<2> get_block_collection_adcs(const dune::ColdataBlock& block)
 {
     // First expand all of the channels into `expanded_all`
     __m256i expanded_all[4];
@@ -185,7 +185,7 @@ RegisterArray<2> get_block_collection_adcs(const ColdataBlock& block)
 }
 
 //==============================================================================
-RegisterArray<4> get_block_all_adcs(const ColdataBlock& block)
+RegisterArray<4> get_block_all_adcs(const dune::ColdataBlock& block)
 {
     RegisterArray<4> expanded_all;
     for(int j=0; j<4; ++j){
@@ -198,7 +198,7 @@ RegisterArray<4> get_block_all_adcs(const ColdataBlock& block)
 //
 // TODO: We could further compact the values into 6 registers instead
 // of 8, getting rid of the dummy values. Is it worth it?
-RegisterArray<8> get_frame_collection_adcs(const FelixFrame* frame)
+RegisterArray<8> get_frame_collection_adcs(const dune::FelixFrame* frame)
 {
     RegisterArray<8> adcs;
     for(int i=0; i<4; ++i){
@@ -210,7 +210,7 @@ RegisterArray<8> get_frame_collection_adcs(const FelixFrame* frame)
 }
 
 //==============================================================================
-RegisterArray<16> get_frame_all_adcs(const FelixFrame* frame)
+RegisterArray<16> get_frame_all_adcs(const dune::FelixFrame* frame)
 {
     RegisterArray<16> adcs;
     for(int i=0; i<4; ++i){
@@ -250,7 +250,7 @@ RegisterArray<REGISTERS_PER_FRAME*FRAMES_PER_MSG> expand_message_adcs(const SUPE
 {
     RegisterArray<REGISTERS_PER_FRAME*FRAMES_PER_MSG> adcs;
     for(size_t iframe=0; iframe<FRAMES_PER_MSG; ++iframe){
-        const FelixFrame* frame=reinterpret_cast<const FelixFrame*>(&ucs) + iframe;
+        const dune::FelixFrame* frame=reinterpret_cast<const dune::FelixFrame*>(&ucs) + iframe;
         RegisterArray<REGISTERS_PER_FRAME> collection_adcs=get_frame_collection_adcs(frame);
         for(size_t iblock=0; iblock<REGISTERS_PER_FRAME; ++iblock){
             // Arrange it so that adjacent times are adjacent in

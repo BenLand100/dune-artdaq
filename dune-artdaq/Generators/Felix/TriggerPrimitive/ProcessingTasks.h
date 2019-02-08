@@ -1,6 +1,9 @@
 #ifndef PROCESSINGTASKS_H
 #define PROCESSINGTASKS_H
 
+#include "zmq.h"
+#include "dune-artdaq/Generators/Felix/NetioWIBRecords.hh"
+
 struct ItemToProcess
 {
     uint64_t timestamp;

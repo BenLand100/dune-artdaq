@@ -3,13 +3,13 @@
 
 #include "../frame_expand.h"
 
-#include "dune-artdaq/Generators/Felix/FelixFormat.hh"
+#include "dune-raw-data/Overlays/FelixFormat.hh"
 #include "../PdspChannelMapService.h"
 #include <iostream>
 #include <vector>
 #include <set>
 //======================================================================
-unsigned int getOfflineChannel(PdspChannelMapService& channelMap, const FelixFrame* frame, unsigned int ch)
+unsigned int getOfflineChannel(PdspChannelMapService& channelMap, const dune::FelixFrame* frame, unsigned int ch)
 {
     // handle 256 channels on two fibers -- use the channel
     // map that assumes 128 chans per fiber (=FEMB) (Copied
@@ -40,12 +40,12 @@ unsigned int getOfflineChannel(PdspChannelMapService& channelMap, const FelixFra
 }
 
 //======================================================================
-size_t calc_ntimes(const FelixFrame* frames, size_t nframes)
+size_t calc_ntimes(const dune::FelixFrame* frames, size_t nframes)
 {
     uint64_t prev_ts=0;
     size_t ntimes=0;
     for(size_t iframe=0; iframe<nframes; ++iframe){
-        const FelixFrame* frame=frames+iframe;
+        const dune::FelixFrame* frame=frames+iframe;
         uint64_t timestamp = frame->timestamp();
         if(timestamp<prev_ts){
             ntimes=iframe;
@@ -58,7 +58,7 @@ size_t calc_ntimes(const FelixFrame* frames, size_t nframes)
 }
 
 //======================================================================
-void fragment_frames_to_array(const FelixFrame* frames, size_t nframes,
+void fragment_frames_to_array(const dune::FelixFrame* frames, size_t nframes,
                               uint16_t* array, std::vector<uint16_t>& channel_vec)
 {
     PdspChannelMapService channelMap("../data/protoDUNETPCChannelMap_RCE_v4.txt", "../data/protoDUNETPCChannelMap_FELIX_v4.txt");
@@ -67,18 +67,18 @@ void fragment_frames_to_array(const FelixFrame* frames, size_t nframes,
     // time order, followed by all the frames from the next link in
     // time order, and so on
     uint64_t prev_ts=0;
-    channel_vec.resize(FelixFrame::num_ch_per_frame, 0);
+    channel_vec.resize(dune::FelixFrame::num_ch_per_frame, 0);
 
     std::set<uint64_t> alltimes;
     for(size_t iframe=0; iframe<nframes; ++iframe){
-        const FelixFrame* frame=frames+iframe;
+        const dune::FelixFrame* frame=frames+iframe;
         int64_t timestamp = frame->timestamp();
         // std::cout << timestamp << std::endl;
         if(prev_ts!=0 && (timestamp-prev_ts!=25)){
             std::cout << "ts=" << timestamp << " prev_ts=" << prev_ts << " delta=" << (timestamp-prev_ts) << std::endl;
         }
         alltimes.insert(timestamp);
-        for(unsigned ch=0; ch<FelixFrame::num_ch_per_frame; ++ch){
+        for(unsigned ch=0; ch<dune::FelixFrame::num_ch_per_frame; ++ch){
             unsigned int offlineChannel=getOfflineChannel(channelMap, frame, ch);
             uint16_t oldOffline=channel_vec.at(ch);
             if(oldOffline!=0 && (oldOffline!=offlineChannel)){
@@ -86,7 +86,7 @@ void fragment_frames_to_array(const FelixFrame* frames, size_t nframes,
             }
             channel_vec.at(ch)=offlineChannel;
             // Arrange the output so all of a given channel's times are in order
-            array[FelixFrame::num_ch_per_frame*iframe+ch]=frame->channel(ch);
+            array[dune::FelixFrame::num_ch_per_frame*iframe+ch]=frame->channel(ch);
         }
         // std::cout << "ts=" << (timestamp-prev_ts) << " crate=" << crate << " slot=" << slot << " fiber=" << fiber << " offlineChannel=" << offlineChannel << std::endl;
         prev_ts=timestamp;
@@ -95,13 +95,13 @@ void fragment_frames_to_array(const FelixFrame* frames, size_t nframes,
 }
 
 //======================================================================
-void fragment_frames_to_array_collection(const FelixFrame* frames, size_t nframes, uint16_t* array)
+void fragment_frames_to_array_collection(const dune::FelixFrame* frames, size_t nframes, uint16_t* array)
 {
     PdspChannelMapService channelMap("../data/protoDUNETPCChannelMap_RCE_v4.txt", "../data/protoDUNETPCChannelMap_FELIX_v4.txt");
     
     size_t counter=0;
     for(size_t iframe=0; iframe<nframes; ++iframe){
-        const FelixFrame* frame=frames+iframe;
+        const dune::FelixFrame* frame=frames+iframe;
         RegisterArray<8> frame_colls=get_frame_collection_adcs(frame);
         for(int ich=0; ich<8; ++ich){
             _mm256_storeu_si256(((__m256i*)array)+counter, frame_colls.ymm(ich));

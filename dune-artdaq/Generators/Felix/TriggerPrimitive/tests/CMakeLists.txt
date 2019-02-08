@@ -47,31 +47,31 @@ cet_make_exec(number_collection
   LIBRARIES ${TP_LIBS}
 )
 
-cet_make_exec(make_unique_tpf
-  SOURCE make_unique_tpf.cpp
-  LIBRARIES ${TP_LIBS}
-)
+# cet_make_exec(make_unique_tpf
+#   SOURCE make_unique_tpf.cpp
+#   LIBRARIES ${TP_LIBS}
+# )
 
-cet_make_exec(main_loop
-  SOURCE main_loop.cc
-  LIBRARIES ${TP_LIBS}
-  dune-artdaq_Generators_FelixReceiver_generator
-)
+# cet_make_exec(main_loop
+#   SOURCE main_loop.cc
+#   LIBRARIES ${TP_LIBS}
+#   dune-artdaq_Generators_FelixReceiver_generator
+# )
 
-cet_make_exec(test_tpf
-  SOURCE test_tpf.cpp
-  LIBRARIES ${TP_LIBS}
-)
+# cet_make_exec(test_tpf
+#   SOURCE test_tpf.cpp
+#   LIBRARIES ${TP_LIBS}
+# )
 
-cet_make_exec(test_tpf_data_from_file
-  SOURCE test_tpf_data_from_file.cpp
-  LIBRARIES ${TP_LIBS}
-)
+# cet_make_exec(test_tpf_data_from_file
+#   SOURCE test_tpf_data_from_file.cpp
+#   LIBRARIES ${TP_LIBS}
+# )
 
-cet_make_exec(benchmark_tpf_rate
-  SOURCE benchmark_tpf_rate.cpp
-  LIBRARIES ${TP_LIBS}
-)
+# cet_make_exec(benchmark_tpf_rate
+#   SOURCE benchmark_tpf_rate.cpp
+#   LIBRARIES ${TP_LIBS}
+# )
 
 
 cet_make_exec(dump_link

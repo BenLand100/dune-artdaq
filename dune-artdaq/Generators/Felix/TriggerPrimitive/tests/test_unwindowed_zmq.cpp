@@ -135,9 +135,9 @@ int main()
 {
     // -------------------------------------------------------- 
     // Set up the ZeroMQ socket on which we'll send new tasks
-
     void* context=zmq_ctx_new();
     ItemPublisher pub(context);
+
     // -------------------------------------------------------- 
     // Set the processing thread going
 
@@ -153,7 +153,7 @@ int main()
 
     FrameFile f("/nfs/sw/work_dirs/phrodrig/felixcosmics.dat");
     char* fragment=reinterpret_cast<char*>(f.fragment(0));
-    size_t length=FrameFile::frames_per_fragment*sizeof(FelixFrame);
+    size_t length=FrameFile::frames_per_fragment*sizeof(dune::FelixFrame);
     size_t n_messages=length/NETIO_MSG_SIZE;
     const int n_repeats=1000;
     auto time0=std::chrono::steady_clock::now();
@@ -163,7 +163,7 @@ int main()
         for(size_t imessage=0; imessage<n_messages; ++imessage){
             SUPERCHUNK_CHAR_STRUCT* scs=reinterpret_cast<SUPERCHUNK_CHAR_STRUCT*>(fragment+imessage*NETIO_MSG_SIZE);
             // The first frame in the message
-            FelixFrame* frame=reinterpret_cast<FelixFrame*>(fragment+imessage*NETIO_MSG_SIZE);
+            dune::FelixFrame* frame=reinterpret_cast<dune::FelixFrame*>(fragment+imessage*NETIO_MSG_SIZE);
             // ItemToProcess item{frame->timestamp(), scs};
             // zmq_send(publisher, &item, sizeof(ItemToProcess), 0);
             pub.publishItem(frame->timestamp(), scs);

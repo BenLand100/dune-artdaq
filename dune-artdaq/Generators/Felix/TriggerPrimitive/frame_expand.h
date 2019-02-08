@@ -1,7 +1,7 @@
 #ifndef FRAME_EXPAND_H
 #define FRAME_EXPAND_H
 #include <array>
-#include "dune-artdaq/Generators/Felix/FelixFormat.hh"
+#include "dune-raw-data/Overlays/FelixFormat.hh"
 #include "dune-artdaq/Generators/Felix/Types.hh"
 
 #include "immintrin.h"
@@ -82,39 +82,39 @@ void print256_as16_dec(__m256i var);
 // Abortive attempt at expanding just the collection channels, instead
 // of expanding all channels and then picking out just the collection
 // ones. 
-RegisterArray<2> expand_segment_collection(const ColdataBlock& block);
+RegisterArray<2> expand_segment_collection(const dune::ColdataBlock& block);
 
 //==============================================================================
 // Take the raw memory containing 12-bit ADCs in the shuffled WIB
 // format and rearrange them into 16-bit values in channel order. A
 // 256-bit register holds 21-and-a-bit 12-bit values: we expand 16 of
 // them into 16-bit values
-__m256i expand_two_segments(const ColdataSegment* first_segment);
+__m256i expand_two_segments(const dune::ColdataSegment* first_segment);
 
 //==============================================================================
 
-// Get all the collection channel values from a ColdataBlock as 16-bit
+// Get all the collection channel values from a dune::ColdataBlock as 16-bit
 // values into 2 256-bit registers. Implemented by expanding all the
 // values using expand_two_segments, and then picking out the
 // collection channels with a blend. There are only 12 collection
-// channels in a ColdataBlock, so we shuffle valid values into the
+// channels in a dune::ColdataBlock, so we shuffle valid values into the
 // 0-11 entries of the register, and leave 4 invalid values at the end of each
 // register
-RegisterArray<2> get_block_collection_adcs(const ColdataBlock& block);
+RegisterArray<2> get_block_collection_adcs(const dune::ColdataBlock& block);
 
 //==============================================================================
 // As above, for all collection and induction ADCs
-RegisterArray<4> get_block_all_adcs(const ColdataBlock& block);
+RegisterArray<4> get_block_all_adcs(const dune::ColdataBlock& block);
 
 //==============================================================================
 //
 // TODO: We could further compact the values into 6 registers instead
 // of 8, getting rid of the dummy values. Is it worth it?
-RegisterArray<8> get_frame_collection_adcs(const FelixFrame* frame);
+RegisterArray<8> get_frame_collection_adcs(const dune::FelixFrame* frame);
 
 //==============================================================================
 // As above, for all collection and induction ADCs
-RegisterArray<16> get_frame_all_adcs(const FelixFrame* frame);
+RegisterArray<16> get_frame_all_adcs(const dune::FelixFrame* frame);
 
 //==============================================================================
 int collection_index_to_offline(int index);

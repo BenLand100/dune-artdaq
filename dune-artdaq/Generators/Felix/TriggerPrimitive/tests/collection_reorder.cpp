@@ -2,7 +2,7 @@
 #include <iostream>
 #include <fstream>
 #include <array>
-#include "dune-artdaq/Generators/Felix/FelixFormat.hh"
+#include "dune-raw-data/Overlays/FelixFormat.hh"
 
 #include "immintrin.h"
 
@@ -14,7 +14,7 @@ int main(int, char**)
     char* buffer = new char[464];
     is.read (buffer,464);
     is.close();
-    FelixFrame* frame=reinterpret_cast<FelixFrame*>(buffer);
+    dune::FelixFrame* frame=reinterpret_cast<dune::FelixFrame*>(buffer);
     frame->print();
     for(int adc=0; adc<8; ++adc){
         for(int ch=0; ch<8; ++ch){
@@ -32,7 +32,7 @@ int main(int, char**)
     }
 
     // Set all the channels to their channel value
-    for(unsigned ch=0; ch<FelixFrame::num_ch_per_frame; ++ch){
+    for(unsigned ch=0; ch<dune::FelixFrame::num_ch_per_frame; ++ch){
         frame->set_channel(ch, ch);
     }
     // Set the collection channels to 0xfff, so they stand out (see find_collection.cpp for more details)

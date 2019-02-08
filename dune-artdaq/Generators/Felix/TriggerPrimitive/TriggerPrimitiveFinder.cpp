@@ -9,29 +9,112 @@
 
 const int64_t clocksPerTPCTick=25;
 
-using namespace dune;
-
-void setname(boost::basic_thread_pool&) { pthread_setname_np(pthread_self(), "threadpool"); }
+//======================================================================
+TriggerPrimitiveFinder::TriggerPrimitiveFinder()
+    : m_zmq_context(zmq_ctx_new()),
+      m_itemPublisher(m_zmq_context)
+{
+    m_processingThread=std::thread(&TriggerPrimitiveFinder::processing_thread, this, m_zmq_context, 0, REGISTERS_PER_FRAME);
+}
 
 //======================================================================
-TriggerPrimitiveFinder::TriggerPrimitiveFinder(uint32_t qsize, size_t timeWindowNumMessages, size_t nthreads)
-    : m_primfind_tmp(new MessageCollectionADCs[nthreads*timeWindowNumMessages]),
-      m_timeWindowNumMessages(timeWindowNumMessages),
-      m_timeWindowNumFrames(timeWindowNumMessages*FRAMES_PER_MSG),
-      m_messagesReceived(1), // Set to 1 not zero as a hack to not process a window on the first message received
-      m_nthreads(nthreads),
-      m_pcq(qsize),
-      m_nWindowsProcessed(0),
-      m_nPrimsFound(0),
-      m_threadpool(nthreads, *setname),
-//      m_threadpool2(nthreads),
-      m_anyWindowsProcessedYet(false),
-      m_latestProcessedTimestamp(0),
-      m_channelMapService("../data/protoDUNETPCChannelMap_RCE_v4.txt", "../data/protoDUNETPCChannelMap_FELIX_v4.txt")
+TriggerPrimitiveFinder::~TriggerPrimitiveFinder()
 {
-    DAQLogger::LogInfo("TriggerPrimitiveFinder::TriggerPrimitiveFinder") << "Starting TriggerPrimitiveFinder with " << m_nthreads << " threads";
+    m_itemPublisher.publishStop(); // Tell the processing thread to stop
+    m_processingThread.join(); // Wait for it to actually stop
+    m_itemPublisher.closeSocket();
+    zmq_ctx_destroy(m_zmq_context);
+}
 
-    const uint8_t registers_per_thread=REGISTERS_PER_FRAME/m_nthreads;
+//======================================================================
+void TriggerPrimitiveFinder::addMessage(SUPERCHUNK_CHAR_STRUCT& ucs)
+{
+    // The first frame in the message
+    dune::FelixFrame* frame=reinterpret_cast<dune::FelixFrame*>(&ucs);
+    m_itemPublisher.publishItem(frame->timestamp(), &ucs);
+}
+
+//======================================================================
+void TriggerPrimitiveFinder::hitsToFragment(uint64_t timestamp, uint32_t window_size, artdaq::Fragment* fragPtr)
+{
+    std::vector<dune::TriggerPrimitive> tps=getHitsForWindow(m_triggerPrimitives,
+                                                             timestamp, timestamp+window_size);
+    // The data payload of the fragment will be:
+    // uint64_t timestamp
+    // uint32_t nhits
+    // N*TriggerPrimitive
+    fragPtr->resizeBytes(sizeof(dune::FelixHitFragment::Body)+tps.size()*sizeof(dune::TriggerPrimitive));
+    dune::FelixFragmentHits hitFrag(*fragPtr);
+
+    hitFrag.set_timestamp(timestamp);
+    hitFrag.set_nhits(tps.size());
+    for(size_t i=0; i<tps.size(); ++i){
+        hitFrag.get_primitive(i)=tps[i];
+    }
+}
+
+//======================================================================
+std::vector<dune::TriggerPrimitive>
+TriggerPrimitiveFinder::getHitsForWindow(const std::deque<dune::TriggerPrimitive>& primitive_queue,
+                                         uint64_t start_ts, uint64_t end_ts)
+{
+    // Wait for the processing to catch up
+    while(m_latestProcessedTimestamp.load()<end_ts){
+        std::this_thread::sleep_for(std::chrono::microseconds(100));
+    }
+    std::vector<dune::TriggerPrimitive> ret;
+    ret.reserve(5000);
+
+    {
+        std::lock_guard<std::mutex> guard(m_triggerPrimitiveMutex);
+        for(auto const& prim: primitive_queue){
+            if(prim.startTime>start_ts && prim.startTime<end_ts){
+                ret.push_back(prim);
+            }
+            // The trigger primitives are ordered by
+            // timestamp, so as soon as we've seen one that's too
+            // late, we're done
+            if(prim.startTime>end_ts){
+                break;
+            }
+        }
+    }
+    return ret;
+}
+
+//======================================================================
+void TriggerPrimitiveFinder::addHitsToQueue(uint64_t timestamp,
+                                            const uint16_t* input_loc,
+                                            std::deque<dune::TriggerPrimitive>& primitive_queue)
+{
+    uint16_t chan[16], hit_start[16], hit_charge[16], hit_tover[16];
+
+    std::lock_guard<std::mutex> guard(m_triggerPrimitiveMutex);
+
+    while(*input_loc!=MAGIC){
+        // for(int i=0; i<16; ++i) chan[i]       = m_offlineChannelOffset+collection_index_to_offline(*input_loc++);
+        for(int i=0; i<16; ++i) chan[i]       = *input_loc++;
+        for(int i=0; i<16; ++i) hit_start[i]  = *input_loc++;
+        for(int i=0; i<16; ++i) hit_charge[i] = *input_loc++;
+        for(int i=0; i<16; ++i) hit_tover[i]  = *input_loc++;
+        
+        for(int i=0; i<16; ++i){
+            if(hit_charge[i] && chan[i]!=MAGIC){
+                primitive_queue.emplace_back(chan[i], timestamp+hit_start[i], hit_charge[i], hit_tover[i]);
+            }
+        }
+    }
+    while(primitive_queue.size()>10000) primitive_queue.pop_front();
+}
+
+//======================================================================
+void TriggerPrimitiveFinder::processing_thread(void* context, uint8_t first_register, uint8_t last_register)
+{
+    pthread_setname_np(pthread_self(), "processing");
+
+    ItemReceiver receiver(context);
+    // -------------------------------------------------------- 
+    // Set up the processing info
     
     const uint8_t tap_exponent=6;
     const int multiplier=1<<tap_exponent; // 64
@@ -44,314 +127,53 @@ TriggerPrimitiveFinder::TriggerPrimitiveFinder(uint32_t qsize, size_t timeWindow
     int16_t* taps_p=new int16_t[taps.size()];
     for(size_t i=0; i<taps.size(); ++i) taps_p[i]=taps[i];
 
-    for(size_t i=0; i<m_nthreads; ++i){
-        m_primfind_destinations.push_back(new uint16_t[m_timeWindowNumFrames*1000]);
-      
-        ProcessingInfo pi(m_primfind_tmp,
-                          m_timeWindowNumFrames,
-                          uint8_t(registers_per_thread*i),
-                          uint8_t(registers_per_thread*(i+1)),
-                          m_primfind_destinations[i],
-                          taps_p, (uint8_t)taps.size(),
-                          tap_exponent,
-                          0);
-      
-        m_futures.push_back(std::move(boost::make_ready_future<ProcessingInfo>(pi).share()));
-    } // end for(i=0 to nThreads)
+    // Temporary place to stash the hits
+    uint16_t* primfind_dest=new uint16_t[100000];
     
-}
-
-//======================================================================  
-TriggerPrimitiveFinder::~TriggerPrimitiveFinder()
-{
-    for(auto& f: m_futures){
-        // DAQLogger::LogInfo("TriggerPrimitiveFinder::~TriggerPrimitiveFinder") << "Waiting on " << &f;
-        f.wait();
-    }
-    // Print some hits
-    //
-    // DAQLogger::LogInfo("TriggerPrimitiveFinder::~TriggerPrimitiveFinder") << "Destructing. Found " << m_nPrimsFound << " hits";
-    // if(!m_windowHits.empty()){
-    //     std::ostringstream os;
-    //     for(size_t i=0; i<std::min(300ul, m_windowHits[0].triggerPrimitives.size()); ++i){
-    //         dune::TriggerPrimitive& tp=m_windowHits[0].triggerPrimitives[i];
-    //         os << tp.channel << " " << tp.startTimeOffset << " " << tp.charge << std::endl;
-    //     }
-    //     DAQLogger::LogInfo("TriggerPrimitiveFinder::~TriggerPrimitiveFinder") << os.str();
-    // }
-    delete[] m_primfind_tmp;
-    for(auto& d: m_primfind_destinations) delete[] d;
-}
-
-//======================================================================
-void TriggerPrimitiveFinder::addMessage(SUPERCHUNK_CHAR_STRUCT& ucs)
-{
-    static bool first=true;
-    static int nFullPrint=0;
-    if(first){
-        DAQLogger::LogInfo("TriggerPrimitiveFinder::addMessage") << "First call";
-        m_offlineChannelOffset=getOfflineChannel(ucs, 0);
-        first=false;
-    }
-    RegisterArray<REGISTERS_PER_FRAME*FRAMES_PER_MSG> expanded=expand_message_adcs(ucs);
-    MessageCollectionADCs* mca=reinterpret_cast<MessageCollectionADCs*>(expanded.data());
-    if(!m_pcq.write( std::move(*mca) )){
-        ++nFullPrint;
-        if(nFullPrint<10){
-            DAQLogger::LogInfo("TriggerPrimitiveFinder::addMessage") << "Queue full";
+    // Place to put the hits more tidily for later retrieval
+    std::deque<dune::TriggerPrimitive> primitive_queue;
+      
+    ProcessingInfo pi(nullptr,
+                      FRAMES_PER_MSG, // We'll just process one message
+                      first_register, // First register
+                      last_register, // Last register
+                      primfind_dest,
+                      taps_p, (uint8_t)taps.size(),
+                      tap_exponent,
+                      0);
+    
+    // -------------------------------------------------------- 
+    // Actually process
+    int nmsg=0;
+    bool first=true;
+    while(true){
+        bool should_stop;
+        ItemToProcess item=receiver.recvItem(should_stop);
+        ++nmsg;
+        if(should_stop) break;
+        RegisterArray<REGISTERS_PER_FRAME*FRAMES_PER_MSG> expanded=expand_message_adcs(*item.scs);
+        MessageCollectionADCs* mcadc=reinterpret_cast<MessageCollectionADCs*>(expanded.data());
+        if(first){
+            pi.setState(mcadc);
+            first=false;
         }
-        else if(nFullPrint%1024==0){
-            DAQLogger::LogInfo("TriggerPrimitiveFinder::addMessage") << "1024 more \"queue full\" messages suppressed";
-        }
+        pi.input=mcadc;
+        // "Empty" the list of hits
+        *primfind_dest=MAGIC;
+        // Do the processing
+        process_window_avx2(pi);
+        // Create dune::TriggerPrimitives from the hits and put them in the queue for later retrieval
+        addHitsToQueue(item.timestamp, primfind_dest, m_triggerPrimitives);
+        m_latestProcessedTimestamp.store(item.timestamp);
     }
-    if((++m_messagesReceived)%m_timeWindowNumMessages==0){
-        const dune::WIBHeader* wh = reinterpret_cast<const dune::WIBHeader*>(&ucs);
-        // wh->timestamp() is the timestamp of the last message in
-        // this window. We want the timestamp of the first message
-        process_window(wh->timestamp()-m_timeWindowNumFrames*clocksPerTPCTick);
-    }
+    std::cout << "Received " << nmsg << " messages. Found " << pi.nhits << " hits" << std::endl;
+
+    // -------------------------------------------------------- 
+    // Cleanup
+    receiver.closeSocket();
+    delete primfind_dest;
 }
 
-//======================================================================
-void TriggerPrimitiveFinder::process_window(uint64_t /* timestamp */)
-{
-    if(!m_anyWindowsProcessedYet.load()){
-        DAQLogger::LogInfo("TriggerPrimitiveFinder::process_window") << "First call to process_window";
-    }
-    // We've got enough frames to reorder them. First, copy
-    // the data into a working area for the thread.  Given the
-    // way expand_message_adcs orders the data, this results
-    // in the relevant segment of primfind_tmp containing:
-    //
-    // (register 0, time  0) (register 0, time  1) ... (register 0, time 11)
-    // (register 1, time  0) (register 1, time  1) ... (register 1, time 11)
-    // ...
-    // (register 7, time  0) (register 7, time  1) ... (register 7, time 11)
-    // 
-    // (register 0, time 12) (register 0, time 13) ... (register 0, time 23)
-    // (register 1, time 12) (register 1, time 13) ... (register 1, time 23)
-    // ...
-    // (register 7, time 12) (register 7, time 13) ... (register 7, time 23)
-    // 
-    // ...
-    // ...                                         ... (register 7, time timeWindowNumFrames-1)
-
-
-    // // -----------------------------------------------------------------
-    // // Wait till all the currently running jobs are done...
-    // auto waiter=boost::when_all(m_futures.begin(), m_futures.end()).share();
-
-    // // boost::when_all spawns a new thread, which might be a
-    // // bottleneck(?). Write our own version using the executor to get
-    // // around that. NB: This has to go on a different executor to the
-    // // other futures, otherwise we get deadlock when there are more
-    // // outstanding tasks than threads in the pool
-
-    // // std::vector<boost::shared_future<ProcessingInfo>> tmp_futures=m_futures;
-    // // auto manual_waiter=boost::async(m_threadpool2, [tmp_futures](){
-    // //         for(auto& f: tmp_futures) f.wait();
-    // //         return tmp_futures;
-    // //     }).share();
-
-
-    // // -----------------------------------------------------------------
-    // // ...and then copy the data into the working area.
-    // //
-    // // We do different things depending on whether this is the first
-    // // time process_window() has been called: on the first call, we
-    // // have to "seed" the ProcessingInfo's with pedestal values etc;
-    // // on the subsequent calls, we take the previous ProcessingInfo
-    // // and pass it in
-    // typedef std::function<std::vector<ProcessingInfo>(decltype(waiter))> copy_func_t;
-
-    // // The function for the first call
-    // copy_func_t copy_lambda_first=[this](decltype(waiter) f){
-    //     for(size_t j = 0; j < m_timeWindowNumMessages; j++){
-    //         m_pcq.read(m_primfind_tmp[j]);
-    //     }
-    //     std::vector<ProcessingInfo> pis;
-    //     DAQLogger::LogInfo("TriggerPrimitiveFinder::process_window") << "Processing first window";
-    //     for(size_t i=0; i<m_nthreads; ++i){
-    //         // make a copy of the ProcessingInfo which we'll update
-    //         ProcessingInfo pi=f.get()[i].get();
-    //         DAQLogger::LogInfo("TriggerPrimitiveFinder::process_window") << "Got ProcessingInfo with nhits=" << pi.nhits;
-    //         pi.setState(m_primfind_tmp);
-    //         pis.push_back(pi);
-    //     }
-    //     m_anyWindowsProcessedYet.store(true);
-        
-    //     return pis;
-    // };
-
-    // // The function for subsequent calls
-    // copy_func_t copy_lambda_nonfirst=[this, timestamp](decltype(waiter) f){
-    //     addHitsToQueue(timestamp);
-    //     // Copy the window into the temporary working area
-    //     for(size_t j = 0; j < m_timeWindowNumMessages; j++){
-    //         m_pcq.read(m_primfind_tmp[j]);
-    //     }
-    //     std::vector<ProcessingInfo> pis;
-
-    //     for(size_t i=0; i<m_nthreads; ++i){
-    //         ProcessingInfo pi=f.get()[i].get();
-    //         pis.push_back(pi);
-    //     }
-    //     return pis;
-    // };
-    // // Set the appropriate function going on the thread pool
-    // auto copy_future=waiter.then(m_threadpool,
-    //                              m_anyWindowsProcessedYet.load() ?
-    //                              std::forward<copy_func_t>(copy_lambda_nonfirst) :
-    //                              std::forward<copy_func_t>(copy_lambda_first)).share();
-
-    // m_anyWindowsProcessedYet.store(true);
-    // // ...and *then* set all the jobs going again. Each of the
-    // // new futures waits on the copy task, which is what we want.
-    // for(size_t ithread=0; ithread<m_nthreads; ++ithread){
-    //     m_futures[ithread]=copy_future.then(m_threadpool,
-    //                                         [this, ithread](auto fin)
-    //                                         {
-    //                                             // MAGIC is the terminator for the list of hits, so this line "empties" the list
-    //                                             *m_primfind_destinations[ithread]=MAGIC;
-    //                                             return process_window_avx2(fin.get()[ithread]);
-    //                                         });
-    // }
-
-    // ++m_nWindowsProcessed;
-}
-
-//======================================================================
-std::vector<dune::TriggerPrimitive>
-TriggerPrimitiveFinder::primitivesForTimestamp(uint64_t timestamp, uint32_t window_size)
-{
-    // Wait for the processing to catch up with the requested timestamp
-    // TODO: Add a timeout
-    std::chrono::high_resolution_clock::time_point t0 = std::chrono::high_resolution_clock::now();
-    while(m_latestProcessedTimestamp.load()<timestamp+window_size){
-        std::this_thread::sleep_for(std::chrono::microseconds(100));
-    }
-    auto tdelta = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now() - t0);
-    DAQLogger::LogInfo("TriggerPrimitiveFinder::primitivesForTimestamp") << "Waited " << std::chrono::microseconds(tdelta).count() << "us for data to be processed";
-
-    std::vector<dune::TriggerPrimitive> ret;
-    const int64_t signed_ts=timestamp;
-
-    std::stringstream msg;
-    msg << "Adding windows for ts " << timestamp << " ws " << window_size << ": ";
-
-    {
-        std::lock_guard<std::mutex> lock(m_windowHitsMutex);
-
-        for(auto const& wp: m_windowHits){
-            // Convert the timestamp of each TP to be relative to the
-            // requested timestamp, instead of being relative to the
-            // timestamp of its window
-            int64_t delta_ts=signed_ts-wp.timestamp;
-            if(std::abs(delta_ts)<window_size){
-                msg << wp.timestamp << ", ";
-                for(auto const& tp: wp.triggerPrimitives){
-                    int64_t this_tp_delta_ts=clocksPerTPCTick*tp.startTime-delta_ts;
-                    if(this_tp_delta_ts>0){
-                        dune::TriggerPrimitive new_tp(tp);
-                        new_tp.startTime=(uint16_t)std::min((int64_t)UINT16_MAX, this_tp_delta_ts/clocksPerTPCTick);
-                        ret.push_back(new_tp);
-                        
-                    }
-                }
-            }
-        }
-    }
-    msg << ret.size() << " hits";
-    DAQLogger::LogInfo("TriggerPrimitiveFinder::primitivesForTimestamp") << msg.str();
-    return ret;
-}
-
-//======================================================================
-void TriggerPrimitiveFinder::addHitsToQueue(uint64_t timestamp)
-{
-    TriggerPrimitiveFinder::WindowPrimitives prims;
-    prims.timestamp=timestamp;
-
-    for(size_t j=0; j<m_nthreads; ++j){
-        uint16_t chan[16], hit_start[16], hit_charge[16], hit_tover[16];
-        uint16_t* input_loc=m_primfind_destinations[j];
-        
-        while(*input_loc!=MAGIC){
-            for(int i=0; i<16; ++i) chan[i]       = m_offlineChannelOffset+collection_index_to_offline(*input_loc++);
-            for(int i=0; i<16; ++i) hit_start[i]  = *input_loc++;
-            for(int i=0; i<16; ++i) hit_charge[i] = *input_loc++;
-            for(int i=0; i<16; ++i) hit_tover[i]  = *input_loc++;
-            
-            for(int i=0; i<16; ++i){
-                if(hit_charge[i] && chan[i]!=MAGIC){
-                    dune::TriggerPrimitive p{chan[i], hit_start[i], hit_charge[i], hit_tover[i]};
-                    ++m_nPrimsFound;
-                    prims.triggerPrimitives.push_back(std::move(p));
-                }
-            }
-        }
-    }
-
-
-    {
-        std::lock_guard<std::mutex> lock(m_windowHitsMutex);
-        m_windowHits.push_back(prims);
-        if(m_windowHits.size()>1000) m_windowHits.pop_front();
-    }
-
-    // Update the "most recent timestamp processed" variable
-    update_maximum(m_latestProcessedTimestamp, timestamp);
-}
-
-//======================================================================
-void TriggerPrimitiveFinder::hitsToFragment(uint64_t timestamp, uint32_t window_size, artdaq::Fragment* fragPtr)
-{
-    std::vector<dune::TriggerPrimitive> tps=primitivesForTimestamp(timestamp, window_size);
-    // The data payload of the fragment will be:
-    // uint64_t timestamp
-    // uint32_t nhits
-    // N*TriggerPrimitive
-    fragPtr->resizeBytes(sizeof(dune::FelixHitFragment::Body)+tps.size()*sizeof(TriggerPrimitive));
-    dune::FelixFragmentHits hitFrag(*fragPtr);
-
-    hitFrag.set_timestamp(timestamp);
-    hitFrag.set_nhits(tps.size());
-    for(size_t i=0; i<tps.size(); ++i){
-        hitFrag.get_primitive(i)=tps[i];
-    }
-}
-
-//======================================================================
-uint16_t TriggerPrimitiveFinder::getOfflineChannel(SUPERCHUNK_CHAR_STRUCT& ucs, unsigned int ch)
-{
-    const dune::FelixFrame* frame=reinterpret_cast<const dune::FelixFrame*>(&ucs);
-    // handle 256 channels on two fibers -- use the channel
-    // map that assumes 128 chans per fiber (=FEMB) (Copied
-    // from PDSPTPCRawDecoder_module.cc)
-    int crate = frame->crate_no();
-    int slot = frame->slot_no();
-    int fiber = frame->fiber_no();
-
-    unsigned int fiberloc = 0;
-    if (fiber == 1){
-        fiberloc = 1;
-    }
-    else if(fiber == 2){
-        fiberloc = 3;
-    }
-    else{
-        std::cout << " Fiber number " << (int) fiber << " is expected to be 1 or 2 -- revisit logic" << std::endl;
-        fiberloc = 1;
-    }
-
-    unsigned int chloc = ch;
-    if (chloc > 127){
-        chloc -= 128;
-        fiberloc++;
-    }
-    unsigned int crateloc = crate;
-    return m_channelMapService.GetOfflineNumberFromDetectorElements(crateloc, slot, fiberloc, chloc, PdspChannelMapService::kFELIX);
-}
 
 /* Local Variables:  */
 /* mode: c++         */

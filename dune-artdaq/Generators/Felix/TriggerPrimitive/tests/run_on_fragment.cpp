@@ -1,5 +1,5 @@
 #include "FrameFile.h"
-#include "dune-artdaq/Generators/Felix/FelixFormat.hh"
+#include "dune-raw-data/Overlays/FelixFormat.hh"
 
 #include "../frame_expand.h"
 #include "../process_naive.h"
@@ -13,7 +13,7 @@ int main(int, char**)
     const size_t timeWindowNumMessages=FrameFile::frames_per_fragment/FRAMES_PER_MSG;
     const size_t timeWindowNumFrames=FRAMES_PER_MSG*timeWindowNumMessages;
     FrameFile ff("/data/lar/dunedaq/rodrigues/protodune-noise/felixcosmics.dat");
-    FelixFrame* frame=ff.fragment(0);
+    dune::FelixFrame* frame=ff.fragment(0);
     const size_t nmessages=FrameFile::frames_per_fragment/FRAMES_PER_MSG;
     // TODO: Come up with a sensible size for the output array
     size_t outputsize=100*96*FrameFile::frames_per_fragment;
