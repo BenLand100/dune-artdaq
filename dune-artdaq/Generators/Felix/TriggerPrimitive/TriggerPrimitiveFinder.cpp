@@ -39,7 +39,7 @@ void TriggerPrimitiveFinder::hitsToFragment(uint64_t timestamp, uint32_t window_
 {
     std::vector<dune::TriggerPrimitive> tps=getHitsForWindow(m_triggerPrimitives,
                                                              timestamp, timestamp+window_size);
-    DAQLogger::LogInfo("TriggerPrimitiveFinder::hitsToFragment") << "Got " << tps.size() << " hits for timestamp 0x" << std::hex << timestamp << std::dec;
+    dune::DAQLogger::LogInfo("TriggerPrimitiveFinder::hitsToFragment") << "Got " << tps.size() << " hits for timestamp 0x" << std::hex << timestamp << std::dec;
 
     // The data payload of the fragment will be:
     // uint64_t timestamp
@@ -94,8 +94,8 @@ void TriggerPrimitiveFinder::addHitsToQueue(uint64_t timestamp,
     std::lock_guard<std::mutex> guard(m_triggerPrimitiveMutex);
 
     while(*input_loc!=MAGIC){
-        // for(int i=0; i<16; ++i) chan[i]       = m_offlineChannelOffset+collection_index_to_offline(*input_loc++);
-        for(int i=0; i<16; ++i) chan[i]       = *input_loc++;
+        for(int i=0; i<16; ++i) chan[i]       = collection_index_to_offline(*input_loc++);
+        //for(int i=0; i<16; ++i) chan[i]       = *input_loc++;
         for(int i=0; i<16; ++i) hit_start[i]  = *input_loc++;
         for(int i=0; i<16; ++i) hit_charge[i] = *input_loc++;
         for(int i=0; i<16; ++i) hit_tover[i]  = *input_loc++;
@@ -157,7 +157,7 @@ void TriggerPrimitiveFinder::processing_thread(void* context, uint8_t first_regi
         // and the publisher will drop messages, so the gap between
         // the previous timestamp and this timestamp will be larger
         if(item.timestamp>prev_timestamp+FRAMES_PER_MSG*clocksPerTPCTick && prev_timestamp!=0){
-            DAQLogger::LogInfo("TriggerPrimitiveFinder::processing_thread") << "Looks like a skipped message! this timestamp: 0x" << std::hex << item.timestamp << " prev timestamp: 0x" << prev_timestamp << std::dec;
+            dune::DAQLogger::LogInfo("TriggerPrimitiveFinder::processing_thread") << "Looks like a skipped message! this timestamp: 0x" << std::hex << item.timestamp << " prev timestamp: 0x" << prev_timestamp << std::dec;
         }
         ++nmsg;
         if(should_stop) break;
