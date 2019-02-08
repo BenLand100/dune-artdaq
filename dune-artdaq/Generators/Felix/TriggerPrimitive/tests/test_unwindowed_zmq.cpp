@@ -6,6 +6,9 @@
 #include "../TriggerPrimitiveFinder.h"
 #include "../process_avx2.h"
 
+std::atomic<uint64_t> last_ts_processed{0};
+std::mutex hit_queue_mutex;
+
 struct ItemToProcess
 {
     uint64_t timestamp;
@@ -13,11 +16,14 @@ struct ItemToProcess
 };
 
 //==============================================================================
-void addHitsToQueue(const uint16_t* input_loc,
-                    folly::ProducerConsumerQueue<dune::TriggerPrimitive>& primitive_queue)
+void addHitsToQueue(uint64_t timestamp,
+                    const uint16_t* input_loc,
+                    std::deque<dune::TriggerPrimitive>& primitive_queue)
 {
     uint16_t chan[16], hit_start[16], hit_charge[16], hit_tover[16];
-    
+
+    std::lock_guard<std::mutex> guard(hit_queue_mutex);
+
     while(*input_loc!=MAGIC){
         // for(int i=0; i<16; ++i) chan[i]       = m_offlineChannelOffset+collection_index_to_offline(*input_loc++);
         for(int i=0; i<16; ++i) chan[i]       = *input_loc++;
@@ -27,11 +33,39 @@ void addHitsToQueue(const uint16_t* input_loc,
         
         for(int i=0; i<16; ++i){
             if(hit_charge[i] && chan[i]!=MAGIC){
-                dune::TriggerPrimitive p{chan[i], hit_start[i], hit_charge[i], hit_tover[i]};
-                primitive_queue.write(std::move(p));
+                primitive_queue.emplace_back(chan[i], timestamp+hit_start[i], hit_charge[i], hit_tover[i]);
             }
         }
     }
+    while(primitive_queue.size()>10000) primitive_queue.pop_front();
+}
+
+//============================================================================== 
+std::vector<dune::TriggerPrimitive> getHitsForWindow(const std::deque<dune::TriggerPrimitive>& primitive_queue,
+                                                     uint64_t start_ts, uint64_t end_ts)
+{
+    // Wait for the processing to catch up
+    while(last_ts_processed.load()<end_ts){
+        std::this_thread::sleep_for(std::chrono::microseconds(100));
+    }
+    std::vector<dune::TriggerPrimitive> ret;
+    ret.reserve(5000);
+
+    {
+        std::lock_guard<std::mutex> guard(hit_queue_mutex);
+        for(auto const& prim: primitive_queue){
+            if(prim.startTime>start_ts && prim.startTime<end_ts){
+                ret.push_back(prim);
+            }
+            // The trigger primitives are ordered by
+            // timestamp, so as soon as we've seen one that's too
+            // late, we're done
+            if(prim.startTime>end_ts){
+                break;
+            }
+        }
+    }
+    return ret;
 }
 
 //==============================================================================
@@ -71,7 +105,7 @@ void processing_thread(void* context, uint8_t first_register, uint8_t last_regis
     uint16_t* primfind_dest=new uint16_t[100000];
     
     // Place to put the hits more tidily for later retrieval
-    folly::ProducerConsumerQueue<dune::TriggerPrimitive> primitive_queue(100000);
+    std::deque<dune::TriggerPrimitive> primitive_queue;
       
     ProcessingInfo pi(nullptr,
                       FRAMES_PER_MSG, // We'll just process one message
@@ -104,7 +138,8 @@ void processing_thread(void* context, uint8_t first_register, uint8_t last_regis
         // Do the processing
         process_window_avx2(pi);
         // Create dune::TriggerPrimitives from the hits and put them in the queue for later retrieval
-        addHitsToQueue(primfind_dest, primitive_queue);
+        addHitsToQueue(item.timestamp, primfind_dest, primitive_queue);
+        last_ts_processed.store(item.timestamp);
     }
     std::cout << "Received " << nmsg << " messages. Found " << pi.nhits << " hits" << std::endl;
 
