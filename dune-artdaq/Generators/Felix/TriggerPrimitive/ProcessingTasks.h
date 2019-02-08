@@ -20,7 +20,7 @@ public:
             std::cout << "Error creating publish socket" << std::endl;
             return;
         }
-        int sndhwm=0;
+        int sndhwm=100;
         int rc=zmq_setsockopt(m_publishSocket, ZMQ_SNDHWM,
                               &sndhwm, sizeof(int));
         if(rc!=0){
@@ -69,7 +69,7 @@ public:
         rc=zmq_setsockopt(m_subscribeSocket, ZMQ_SUBSCRIBE,
                           NULL, 0); // Subscribe to all messages
         if(rc!=0) std::cout << "Error subscribing to tag" << std::endl;
-        int rcvhwm=0;
+        int rcvhwm=100;
         rc=zmq_setsockopt(m_subscribeSocket, ZMQ_RCVHWM,
                           &rcvhwm, sizeof(int)); // Infinite HWM
         if(rc!=0) std::cout << "Error setting rcv HWM" << std::endl;
