@@ -7,8 +7,8 @@ int main(int argc, char** argv)
     pthread_setname_np(pthread_self(), "main");
     int n_repeats=10;
     if(argc>=2)  sscanf(argv[1],"%d",&n_repeats);
-    // auto t0=std::chrono::steady_clock::now();
-    mf::setStandAloneMessageThreshold({"ERROR"});
+
+    mf::setStandAloneMessageThreshold({"INFO"});
     TriggerPrimitiveFinder* tpf=new TriggerPrimitiveFinder;
 
     FrameFile f("/nfs/sw/work_dirs/phrodrig/felixcosmics.dat");
@@ -25,6 +25,17 @@ int main(int argc, char** argv)
             tpf->addMessage(*scs);
         }
     }
+    // This bit is to test that the "behindness" detection in
+    // TriggerPrimitiveFinder is working: with nrepeats=1000, we'll
+    // end up behind in the loop above. We wait for the processing
+    // thread to catch up, then send another message, which should get
+    // processed straight away, and take the processing thread out of
+    // the lateness state
+
+    // std::this_thread::sleep_for(std::chrono::seconds(8));
+    // SUPERCHUNK_CHAR_STRUCT* scs=reinterpret_cast<SUPERCHUNK_CHAR_STRUCT*>(fragment);
+    // tpf->addMessage(*scs);
+    
     delete tpf; // To force the destructor to run
     auto t1=std::chrono::steady_clock::now();
     auto ms=std::chrono::duration_cast<std::chrono::milliseconds>(t1-t0).count();
