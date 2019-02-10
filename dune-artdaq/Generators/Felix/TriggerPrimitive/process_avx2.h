@@ -7,7 +7,7 @@
 #include "constants.h"
 
 void 
-frugal_accum_update_avx2(__m256i& median, const __m256i s, __m256i& accum, const int16_t acclimit,
+frugal_accum_update_avx2(__m256i& __restrict__ median, const __m256i s, __m256i&  __restrict__ accum, const int16_t acclimit,
                               const __m256i mask);
 
 void

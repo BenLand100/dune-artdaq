@@ -1,6 +1,6 @@
 #include "process_avx2.h"
 
-void frugal_accum_update_avx2(__m256i& median, const __m256i s, __m256i& accum, const int16_t acclimit,
+void frugal_accum_update_avx2(__m256i&  __restrict__  median, const __m256i s, __m256i&  __restrict__  accum, const int16_t acclimit,
                               const __m256i mask)
 {
     // if the sample is greater than the median, add one to the accumulator
