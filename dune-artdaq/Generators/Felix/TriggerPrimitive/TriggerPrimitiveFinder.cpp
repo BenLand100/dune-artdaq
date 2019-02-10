@@ -69,6 +69,15 @@ TriggerPrimitiveFinder::getHitsForWindow(const std::deque<dune::TriggerPrimitive
 
     {
         std::lock_guard<std::mutex> guard(m_triggerPrimitiveMutex);
+
+        // The hits in the queue are ordered by time, so it might be faster to search with lower_bound() and upper_bound like this:
+        // std::deque<int> queue{1,2,2,3,5,6,6,6,6,7,8,9,10,11,12,15,17,19};
+        // int window_start=4;
+        // int window_end=7;
+        // auto const& itlo=std::lower_bound(queue.cbegin(), queue.cend(), window_start, [](const int& a, const int& b){ return a<b; });
+        // auto const& itup=std::upper_bound(queue.cbegin(), queue.cend(), window_end,   [](const int& a, const int& b){ return a<b; });
+        // std::cout << "Window [" << window_start << ", " << window_end << "] returned indices " << std::distance(queue.cbegin(), itlo) << " to " << std::distance(queue.cbegin(), itup) << std::endl;
+
         for(auto const& prim: primitive_queue){
             if(prim.startTime>start_ts && prim.startTime<end_ts){
                 ret.push_back(prim);
