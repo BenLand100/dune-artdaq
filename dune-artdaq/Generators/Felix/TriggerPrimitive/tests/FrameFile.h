@@ -37,10 +37,16 @@ public:
         : m_file(filename, std::ifstream::binary),
           m_buffer(new char[buffer_size])
     {
+        if(m_file.bad() || m_file.fail() || !m_file.is_open()){
+            throw std::runtime_error(std::string("Bad file ")+std::string(filename));
+        }
         // Calculate the length of the file
         m_file.seekg(0, m_file.end);
         m_length = m_file.tellg();
         m_file.seekg(0, m_file.beg);
+        if(m_length==0){
+            throw std::runtime_error("Empty file");
+        }
     }
 
     ~FrameFile()
