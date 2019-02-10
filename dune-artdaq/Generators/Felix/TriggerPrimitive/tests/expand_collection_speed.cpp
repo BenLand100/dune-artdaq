@@ -20,7 +20,7 @@ int main(int, char**)
     for(size_t j=0; j<nrep; ++j){
         for(int i=0; i<12; ++i){
             dune::FelixFrame* frame=reinterpret_cast<dune::FelixFrame*>(buffer)+i;
-            RegisterArray<8> collection_adcs=get_frame_collection_adcs(frame);
+            RegisterArray<REGISTERS_PER_FRAME> collection_adcs=get_frame_collection_adcs(frame);
             tot+=(size_t)collection_adcs.data();
         }
     }

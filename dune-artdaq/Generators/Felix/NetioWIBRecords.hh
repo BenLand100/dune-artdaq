@@ -20,10 +20,8 @@
 // How many frames are concatenated in one netio message
 static constexpr size_t FRAMES_PER_MSG=12;
 // How many collection-wire AVX2 registers are returned per
-// frame. This is slightly more than needed because each register
-// contains some junk entries. Could consider consolidating them
-// further, but that's for another time
-static constexpr size_t REGISTERS_PER_FRAME=8;
+// frame.
+static constexpr size_t REGISTERS_PER_FRAME=6;
 // How many bytes are in an AVX2 register
 static constexpr size_t BYTES_PER_REGISTER=32;
 // How many samples are in a register

@@ -41,8 +41,8 @@ int main(int, char**)
 
     frame->print();
 
-    RegisterArray<8> collection_adcs=get_frame_collection_adcs(frame);
-    for(int i=0; i<4; ++i){
+    RegisterArray<REGISTERS_PER_FRAME> collection_adcs=get_frame_collection_adcs(frame);
+    for(unsigned int i=0; i<REGISTERS_PER_FRAME/2; ++i){
         print256_as16(collection_adcs.ymm(2*i));   printf("  expanded coll 0\n\n"); 
         print256_as16(collection_adcs.ymm(2*i+1)); printf("  expanded coll 1\n\n"); 
     }

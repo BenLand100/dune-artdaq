@@ -36,7 +36,10 @@ unsigned int getOfflineChannel(PdspChannelMapService& channelMap, const dune::Fe
         fiberloc++;
     }
     unsigned int crateloc = crate;
-    return channelMap.GetOfflineNumberFromDetectorElements(crateloc, slot, fiberloc, chloc, PdspChannelMapService::kFELIX);
+    unsigned int offline = channelMap.GetOfflineNumberFromDetectorElements(crateloc, slot, fiberloc, chloc, PdspChannelMapService::kFELIX);
+    printf("crate=%d slot=%d fiber=%d fiberloc=%d chloc=%d offline=%d\n",
+           crate, slot, fiber, fiberloc, chloc, offline);
+    return offline;
 }
 
 //======================================================================
@@ -61,7 +64,7 @@ size_t calc_ntimes(const dune::FelixFrame* frames, size_t nframes)
 void fragment_frames_to_array(const dune::FelixFrame* frames, size_t nframes,
                               uint16_t* array, std::vector<uint16_t>& channel_vec)
 {
-    PdspChannelMapService channelMap("../data/protoDUNETPCChannelMap_RCE_v4.txt", "../data/protoDUNETPCChannelMap_FELIX_v4.txt");
+    PdspChannelMapService channelMap("protoDUNETPCChannelMap_RCE_v4.txt", "protoDUNETPCChannelMap_FELIX_v4.txt");
 
     // Milo's file is ordered with all the frames from one link, in
     // time order, followed by all the frames from the next link in
@@ -97,12 +100,12 @@ void fragment_frames_to_array(const dune::FelixFrame* frames, size_t nframes,
 //======================================================================
 void fragment_frames_to_array_collection(const dune::FelixFrame* frames, size_t nframes, uint16_t* array)
 {
-    PdspChannelMapService channelMap("../data/protoDUNETPCChannelMap_RCE_v4.txt", "../data/protoDUNETPCChannelMap_FELIX_v4.txt");
+    PdspChannelMapService channelMap("protoDUNETPCChannelMap_RCE_v4.txt", "protoDUNETPCChannelMap_FELIX_v4.txt");
     
     size_t counter=0;
     for(size_t iframe=0; iframe<nframes; ++iframe){
         const dune::FelixFrame* frame=frames+iframe;
-        RegisterArray<8> frame_colls=get_frame_collection_adcs(frame);
+        RegisterArray<REGISTERS_PER_FRAME> frame_colls=get_frame_collection_adcs(frame);
         for(int ich=0; ich<8; ++ich){
             _mm256_storeu_si256(((__m256i*)array)+counter, frame_colls.ymm(ich));
             ++counter;

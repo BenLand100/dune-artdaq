@@ -107,10 +107,8 @@ RegisterArray<2> get_block_collection_adcs(const dune::ColdataBlock& block);
 RegisterArray<4> get_block_all_adcs(const dune::ColdataBlock& block);
 
 //==============================================================================
-//
-// TODO: We could further compact the values into 6 registers instead
-// of 8, getting rid of the dummy values. Is it worth it?
-RegisterArray<8> get_frame_collection_adcs(const dune::FelixFrame* frame);
+// Expand all the collection channels into 6 AVX2 registers
+RegisterArray<REGISTERS_PER_FRAME> get_frame_collection_adcs(const dune::FelixFrame* frame);
 
 //==============================================================================
 // As above, for all collection and induction ADCs

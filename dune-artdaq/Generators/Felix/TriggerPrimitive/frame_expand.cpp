@@ -27,14 +27,14 @@ void print256_as16_dec(__m256i var)
 //==============================================================================
 // Abortive attempt at expanding just the collection channels, instead
 // of expanding all channels and then picking out just the collection
-// ones. 
+// ones.
 RegisterArray<2> expand_segment_collection(const dune::ColdataBlock& block)
 {
     const __m256i* coldata_start=reinterpret_cast<const __m256i*>(&block.segments[0]);
     __m256i raw0=_mm256_lddqu_si256(coldata_start+0);
     __m256i raw1=_mm256_lddqu_si256(coldata_start+1);
     __m256i raw2=_mm256_lddqu_si256(coldata_start+2);
-    
+
     // For the first output item, we want these bytes:
     //
     // From raw0: 7, 9, 11, 13, 15, 17, 19, 21, 23, 24, 26, 28, 30
@@ -43,7 +43,7 @@ RegisterArray<2> expand_segment_collection(const dune::ColdataBlock& block)
     // They're non-overlapping so we can blend them
     //
     // So we get a blend mask of (where "x" means "don't care"):
-    // 
+    //
     // 31 30 29 28 27 26 25 24 23 22 21 20 19 18 17 16 15 14 13 12 11 10 9 8 7 6 5 4 3 2 1 0
     // -------------------------------------------------------------------------------------
     //  x  0  x  0  x  0  x  0  0  x  0  x  0  x  0  x  0  x  0  x  0  x 0 1 0 1 x 1 x 1 x 1
@@ -61,7 +61,7 @@ RegisterArray<2> expand_segment_collection(const dune::ColdataBlock& block)
     // They're non-overlapping so we can blend them
     //
     // So we get a blend mask of (where "x" means "don't care"):
-    // 
+    //
     // 31 30 29 28 27 26 25 24 23 22 21 20 19 18 17 16 15 14 13 12 11 10 9 8 7 6 5 4 3 2 1 0
     // -------------------------------------------------------------------------------------
     //  0  x  0  x  0  x  0  1  0  1  x  1  x  1  x  1  x  1  x  1  x  1 x 1 1 x 1 x 1 x 1 x
@@ -196,16 +196,56 @@ RegisterArray<4> get_block_all_adcs(const dune::ColdataBlock& block)
 
 //==============================================================================
 //
-// TODO: We could further compact the values into 6 registers instead
-// of 8, getting rid of the dummy values. Is it worth it?
-RegisterArray<8> get_frame_collection_adcs(const dune::FelixFrame* frame)
+RegisterArray<REGISTERS_PER_FRAME> get_frame_collection_adcs(const dune::FelixFrame* frame)
 {
-    RegisterArray<8> adcs;
+    // Each coldata block has 24 collection channels, so we have to
+    // put it in two registers, using 12 of the 16 slots in each
+    RegisterArray<8> adcs_tmp;
     for(int i=0; i<4; ++i){
         RegisterArray<2> block_adcs=get_block_collection_adcs(frame->block(i));
-        adcs.set_ymm(2*i, block_adcs.ymm(0));
-        adcs.set_ymm(2*i+1, block_adcs.ymm(1));
+        adcs_tmp.set_ymm(2*i, block_adcs.ymm(0));
+        adcs_tmp.set_ymm(2*i+1, block_adcs.ymm(1));
     }
+
+    // Now adcs_tmp contains 96 values in 8 registers, but we can fit
+    // those values in 6 registers, so do that. This way, the
+    // downstream processing code has less to do.
+
+    // We'll take advantage of the fact that there are 4 "null" values
+    // (ie 4*16 bits = 64 bits) in the registers at the end, so we can
+    // just treat the registers as containing 64-bit items.
+
+    // We're going to move values from the last two registers (indices
+    // 6 and 7) into the spaces in registers 0-5, so we first shuffle
+    // register 6 so it has the items we want in the right place to
+    // blend, and then blend
+    RegisterArray<REGISTERS_PER_FRAME> adcs;
+
+    // A register where every 64-bit word is the 0th 64-bit word from the original register
+    __m256i reg0_quad0=_mm256_permute4x64_epi64(adcs_tmp.ymm(6), 0x00);
+    // A register where every 64-bit word is the 1st 64-bit word from the original register
+    __m256i reg0_quad1=_mm256_permute4x64_epi64(adcs_tmp.ymm(6), 0x55);
+    // A register where every 64-bit word is the 2nd 64-bit word from the original register
+    __m256i reg0_quad2=_mm256_permute4x64_epi64(adcs_tmp.ymm(6), 0xaa);
+
+    // Likewise for register 7
+    __m256i reg1_quad0=_mm256_permute4x64_epi64(adcs_tmp.ymm(7), 0x00);
+    __m256i reg1_quad1=_mm256_permute4x64_epi64(adcs_tmp.ymm(7), 0x55);
+    __m256i reg1_quad2=_mm256_permute4x64_epi64(adcs_tmp.ymm(7), 0xaa);
+
+    // Treating the register as containing 8 32-bit items, this blend
+    // mask takes 6 from the first register and 2 from the second
+    // register, which is what we want
+    int blend_mask=0xc0;
+
+    adcs.set_ymm(0, _mm256_blend_epi32(adcs_tmp.ymm(0), reg0_quad0, blend_mask));
+    adcs.set_ymm(1, _mm256_blend_epi32(adcs_tmp.ymm(1), reg0_quad1, blend_mask));
+    adcs.set_ymm(2, _mm256_blend_epi32(adcs_tmp.ymm(2), reg0_quad2, blend_mask));
+
+    adcs.set_ymm(3, _mm256_blend_epi32(adcs_tmp.ymm(3), reg1_quad0, blend_mask));
+    adcs.set_ymm(4, _mm256_blend_epi32(adcs_tmp.ymm(4), reg1_quad1, blend_mask));
+    adcs.set_ymm(5, _mm256_blend_epi32(adcs_tmp.ymm(5), reg1_quad2, blend_mask));
+
     return adcs;
 }
 
@@ -227,21 +267,21 @@ RegisterArray<16> get_frame_all_adcs(const dune::FelixFrame* frame)
 int collection_index_to_offline(int index)
 {
     // The offline channel number for each item in the
-    // RegisterArray<8> returned by get_frame_collection_adcs(), where
-    // -1 represents a dummy entry. Values are given relative to the
-    // smallest collection wire channel in the frame. There's some
-    // extra pattern here that I'm too lazy to work out. This list was
-    // made by munging the output of number_collection.cpp
-    const int offlines[128]={
-        12,   14,  16,  18,  23,  21,  20,  22, 19,  17,  15,   13, -1, -1, -1, -1,
-        0,     2,   4,   6,  11,   9,   8,  10,   7,   5,   3,   1, -1, -1, -1, -1,
-        24,   26,  28,  30,  35,  33,  32,  34,  31,  29,  27,  25, -1, -1, -1, -1,
-        36,   38,  40,  42,  47,  45,  44,  46,  43,  41,  39,  37, -1, -1, -1, -1,
-        252, 254, 256, 258, 263, 261, 260, 262, 259, 257, 255, 253, -1, -1, -1, -1,
-        240, 242, 244, 246, 251, 249, 248, 250, 247, 245, 243, 241, -1, -1, -1, -1,
-        264, 266, 268, 270, 275, 273, 272, 274, 271, 269, 267, 265, -1, -1, -1, -1,
-        276, 278, 280, 282, 287, 285, 284, 286, 283, 281, 279, 277, -1, -1, -1, -1};
-    if(index<0 || index>127) return -1;
+    // RegisterArray<6> returned by get_frame_collection_adcs(),
+    // Values are given relative to the smallest collection wire
+    // channel in the frame. There's some extra pattern here that I'm
+    // too lazy to work out. This list was made by number_collection.cpp
+
+    const int offlines[96]={
+         12,   14,   16,   18,   23,   21,   20,   22,   19,   17,   15,   13,  264,  266,  268,  270, 
+          0,    2,    4,    6,   11,    9,    8,   10,    7,    5,    3,    1,  275,  273,  272,  274, 
+         24,   26,   28,   30,   35,   33,   32,   34,   31,   29,   27,   25,  271,  269,  267,  265, 
+         36,   38,   40,   42,   47,   45,   44,   46,   43,   41,   39,   37,  276,  278,  280,  282, 
+        252,  254,  256,  258,  263,  261,  260,  262,  259,  257,  255,  253,  287,  285,  284,  286, 
+        240,  242,  244,  246,  251,  249,  248,  250,  247,  245,  243,  241,  283,  281,  279,  277
+    };
+
+    if(index<0 || index>95) return -1;
     else                     return offlines[index];
 }
 
