@@ -263,6 +263,20 @@ RegisterArray<16> get_frame_all_adcs(const dune::FelixFrame* frame)
     return adcs;
 }
 
+// This array used to be inside collection_index_to_offline(), but
+// that caused the function to show up in the profile, so it's moved
+// here to make sure it's really a compile-time constant
+namespace {
+    const int offlines[96]={
+         12,   14,   16,   18,   23,   21,   20,   22,   19,   17,   15,   13,  264,  266,  268,  270, 
+          0,    2,    4,    6,   11,    9,    8,   10,    7,    5,    3,    1,  275,  273,  272,  274, 
+         24,   26,   28,   30,   35,   33,   32,   34,   31,   29,   27,   25,  271,  269,  267,  265, 
+         36,   38,   40,   42,   47,   45,   44,   46,   43,   41,   39,   37,  276,  278,  280,  282, 
+        252,  254,  256,  258,  263,  261,  260,  262,  259,  257,  255,  253,  287,  285,  284,  286, 
+        240,  242,  244,  246,  251,  249,  248,  250,  247,  245,  243,  241,  283,  281,  279,  277
+    };
+}
+
 //==============================================================================
 int collection_index_to_offline(int index)
 {
@@ -272,16 +286,7 @@ int collection_index_to_offline(int index)
     // channel in the frame. There's some extra pattern here that I'm
     // too lazy to work out. This list was made by number_collection.cpp
 
-    const int offlines[96]={
-         12,   14,   16,   18,   23,   21,   20,   22,   19,   17,   15,   13,  264,  266,  268,  270, 
-          0,    2,    4,    6,   11,    9,    8,   10,    7,    5,    3,    1,  275,  273,  272,  274, 
-         24,   26,   28,   30,   35,   33,   32,   34,   31,   29,   27,   25,  271,  269,  267,  265, 
-         36,   38,   40,   42,   47,   45,   44,   46,   43,   41,   39,   37,  276,  278,  280,  282, 
-        252,  254,  256,  258,  263,  261,  260,  262,  259,  257,  255,  253,  287,  285,  284,  286, 
-        240,  242,  244,  246,  251,  249,  248,  250,  247,  245,  243,  241,  283,  281,  279,  277
-    };
-
-    if(index<0 || index>95) return -1;
+    if(index<0 || index>95)  return -1;
     else                     return offlines[index];
 }
 
