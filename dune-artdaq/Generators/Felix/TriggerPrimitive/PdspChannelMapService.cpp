@@ -27,6 +27,9 @@ PdspChannelMapService::PdspChannelMapService(std::string rcename, std::string fe
   fASICChanWarningsIssued = 0;
 
   std::ifstream inFile(rcename, std::ios::in);
+  if(inFile.bad() || inFile.fail() || !inFile.is_open()){
+      throw std::runtime_error(std::string("Bad file ")+std::string(rcename));
+  }
   std::string line;
 
   while (std::getline(inFile,line)) {
@@ -76,6 +79,9 @@ PdspChannelMapService::PdspChannelMapService(std::string rcename, std::string fe
   inFile.close();
 
   std::ifstream FELIXinFile(felixname, std::ios::in);
+  if(FELIXinFile.bad() || FELIXinFile.fail() || !FELIXinFile.is_open()){
+      throw std::runtime_error(std::string("Bad file ")+std::string(felixname));
+  }
 
   while (std::getline(FELIXinFile,line)) {
     unsigned int crateNo, slotNo, fiberNo, FEMBChannel, StreamChannel, slotID, fiberID, chipNo, chipChannel, asicNo, asicChannel, planeType, offlineChannel;
