@@ -55,6 +55,8 @@ private:
                         std::deque<dune::TriggerPrimitive>& primitive_queue);
 
 
+    void measure_latency(const ItemToProcess& item);
+
     // The queue of trigger primitives found, and a mutex to protect it
     std::deque<dune::TriggerPrimitive> m_triggerPrimitives;
     std::mutex m_triggerPrimitiveMutex;

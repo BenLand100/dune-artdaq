@@ -110,6 +110,28 @@ void TriggerPrimitiveFinder::addHitsToQueue(uint64_t timestamp,
 }
 
 //======================================================================
+void TriggerPrimitiveFinder::measure_latency(const ItemToProcess& item)
+{
+    // All these statics mean this function can only be called from one thread, I assume
+    static constexpr int latencyThresholdEnter=100000; // us
+    static constexpr int latencyThresholdLeave=latencyThresholdEnter/2;
+    static bool was_behind=false;
+    static uint64_t entered_late_time=0;
+
+    uint64_t now=ItemPublisher::now_us();
+    int64_t latency=now-item.timeQueued;
+    if(!was_behind && latency > latencyThresholdEnter){
+        entered_late_time=now;
+        dune::DAQLogger::LogInfo("TriggerPrimitiveFinder::measure_latency") << "Processing late by " << (latency/1000) << "ms (threshold is " << (latencyThresholdEnter/1000) << "ms)";
+        was_behind=true;
+    }
+    if(latency < latencyThresholdLeave && was_behind){
+        dune::DAQLogger::LogInfo("TriggerPrimitiveFinder::measure_latency") << "Processing caught up. Was late for " << ((now-entered_late_time)/1000) << "ms";
+        was_behind=false;
+    }
+}
+
+//======================================================================
 void TriggerPrimitiveFinder::processing_thread(void* context, uint8_t first_register, uint8_t last_register)
 {
     pthread_setname_np(pthread_self(), "processing");
@@ -148,7 +170,6 @@ void TriggerPrimitiveFinder::processing_thread(void* context, uint8_t first_regi
     // Actually process
     int nmsg=0;
     bool first=true;
-    uint64_t prev_timestamp=0;
     while(true){
         bool should_stop;
         ItemToProcess item=receiver.recvItem(should_stop);
@@ -156,11 +177,9 @@ void TriggerPrimitiveFinder::processing_thread(void* context, uint8_t first_regi
         // far behind, the sockets will reach their high water mark
         // and the publisher will drop messages, so the gap between
         // the previous timestamp and this timestamp will be larger
-        if(item.timestamp>prev_timestamp+FRAMES_PER_MSG*clocksPerTPCTick && prev_timestamp!=0){
-            dune::DAQLogger::LogInfo("TriggerPrimitiveFinder::processing_thread") << "Looks like a skipped message! this timestamp: 0x" << std::hex << item.timestamp << " prev timestamp: 0x" << prev_timestamp << std::dec;
-        }
         ++nmsg;
         if(should_stop) break;
+        measure_latency(item);
         RegisterArray<REGISTERS_PER_FRAME*FRAMES_PER_MSG> expanded=expand_message_adcs(*item.scs);
         MessageCollectionADCs* mcadc=reinterpret_cast<MessageCollectionADCs*>(expanded.data());
         if(first){
@@ -175,8 +194,6 @@ void TriggerPrimitiveFinder::processing_thread(void* context, uint8_t first_regi
         // Create dune::TriggerPrimitives from the hits and put them in the queue for later retrieval
         addHitsToQueue(item.timestamp, primfind_dest, m_triggerPrimitives);
         m_latestProcessedTimestamp.store(item.timestamp);
-
-        prev_timestamp=item.timestamp;
     }
     std::cout << "Received " << nmsg << " messages. Found " << pi.nhits << " hits" << std::endl;
 
