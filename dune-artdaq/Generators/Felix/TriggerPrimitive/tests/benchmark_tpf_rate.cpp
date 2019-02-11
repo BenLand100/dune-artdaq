@@ -40,7 +40,5 @@ int main(int argc, char** argv)
     auto t1=std::chrono::steady_clock::now();
     auto ms=std::chrono::duration_cast<std::chrono::milliseconds>(t1-t0).count();
     auto ms_processed=1000*n_repeats*n_messages*FRAMES_PER_MSG/2e6;
-    std::cout << "Processed " << ms_processed << "ms of data in " << ms << "ms" << std::endl;
-    // std::cout << "n_messages: " << tpf->getNMessages() << " n_windows: " << tpf->getNWindowsProcessed() << " n_primitives: " << tpf->getNPrimitivesFound() << std::endl;
-
+    printf("Processed %.0fms of data in %ldms. Ratio %.0f%%\n", ms_processed, ms, 100.*float(ms)/ms_processed);
 }
