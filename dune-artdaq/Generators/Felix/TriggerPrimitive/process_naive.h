@@ -10,23 +10,21 @@ void frugal_accum_update(int16_t& m, const int16_t s, int16_t& acc, const int16_
     if(s>m) ++acc;
     if(s<m) --acc;
 
-    if(acc>=acclimit){
+    if(acc>acclimit){
         ++m;
         acc=0;
     }
 
-    if(acc<=-1*acclimit){
+    if(acc<-1*acclimit){
         --m;
         acc=0;
     }
 }
 
 
-ProcessingInfo
-process_window_naive(ProcessingInfo info_in)
+void
+process_window_naive(ProcessingInfo& info)
 {
-    ProcessingInfo info=info_in;
-
     // Start with taps as floats that add to 1. Multiply by some
     // power of two (2**N) and round to int. Before filtering, cap the
     // value of the input to INT16_MAX/(2**N)
@@ -74,13 +72,13 @@ process_window_naive(ProcessingInfo info_in)
             // Pedestal finding/coherent noise removal
             // --------------------------------------------------------------
             int16_t sample=input16[index];
-
+            
             if(sample<median) frugal_accum_update(quantile25, sample, accum25, 10);
             if(sample>median) frugal_accum_update(quantile75, sample, accum75, 10);
             frugal_accum_update(median, sample, accum, 10);
 
             const int16_t sigma=quantile75-quantile25;
-            if(ichan==0 && itime<100) printf("loq: %d upq: %d iqr: %d\n", quantile25, quantile75, sigma);
+            // if(ichan==0 && itime<100) printf("loq: %d upq: %d iqr: %d\n", quantile25, quantile75, sigma);
 
             sample-=median;
 
@@ -113,9 +111,17 @@ process_window_naive(ProcessingInfo info_in)
                 hit_start=itime;
             }
             if(is_over){
-                hit_charge+=filt;
+                // Simulate saturated add
+                int32_t tmp_charge=hit_charge;
+                tmp_charge+=filt >> info.tap_exponent;
+                tmp_charge=std::min(tmp_charge,(int32_t)std::numeric_limits<int16_t>::max());
+                hit_charge=(int16_t)tmp_charge;
                 hit_tover++;
                 prev_was_over=true;
+
+                // if(ichan==36){
+                //     printf("time: % 3ld median: % 6d s: % 6d filt: % 6d hit_charge: % 6d\n", itime, median, sample, filt, hit_charge);
+                // }
             }
             if(prev_was_over && !is_over){
                 // We reached the end of the hit: write it out
@@ -135,8 +141,13 @@ process_window_naive(ProcessingInfo info_in)
         } // end loop over samples
     } // end loop over channels
     // printf("Found %d hits\n", nhits);
+    info.nhits+=nhits;
     // Write a magic "end-of-hits" value into the list of hits
     for(int i=0; i<4; ++i) (*output_loc++) = MAGIC;
-    return info;
 }
 #endif
+
+/* Local Variables:  */
+/* mode: c++         */
+/* c-basic-offset: 4 */
+/* End:              */
