@@ -66,7 +66,7 @@ process_window_avx2(ProcessingInfo& info)
     // Pointer to keep track of where we'll write the next output hit
     __m256i* output_loc=(__m256i*)(info.output);
 
-    const __m256i iota=_mm256_set_epi16(15, 14, 3, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0);
+    const __m256i iota=_mm256_set_epi16(15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0);
 
     int nhits=0;
 
@@ -96,7 +96,7 @@ process_window_avx2(ProcessingInfo& info)
 
         // The (unfiltered) samples `n` places before the current one
         __m256i prev_samp[NTAPS];
-        for(size_t j=0; j<NTAPS; ++j) prev_samp[j]=_mm256_lddqu_si256(reinterpret_cast<__m256i*>(state.prev_samp)+ireg+j);
+        for(size_t j=0; j<NTAPS; ++j) prev_samp[j]=_mm256_lddqu_si256(reinterpret_cast<__m256i*>(state.prev_samp)+NTAPS*ireg+j);
 
         // ------------------------------------
         // Variables for hit finding
@@ -117,7 +117,7 @@ process_window_avx2(ProcessingInfo& info)
         for(size_t itime=0; itime<info.timeWindowNumFrames; ++itime){
             const size_t msg_index=itime/12;
             const size_t msg_time_offset=itime%12;
-            const size_t index=msg_index*REGISTERS_PER_FRAME*FRAMES_PER_MSG+FRAMES_PER_MSG*ireg+msg_time_offset;
+            const size_t index=msg_index*REGISTERS_PER_FRAME*FRAMES_PER_MSG + FRAMES_PER_MSG*ireg + msg_time_offset;
             const __m256i* rawp=reinterpret_cast<const __m256i*>(info.input)+index;
 
             // The current sample
@@ -223,13 +223,15 @@ process_window_avx2(ProcessingInfo& info)
             // Divide by the multiplier before adding (implemented as a shift-right)
             hit_charge=_mm256_adds_epi16(hit_charge, _mm256_srai_epi16(to_add_charge, info.tap_exponent));
 
-            // if(ireg==info.first_register){
+            // if(ireg==2){
             //     printf("itime=%ld\n", itime);
             //     printf("s:             "); print256_as16_dec(s);             printf("\n");
+            //     printf("median:        "); print256_as16_dec(median);        printf("\n");
             //     printf("sigma:         "); print256_as16_dec(sigma);         printf("\n");
             //     printf("filt:          "); print256_as16_dec(filt);          printf("\n");
             //     printf("to_add_charge: "); print256_as16_dec(to_add_charge); printf("\n");
             //     printf("hit_charge:    "); print256_as16_dec(hit_charge);    printf("\n");
+            //     printf("left:          "); print256_as16_dec(left);          printf("\n");
             // }
 
             __m256i to_add_tover=_mm256_blendv_epi8(_mm256_set1_epi16(0), _mm256_set1_epi16(1), is_over);
@@ -248,8 +250,7 @@ process_window_avx2(ProcessingInfo& info)
             // %XMM1, and sets the carry-flag if everything that is
             // set in %XMM0 is also set in %XMM1:
             int no_hits_to_store=_mm256_testc_si256(_mm256_setzero_si256(), left);
-            
-            // printf("no_hits: %d\n", no_hits_to_store);
+
             if(!no_hits_to_store){
                 ++nhits;
                 // We have to save the whole register, including the
@@ -281,7 +282,7 @@ process_window_avx2(ProcessingInfo& info)
         _mm256_storeu_si256(reinterpret_cast<__m256i*>(state.accum25)+ireg, accum25);
         _mm256_storeu_si256(reinterpret_cast<__m256i*>(state.accum75)+ireg, accum75);
         for(size_t j=0; j<NTAPS; ++j){
-            _mm256_storeu_si256(reinterpret_cast<__m256i*>(state.prev_samp)+ireg+j, prev_samp[j]);
+            _mm256_storeu_si256(reinterpret_cast<__m256i*>(state.prev_samp)+NTAPS*ireg+j, prev_samp[j]);
         }
         _mm256_storeu_si256(reinterpret_cast<__m256i*>(state.prev_was_over)+ireg, prev_was_over);
         _mm256_storeu_si256(reinterpret_cast<__m256i*>(state.hit_start)+ireg, hit_start);
