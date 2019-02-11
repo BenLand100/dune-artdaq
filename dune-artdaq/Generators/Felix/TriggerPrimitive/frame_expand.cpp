@@ -306,7 +306,7 @@ RegisterArray<REGISTERS_PER_FRAME*FRAMES_PER_MSG> expand_message_adcs(const SUPE
             // (register 0, time 0) (register 0, time 1) ... (register 0, time 11)
             // (register 1, time 0) (register 1, time 1) ... (register 1, time 11)
             // ...
-            // (register 7, time 0) (register 7, time 1) ... (register 7, time 11)
+            // (register 5, time 0) (register 5, time 1) ... (register 5, time 11)
             adcs.set_ymm(iframe+iblock*FRAMES_PER_MSG, collection_adcs.ymm(iblock));
         }
     }
