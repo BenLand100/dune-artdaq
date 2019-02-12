@@ -89,7 +89,7 @@ public:
   bool setupContext(std::string contextStr);
   bool stopContext();
   // Enable an elink (prepare a queue, socket-pairs and sub to elink.
-  bool addChannel(uint64_t chn, uint16_t tag, std::string host, uint16_t port, size_t queueSize, bool zerocopy);   
+    bool addChannel(uint64_t chn, uint16_t tag, std::string host, uint16_t port, size_t queueSize, bool zerocopy, int32_t cpu_offset);   
   bool busy(); // are trigger matchers busy
   void startTriggerMatchers(); // Starts trigger matcher threads.
   void stopTriggerMatchers();  // Stops trigger matcher threads.

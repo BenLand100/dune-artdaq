@@ -145,7 +145,7 @@ void FelixHardwareInterface::StartDatataking() {
     << "Setting up NetioHandler (host, port, adding channels, starting subscribers, locking subs to CPUs.)";
   nioh_.setupContext( backend_ ); // posix or infiniband
   for ( auto const & link : link_parameters_ ){ // Add channels
-    nioh_.addChannel(link.id_, link.tag_, link.host_, link.port_, queue_size_, zerocopy_); 
+      nioh_.addChannel(link.id_, link.tag_, link.host_, link.port_, queue_size_, zerocopy_, offset_+12); 
   }
   DAQLogger::LogInfo("dune::FelixHardwareInterface::FelixHardwareInterface")
     << "Links added";

@@ -10,11 +10,19 @@
 const int64_t clocksPerTPCTick=25;
 
 //======================================================================
-TriggerPrimitiveFinder::TriggerPrimitiveFinder()
+TriggerPrimitiveFinder::TriggerPrimitiveFinder(int32_t cpu_offset)
     : m_zmq_context(zmq_ctx_new()),
       m_itemPublisher(m_zmq_context)
 {
     m_processingThread=std::thread(&TriggerPrimitiveFinder::processing_thread, this, m_zmq_context, 0, REGISTERS_PER_FRAME);
+    if(cpu_offset>=0){
+        // Copied from NetioHandler::lockSubsToCPUs()
+        cpu_set_t cpuset;
+        CPU_ZERO(&cpuset);
+        unsigned short cpuid = cpu_offset;
+        CPU_SET(cpuid, &cpuset);
+        pthread_setaffinity_np(m_processingThread.native_handle(), sizeof(cpu_set_t), &cpuset);
+    }
 }
 
 //======================================================================
@@ -129,6 +137,7 @@ void TriggerPrimitiveFinder::measure_latency(const ItemToProcess& item)
 
     uint64_t now=ItemPublisher::now_us();
     int64_t latency=now-item.timeQueued;
+    static int64_t last_printed_latency=0;
     if(!was_behind && latency > latencyThresholdEnter){
         entered_late_time=now;
         dune::DAQLogger::LogInfo("TriggerPrimitiveFinder::measure_latency") << "Processing late by " << (latency/1000) << "ms (threshold is " << (latencyThresholdEnter/1000) << "ms)";
@@ -137,6 +146,10 @@ void TriggerPrimitiveFinder::measure_latency(const ItemToProcess& item)
     if(latency < latencyThresholdLeave && was_behind){
         dune::DAQLogger::LogInfo("TriggerPrimitiveFinder::measure_latency") << "Processing caught up. Was late for " << ((now-entered_late_time)/1000) << "ms";
         was_behind=false;
+    }
+    if(was_behind && latency>last_printed_latency+latencyThresholdEnter){
+        dune::DAQLogger::LogInfo("TriggerPrimitiveFinder::measure_latency") << "Processing now late by " << (latency/1000) << "ms (threshold is " << (latencyThresholdEnter/1000) << "ms)";
+        last_printed_latency+=latencyThresholdEnter;
     }
 }
 

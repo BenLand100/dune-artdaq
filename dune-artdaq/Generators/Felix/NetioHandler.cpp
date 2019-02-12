@@ -419,14 +419,14 @@ void NetioHandler::lockSubsToCPUs(uint32_t offset) {
   m_cpu_lock = true;
 }
 
-bool NetioHandler::addChannel(uint64_t chn, uint16_t tag, std::string host, uint16_t port, size_t queueSize, bool zerocopy){
+bool NetioHandler::addChannel(uint64_t chn, uint16_t tag, std::string host, uint16_t port, size_t queueSize, bool zerocopy, int32_t cpu_offset){
     DAQLogger::LogInfo("NetioHandler::addChannel") << "entering...";
   m_host=host;
   m_port=port;
   m_channels.push_back(chn);
   m_pcqs[chn] = std::make_unique<FrameQueue>(queueSize);
   try{
-      m_tp_finders[chn]=std::make_unique<TriggerPrimitiveFinder>();
+      m_tp_finders[chn]=std::make_unique<TriggerPrimitiveFinder>(cpu_offset);
   }
   catch(std::bad_alloc& e){
       DAQLogger::LogInfo("NetioHandler::addChannel") << "std::bad_alloc thrown in make_unique: " << e.what();

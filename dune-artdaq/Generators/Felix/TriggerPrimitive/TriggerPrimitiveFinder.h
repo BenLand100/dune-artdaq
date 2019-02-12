@@ -23,7 +23,7 @@ namespace artdaq
 class TriggerPrimitiveFinder
 {
 public:
-    TriggerPrimitiveFinder();
+    TriggerPrimitiveFinder(int32_t cpu_offset=-1);
   
     ~TriggerPrimitiveFinder();
 
