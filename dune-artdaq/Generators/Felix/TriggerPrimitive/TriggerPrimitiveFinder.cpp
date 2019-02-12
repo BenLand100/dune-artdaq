@@ -193,6 +193,7 @@ void TriggerPrimitiveFinder::processing_thread(void* context, uint8_t first_regi
     // Actually process
     int nmsg=0;
     bool first=true;
+    uint16_t dummy=0;
     while(true){
         bool should_stop;
         ItemToProcess item=receiver.recvItem(should_stop);
@@ -215,10 +216,11 @@ void TriggerPrimitiveFinder::processing_thread(void* context, uint8_t first_regi
         // Do the processing
         process_window_avx2(pi);
         // Create dune::TriggerPrimitives from the hits and put them in the queue for later retrieval
-        addHitsToQueue(item.timestamp, primfind_dest, m_triggerPrimitives);
+        // addHitsToQueue(item.timestamp, primfind_dest, m_triggerPrimitives);
+        dummy+=*primfind_dest;
         m_latestProcessedTimestamp.store(item.timestamp);
     }
-    std::cout << "Received " << nmsg << " messages. Found " << pi.nhits << " hits" << std::endl;
+    std::cout << "Received " << nmsg << " messages. Found " << pi.nhits << " hits" << " dummy=" << dummy << std::endl;
 
     // -------------------------------------------------------- 
     // Cleanup
