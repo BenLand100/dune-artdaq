@@ -20,7 +20,8 @@ TriggerPrimitiveFinder::TriggerPrimitiveFinder(int32_t cpu_offset)
         cpu_set_t cpuset;
         CPU_ZERO(&cpuset);
         unsigned short cpuid = cpu_offset;
-        CPU_SET(cpuid, &cpuset);
+        CPU_SET(cpuid, &cpuset);    // The physical core
+        CPU_SET(cpuid+24, &cpuset); // The corresponding HT core
         pthread_setaffinity_np(m_processingThread.native_handle(), sizeof(cpu_set_t), &cpuset);
     }
 }
