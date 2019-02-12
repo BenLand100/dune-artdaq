@@ -6,10 +6,10 @@
 #include "immintrin.h"
 #include "constants.h"
 
-void 
+/* void 
 frugal_accum_update_avx2(__m256i& __restrict__ median, const __m256i s, __m256i&  __restrict__ accum, const int16_t acclimit,
-                              const __m256i mask);
-
+                         const __m256i mask) __attribute__((always_inline));
+*/
 void
 process_window_avx2(ProcessingInfo& info);
 

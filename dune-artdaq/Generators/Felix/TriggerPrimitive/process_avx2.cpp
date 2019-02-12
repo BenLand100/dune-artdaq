@@ -1,6 +1,10 @@
 #include "process_avx2.h"
 
-void frugal_accum_update_avx2(__m256i&  __restrict__  median, const __m256i s, __m256i&  __restrict__  accum, const int16_t acclimit,
+namespace{
+inline void frugal_accum_update_avx2(__m256i&  __restrict__  median, const __m256i s, __m256i&  __restrict__  accum, const int16_t acclimit,
+                              const __m256i mask) __attribute__((always_inline));
+
+inline void frugal_accum_update_avx2(__m256i&  __restrict__  median, const __m256i s, __m256i&  __restrict__  accum, const int16_t acclimit,
                               const __m256i mask)
 {
     // if the sample is greater than the median, add one to the accumulator
@@ -46,7 +50,7 @@ void frugal_accum_update_avx2(__m256i&  __restrict__  median, const __m256i s, _
     need_reset = _mm256_and_si256(need_reset, mask);
     accum = _mm256_blendv_epi8(accum, _mm256_setzero_si256(), need_reset);
 }
-
+}
 void
 process_window_avx2(ProcessingInfo& info)
 {
