@@ -271,7 +271,7 @@ process_window_avx2(ProcessingInfo& info)
                 // a message boundary, hopefully
 
                 // STORE_MASK(hit_start);
-                STORE_MASK(timenow);
+                STORE_MASK(_mm256_set1_epi16(itime));
                 STORE_MASK(hit_charge);
                 STORE_MASK(hit_tover);
 
