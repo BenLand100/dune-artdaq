@@ -73,6 +73,11 @@ cet_make_exec(benchmark_tpf_rate
   LIBRARIES ${TP_LIBS}
 )
 
+cet_make_exec(run_tpf_on_link
+  SOURCE run_tpf_on_link.cpp
+  LIBRARIES ${TP_LIBS}
+)
+
 cet_make_exec(benchmark_no_expand
   SOURCE benchmark_no_expand.cpp
   LIBRARIES ${TP_LIBS}

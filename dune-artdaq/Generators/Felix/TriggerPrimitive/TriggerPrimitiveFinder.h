@@ -32,6 +32,11 @@ public:
     // Find all the hits around `timestamp` and write them into the fragment at fragPtr
     void hitsToFragment(uint64_t timestamp, uint32_t windowSize, artdaq::Fragment* fragPtr);
 
+    std::vector<dune::TriggerPrimitive> getHitsForWindow(uint64_t start_ts, uint64_t end_ts)
+    {
+        return getHitsForWindow(m_triggerPrimitives, start_ts, end_ts);
+    }
+
     // void waitForJobs() { for(auto& f: m_futures) f.wait(); }
 private:
 
