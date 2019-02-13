@@ -37,8 +37,8 @@ unsigned int getOfflineChannel(PdspChannelMapService& channelMap, const dune::Fe
     }
     unsigned int crateloc = crate;
     unsigned int offline = channelMap.GetOfflineNumberFromDetectorElements(crateloc, slot, fiberloc, chloc, PdspChannelMapService::kFELIX);
-    printf("crate=%d slot=%d fiber=%d fiberloc=%d chloc=%d offline=%d\n",
-           crate, slot, fiber, fiberloc, chloc, offline);
+    /* printf("crate=%d slot=%d fiber=%d fiberloc=%d chloc=%d offline=%d\n", */
+    /*        crate, slot, fiber, fiberloc, chloc, offline); */
     return offline;
 }
 
