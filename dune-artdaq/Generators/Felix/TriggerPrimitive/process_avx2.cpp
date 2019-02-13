@@ -270,8 +270,8 @@ process_window_avx2(ProcessingInfo& info)
                 // the caller. This saves faffing with hits that span
                 // a message boundary, hopefully
 
-                // STORE_MASK(hit_start);
-                STORE_MASK(timenow);
+                STORE_MASK(hit_start);
+                // STORE_MASK(timenow);
                 STORE_MASK(hit_charge);
                 STORE_MASK(hit_tover);
 
