@@ -103,12 +103,12 @@ TriggerPrimitiveFinder::getHitsForWindow(const std::deque<dune::TriggerPrimitive
 }
 
 //======================================================================
-void TriggerPrimitiveFinder::addHitsToQueue(uint64_t timestamp,
+unsigned int TriggerPrimitiveFinder::addHitsToQueue(uint64_t timestamp,
                                             const uint16_t* input_loc,
                                             std::deque<dune::TriggerPrimitive>& primitive_queue)
 {
     uint16_t chan[16], hit_start[16], hit_charge[16], hit_tover[16];
-
+    int nhits=0;
     std::lock_guard<std::mutex> guard(m_triggerPrimitiveMutex);
 
     while(*input_loc!=MAGIC){
@@ -121,10 +121,12 @@ void TriggerPrimitiveFinder::addHitsToQueue(uint64_t timestamp,
         for(int i=0; i<16; ++i){
             if(hit_charge[i] && chan[i]!=MAGIC){
                 primitive_queue.emplace_back(chan[i], timestamp+clocksPerTPCTick*hit_start[i], hit_charge[i], hit_tover[i]);
+                ++nhits;
             }
         }
     }
     while(primitive_queue.size()>10000) primitive_queue.pop_front();
+    return nhits;
 }
 
 //======================================================================
@@ -212,10 +214,10 @@ void TriggerPrimitiveFinder::processing_thread(void* context, uint8_t first_regi
         // Do the processing
         process_window_avx2(pi);
         // Create dune::TriggerPrimitives from the hits and put them in the queue for later retrieval
-        addHitsToQueue(item.timestamp, primfind_dest, m_triggerPrimitives);
+        pi.nhits+=addHitsToQueue(item.timestamp, primfind_dest, m_triggerPrimitives);
         m_latestProcessedTimestamp.store(item.timestamp);
     }
-    std::cout << "Received " << nmsg << " messages. Found " << pi.nhits << " hits" << std::endl;
+    dune::DAQLogger::LogInfo("TriggerPrimitiveFinder::processing_thread") << "Received " << nmsg << " messages. Found " << pi.nhits << " hits" << std::endl;
 
     // -------------------------------------------------------- 
     // Cleanup

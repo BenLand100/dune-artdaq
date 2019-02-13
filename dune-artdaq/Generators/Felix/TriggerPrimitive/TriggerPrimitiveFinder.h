@@ -55,9 +55,9 @@ private:
             ;
     }
 
-    void addHitsToQueue(uint64_t timestamp,
-                        const uint16_t* input_loc,
-                        std::deque<dune::TriggerPrimitive>& primitive_queue);
+    unsigned int addHitsToQueue(uint64_t timestamp,
+                                const uint16_t* input_loc,
+                                std::deque<dune::TriggerPrimitive>& primitive_queue);
 
 
     void measure_latency(const ItemToProcess& item);

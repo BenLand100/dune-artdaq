@@ -296,5 +296,5 @@ process_window_avx2(ProcessingInfo& info)
     } // end loop over ireg (the 8 registers in this frame)
     // Store the output
     for(int i=0; i<4; ++i) _mm256_storeu_si256(output_loc++, _mm256_set1_epi16(MAGIC));
-    info.nhits+=nhits;
+    // info.nhits+=nhits;
 }
