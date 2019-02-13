@@ -219,7 +219,7 @@ void TriggerPrimitiveFinder::processing_thread(void* context, uint8_t first_regi
         // Do the processing
         process_window_avx2(pi);
         // Create dune::TriggerPrimitives from the hits and put them in the queue for later retrieval
-        pi.nhits+=addHitsToQueue(item.timestamp, primfind_dest, m_triggerPrimitives);
+        // pi.nhits+=addHitsToQueue(item.timestamp, primfind_dest, m_triggerPrimitives);
         m_latestProcessedTimestamp.store(item.timestamp);
     }
     dune::DAQLogger::LogInfo("TriggerPrimitiveFinder::processing_thread") << "Received " << nmsg << " messages. Found " << pi.nhits << " hits" << std::endl;
