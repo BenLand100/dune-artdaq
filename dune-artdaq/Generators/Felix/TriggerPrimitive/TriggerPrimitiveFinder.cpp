@@ -193,14 +193,10 @@ void TriggerPrimitiveFinder::processing_thread(void* context, uint8_t first_regi
     // Actually process
     int nmsg=0;
     bool first=true;
-    uint16_t dummy=0;
+
     while(true){
         bool should_stop;
         ItemToProcess item=receiver.recvItem(should_stop);
-        // Crappy detection of whether we're getting behind: if we get
-        // far behind, the sockets will reach their high water mark
-        // and the publisher will drop messages, so the gap between
-        // the previous timestamp and this timestamp will be larger
         ++nmsg;
         if(should_stop) break;
         measure_latency(item);
@@ -216,11 +212,10 @@ void TriggerPrimitiveFinder::processing_thread(void* context, uint8_t first_regi
         // Do the processing
         process_window_avx2(pi);
         // Create dune::TriggerPrimitives from the hits and put them in the queue for later retrieval
-        // addHitsToQueue(item.timestamp, primfind_dest, m_triggerPrimitives);
-        dummy+=*primfind_dest;
+        addHitsToQueue(item.timestamp, primfind_dest, m_triggerPrimitives);
         m_latestProcessedTimestamp.store(item.timestamp);
     }
-    std::cout << "Received " << nmsg << " messages. Found " << pi.nhits << " hits" << " dummy=" << dummy << std::endl;
+    std::cout << "Received " << nmsg << " messages. Found " << pi.nhits << " hits" << std::endl;
 
     // -------------------------------------------------------- 
     // Cleanup
