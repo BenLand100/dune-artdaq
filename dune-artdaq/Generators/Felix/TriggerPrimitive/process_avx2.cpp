@@ -215,8 +215,8 @@ process_window_avx2(ProcessingInfo& info)
 
             //-----------------------------------------
             // Update hit start times for the channels where a hit started
-            hit_start=_mm256_blendv_epi8(hit_start, _mm256_set1_epi16(itime), entered);
-
+            __m256i timenow=_mm256_set1_epi16(itime);
+            hit_start=_mm256_blendv_epi8(hit_start, timenow, entered);
             //-----------------------------------------
             // Accumulate charge and time-over-threshold in the is_over channels
 
@@ -264,7 +264,14 @@ process_window_avx2(ProcessingInfo& info)
                 // do that processing step in this function?)
 #define STORE_MASK(x) _mm256_storeu_si256(output_loc++, _mm256_blendv_epi8(_mm256_set1_epi16(0), x, left));
                 STORE_MASK(channels);
-                STORE_MASK(hit_start);
+                // Store the end time of the hit, not the start
+                // time. Since we also have the time-over-threshold,
+                // we can calculate the absolute 64-bit start time in
+                // the caller. This saves faffing with hits that span
+                // a message boundary, hopefully
+
+                // STORE_MASK(hit_start);
+                STORE_MASK(timenow);
                 STORE_MASK(hit_charge);
                 STORE_MASK(hit_tover);
 

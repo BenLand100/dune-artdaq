@@ -103,24 +103,26 @@ TriggerPrimitiveFinder::getHitsForWindow(const std::deque<dune::TriggerPrimitive
 }
 
 //======================================================================
-unsigned int TriggerPrimitiveFinder::addHitsToQueue(uint64_t timestamp,
-                                            const uint16_t* input_loc,
-                                            std::deque<dune::TriggerPrimitive>& primitive_queue)
+unsigned int
+TriggerPrimitiveFinder::addHitsToQueue(uint64_t timestamp,
+                                       const uint16_t* input_loc,
+                                       std::deque<dune::TriggerPrimitive>& primitive_queue)
 {
-    uint16_t chan[16], hit_start[16], hit_charge[16], hit_tover[16];
+    uint16_t chan[16], hit_end[16], hit_charge[16], hit_tover[16];
     int nhits=0;
     std::lock_guard<std::mutex> guard(m_triggerPrimitiveMutex);
 
     while(*input_loc!=MAGIC){
         for(int i=0; i<16; ++i) chan[i]       = collection_index_to_offline(*input_loc++);
         //for(int i=0; i<16; ++i) chan[i]       = *input_loc++;
-        for(int i=0; i<16; ++i) hit_start[i]  = *input_loc++;
+        for(int i=0; i<16; ++i) hit_end[i]    = *input_loc++;
         for(int i=0; i<16; ++i) hit_charge[i] = *input_loc++;
         for(int i=0; i<16; ++i) hit_tover[i]  = *input_loc++;
         
         for(int i=0; i<16; ++i){
             if(hit_charge[i] && chan[i]!=MAGIC){
-                primitive_queue.emplace_back(chan[i], timestamp+clocksPerTPCTick*hit_start[i], hit_charge[i], hit_tover[i]);
+                uint64_t hit_start=timestamp+clocksPerTPCTick*(int64_t(hit_end[i])-hit_tover[i]);
+                primitive_queue.emplace_back(chan[i], hit_start, hit_charge[i], hit_tover[i]);
                 ++nhits;
             }
         }
