@@ -88,13 +88,14 @@ TriggerPrimitiveFinder::getHitsForWindow(const std::deque<dune::TriggerPrimitive
         // std::cout << "Window [" << window_start << ", " << window_end << "] returned indices " << std::distance(queue.cbegin(), itlo) << " to " << std::distance(queue.cbegin(), itup) << std::endl;
 
         for(auto const& prim: primitive_queue){
-            if(prim.startTime>start_ts && prim.startTime<end_ts){
+            uint64_t endTime=prim.startTime+prim.timeOverThreshold;
+            if(endTime>start_ts && endTime<end_ts){
                 ret.push_back(prim);
             }
             // The trigger primitives are ordered by
-            // timestamp, so as soon as we've seen one that's too
+            // *end* timestamp, so as soon as we've seen one that's too
             // late, we're done
-            if(prim.startTime>end_ts){
+            if(endTime>end_ts){
                 break;
             }
         }
@@ -111,6 +112,7 @@ TriggerPrimitiveFinder::addHitsToQueue(uint64_t timestamp,
     uint16_t chan[16], hit_end[16], hit_charge[16], hit_tover[16];
     int nhits=0;
     std::lock_guard<std::mutex> guard(m_triggerPrimitiveMutex);
+    // std::cout << "Adding hits for ts " << timestamp << std::endl;
 
     while(*input_loc!=MAGIC){
         for(int i=0; i<16; ++i) chan[i]       = collection_index_to_offline(*input_loc++);
@@ -122,6 +124,7 @@ TriggerPrimitiveFinder::addHitsToQueue(uint64_t timestamp,
         for(int i=0; i<16; ++i){
             if(hit_charge[i] && chan[i]!=MAGIC){
                 uint64_t hit_start=timestamp+clocksPerTPCTick*(int64_t(hit_end[i])-hit_tover[i]);
+                // std::cout << "  " << hit_end[i] << " " << hit_tover[i] << " " << hit_start << std::endl;
                 primitive_queue.emplace_back(chan[i], hit_start, hit_charge[i], hit_tover[i]);
                 ++nhits;
             }
