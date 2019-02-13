@@ -12,6 +12,8 @@
 
 int main(int argc, char** argv)
 {
+    mf::setStandAloneMessageThreshold({"INFO"});
+
     // =============================================================================
     // Parse command line args
     int link, n_msgs;
@@ -72,8 +74,10 @@ int main(int argc, char** argv)
     netio_bg_thread.join();
     std::cout << "joined netio thread" << std::endl;
 
-    std::cout << "Retrieving hits from getHitsForWindow..." << std::flush;
-    std::vector<dune::TriggerPrimitive> hits=tpf->getHitsForWindow(first_ts, first_ts+n_msgs*FRAMES_PER_MSG);
+    const int clocksPerTPCTick=25;
+    uint64_t last_ts=first_ts+clocksPerTPCTick*n_msgs*FRAMES_PER_MSG/2;
+    std::cout << "Retrieving hits from getHitsForWindow(" << first_ts << ", " << last_ts << ")..." << std::flush;
+    std::vector<dune::TriggerPrimitive> hits=tpf->getHitsForWindow(first_ts, last_ts);
     std::cout << " got " << hits.size() << " of them" << std::endl;
     std::cout << "Finished listening to messages. Waiting for processing to finish" << std::endl;
     delete tpf;
