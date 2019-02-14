@@ -116,7 +116,10 @@ process_window_avx2(ProcessingInfo& info)
 
         // The channel numbers in each of the slots in the register
         __m256i channel_base=_mm256_set1_epi16(ireg*SAMPLES_PER_REGISTER);
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-variable"
         __m256i channels=_mm256_add_epi16(channel_base, iota);
+#pragma GCC diagnostic pop
 
         for(size_t itime=0; itime<info.timeWindowNumFrames; ++itime){
             const size_t msg_index=itime/12;
@@ -253,7 +256,7 @@ process_window_avx2(ProcessingInfo& info)
             // zero-flag if none of the same bits are set in %XMM0 and
             // %XMM1, and sets the carry-flag if everything that is
             // set in %XMM0 is also set in %XMM1:
-            int no_hits_to_store=_mm256_testc_si256(_mm256_setzero_si256(), left);
+            const int no_hits_to_store=_mm256_testc_si256(_mm256_setzero_si256(), left);
 
             if(!no_hits_to_store){
                 ++nhits;
@@ -263,23 +266,29 @@ process_window_avx2(ProcessingInfo& info)
                 // in a later processing step. (TODO: Maybe we should
                 // do that processing step in this function?)
 #define STORE_MASK(x) _mm256_storeu_si256(output_loc++, _mm256_blendv_epi8(_mm256_set1_epi16(0), x, left));
-                STORE_MASK(channels);
-                // Store the end time of the hit, not the start
-                // time. Since we also have the time-over-threshold,
-                // we can calculate the absolute 64-bit start time in
-                // the caller. This saves faffing with hits that span
-                // a message boundary, hopefully
+                // STORE_MASK(channels);
+                _mm256_storeu_si256(output_loc++, channels);
+                // // Store the end time of the hit, not the start
+                // // time. Since we also have the time-over-threshold,
+                // // we can calculate the absolute 64-bit start time in
+                // // the caller. This saves faffing with hits that span
+                // // a message boundary, hopefully
 
-                // STORE_MASK(hit_start);
-                STORE_MASK(_mm256_set1_epi16(itime));
+                // //STORE_MASK(hit_start);
+                _mm256_storeu_si256(output_loc++, timenow);
+                // STORE_MASK(timenow);
                 STORE_MASK(hit_charge);
-                STORE_MASK(hit_tover);
+                _mm256_storeu_si256(output_loc++, hit_tover);
+                // // STORE_MASK(hit_tover);
 
                 // reset hit_start, hit_charge and hit_tover in the channels we saved
-                hit_start=_mm256_blendv_epi8(hit_start, _mm256_set1_epi16(0), left);
-                hit_charge=_mm256_blendv_epi8(hit_charge, _mm256_set1_epi16(0), left);
-                hit_tover=_mm256_blendv_epi8(hit_tover, _mm256_set1_epi16(0), left);
+                const __m256i zero=_mm256_setzero_si256();
+                hit_start=_mm256_blendv_epi8(hit_start, zero, left);
+                hit_charge=_mm256_blendv_epi8(hit_charge, zero, left);
+                hit_tover=_mm256_blendv_epi8(hit_tover, zero, left);
+
             } // end if(!no_hits_to_store)
+
 
             prev_was_over=is_over;
         } // end loop over itime (times for this register)
@@ -303,5 +312,5 @@ process_window_avx2(ProcessingInfo& info)
     } // end loop over ireg (the 8 registers in this frame)
     // Store the output
     for(int i=0; i<4; ++i) _mm256_storeu_si256(output_loc++, _mm256_set1_epi16(MAGIC));
-    // info.nhits+=nhits;
+    info.nhits+=nhits;
 }
