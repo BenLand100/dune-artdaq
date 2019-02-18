@@ -64,7 +64,7 @@ public:
     const uint16_t* data() const { return m_array; }
 private:
     // alignas(32) std::array<uint16_t, N*16> m_array;
-    alignas(32) uint16_t __restrict__ m_array[N*16];
+    uint16_t __restrict__ m_array[N*16];
 };
 
 //==============================================================================
