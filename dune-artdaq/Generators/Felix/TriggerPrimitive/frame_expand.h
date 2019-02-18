@@ -50,7 +50,7 @@ class RegisterArray
 {
 public:
     // Get the value at the ith position as a 256-bit register
-    __m256i ymm(size_t i) { return _mm256_lddqu_si256(reinterpret_cast<__m256i*>(m_array+16*i)); }
+    __m256i ymm(size_t i) { return _mm256_lddqu_si256(reinterpret_cast<__m256i*>(m_array)+i); }
     void set_ymm(size_t i, __m256i val) { _mm256_storeu_si256(reinterpret_cast<__m256i*>(m_array)+i, val); }
 
     uint16_t uint16(size_t i) { return m_array[i]; }
@@ -64,7 +64,7 @@ public:
     const uint16_t* data() const { return m_array; }
 private:
     // alignas(32) std::array<uint16_t, N*16> m_array;
-    alignas(32) uint16_t m_array[N];
+    /*alignas(32)*/ uint16_t m_array[N*16];
 };
 
 //==============================================================================
