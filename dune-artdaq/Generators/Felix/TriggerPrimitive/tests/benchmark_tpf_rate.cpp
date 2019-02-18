@@ -8,7 +8,7 @@ int main(int argc, char** argv)
     int n_repeats=10;
     if(argc>=2)  sscanf(argv[1],"%d",&n_repeats);
 
-    mf::setStandAloneMessageThreshold({"INFO"});
+    mf::setStandAloneMessageThreshold({"ERROR"});
     TriggerPrimitiveFinder* tpf=new TriggerPrimitiveFinder;
 
     FrameFile f("/nfs/sw/work_dirs/phrodrig/felixcosmics.dat");
