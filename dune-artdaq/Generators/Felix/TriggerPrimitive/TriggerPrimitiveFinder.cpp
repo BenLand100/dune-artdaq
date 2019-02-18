@@ -227,7 +227,7 @@ void TriggerPrimitiveFinder::processing_thread(void* context, uint8_t first_regi
     // -------------------------------------------------------- 
     // Cleanup
     receiver.closeSocket();
-    delete primfind_dest;
+    delete[] primfind_dest;
 }
 
 
