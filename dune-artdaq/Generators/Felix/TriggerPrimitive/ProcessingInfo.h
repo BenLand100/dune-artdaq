@@ -26,21 +26,21 @@ struct ChanState
     // TODO: DRY
     static const int NTAPS=8;
 
-    int16_t pedestals[REGISTERS_PER_FRAME*SAMPLES_PER_REGISTER];
-    int16_t quantile25[REGISTERS_PER_FRAME*SAMPLES_PER_REGISTER];
-    int16_t quantile75[REGISTERS_PER_FRAME*SAMPLES_PER_REGISTER];
+    alignas(32) int16_t __restrict__ pedestals[REGISTERS_PER_FRAME*SAMPLES_PER_REGISTER];
+    alignas(32) int16_t __restrict__ quantile25[REGISTERS_PER_FRAME*SAMPLES_PER_REGISTER];
+    alignas(32) int16_t __restrict__ quantile75[REGISTERS_PER_FRAME*SAMPLES_PER_REGISTER];
 
-    int16_t accum[REGISTERS_PER_FRAME*SAMPLES_PER_REGISTER];
-    int16_t accum25[REGISTERS_PER_FRAME*SAMPLES_PER_REGISTER];
-    int16_t accum75[REGISTERS_PER_FRAME*SAMPLES_PER_REGISTER];
+    alignas(32) int16_t __restrict__ accum[REGISTERS_PER_FRAME*SAMPLES_PER_REGISTER];
+    alignas(32) int16_t __restrict__ accum25[REGISTERS_PER_FRAME*SAMPLES_PER_REGISTER];
+    alignas(32) int16_t __restrict__ accum75[REGISTERS_PER_FRAME*SAMPLES_PER_REGISTER];
 
     // Variables for filtering
-    int16_t prev_samp[REGISTERS_PER_FRAME*SAMPLES_PER_REGISTER*NTAPS];
+    alignas(32) int16_t __restrict__ prev_samp[REGISTERS_PER_FRAME*SAMPLES_PER_REGISTER*NTAPS];
 
     // Variables for hit finding
-    int16_t prev_was_over[REGISTERS_PER_FRAME*SAMPLES_PER_REGISTER]; // was the previous sample over threshold?
-    int16_t hit_charge[REGISTERS_PER_FRAME*SAMPLES_PER_REGISTER];
-    int16_t hit_tover[REGISTERS_PER_FRAME*SAMPLES_PER_REGISTER]; // time over threshold
+    alignas(32) int16_t __restrict__ prev_was_over[REGISTERS_PER_FRAME*SAMPLES_PER_REGISTER]; // was the previous sample over threshold?
+    alignas(32) int16_t __restrict__ hit_charge[REGISTERS_PER_FRAME*SAMPLES_PER_REGISTER];
+    alignas(32) int16_t __restrict__ hit_tover[REGISTERS_PER_FRAME*SAMPLES_PER_REGISTER]; // time over threshold
 };
 
 struct ProcessingInfo
