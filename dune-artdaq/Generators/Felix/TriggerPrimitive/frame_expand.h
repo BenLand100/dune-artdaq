@@ -50,8 +50,8 @@ class RegisterArray
 {
 public:
     // Get the value at the ith position as a 256-bit register
-    __m256i ymm(size_t i) { return _mm256_lddqu_si256(reinterpret_cast<__m256i*>(m_array.data()+16*i)); }
-    void set_ymm(size_t i, __m256i val) { _mm256_storeu_si256(reinterpret_cast<__m256i*>(m_array.data())+i, val); }
+    __m256i ymm(size_t i) { return _mm256_lddqu_si256(reinterpret_cast<__m256i*>(m_array+16*i)); }
+    void set_ymm(size_t i, __m256i val) { _mm256_storeu_si256(reinterpret_cast<__m256i*>(m_array)+i, val); }
 
     uint16_t uint16(size_t i) { return m_array[i]; }
     void set_uint16(size_t i, uint16_t val) { m_array[i]=val; }
@@ -60,10 +60,11 @@ public:
     uint16_t uint16(size_t i, size_t j) { return m_array[16*i+j]; }
     void set_uint16(size_t i, size_t j, uint16_t val) { m_array[16*i+j]=val; }
 
-    uint16_t* data() { return m_array.data(); }
-    const uint16_t* data() const { return m_array.data(); }
+    uint16_t* data() { return m_array; }
+    const uint16_t* data() const { return m_array; }
 private:
-    alignas(32) std::array<uint16_t, N*16> m_array;
+    // alignas(32) std::array<uint16_t, N*16> m_array;
+    alignas(32) uint16_t m_array[N];
 };
 
 //==============================================================================
