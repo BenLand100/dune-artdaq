@@ -63,7 +63,7 @@ public:
     uint16_t* data() { return m_array.data(); }
     const uint16_t* data() const { return m_array.data(); }
 private:
-    std::array<uint16_t, N*16> m_array;
+    alignas(alignof(__m256i)) std::array<uint16_t, N*16> m_array;
 };
 
 //==============================================================================
