@@ -37,7 +37,7 @@ struct WindowCollectionADCs {
     }
 
     size_t numMessages;
-    MessageCollectionADCs* fragments;
+    MessageCollectionADCs* __restrict__ fragments;
 };
 
 // A little wrapper around an array of 256-bit registers, so that we
