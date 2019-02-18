@@ -87,7 +87,7 @@ RegisterArray<2> expand_segment_collection(const dune::ColdataBlock& block);
 // format and rearrange them into 16-bit values in channel order. A
 // 256-bit register holds 21-and-a-bit 12-bit values: we expand 16 of
 // them into 16-bit values
-__m256i expand_two_segments(const dune::ColdataSegment* first_segment);
+__m256i expand_two_segments(const dune::ColdataSegment* __restrict__ first_segment);
 
 //==============================================================================
 
@@ -98,25 +98,25 @@ __m256i expand_two_segments(const dune::ColdataSegment* first_segment);
 // channels in a dune::ColdataBlock, so we shuffle valid values into the
 // 0-11 entries of the register, and leave 4 invalid values at the end of each
 // register
-RegisterArray<2> get_block_collection_adcs(const dune::ColdataBlock& block);
+RegisterArray<2> get_block_collection_adcs(const dune::ColdataBlock& __restrict__ block);
 
 //==============================================================================
 // As above, for all collection and induction ADCs
-RegisterArray<4> get_block_all_adcs(const dune::ColdataBlock& block);
+RegisterArray<4> get_block_all_adcs(const dune::ColdataBlock& __restrict__ block);
 
 //==============================================================================
 // Expand all the collection channels into 6 AVX2 registers
-RegisterArray<REGISTERS_PER_FRAME> get_frame_collection_adcs(const dune::FelixFrame* frame);
+RegisterArray<REGISTERS_PER_FRAME> get_frame_collection_adcs(const dune::FelixFrame* __restrict__ frame);
 
 //==============================================================================
 // As above, for all collection and induction ADCs
-RegisterArray<16> get_frame_all_adcs(const dune::FelixFrame* frame);
+RegisterArray<16> get_frame_all_adcs(const dune::FelixFrame* __restrict__ frame);
 
 //==============================================================================
 int collection_index_to_offline(int index);
 
 //======================================================================
-RegisterArray<REGISTERS_PER_FRAME*FRAMES_PER_MSG> expand_message_adcs(const SUPERCHUNK_CHAR_STRUCT& ucs);
+RegisterArray<REGISTERS_PER_FRAME*FRAMES_PER_MSG> expand_message_adcs(const SUPERCHUNK_CHAR_STRUCT& __restrict__ ucs);
 
 #endif // include guard
 

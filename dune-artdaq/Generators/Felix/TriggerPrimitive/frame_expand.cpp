@@ -28,9 +28,9 @@ void print256_as16_dec(__m256i var)
 // Abortive attempt at expanding just the collection channels, instead
 // of expanding all channels and then picking out just the collection
 // ones.
-RegisterArray<2> expand_segment_collection(const dune::ColdataBlock& block)
+RegisterArray<2> expand_segment_collection(const dune::ColdataBlock& __restrict__ block)
 {
-    const __m256i* coldata_start=reinterpret_cast<const __m256i*>(&block.segments[0]);
+    const __m256i* __restrict__ coldata_start=reinterpret_cast<const __m256i*>(&block.segments[0]);
     __m256i raw0=_mm256_lddqu_si256(coldata_start+0);
     __m256i raw1=_mm256_lddqu_si256(coldata_start+1);
     __m256i raw2=_mm256_lddqu_si256(coldata_start+2);
@@ -85,9 +85,9 @@ RegisterArray<2> expand_segment_collection(const dune::ColdataBlock& block)
 // format and rearrange them into 16-bit values in channel order. A
 // 256-bit register holds 21-and-a-bit 12-bit values: we expand 16 of
 // them into 16-bit values
-__m256i expand_two_segments(const dune::ColdataSegment* first_segment)
+__m256i expand_two_segments(const dune::ColdataSegment* __restrict__ first_segment)
 {
-    const __m256i* segments_start=reinterpret_cast<const __m256i*>(first_segment);
+    const __m256i* __restrict__ segments_start=reinterpret_cast<const __m256i*>(first_segment);
     __m256i raw=_mm256_lddqu_si256(segments_start);
 
     // First: the ADCs are arranged in a repeating pattern of 3 32-bit
@@ -150,7 +150,7 @@ __m256i expand_two_segments(const dune::ColdataSegment* first_segment)
 // channels in a dune::ColdataBlock, so we shuffle valid values into the
 // 0-11 entries of the register, and leave 4 invalid values at the end of each
 // register
-RegisterArray<2> get_block_collection_adcs(const dune::ColdataBlock& block)
+RegisterArray<2> get_block_collection_adcs(const dune::ColdataBlock& __restrict__ block)
 {
     // First expand all of the channels into `expanded_all`
     __m256i expanded_all[4];
@@ -185,7 +185,7 @@ RegisterArray<2> get_block_collection_adcs(const dune::ColdataBlock& block)
 }
 
 //==============================================================================
-RegisterArray<4> get_block_all_adcs(const dune::ColdataBlock& block)
+RegisterArray<4> get_block_all_adcs(const dune::ColdataBlock& __restrict__ block)
 {
     RegisterArray<4> expanded_all;
     for(int j=0; j<4; ++j){
@@ -196,7 +196,7 @@ RegisterArray<4> get_block_all_adcs(const dune::ColdataBlock& block)
 
 //==============================================================================
 //
-RegisterArray<REGISTERS_PER_FRAME> get_frame_collection_adcs(const dune::FelixFrame* frame)
+RegisterArray<REGISTERS_PER_FRAME> get_frame_collection_adcs(const dune::FelixFrame* __restrict__ frame)
 {
     // Each coldata block has 24 collection channels, so we have to
     // put it in two registers, using 12 of the 16 slots in each
@@ -250,7 +250,7 @@ RegisterArray<REGISTERS_PER_FRAME> get_frame_collection_adcs(const dune::FelixFr
 }
 
 //==============================================================================
-RegisterArray<16> get_frame_all_adcs(const dune::FelixFrame* frame)
+RegisterArray<16> get_frame_all_adcs(const dune::FelixFrame* __restrict__ frame)
 {
     RegisterArray<16> adcs;
     for(int i=0; i<4; ++i){
@@ -291,7 +291,7 @@ int collection_index_to_offline(int index)
 }
 
 //======================================================================
-RegisterArray<REGISTERS_PER_FRAME*FRAMES_PER_MSG> expand_message_adcs(const SUPERCHUNK_CHAR_STRUCT& ucs)
+RegisterArray<REGISTERS_PER_FRAME*FRAMES_PER_MSG> expand_message_adcs(const SUPERCHUNK_CHAR_STRUCT& __restrict__ ucs)
 {
     RegisterArray<REGISTERS_PER_FRAME*FRAMES_PER_MSG> adcs;
     for(size_t iframe=0; iframe<FRAMES_PER_MSG; ++iframe){
