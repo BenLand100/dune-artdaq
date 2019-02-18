@@ -54,7 +54,7 @@ static_assert(sizeof(struct IOVEC_CHAR_STRUCT) == 236640, "Check your assumption
 
 static const size_t SUPERCHUNK_FRAME_SIZE = 5568; // for 12: 5568  for 6: 2784
 struct SUPERCHUNK_CHAR_STRUCT {
-    alignas(32) char fragments[SUPERCHUNK_FRAME_SIZE];
+    char fragments[SUPERCHUNK_FRAME_SIZE];
 };
 static_assert(sizeof(struct SUPERCHUNK_CHAR_STRUCT) == 5568, "Check your assumptions on SUPERCHUNK_CHAR_STRUCT");
 
