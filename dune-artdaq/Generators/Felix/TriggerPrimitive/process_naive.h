@@ -56,7 +56,6 @@ process_window_naive(ProcessingInfo& info)
 
         // Variables for hit finding
         int16_t& prev_was_over=state.prev_was_over[ichan]; // was the previous sample over threshold?
-        int16_t& hit_start=state.hit_start[ichan]; // start time of the hit
         int16_t& hit_charge=state.hit_charge[ichan];
         int16_t& hit_tover=state.hit_tover[ichan]; // time over threshold
 
@@ -78,11 +77,8 @@ process_window_naive(ProcessingInfo& info)
             frugal_accum_update(median, sample, accum, 10);
 
             const int16_t sigma=quantile75-quantile25;
-            // if(ichan==0 && itime<100) printf("loq: %d upq: %d iqr: %d\n", quantile25, quantile75, sigma);
 
             sample-=median;
-
-            // if(STORE_INTERMEDIATE) data->pedsub[index]=sample;
 
             // --------------------------------------------------------------
             // Filtering
@@ -98,18 +94,10 @@ process_window_naive(ProcessingInfo& info)
             prev_samp[itime%NTAPS]=sample;
             int16_t filt=filt_tmp;
 
-            // if(ichan==0) std::cout << filt << " ";
-            // if(STORE_INTERMEDIATE) data->filtered[index]=filt;
-
             // --------------------------------------------------------------
             // Hit finding
             // --------------------------------------------------------------
             bool is_over=filt > 5*sigma*info.multiplier;
-            // if(ichan==0) std::cerr << itime << std::endl;
-            if(is_over && !prev_was_over){
-                // if(ichan==0) std::cerr << "\t" << itime << std::endl;
-                hit_start=itime;
-            }
             if(is_over){
                 // Simulate saturated add
                 int32_t tmp_charge=hit_charge;
@@ -118,19 +106,14 @@ process_window_naive(ProcessingInfo& info)
                 hit_charge=(int16_t)tmp_charge;
                 hit_tover++;
                 prev_was_over=true;
-
-                // if(ichan==36){
-                //     printf("time: % 3ld median: % 6d s: % 6d filt: % 6d hit_charge: % 6d\n", itime, median, sample, filt, hit_charge);
-                // }
             }
             if(prev_was_over && !is_over){
                 // We reached the end of the hit: write it out
                 (*output_loc++) = (uint16_t)ichan;
-                (*output_loc++) = hit_start;
+                (*output_loc++) = itime;
                 (*output_loc++) = hit_charge;
                 (*output_loc++) = hit_tover;
 
-                hit_start=0;
                 hit_charge=0;
                 hit_tover=0;
 

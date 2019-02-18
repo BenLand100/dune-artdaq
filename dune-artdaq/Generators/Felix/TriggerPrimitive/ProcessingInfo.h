@@ -17,7 +17,6 @@ struct ChanState
             accum25[i]=0;
             accum75[i]=0;
             prev_was_over[i]=0;
-            hit_start[i]=0;
             hit_charge[i]=0;
             hit_tover[i]=0;
             for(size_t j=0; j<NTAPS; ++j) prev_samp[i*NTAPS+j]=0;
@@ -40,7 +39,6 @@ struct ChanState
 
     // Variables for hit finding
     int16_t prev_was_over[REGISTERS_PER_FRAME*SAMPLES_PER_REGISTER]; // was the previous sample over threshold?
-    int16_t hit_start[REGISTERS_PER_FRAME*SAMPLES_PER_REGISTER]; // start time of the hit
     int16_t hit_charge[REGISTERS_PER_FRAME*SAMPLES_PER_REGISTER];
     int16_t hit_tover[REGISTERS_PER_FRAME*SAMPLES_PER_REGISTER]; // time over threshold
 };
