@@ -47,6 +47,11 @@ cet_make_exec(number_collection
   LIBRARIES ${TP_LIBS}
 )
 
+cet_make_exec(number_all_channels
+  SOURCE number_all_channels.cpp
+  LIBRARIES ${TP_LIBS}
+)
+
 # cet_make_exec(make_unique_tpf
 #   SOURCE make_unique_tpf.cpp
 #   LIBRARIES ${TP_LIBS}
@@ -89,6 +94,11 @@ cet_make_exec(dump_link
   LIBRARIES ${TP_LIBS}
 )
 
+cet_make_exec(subscribe_only
+  SOURCE subscribe_only.cpp
+  LIBRARIES ${TP_LIBS}
+)
+
 cet_make_exec(read_raw_file
   SOURCE read_raw_file.cpp
   LIBRARIES ${TP_LIBS}
@@ -96,6 +106,11 @@ cet_make_exec(read_raw_file
 
 cet_make_exec(test_unwindowed_zmq
   SOURCE test_unwindowed_zmq.cpp
+  LIBRARIES ${TP_LIBS} zmq
+)
+
+cet_make_exec(test_expand_segment_collection
+  SOURCE test_expand_segment_collection.cpp
   LIBRARIES ${TP_LIBS} zmq
 )
 

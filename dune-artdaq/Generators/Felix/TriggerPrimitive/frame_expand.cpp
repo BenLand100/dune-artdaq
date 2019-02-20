@@ -9,6 +9,14 @@ void print256(__m256i var)
 }
 
 //==============================================================================
+// Print a 256-bit register interpreting it as packed 8-bit values, in reverse order
+void printr256(__m256i var)
+{
+    uint8_t *val = (uint8_t*) &var;
+    for(int i=31; i>=0; --i) printf("%02x ", val[i]);
+}
+
+//==============================================================================
 // Print a 256-bit register interpreting it as packed 16-bit values
 void print256_as16(__m256i var)
 {
@@ -34,6 +42,9 @@ RegisterArray<2> expand_segment_collection(const dune::ColdataBlock& __restrict_
     __m256i raw0=_mm256_lddqu_si256(coldata_start+0);
     __m256i raw1=_mm256_lddqu_si256(coldata_start+1);
     __m256i raw2=_mm256_lddqu_si256(coldata_start+2);
+    printr256(raw0); printf("  raw0\n");
+    printr256(raw1); printf("  raw1\n");
+    printr256(raw2); printf("  raw2\n");
 
     // For the first output item, we want these bytes:
     //
@@ -72,8 +83,40 @@ RegisterArray<2> expand_segment_collection(const dune::ColdataBlock& __restrict_
 #pragma GCC diagnostic pop
     __m256i out0=_mm256_blendv_epi8(raw0, raw1, blend_mask0);
     __m256i out1=_mm256_blendv_epi8(raw1, raw2, blend_mask1);
-    print256(out0); printf("  out0\n");
-    print256(out1); printf("  out1\n");
+    printr256(out0); printf("  out0\n");
+    printr256(out1); printf("  out1\n");
+
+    // With the collection channels set to 0xcc and induction set to 0xff:
+    // 31 30 29 28 27 26 25 24 23 22 21 20 19 18 17 16 15 14 13 12 11 10  9  8  7  6  5  4  3  2  1  0
+    // -----------------------------------------------------------------------------------------------
+    // ff cc ff cc ff cc ff cc cc ff cc ff cc ff cc ff cc ff cc ff cc ff cc ff cc ff ff ff ff ff ff ff   raw0
+    // cc ff cc ff cc ff cc ff cc ff ff ff ff ff ff ff ff ff ff ff ff ff ff cc ff cc ff cc ff cc ff cc   raw1
+    // ff ff ff ff ff ff ff cc ff cc ff cc ff cc ff cc ff cc ff cc ff cc ff cc cc ff cc ff cc ff cc ff   raw2
+    // cc cc cc cc cc cc cc cc cc ff cc ff cc ff cc ff cc ff cc ff cc ff cc cc cc cc ff cc ff cc ff cc   out0
+    // cc ff cc ff cc ff cc cc cc cc ff cc ff cc ff cc ff cc ff cc ff cc ff cc cc ff cc ff cc ff cc ff   out1
+
+    // Same with the "don't care"s blanked out: 
+    // 31 30 29 28 27 26 25 24 23 22 21 20 19 18 17 16 15 14 13 12 11 10  9  8  7  6  5  4  3  2  1  0
+    // -----------------------------------------------------------------------------------------------
+    //  x  0  x  0  x  0  x  0  0  x  0  x  0  x  0  x  0  x  0  x  0  x  0  1  0  1  x  1  x  1  x  1   blend_mask0
+    //    cc    cc    cc    cc cc    cc    cc    cc    cc    cc    cc    cc cc cc cc    cc    cc    cc   out0
+
+    // 31 30 29 28 27 26 25 24 23 22 21 20 19 18 17 16 15 14 13 12 11 10  9  8  7  6  5  4  3  2  1  0
+    // -----------------------------------------------------------------------------------------------
+    //  0  x  0  x  0  x  0  1  0  1  x  1  x  1  x  1  x  1  x  1  x  1  x  1  1  x  1  x  1  x  1  x   blend_mask1
+    // cc    cc    cc    cc cc cc cc    cc    cc    cc    cc    cc    cc    cc cc    cc    cc    cc      out1
+
+    // So only 0xcc's remain. That's good. Next, set the first five
+    // collection channels to 0x210, 0x543, 0x876, 0xba9, 0xedc to see where
+    // they are:
+
+    // 31 30 29 28 27 26 25 24 23 22 21 20 19 18 17 16 15 14 13 12 11 10  9  8  7  6  5  4  3  2  1  0
+    // -----------------------------------------------------------------------------------------------
+    // ff cc ff cc ff cc ff cc cc ff ce ff dc ff ba ff 98 ff 76 ff 54 ff 32 ff 10 ff ff ff ff ff ff ff   raw0
+    // cc ff cc ff cc ff cc ff cc ff ff ff ff ff ff ff ff ff ff ff ff ff ff cc ff cc ff cc ff cc ff cc   raw1
+    // ff ff ff ff ff ff ff cc ff cc ff cc ff cc ff cc ff cc ff cc ff cc ff cc cc ff cc ff cc ff cc ff   raw2
+    // cc cc cc cc cc cc cc cc cc ff ce ff dc ff ba ff 98 ff 76 ff 54 ff 32 cc 10 cc ff cc ff cc ff cc   out0
+    // cc ff cc ff cc ff cc cc cc cc ff cc ff cc ff cc ff cc ff cc ff cc ff cc cc ff cc ff cc ff cc ff   out1
 
     // ...then I got bored trying to work out the shuffle needed, but
     // it's possible in principle

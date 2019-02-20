@@ -79,7 +79,7 @@ int main(int argc, char** argv)
         uint8_t fiber_no=framearray->fiber_no();
         uint8_t crate_no=framearray->crate_no();
         uint8_t slot_no=framearray->slot_no();
-        
+        std::cout << "First timestamp is 0x" << std::hex << timestamp << std::dec << " fiber=" << (int)fiber_no << " crate=" << (int)crate_no << " slot=" << (int)slot_no << std::endl;
         fout.write((char*)&timestamp, sizeof(timestamp));
         fout.write((char*)&fiber_no, sizeof(fiber_no));
         fout.write((char*)&crate_no, sizeof(crate_no));

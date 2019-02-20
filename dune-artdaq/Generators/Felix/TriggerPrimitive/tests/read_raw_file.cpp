@@ -25,6 +25,7 @@ int main(int argc, char** argv)
     fin.read((char*)&n_channels,   sizeof(n_channels));
 
     std::cout << timestamp << " " << ((int)fiber_no) << " " << ((int)crate_no) << " " << ((int)slot_no) << std::endl;
+
     uint16_t adcs[16*16]; // Size to the maximum possible number of channels
     while(!fin.eof()){
         fin.read((char*)adcs, n_channels*sizeof(uint16_t));
