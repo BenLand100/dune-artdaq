@@ -87,7 +87,7 @@ RegisterArray<2> expand_segment_collection(const dune::ColdataBlock& block);
 // format and rearrange them into 16-bit values in channel order. A
 // 256-bit register holds 21-and-a-bit 12-bit values: we expand 16 of
 // them into 16-bit values
-__m256i expand_two_segments(const dune::ColdataSegment* __restrict__ first_segment);
+inline __m256i expand_two_segments(const dune::ColdataSegment* __restrict__ first_segment);
 
 //==============================================================================
 
@@ -98,7 +98,7 @@ __m256i expand_two_segments(const dune::ColdataSegment* __restrict__ first_segme
 // channels in a dune::ColdataBlock, so we shuffle valid values into the
 // 0-11 entries of the register, and leave 4 invalid values at the end of each
 // register
-RegisterArray<2> get_block_collection_adcs(const dune::ColdataBlock& __restrict__ block);
+inline RegisterArray<2> get_block_collection_adcs(const dune::ColdataBlock& __restrict__ block);
 
 //==============================================================================
 // As above, for all collection and induction ADCs
