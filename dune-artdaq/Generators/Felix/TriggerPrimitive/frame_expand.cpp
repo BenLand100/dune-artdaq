@@ -113,10 +113,8 @@ RegisterArray<2> expand_segment_collection(const dune::ColdataBlock& __restrict_
     // 31 30 29 28 27 26 25 24 23 22 21 20 19 18 17 16 15 14 13 12 11 10  9  8  7  6  5  4  3  2  1  0
     // -----------------------------------------------------------------------------------------------
     // ff cc ff cc ff cc ff cc cc ff ce ff dc ff ba ff 98 ff 76 ff 54 ff 32 ff 10 ff ff ff ff ff ff ff   raw0
-    // cc ff cc ff cc ff cc ff cc ff ff ff ff ff ff ff ff ff ff ff ff ff ff cc ff cc ff cc ff cc ff cc   raw1
-    // ff ff ff ff ff ff ff cc ff cc ff cc ff cc ff cc ff cc ff cc ff cc ff cc cc ff cc ff cc ff cc ff   raw2
     // cc cc cc cc cc cc cc cc cc ff ce ff dc ff ba ff 98 ff 76 ff 54 ff 32 cc 10 cc ff cc ff cc ff cc   out0
-    // cc ff cc ff cc ff cc cc cc cc ff cc ff cc ff cc ff cc ff cc ff cc ff cc cc ff cc ff cc ff cc ff   out1
+
 
     // ...then I got bored trying to work out the shuffle needed, but
     // it's possible in principle
