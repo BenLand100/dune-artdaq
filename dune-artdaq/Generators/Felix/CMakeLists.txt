@@ -10,7 +10,12 @@ MESSAGE(INFO "QAT DIR FOR INCLUDE: " $ENV{ICP_ROOT})
 MESSAGE(INFO "QAT DIR FOR INCLUDE: " $ENV{ICP_ROOT}/qatzip2/qatzip/include )
 include_directories( SYSTEM $ENV{ICP_ROOT}/qatzip2/qatzip/include )
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=native -DBOOST_THREAD_VERSION=4 -DBOOST_THREAD_PROVIDES_FUTURE_WHEN_ALL_WHEN_ANY=1 -DBOOST_THREAD_PROVIDES_EXECUTORS=1")
+# Use native architecture but explicitly turn off AVX512 instructions, so we don't have a tiny number of AVX512 instructions causing severe downclocking. Option names found by:
+#
+# gcc -march=native -E -v - </dev/null 2>&1
+#
+# on np04-srv-019, as suggested at https://stackoverflow.com/questions/5470257
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=native -mno-avx512f -mno-avx512er -mno-avx512cd -mno-avx512pf -mno-avx512dq -mno-avx512bw -mno-avx512vl -mno-avx512ifma -mno-avx512vbmi -mtune=native")
 
 if(DEFINED ENV{FABRIC_ROOT_DIR})
     message(STATUS "FABRIC_ROOT_DIR environment variable defined. Bypassing UPS netio...")
