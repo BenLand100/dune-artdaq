@@ -23,7 +23,7 @@ namespace artdaq
 class TriggerPrimitiveFinder
 {
 public:
-    TriggerPrimitiveFinder(int32_t cpu_offset=-1);
+    TriggerPrimitiveFinder(int32_t cpu_offset=-1, int item_queue_size=1000000);
   
     ~TriggerPrimitiveFinder();
 
@@ -40,7 +40,7 @@ public:
     // void waitForJobs() { for(auto& f: m_futures) f.wait(); }
 private:
 
-    void processing_thread(void* context, uint8_t first_register, uint8_t last_register);
+    void processing_thread(uint8_t first_register, uint8_t last_register);
 
     std::vector<dune::TriggerPrimitive> getHitsForWindow(const std::deque<dune::TriggerPrimitive>& primitive_queue,
                                                          uint64_t start_ts, uint64_t end_ts);
@@ -60,18 +60,16 @@ private:
                                 std::deque<dune::TriggerPrimitive>& primitive_queue);
 
 
-    void measure_latency(const ItemToProcess& item);
+    void measure_latency(const ProcessingTasks::ItemToProcess& item);
 
     // The queue of trigger primitives found, and a mutex to protect it
     std::deque<dune::TriggerPrimitive> m_triggerPrimitives;
     std::mutex m_triggerPrimitiveMutex;
 
     std::atomic<uint64_t> m_latestProcessedTimestamp;
-    void* m_zmq_context;
     std::thread m_processingThread;
-    ItemPublisher m_itemPublisher;
     std::atomic<bool> m_readyForMessages;
-    folly::ProducerConsumerQueue<ItemToProcess> m_itemsToProcess;
+    folly::ProducerConsumerQueue<ProcessingTasks::ItemToProcess> m_itemsToProcess;
 };
 
 #endif

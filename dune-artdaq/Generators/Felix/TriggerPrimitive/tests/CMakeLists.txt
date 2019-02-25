@@ -104,11 +104,6 @@ cet_make_exec(read_raw_file
   LIBRARIES ${TP_LIBS}
 )
 
-cet_make_exec(test_unwindowed_zmq
-  SOURCE test_unwindowed_zmq.cpp
-  LIBRARIES ${TP_LIBS} zmq
-)
-
 cet_make_exec(test_expand_segment_collection
   SOURCE test_expand_segment_collection.cpp
   LIBRARIES ${TP_LIBS} zmq
