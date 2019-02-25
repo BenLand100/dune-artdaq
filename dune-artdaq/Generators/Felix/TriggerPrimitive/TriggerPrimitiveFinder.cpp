@@ -12,7 +12,9 @@ const int64_t clocksPerTPCTick=25;
 //======================================================================
 TriggerPrimitiveFinder::TriggerPrimitiveFinder(int32_t cpu_offset)
     : m_zmq_context(zmq_ctx_new()),
-      m_itemPublisher(m_zmq_context)
+      m_itemPublisher(m_zmq_context),
+      m_readyForMessages(false),
+      m_itemsToProcess(10000000)
 {
     m_processingThread=std::thread(&TriggerPrimitiveFinder::processing_thread, this, m_zmq_context, 0, REGISTERS_PER_FRAME);
     if(cpu_offset>=0){
@@ -29,6 +31,7 @@ TriggerPrimitiveFinder::TriggerPrimitiveFinder(int32_t cpu_offset)
 //======================================================================
 TriggerPrimitiveFinder::~TriggerPrimitiveFinder()
 {
+    m_itemsToProcess.write(ItemToProcess{ItemPublisher::END_OF_MESSAGES, nullptr, ItemPublisher::now_us()});
     m_itemPublisher.publishStop(); // Tell the processing thread to stop
     m_processingThread.join(); // Wait for it to actually stop
     m_itemPublisher.closeSocket();
@@ -38,9 +41,11 @@ TriggerPrimitiveFinder::~TriggerPrimitiveFinder()
 //======================================================================
 void TriggerPrimitiveFinder::addMessage(SUPERCHUNK_CHAR_STRUCT& ucs)
 {
-    // The first frame in the message
-    dune::FelixFrame* frame=reinterpret_cast<dune::FelixFrame*>(&ucs);
-    m_itemPublisher.publishItem(frame->timestamp(), &ucs);
+    if(m_readyForMessages.load()){
+        // The first frame in the message
+        dune::FelixFrame* frame=reinterpret_cast<dune::FelixFrame*>(&ucs);
+        m_itemsToProcess.write(ItemToProcess{frame->timestamp(), &ucs, ItemPublisher::now_us()});
+    }
 }
 
 //======================================================================
@@ -162,11 +167,11 @@ void TriggerPrimitiveFinder::measure_latency(const ItemToProcess& item)
 }
 
 //======================================================================
-void TriggerPrimitiveFinder::processing_thread(void* context, uint8_t first_register, uint8_t last_register)
+void TriggerPrimitiveFinder::processing_thread(void* /*context*/, uint8_t first_register, uint8_t last_register)
 {
     pthread_setname_np(pthread_self(), "processing");
 
-    ItemReceiver receiver(context);
+    // ItemReceiver receiver(context);
     // -------------------------------------------------------- 
     // Set up the processing info
     
@@ -201,11 +206,13 @@ void TriggerPrimitiveFinder::processing_thread(void* context, uint8_t first_regi
     int nmsg=0;
     bool first=true;
 
+    m_readyForMessages.store(true);
+
     while(true){
-        bool should_stop;
-        ItemToProcess item=receiver.recvItem(should_stop);
+        ItemToProcess item;
+        while(!m_itemsToProcess.read(item)){ std::this_thread::sleep_for(std::chrono::microseconds(10)); }
         ++nmsg;
-        if(should_stop) break;
+        if(item.timestamp==ItemPublisher::END_OF_MESSAGES) break;
         measure_latency(item);
         RegisterArray<REGISTERS_PER_FRAME*FRAMES_PER_MSG> expanded=expand_message_adcs(*item.scs);
         MessageCollectionADCs* mcadc=reinterpret_cast<MessageCollectionADCs*>(expanded.data());
@@ -226,7 +233,7 @@ void TriggerPrimitiveFinder::processing_thread(void* context, uint8_t first_regi
 
     // -------------------------------------------------------- 
     // Cleanup
-    receiver.closeSocket();
+    //receiver.closeSocket();
     delete[] primfind_dest;
 }
 

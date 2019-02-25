@@ -70,6 +70,8 @@ private:
     void* m_zmq_context;
     std::thread m_processingThread;
     ItemPublisher m_itemPublisher;
+    std::atomic<bool> m_readyForMessages;
+    folly::ProducerConsumerQueue<ItemToProcess> m_itemsToProcess;
 };
 
 #endif

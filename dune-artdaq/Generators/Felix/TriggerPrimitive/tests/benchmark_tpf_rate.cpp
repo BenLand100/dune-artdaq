@@ -10,7 +10,7 @@ int main(int argc, char** argv)
 
     mf::setStandAloneMessageThreshold({"ERROR"});
     TriggerPrimitiveFinder* tpf=new TriggerPrimitiveFinder;
-
+    // std::this_thread::sleep_for(std::chrono::seconds(1));
     FrameFile f("/nfs/sw/work_dirs/phrodrig/felixcosmics.dat");
     char* fragment=reinterpret_cast<char*>(f.fragment(0));
     size_t length=FrameFile::frames_per_fragment*sizeof(dune::FelixFrame);
