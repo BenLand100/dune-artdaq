@@ -2,7 +2,6 @@
 
 #include "dune-artdaq/DAQLogger/DAQLogger.hh"
 #include "artdaq-core/Data/Fragment.hh"
-#include "dune-raw-data/Overlays/FelixHitFragment.hh"
 #include "dune-raw-data/Overlays/FelixFragment.hh"
 
 #include <cstddef> // For offsetof
@@ -57,7 +56,7 @@ void TriggerPrimitiveFinder::hitsToFragment(uint64_t timestamp, uint32_t window_
     // uint64_t timestamp
     // uint32_t nhits
     // N*TriggerPrimitive
-    fragPtr->resizeBytes(sizeof(dune::FelixHitFragment::Body)+tps.size()*sizeof(dune::TriggerPrimitive));
+    fragPtr->resizeBytes(sizeof(dune::FelixFragmentHits::Body)+tps.size()*sizeof(dune::TriggerPrimitive));
     dune::FelixFragmentHits hitFrag(*fragPtr);
 
     hitFrag.set_timestamp(timestamp);
