@@ -95,7 +95,8 @@ TriggerPrimitiveFinder::getHitsForWindow(const std::deque<dune::TriggerPrimitive
         // std::cout << "Window [" << window_start << ", " << window_end << "] returned indices " << std::distance(queue.cbegin(), itlo) << " to " << std::distance(queue.cbegin(), itup) << std::endl;
 
         for(auto const& prim: primitive_queue){
-            uint64_t endTime=prim.startTime+prim.timeOverThreshold;
+            // startTime is in PDTS clock ticks, but timeOverThreshold is in TPC ticks
+            uint64_t endTime=prim.startTime+clocksPerTPCTick*prim.timeOverThreshold;
             if(endTime>start_ts && endTime<end_ts){
                 ret.push_back(prim);
             }
