@@ -35,6 +35,7 @@ int main(int, char**)
 
     FrameFile f("/nfs/sw/work_dirs/phrodrig/felixcosmics.dat");
     dune::FelixFrame* frame=f.fragment(0);
+    dune::FelixFrame* frame2=new dune::FelixFrame(*frame);
 
     const size_t apaNum=3;
     const size_t chanPerAPA=2560;
@@ -54,6 +55,7 @@ int main(int, char**)
         else{
             frame->set_channel(ich, 0xfff);
         }
+        frame2->set_channel(ich, ich);
     }
 
     // Get the collection channels into the output array using
@@ -66,6 +68,8 @@ int main(int, char**)
     std::set<uint16_t> chs;
 
     RegisterArray<REGISTERS_PER_FRAME> adcs=get_frame_collection_adcs(frame);
+    RegisterArray<REGISTERS_PER_FRAME> adcs2=get_frame_collection_adcs(frame2);
+
     for(unsigned int i=0; i<6*SAMPLES_PER_REGISTER; ++i){
         uint16_t adc=adcs.uint16(i);
         if(chs.find(adc)!=chs.end()){
@@ -75,9 +79,19 @@ int main(int, char**)
         // printf("% 5d % 5d\n", i, adcs.uint16(i));
     }
     uint16_t min_channel=*chs.begin();
+    std::cout << "min_channel is " << min_channel << " ie, offline " << (min_channel+offset) << std::endl;
+
+    std::cout << "Map from register position to offline offset relative to minimum collection channel in register array:" << std::endl;
     for(unsigned int i=0; i<6*SAMPLES_PER_REGISTER; ++i){
         uint16_t adc=adcs.uint16(i)-min_channel;
         printf("% 4d, ", adc);
+        if(i%16==15) printf("\n");
+    }
+    std::cout << std::endl;
+    std::cout << "Map from register position to online channel number within (crate,fiber,slot):" << std::endl;
+    for(unsigned int i=0; i<6*SAMPLES_PER_REGISTER; ++i){
+        uint16_t adc2=adcs2.uint16(i);
+        printf("% 4d, ", adc2);
         if(i%16==15) printf("\n");
     }
 

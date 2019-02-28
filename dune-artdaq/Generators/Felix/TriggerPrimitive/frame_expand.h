@@ -115,6 +115,9 @@ RegisterArray<16> get_frame_all_adcs(const dune::FelixFrame* __restrict__ frame)
 //==============================================================================
 int collection_index_to_offline(int index);
 
+//==============================================================================
+int collection_index_to_channel(int index);
+
 //======================================================================
 RegisterArray<REGISTERS_PER_FRAME*FRAMES_PER_MSG> expand_message_adcs(const SUPERCHUNK_CHAR_STRUCT& __restrict__ ucs);
 

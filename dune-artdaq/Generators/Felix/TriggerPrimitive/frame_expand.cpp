@@ -331,6 +331,27 @@ int collection_index_to_offline(int index)
     else                     return offlines[index];
 }
 
+namespace {
+    const int index_to_chan[96]={
+         16,   17,   18,   19,   10,   11,   20,   21,   12,   13,   14,   15,  208,  209,  210,  211,
+         48,   49,   50,   51,   42,   43,   52,   53,   44,   45,   46,   47,  202,  203,  212,  213,
+         80,   81,   82,   83,   74,   75,   84,   85,   76,   77,   78,   79,  204,  205,  206,  207,
+        112,  113,  114,  115,  106,  107,  116,  117,  108,  109,  110,  111,  240,  241,  242,  243,
+        144,  145,  146,  147,  138,  139,  148,  149,  140,  141,  142,  143,  234,  235,  244,  245,
+        176,  177,  178,  179,  170,  171,  180,  181,  172,  173,  174,  175,  236,  237,  238,  239
+    };
+}
+
+//==============================================================================
+int collection_index_to_channel(int index)
+{
+    // The *online* channel number, within the (crate,fiber,slot), for each item in the
+    // RegisterArray<6> returned by get_frame_collection_adcs(). The map was created by number_collection.cpp
+
+    if(index<0 || index>95)  return -1;
+    else                     return index_to_chan[index];
+}
+
 //======================================================================
 RegisterArray<REGISTERS_PER_FRAME*FRAMES_PER_MSG> expand_message_adcs(const SUPERCHUNK_CHAR_STRUCT& __restrict__ ucs)
 {

@@ -123,7 +123,7 @@ TriggerPrimitiveFinder::addHitsToQueue(uint64_t timestamp,
     // std::cout << "Adding hits for ts " << timestamp << std::endl;
 
     while(*input_loc!=MAGIC){
-        for(int i=0; i<16; ++i) chan[i]       = collection_index_to_offline(*input_loc++);
+        for(int i=0; i<16; ++i) chan[i]       = collection_index_to_channel(*input_loc++);
         //for(int i=0; i<16; ++i) chan[i]       = *input_loc++;
         for(int i=0; i<16; ++i) hit_end[i]    = *input_loc++;
         for(int i=0; i<16; ++i) hit_charge[i] = *input_loc++;
