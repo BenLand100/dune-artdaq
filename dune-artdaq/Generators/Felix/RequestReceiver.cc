@@ -62,12 +62,12 @@ void RequestReceiver::stop() {
 
 }
 
-TriggerInfo RequestReceiver::getNextRequest() {
+TriggerInfo RequestReceiver::getNextRequest(const long timeout_ms) {
   TriggerInfo request;
   // Based on queue check; return a request if there is a valid one, else return a dummy request if 2 seconds have elapsed.
   auto startTime=std::chrono::system_clock::now();
   auto now=std::chrono::system_clock::now();
-  while ( m_req->isEmpty() && (now - startTime) < std::chrono::seconds(2) ) {
+  while ( m_req->isEmpty() && (now - startTime) < std::chrono::milliseconds(timeout_ms) ) {
     std::this_thread::sleep_for(std::chrono::milliseconds(1));
     now=std::chrono::system_clock::now();
   } 
