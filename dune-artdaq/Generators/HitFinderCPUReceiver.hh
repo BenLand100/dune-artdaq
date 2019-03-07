@@ -18,7 +18,7 @@
 #include "artdaq/Application/CommandableFragmentGenerator.hh"
 
 #include "dune-raw-data/Overlays/FragmentType.hh"
-#include "HitFinder/PTMPConfig.hh"
+#include "PTMPConfig.h"
 
 #include <random>
 #include <vector>
@@ -82,13 +82,26 @@ namespace dune {
     // An name for what we want to log to.
     std::string instance_name_;
 
+    // The maximum time in microseconds before we timeout and say that no data is here
+    int timeout_;
+    
     // The 2 PTMP configurations
     ReceiverPTMP_Config receiver_config_;
-    SenderPTMP_Config sender_config_;
 
     // The actual receiver/sender
     ptmp::TPReceiver receiver_;
     ptmp::TPSender sender_;
+
+    size_t aggregation_;
+
+    // Request receiver things. That should listen to PTMP and check whether there are hits broadcasted or not.
+    // Not sure whether artdaq allows to do that.
+
+    // std::unique_ptr<RequestReceiver> request_receiver_;
+    // std::string requester_address_;
+    // std::string request_address_;
+    // unsigned short request_port_;
+    // unsigned short requests_size_;
     
   };
 }
