@@ -4,6 +4,8 @@
 #include "artdaq-core/Data/Fragment.hh"
 #include "dune-raw-data/Overlays/FelixFragment.hh"
 
+#include "ptmp/api.h"
+
 #include <cstddef> // For offsetof
 
 const int64_t clocksPerTPCTick=25;
@@ -26,6 +28,7 @@ TriggerPrimitiveFinder::TriggerPrimitiveFinder(int32_t cpu_offset, int item_queu
         CPU_SET(cpuid+24, &cpuset); // The corresponding HT core
         pthread_setaffinity_np(m_processingThread.native_handle(), sizeof(cpu_set_t), &cpuset);
     }
+    ptmp::TPSender tpsender("tcp://localhost:6789");
 }
 
 //======================================================================

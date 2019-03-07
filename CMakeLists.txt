@@ -86,6 +86,9 @@ find_ups_boost( v1_50_0 filesystem
 find_ups_product( libxml2 v2_9_1a )
 find_ups_product( TRACE v3_07_00 )
 find_ups_product( protodune_timing v4_1_3 )
+find_ups_product( zeromq v4_3_1)
+find_ups_product( czmq v4_2_0)
+find_ups_product( protobuf v3_3_1a)
 
 find_ups_product( dune_artdaq_InhibitMaster v0_01_00 )
 
