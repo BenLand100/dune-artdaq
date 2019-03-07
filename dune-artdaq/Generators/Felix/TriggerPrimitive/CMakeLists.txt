@@ -8,9 +8,6 @@ art_make_library( LIBRARY_NAME dune-artdaq_Generators_Felix_TriggerPrimitive_cha
 		  SOURCE PdspChannelMapService.cpp
 )
 
-include_directories($ENV{PTMP_INCLUDE_DIR})
-find_library( LIBPTMP NAMES ptmp PATHS $ENV{PTMP_INSTALL_DIR}/lib64)
-
 art_make_library( LIBRARY_NAME dune-artdaq_Generators_Felix_TriggerPrimitive
 		  SOURCE frame_expand.cpp process_avx2.cpp design_fir.cpp TriggerPrimitiveFinder.cpp
                   LIBRARIES

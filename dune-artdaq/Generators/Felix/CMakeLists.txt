@@ -1,3 +1,4 @@
+# -*- mode: cmake-mode -*-
 
 MESSAGE(INFO " Netio_LIBRARY_DIR " ${netio_LIBRARY_DIR}) 
 MESSAGE(INFO " Netio_INCLUDE_DIR " ${netio_INCLUDE_DIR}) 

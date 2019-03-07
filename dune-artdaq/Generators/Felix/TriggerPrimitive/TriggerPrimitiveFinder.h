@@ -10,6 +10,8 @@
 #include "dune-artdaq/Generators/Felix/Types.hh"
 #include "dune-raw-data/Overlays/FelixHitFormat.hh"
 
+#include "ptmp/api.h"
+
 #include <deque>
 #include <mutex>
 
@@ -76,6 +78,7 @@ private:
     uint8_t m_fiber_no;
     uint8_t m_slot_no;
     uint8_t m_crate_no;
+    ptmp::TPSender m_TPSender;
 };
 
 #endif

@@ -4,8 +4,6 @@
 #include "artdaq-core/Data/Fragment.hh"
 #include "dune-raw-data/Overlays/FelixFragment.hh"
 
-#include "ptmp/api.h"
-
 #include <cstddef> // For offsetof
 
 const int64_t clocksPerTPCTick=25;
@@ -16,7 +14,8 @@ TriggerPrimitiveFinder::TriggerPrimitiveFinder(int32_t cpu_offset, int item_queu
       m_itemsToProcess(item_queue_size),
       m_fiber_no(0xff),
       m_slot_no(0xff),
-      m_crate_no(0xff)
+      m_crate_no(0xff),
+      m_TPSender("tcp://localhost:6789")
 {
     m_processingThread=std::thread(&TriggerPrimitiveFinder::processing_thread, this, 0, REGISTERS_PER_FRAME);
     if(cpu_offset>=0){
@@ -28,7 +27,6 @@ TriggerPrimitiveFinder::TriggerPrimitiveFinder(int32_t cpu_offset, int item_queu
         CPU_SET(cpuid+24, &cpuset); // The corresponding HT core
         pthread_setaffinity_np(m_processingThread.native_handle(), sizeof(cpu_set_t), &cpuset);
     }
-    ptmp::TPSender tpsender("tcp://localhost:6789");
 }
 
 //======================================================================
@@ -125,6 +123,11 @@ TriggerPrimitiveFinder::addHitsToQueue(uint64_t timestamp,
     std::lock_guard<std::mutex> guard(m_triggerPrimitiveMutex);
     // std::cout << std::endl << "Adding hits for ts 0x" << std::hex << timestamp << std::dec << std::endl;
 
+    static uint32_t count=0;
+    ptmp::data::TPSet tpset;
+    tpset.set_count(count++);
+    tpset.set_detid(4);
+
     while(*input_loc!=MAGIC){
         for(int i=0; i<16; ++i) chan[i]       = collection_index_to_channel(*input_loc++);
         //for(int i=0; i<16; ++i) chan[i]       = *input_loc++;
@@ -137,10 +140,17 @@ TriggerPrimitiveFinder::addHitsToQueue(uint64_t timestamp,
                 uint64_t hit_start=timestamp+clocksPerTPCTick*(int64_t(hit_end[i])-hit_tover[i]);
                 // std::cout << "0x" << std::hex << hit_start << std::dec << " " << chan[i] << std::endl;
                 primitive_queue.emplace_back(chan[i], hit_start, hit_charge[i], hit_tover[i]);
+                ptmp::data::TrigPrim* ptmp_prim=tpset.add_tps();
+                ptmp_prim->set_channel(chan[i]);
+                ptmp_prim->set_tstart(ptmp::Timestamp(hit_start, 0));
+                ptmp_prim->set_tspan(hit_tover[i]);
+                ptmp_prim->set_adcsum(hit_charge[i]);
                 ++nhits;
             }
         }
     }
+    // Send out the TPSet
+    m_TPSender(tpset);
     while(primitive_queue.size()>10000) primitive_queue.pop_front();
     return nhits;
 }
