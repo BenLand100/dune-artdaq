@@ -142,7 +142,8 @@ TriggerPrimitiveFinder::addHitsToQueue(uint64_t timestamp,
                 primitive_queue.emplace_back(chan[i], hit_start, hit_charge[i], hit_tover[i]);
                 ptmp::data::TrigPrim* ptmp_prim=tpset.add_tps();
                 ptmp_prim->set_channel(chan[i]);
-                ptmp_prim->set_tstart(ptmp::Timestamp(hit_start, 0));
+                ptmp::data::Timestamp* ts=ptmp_prim->mutable_tstart();
+                ts->set_seconds(hit_start);
                 ptmp_prim->set_tspan(hit_tover[i]);
                 ptmp_prim->set_adcsum(hit_charge[i]);
                 ++nhits;

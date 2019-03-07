@@ -1,3 +1,7 @@
+# For ptmp
+include_directories($ENV{PTMP_INCLUDE_DIR})
+
+
 
 simple_plugin(TPCMilliSliceSimulatorWithCopy "generator"
   dune-raw-data_Overlays
@@ -126,7 +130,7 @@ simple_plugin(TriggerBoardReader "generator"
   ${MF_MESSAGELOGGER}
   ${CETLIB}
   ${CETLIB_EXCEPT}
-  jsoncpp
+  ${JSONCPP}
   )
 
 add_subdirectory(timingBoard)

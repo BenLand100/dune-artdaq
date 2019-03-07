@@ -20,6 +20,7 @@ art_make_library( LIBRARY_NAME dune-artdaq_Generators_Felix_TriggerPrimitive
                   artdaq-core_Data
                   zmq
                   ${LIBPTMP}
+                  ${PROTOBUF}
 )
 
 add_subdirectory(tests)
