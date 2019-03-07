@@ -50,6 +50,17 @@
 
 using namespace dune;
 
+
+//
+// JSON configuration file write FCL param
+// {
+// "socket"
+// {
+// "type" : "SUB",
+// "bind": ["tcp://127.0.0.1:40000"]
+// }
+// }
+//
 // Constructor ------------------------------------------------------------------------------
 dune::HitFinderCPUReceiver::HitFinderCPUReceiver(fhicl::ParameterSet const & ps):
   instance_name_("HitFinderCPUReceiver"),
