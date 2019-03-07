@@ -49,6 +49,7 @@
 #include "artdaq/Application/BoardReaderCore.hh"
 
 using namespace dune;
+using json = nlohmann::json;
 
 
 //
@@ -64,14 +65,14 @@ using namespace dune;
 // Constructor ------------------------------------------------------------------------------
 dune::HitFinderCPUReceiver::HitFinderCPUReceiver(fhicl::ParameterSet const & ps):
   instance_name_("HitFinderCPUReceiver"),
-  timeout_(ps.get<int>("HitFinderTimeout")),
-  receiver_config_(ps.get<std::string>("SocketType"),
-                   ps.get<std::string>("Attach"),
-                   ps.get<std::vector<std::string>>("EndPoints"),
-                   ps.get<int>("PTMPReceiverTimeout")),
-  receiver_("blablab"),
-  sender_("blabla"),
-  aggregation_(10)
+  timeout_(ps.get<int>("timeout")),
+  waitretry_(ps.get<int>("waitretry")),
+  ntimes_retry_(ps.get<size_t>("ntimes_retry")),
+  aggregation_(ps.get<int>("ptmp_aggregation")),
+  receiver_socket_(ps.get<std::string>("receiver_socket")),
+  sender_socket_(ps.get<std::string>("sender_socket")),
+  receiver_(nullptr),
+  sender_(nullptr)
 {
   DAQLogger::LogInfo(instance_name_) << "Done - Configuring the TPReceiver\n";
   DAQLogger::LogInfo(instance_name_) << "Done - Configuring the TPSender\n";
@@ -84,7 +85,18 @@ void dune::HitFinderCPUReceiver::start(void)
 {
   DAQLogger::LogDebug(instance_name_) << "start() called\n";
   // Setup the PTMP receiver
-  //receiver_();
+  // The2 JSON configuration
+  nlohmann::json receiver_config;
+  nlohmann::json sender_config;
+
+  receiver_config["socket"]["type"] = "SUB";
+  receiver_config["socket"]["bind"] = receiver_socket_;
+
+  sender_config["socket"]["type"] = "PUB";
+  sender_config["socket"]["bind"] = sender_socket_;
+  
+  receiver_ = new ptmp::TPReceiver(receiver_config.dump());
+  sender_ = new ptmp::TPSender(sender_config.dump());
   DAQLogger::LogDebug(instance_name_) << "PTMP Receiver set\n";
     
 }
@@ -123,19 +135,19 @@ bool dune::HitFinderCPUReceiver::getNext_(artdaq::FragmentPtrs &frags)
   while(n_received >= aggregation_) {
     // Call the receiver
     ptmp::data::TPSet SetReceived;
-    bool received = receiver_(SetReceived, receiver_config_.timeout);
+    bool received = (*receiver_)(SetReceived, timeout_);
     if (received) {
       n_received++;
       times = 0;
       HitSets.push_back(SetReceived);
     } else {
       times++;
-      usleep(receiver_config_.timeout);
+      usleep(timeout_);
     }
     
     if (n_received >= aggregation_) break;
 
-    if (receiver_config_.timeout * times >= (size_t)timeout_)
+    if (times >= ntimes_retry_)
       return true;
   }
 
@@ -204,6 +216,7 @@ bool dune::HitFinderCPUReceiver::getNext_(artdaq::FragmentPtrs &frags)
       frags.emplace_back(std::move(f));
     }
   }
+  (*sender_)(SetToSend);
   // We only increment the event counter for events we send out
   ev_counter_inc();
 

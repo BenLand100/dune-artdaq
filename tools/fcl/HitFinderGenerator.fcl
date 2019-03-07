@@ -22,7 +22,26 @@
          ## The Fragment ID created by this CommandableFragmentGenerator
          fragment_id: 777  # default
          
-      }
+         ## The maximum time in microseconds before we timeout for a TPReceiver call
+         timeout: 100
+
+         ## The amount of time the BR should wait before the next call to the TPReceiver
+         waitretry: 10
+
+         ## The maximum  number of time the BR should try to call the TPReceiver
+         ntimes_retry: 10
+    
+         ## The number of input PTMP messages in the outpout
+         ptmp_aggregation: 5
+         
+         ## The ip:port for receiving the hits from the CPU
+         receiver_socket: "tcp://127.0.0.1:40000"
+
+         ## The ip:port for sending the hits to the data selector
+         sender_socket: "tcp://X.X.X.X:40001"
+         
+
+   }
 
 
       event_builder: {

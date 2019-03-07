@@ -29,6 +29,7 @@
 #include <chrono>
 
 #include "ptmp/api.h"
+#include "ptmp/json.hpp"
 
 #pragma GCC diagnostic ignored "-Wunused"
 #pragma GCC diagnostic ignored "-Wunused-parameter"
@@ -82,17 +83,29 @@ namespace dune {
     // An name for what we want to log to.
     std::string instance_name_;
 
-    // The maximum time in microseconds before we timeout and say that no data is here
+    // The maximum time in microseconds before we timeout for a TPReceiver call
     int timeout_;
+
+    // The amount of time the BR should wait before the next call to the TPReceiver
+    int waitretry_;
+
+    // The maximum  number of time the BR should try to call the TPReceiver
+    size_t ntimes_retry_;
     
-    // The 2 PTMP configurations
-    ReceiverPTMP_Config receiver_config_;
+    // The number of input PTMP messages in the outpout
+    size_t aggregation_;
+
+    // Config:
+    // Socket sender
+    std::string receiver_socket_;
+    // SocketReceiver
+    std::string sender_socket_;
 
     // The actual receiver/sender
-    ptmp::TPReceiver receiver_;
-    ptmp::TPSender sender_;
+    ptmp::TPReceiver* receiver_;
+    ptmp::TPSender* sender_;
 
-    size_t aggregation_;
+
 
     // Request receiver things. That should listen to PTMP and check whether there are hits broadcasted or not.
     // Not sure whether artdaq allows to do that.
