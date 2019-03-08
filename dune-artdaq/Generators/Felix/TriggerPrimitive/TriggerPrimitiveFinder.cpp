@@ -15,7 +15,7 @@ TriggerPrimitiveFinder::TriggerPrimitiveFinder(int32_t cpu_offset, int item_queu
       m_fiber_no(0xff),
       m_slot_no(0xff),
       m_crate_no(0xff),
-      m_TPSender("tcp://localhost:6789")
+      m_TPSender("{\"socket\": { \"type\": \"PUB\", \"bind\": [ \"tcp://127.0.0.1:6789\" ] } }")
 {
     m_processingThread=std::thread(&TriggerPrimitiveFinder::processing_thread, this, 0, REGISTERS_PER_FRAME);
     if(cpu_offset>=0){
@@ -67,9 +67,12 @@ void TriggerPrimitiveFinder::hitsToFragment(uint64_t timestamp, uint32_t window_
     hitFrag.set_slot_no(m_slot_no);
     hitFrag.set_crate_no(m_crate_no);
 
+    std::cout << "Hits for timestamp " << timestamp << ", window size " << window_size << std::endl;
     for(size_t i=0; i<tps.size(); ++i){
         hitFrag.get_primitive(i)=tps[i];
+        std::cout << hitFrag.get_primitive(i).startTime << " " << hitFrag.get_crate_no() << " " << hitFrag.get_slot_no() << " " << hitFrag.get_fiber_no() << " " << hitFrag.get_primitive(i).channel << std::endl;
     }
+    std::cout << std::endl;
 }
 
 //======================================================================
