@@ -136,6 +136,7 @@ void RequestReceiver::thread(){
       TriggerInfo t;
       t.seqID = vals[0];
       t.timestamp = vals[5];
+      dune::DAQLogger::LogInfo("RequestReceiver::thread") << "Got request for seqID" << t.seqID << ", timestamp " << t.timestamp;
       m_req->write(t);
     }
   }
