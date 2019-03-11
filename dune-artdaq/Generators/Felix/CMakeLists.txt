@@ -43,7 +43,7 @@ if(DEFINED ENV{FABRIC_ROOT_DIR})
 
         pthread
         tbb
-        zmq
+        ${LIBZMQ}
     )
 else()
     art_make(
@@ -63,7 +63,7 @@ else()
         $ENV{ICP_ROOT}/build/libusdm_drv_s.so
         pthread
         tbb
-        zmq
+        ${LIBZMQ}
     )
 endif()
 

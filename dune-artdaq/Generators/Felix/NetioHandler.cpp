@@ -134,6 +134,7 @@ void NetioHandler::startTriggerMatchers(){
         // GLM: Try this simplistic approach: do trigger matching and empty the queue until that point
         //      Requires time ordered trigger requests!!
 
+        DAQLogger::LogInfo("NetioHandler::startTriggerMatchers") << "Got request for trigger " << m_triggerTimestamp;
 
         uint_fast64_t startWindowTimestamp = m_triggerTimestamp - (uint_fast64_t)(m_windowOffset * m_tickdist);
         WIBHeader wh = *(reinterpret_cast<const WIBHeader*>( m_pcqs[tid]->frontPtr() ));
@@ -216,6 +217,7 @@ void NetioHandler::startTriggerMatchers(){
         }
          
         if(m_doTPFinding){
+            DAQLogger::LogInfo("NetioHandler::startTriggerMatchers") << "Calling hitsToFragment(" << m_triggerTimestamp << ", " << (m_tickdist*m_timeWindowNumFrames) << ", " <<  m_fragmentPtrHits << ")";
             m_tp_finders[tid]->hitsToFragment(m_triggerTimestamp, m_tickdist*m_timeWindowNumFrames, m_fragmentPtrHits);
         }
         /*m_fragmentPtr->resizeBytes( m_msgsize*(2 + m_timeWindow/framesPerMsg) );
@@ -419,14 +421,15 @@ void NetioHandler::lockSubsToCPUs(uint32_t offset) {
   m_cpu_lock = true;
 }
 
-bool NetioHandler::addChannel(uint64_t chn, uint16_t tag, std::string host, uint16_t port, size_t queueSize, bool zerocopy, int32_t cpu_offset){
+bool NetioHandler::addChannel(uint64_t chn, uint16_t tag, std::string host, uint16_t port, size_t queueSize, bool zerocopy, int32_t cpu_offset, std::string zmq_hit_send_connection){
     DAQLogger::LogInfo("NetioHandler::addChannel") << "entering...";
   m_host=host;
   m_port=port;
   m_channels.push_back(chn);
   m_pcqs[chn] = std::make_unique<FrameQueue>(queueSize);
   try{
-      m_tp_finders[chn]=std::make_unique<TriggerPrimitiveFinder>(cpu_offset);
+      DAQLogger::LogInfo("NetioHandler::addChannel") << "zmq_hit_send_connection is " << zmq_hit_send_connection;
+      m_tp_finders[chn]=std::make_unique<TriggerPrimitiveFinder>(zmq_hit_send_connection, cpu_offset);
   }
   catch(std::bad_alloc& e){
       DAQLogger::LogInfo("NetioHandler::addChannel") << "std::bad_alloc thrown in make_unique: " << e.what();

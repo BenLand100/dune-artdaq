@@ -133,6 +133,7 @@ void RequestReceiver::thread(){
       std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
     else {
+      dune::DAQLogger::LogInfo("RequestReceiver::thread") << "Got request with seqid " << vals[0] << " timestamp " << vals[5];
       TriggerInfo t;
       t.seqID = vals[0];
       t.timestamp = vals[5];

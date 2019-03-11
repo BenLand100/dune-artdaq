@@ -105,6 +105,7 @@ find_library( UHAL_LOG  NAMES cactus_uhal_log  PATHS $ENV{UHAL_LIB})
 find_library( PDT_CORE  NAMES protodune_pdt_core PATHS $ENV{PROTODUNE_TIMING_LIB})
 find_library( PROTOBUF  NAMES protobuf      PATHS $ENV{PROTOBUF_LIB})
 find_library( LIBPTMP NAMES ptmp PATHS $ENV{PTMP_INSTALL_DIR}/lib64)
+find_library( LIBZMQ NAMES zmq PATHS $ENV{ZEROMQ_LIB})
 #####################
 
 # have to make sure cmake doesn't select the system libraries

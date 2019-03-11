@@ -52,15 +52,18 @@ public:
     std::string host_;
     unsigned short port_;
     unsigned short tag_;    
+    std::string zmq_hit_send_connection_;
 
     LinkParameters ( const unsigned short& id,
                      const std::string& host,
                      const unsigned short& port,
-                     const unsigned short& tag ):
+                     const unsigned short& tag,
+                     const std::string& zmq_hit_send_connection):
         id_( id ),
         host_( host ),
         port_( port ),
-        tag_( tag )
+        tag_( tag ),
+        zmq_hit_send_connection_(zmq_hit_send_connection)
     { }
   };
 

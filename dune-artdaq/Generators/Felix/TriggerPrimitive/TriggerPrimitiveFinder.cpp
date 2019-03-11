@@ -9,14 +9,15 @@
 const int64_t clocksPerTPCTick=25;
 
 //======================================================================
-TriggerPrimitiveFinder::TriggerPrimitiveFinder(int32_t cpu_offset, int item_queue_size)
+TriggerPrimitiveFinder::TriggerPrimitiveFinder(std::string zmq_hit_send_connection, int32_t cpu_offset, int item_queue_size)
     : m_readyForMessages(false),
       m_itemsToProcess(item_queue_size),
       m_fiber_no(0xff),
       m_slot_no(0xff),
-      m_crate_no(0xff),
-      m_TPSender("{\"socket\": { \"type\": \"PUB\", \"bind\": [ \"tcp://127.0.0.1:6789\" ] } }")
+      m_crate_no(0xff)
+      //m_TPSender(std::string("{\"socket\": { \"type\": \"PUB\", \"bind\": [ \"")+zmq_hit_send_connection+std::string("\" ] } }"))
 {
+    std::cout << zmq_hit_send_connection << std::endl;
     m_processingThread=std::thread(&TriggerPrimitiveFinder::processing_thread, this, 0, REGISTERS_PER_FRAME);
     if(cpu_offset>=0){
         // Copied from NetioHandler::lockSubsToCPUs()
@@ -32,16 +33,24 @@ TriggerPrimitiveFinder::TriggerPrimitiveFinder(int32_t cpu_offset, int item_queu
 //======================================================================
 TriggerPrimitiveFinder::~TriggerPrimitiveFinder()
 {
+    dune::DAQLogger::LogInfo("TriggerPrimitiveFinder::~TriggerPrimitiveFinder") << "Running TPF dtor";
     m_itemsToProcess.write(ProcessingTasks::ItemToProcess{ProcessingTasks::END_OF_MESSAGES, nullptr, ProcessingTasks::now_us()});
     m_processingThread.join(); // Wait for it to actually stop
+    dune::DAQLogger::LogInfo("TriggerPrimitiveFinder::~TriggerPrimitiveFinder") << "TPF dtor done";
 }
 
 //======================================================================
 void TriggerPrimitiveFinder::addMessage(SUPERCHUNK_CHAR_STRUCT& ucs)
 {
+    static bool printed=false;
     if(m_readyForMessages.load()){
         // The first frame in the message
         dune::FelixFrame* frame=reinterpret_cast<dune::FelixFrame*>(&ucs);
+        const dune::WIBHeader* wh = reinterpret_cast<const dune::WIBHeader*>(&ucs);
+        if(!printed && wh->timestamp()!=frame->timestamp()){
+            dune::DAQLogger::LogError("TriggerPrimitiveFinder::addMessage") << "FelixFrame and WIBHeader timestamps do not agree: frame: " << frame->timestamp() << ", wibheader: " << wh->timestamp();
+            printed=true;
+        }
         m_itemsToProcess.write(ProcessingTasks::ItemToProcess{frame->timestamp(), &ucs, ProcessingTasks::now_us()});
     }
 }
@@ -49,8 +58,9 @@ void TriggerPrimitiveFinder::addMessage(SUPERCHUNK_CHAR_STRUCT& ucs)
 //======================================================================
 void TriggerPrimitiveFinder::hitsToFragment(uint64_t timestamp, uint32_t window_size, artdaq::Fragment* fragPtr)
 {
+    dune::DAQLogger::LogInfo("TriggerPrimitiveFinder::hitsToFragment") << "Creating fragment for timestamp " << timestamp << " window_size " << window_size;
     std::vector<dune::TriggerPrimitive> tps=getHitsForWindow(m_triggerPrimitives,
-                                                             timestamp, timestamp+window_size);
+                                                             timestamp-2*window_size, timestamp+2*window_size);
     dune::DAQLogger::LogInfo("TriggerPrimitiveFinder::hitsToFragment") << "Got " << tps.size() << " hits for timestamp 0x" << std::hex << timestamp << std::dec;
 
     // The data payload of the fragment will be:
@@ -70,7 +80,7 @@ void TriggerPrimitiveFinder::hitsToFragment(uint64_t timestamp, uint32_t window_
     std::cout << "Hits for timestamp " << timestamp << ", window size " << window_size << std::endl;
     for(size_t i=0; i<tps.size(); ++i){
         hitFrag.get_primitive(i)=tps[i];
-        std::cout << hitFrag.get_primitive(i).startTime << " " << hitFrag.get_crate_no() << " " << hitFrag.get_slot_no() << " " << hitFrag.get_fiber_no() << " " << hitFrag.get_primitive(i).channel << std::endl;
+        std::cout << hitFrag.get_primitive(i).startTime << " " << ((int)hitFrag.get_crate_no()) << " " << ((int)hitFrag.get_slot_no()) << " " << ((int)hitFrag.get_fiber_no()) << " " << hitFrag.get_primitive(i).channel << std::endl;
     }
     std::cout << std::endl;
 }
@@ -80,10 +90,12 @@ std::vector<dune::TriggerPrimitive>
 TriggerPrimitiveFinder::getHitsForWindow(const std::deque<dune::TriggerPrimitive>& primitive_queue,
                                          uint64_t start_ts, uint64_t end_ts)
 {
+    dune::DAQLogger::LogInfo("TriggerPrimitiveFinder::getHitsForWindow") << "Waiting for processing to catch up to " << end_ts << " from current " << m_latestProcessedTimestamp.load();
     // Wait for the processing to catch up
     while(m_latestProcessedTimestamp.load()<end_ts){
         std::this_thread::sleep_for(std::chrono::microseconds(100));
     }
+    dune::DAQLogger::LogInfo("TriggerPrimitiveFinder::getHitsForWindow") << "Processing caught up";
     std::vector<dune::TriggerPrimitive> ret;
     ret.reserve(5000);
 
@@ -107,9 +119,9 @@ TriggerPrimitiveFinder::getHitsForWindow(const std::deque<dune::TriggerPrimitive
             // The trigger primitives are ordered by
             // *end* timestamp, so as soon as we've seen one that's too
             // late, we're done
-            if(endTime>end_ts){
-                break;
-            }
+            // if(endTime>end_ts){
+            //     break;
+            // }
         }
     }
     return ret;
@@ -126,11 +138,18 @@ TriggerPrimitiveFinder::addHitsToQueue(uint64_t timestamp,
     std::lock_guard<std::mutex> guard(m_triggerPrimitiveMutex);
     // std::cout << std::endl << "Adding hits for ts 0x" << std::hex << timestamp << std::dec << std::endl;
 
-    static uint32_t count=0;
-    ptmp::data::TPSet tpset;
-    tpset.set_count(count++);
-    tpset.set_detid(4);
-
+    // static uint32_t count=0;
+    // ptmp::data::TPSet tpset;
+    
+    // tpset.set_count(count++);
+    // tpset.set_detid(4);
+    // auto tstart = tpset.mutable_tstart();
+    // tstart->set_seconds(timestamp);
+    // tstart->set_nanosecs(0);
+    // auto created = tpset.mutable_created();
+    // created->set_seconds(timestamp);
+    // created->set_nanosecs(0);
+    
     while(*input_loc!=MAGIC){
         for(int i=0; i<16; ++i) chan[i]       = collection_index_to_channel(*input_loc++);
         //for(int i=0; i<16; ++i) chan[i]       = *input_loc++;
@@ -140,22 +159,31 @@ TriggerPrimitiveFinder::addHitsToQueue(uint64_t timestamp,
         
         for(int i=0; i<16; ++i){
             if(hit_charge[i] && chan[i]!=MAGIC){
-                uint64_t hit_start=timestamp+clocksPerTPCTick*(int64_t(hit_end[i])-hit_tover[i]);
+                uint64_t hit_end_pdts=timestamp+clocksPerTPCTick*hit_end[i];
+                uint64_t hit_start_pdts=hit_end_pdts-clocksPerTPCTick*hit_tover[i];
+                if(hit_start_pdts>hit_end_pdts){
+                    dune::DAQLogger::LogInfo("TriggerPrimitiveFinder::addHitsToQueue") << "Something wrong: hit start " << hit_start_pdts << " > hit end " << hit_end_pdts;
+                }
+                if(hit_end_pdts<timestamp){
+                    dune::DAQLogger::LogInfo("TriggerPrimitiveFinder::addHitsToQueue") << "Something wrong: hit end " << hit_end_pdts << " < timestamp " << timestamp;
+                }
+                // uint64_t hit_start=timestamp+clocksPerTPCTick*(int64_t(hit_end[i])-hit_tover[i]);
                 // std::cout << "0x" << std::hex << hit_start << std::dec << " " << chan[i] << std::endl;
-                primitive_queue.emplace_back(chan[i], hit_start, hit_charge[i], hit_tover[i]);
-                ptmp::data::TrigPrim* ptmp_prim=tpset.add_tps();
-                ptmp_prim->set_channel(chan[i]);
-                ptmp::data::Timestamp* ts=ptmp_prim->mutable_tstart();
-                ts->set_seconds(hit_start);
-                ptmp_prim->set_tspan(hit_tover[i]);
-                ptmp_prim->set_adcsum(hit_charge[i]);
+                primitive_queue.emplace_back(chan[i], hit_start_pdts, hit_charge[i], hit_tover[i]);
+                // ptmp::data::TrigPrim* ptmp_prim=tpset.add_tps();
+                // ptmp_prim->set_channel(chan[i]);
+                // ptmp::data::Timestamp* ts=ptmp_prim->mutable_tstart();
+                // ts->set_seconds(hit_start);
+                // ts->set_nanosecs(0);
+                // ptmp_prim->set_tspan(hit_tover[i]);
+                // ptmp_prim->set_adcsum(hit_charge[i]);
                 ++nhits;
             }
         }
     }
     // Send out the TPSet
-    m_TPSender(tpset);
-    while(primitive_queue.size()>10000) primitive_queue.pop_front();
+    // m_TPSender(tpset);
+    while(primitive_queue.size()>20000) primitive_queue.pop_front();
     return nhits;
 }
 

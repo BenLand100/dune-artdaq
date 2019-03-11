@@ -25,7 +25,7 @@ namespace artdaq
 class TriggerPrimitiveFinder
 {
 public:
-    TriggerPrimitiveFinder(int32_t cpu_offset=-1, int item_queue_size=1000000);
+    TriggerPrimitiveFinder(std::string zmq_hit_send_connection, int32_t cpu_offset=-1, int item_queue_size=1000000);
   
     ~TriggerPrimitiveFinder();
 
@@ -78,7 +78,7 @@ private:
     uint8_t m_fiber_no;
     uint8_t m_slot_no;
     uint8_t m_crate_no;
-    ptmp::TPSender m_TPSender;
+    // ptmp::TPSender m_TPSender;
 };
 
 #endif

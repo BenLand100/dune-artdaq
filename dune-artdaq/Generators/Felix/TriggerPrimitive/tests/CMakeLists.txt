@@ -106,10 +106,10 @@ cet_make_exec(read_raw_file
 
 cet_make_exec(test_expand_segment_collection
   SOURCE test_expand_segment_collection.cpp
-  LIBRARIES ${TP_LIBS} zmq
+  LIBRARIES ${TP_LIBS} ${LIBZMQ}
 )
 
 cet_make_exec(check_output
   SOURCE check_output.cpp
-  LIBRARIES ${TP_LIBS} zmq
+  LIBRARIES ${TP_LIBS} ${LIBZMQ}
 )
