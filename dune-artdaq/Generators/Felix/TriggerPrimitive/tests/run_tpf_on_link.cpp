@@ -124,7 +124,7 @@ int main(int argc, char** argv)
         
         std::ofstream fout_hits(filename_hits);
         for(auto const& hit: hits){
-            fout_hits << hit.startTime << "\t" << hit.channel << "\t" << hit.charge << "\t" << hit.timeOverThreshold << std::endl;
+            fout_hits << hit.messageTimestamp << "\t" << hit.endTime << "\t" << hit.channel << "\t" << hit.charge << "\t" << hit.timeOverThreshold << std::endl;
         }
     }
 
