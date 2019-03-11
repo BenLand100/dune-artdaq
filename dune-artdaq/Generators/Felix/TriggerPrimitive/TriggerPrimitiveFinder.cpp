@@ -31,8 +31,14 @@ TriggerPrimitiveFinder::TriggerPrimitiveFinder(int32_t cpu_offset, int item_queu
 //======================================================================
 TriggerPrimitiveFinder::~TriggerPrimitiveFinder()
 {
-    m_itemsToProcess.write(ProcessingTasks::ItemToProcess{ProcessingTasks::END_OF_MESSAGES, nullptr, ProcessingTasks::now_us()});
+    dune::DAQLogger::LogInfo("TriggerPrimitiveFinder::~TriggerPrimitiveFinder") << "TriggerPrimitiveFinder dtor entered";
+    // Superstition: add multiple "end of messages" messages
+    for(int i=0; i<5; ++i){
+        m_itemsToProcess.write(ProcessingTasks::ItemToProcess{ProcessingTasks::END_OF_MESSAGES, nullptr, ProcessingTasks::now_us()});
+    }
+    dune::DAQLogger::LogInfo("TriggerPrimitiveFinder::~TriggerPrimitiveFinder") << "Joining processing thread";
     m_processingThread.join(); // Wait for it to actually stop
+    dune::DAQLogger::LogInfo("TriggerPrimitiveFinder::~TriggerPrimitiveFinder") << "Processing thread joined";
 }
 
 //======================================================================
@@ -76,11 +82,18 @@ std::vector<dune::TriggerPrimitive>
 TriggerPrimitiveFinder::getHitsForWindow(const std::deque<dune::TriggerPrimitive>& primitive_queue,
                                          uint64_t start_ts, uint64_t end_ts)
 {
-    // Wait for the processing to catch up
-    while(m_latestProcessedTimestamp.load()<end_ts){
-        std::this_thread::sleep_for(std::chrono::microseconds(100));
-    }
     std::vector<dune::TriggerPrimitive> ret;
+    auto startTime=std::chrono::system_clock::now();
+    auto now=std::chrono::steady_clock::now();
+    // Wait for the processing to catch up, up to 1 second
+    const size_t timeout_ms=1000;
+    while(m_latestProcessedTimestamp.load()<end_ts && (now - startTime) < std::chrono::milliseconds(timeout_ms)){
+        std::this_thread::sleep_for(std::chrono::microseconds(100));
+        now=std::chrono::steady_clock::now();
+    }
+    // We timed out
+    if(m_latestProcessedTimestamp.load()<end_ts) return ret;
+
     ret.reserve(5000);
 
     {
@@ -192,9 +205,10 @@ void TriggerPrimitiveFinder::processing_thread(uint8_t first_register, uint8_t l
 
     while(true){
         ProcessingTasks::ItemToProcess item;
-        while(!m_itemsToProcess.read(item)){ std::this_thread::sleep_for(std::chrono::microseconds(10)); }
+        int n_read_tries=0;
+        while(!m_itemsToProcess.read(item) && n_read_tries<1000000){ std::this_thread::sleep_for(std::chrono::microseconds(10)); ++n_read_tries; }
         ++nmsg;
-        if(item.timestamp==ProcessingTasks::END_OF_MESSAGES) break;
+        if(item.timestamp==ProcessingTasks::END_OF_MESSAGES || n_read_tries>999998) break;
         measure_latency(item);
         RegisterArray<REGISTERS_PER_FRAME*FRAMES_PER_MSG> expanded=expand_message_adcs(*item.scs);
         MessageCollectionADCs* mcadc=reinterpret_cast<MessageCollectionADCs*>(expanded.data());
