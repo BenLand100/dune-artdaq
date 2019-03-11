@@ -85,14 +85,19 @@ TriggerPrimitiveFinder::getHitsForWindow(const std::deque<dune::TriggerPrimitive
     std::vector<dune::TriggerPrimitive> ret;
     auto startTime=std::chrono::steady_clock::now();
     auto now=std::chrono::steady_clock::now();
-    // Wait for the processing to catch up, up to 1 second
-    const size_t timeout_ms=1000;
+    // Wait for the processing to catch up, up to 1.5 second
+    const size_t timeout_ms=1500;
+    int nloops=0;
     while(m_latestProcessedTimestamp.load()<end_ts && (now - startTime) < std::chrono::milliseconds(timeout_ms)){
-        std::this_thread::sleep_for(std::chrono::microseconds(100));
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
         now=std::chrono::steady_clock::now();
+        ++nloops;
     }
     // We timed out
-    if(m_latestProcessedTimestamp.load()<end_ts) return ret;
+    if(m_latestProcessedTimestamp.load()<end_ts){
+        dune::DAQLogger::LogInfo("TriggerPrimitiveFinder::getHitsForWindow") << "getHitsForWindow timed out waiting for timestamp " << end_ts << ". Latest processed timestamp is " << m_latestProcessedTimestamp.load() << ". waiting loop went " << nloops << " times";
+        return ret;
+    }
 
     ret.reserve(5000);
 
