@@ -83,7 +83,7 @@ TriggerPrimitiveFinder::getHitsForWindow(const std::deque<dune::TriggerPrimitive
                                          uint64_t start_ts, uint64_t end_ts)
 {
     std::vector<dune::TriggerPrimitive> ret;
-    auto startTime=std::chrono::system_clock::now();
+    auto startTime=std::chrono::steady_clock::now();
     auto now=std::chrono::steady_clock::now();
     // Wait for the processing to catch up, up to 1 second
     const size_t timeout_ms=1000;
