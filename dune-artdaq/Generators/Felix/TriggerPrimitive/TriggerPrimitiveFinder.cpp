@@ -86,25 +86,9 @@ TriggerPrimitiveFinder::getHitsForWindow(const std::deque<dune::TriggerPrimitive
     {
         std::lock_guard<std::mutex> guard(m_triggerPrimitiveMutex);
 
-        // The hits in the queue are ordered by time, so it might be faster to search with lower_bound() and upper_bound like this:
-        // std::deque<int> queue{1,2,2,3,5,6,6,6,6,7,8,9,10,11,12,15,17,19};
-        // int window_start=4;
-        // int window_end=7;
-        // auto const& itlo=std::lower_bound(queue.cbegin(), queue.cend(), window_start, [](const int& a, const int& b){ return a<b; });
-        // auto const& itup=std::upper_bound(queue.cbegin(), queue.cend(), window_end,   [](const int& a, const int& b){ return a<b; });
-        // std::cout << "Window [" << window_start << ", " << window_end << "] returned indices " << std::distance(queue.cbegin(), itlo) << " to " << std::distance(queue.cbegin(), itup) << std::endl;
-
         for(auto const& prim: primitive_queue){
-            // startTime is in PDTS clock ticks, but timeOverThreshold is in TPC ticks
-            uint64_t endTime=prim.startTime+clocksPerTPCTick*prim.timeOverThreshold;
-            if(endTime>start_ts && endTime<end_ts){
+            if(prim.messageTimestamp>start_ts && prim.messageTimestamp<end_ts){
                 ret.push_back(prim);
-            }
-            // The trigger primitives are ordered by
-            // *end* timestamp, so as soon as we've seen one that's too
-            // late, we're done
-            if(endTime>end_ts){
-                break;
             }
         }
     }
@@ -120,25 +104,21 @@ TriggerPrimitiveFinder::addHitsToQueue(uint64_t timestamp,
     uint16_t chan[16], hit_end[16], hit_charge[16], hit_tover[16];
     unsigned int nhits=0;
     std::lock_guard<std::mutex> guard(m_triggerPrimitiveMutex);
-    // std::cout << std::endl << "Adding hits for ts 0x" << std::hex << timestamp << std::dec << std::endl;
 
     while(*input_loc!=MAGIC){
         for(int i=0; i<16; ++i) chan[i]       = collection_index_to_channel(*input_loc++);
-        //for(int i=0; i<16; ++i) chan[i]       = *input_loc++;
         for(int i=0; i<16; ++i) hit_end[i]    = *input_loc++;
         for(int i=0; i<16; ++i) hit_charge[i] = *input_loc++;
         for(int i=0; i<16; ++i) hit_tover[i]  = *input_loc++;
         
         for(int i=0; i<16; ++i){
             if(hit_charge[i] && chan[i]!=MAGIC){
-                uint64_t hit_start=timestamp+clocksPerTPCTick*(int64_t(hit_end[i])-hit_tover[i]);
-                // std::cout << "0x" << std::hex << hit_start << std::dec << " " << chan[i] << std::endl;
-                primitive_queue.emplace_back(chan[i], hit_start, hit_charge[i], hit_tover[i]);
+                primitive_queue.emplace_back(timestamp, chan[i], hit_end[i], hit_charge[i], hit_tover[i]);
                 ++nhits;
             }
         }
     }
-    while(primitive_queue.size()>10000) primitive_queue.pop_front();
+    while(primitive_queue.size()>20000) primitive_queue.pop_front();
     return nhits;
 }
 
