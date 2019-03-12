@@ -433,7 +433,7 @@ bool NetioHandler::addChannel(uint64_t chn, uint16_t tag, std::string host, uint
   m_pcqs[chn] = std::make_unique<FrameQueue>(queueSize);
   try{
       DAQLogger::LogInfo("NetioHandler::addChannel") << "zmq_hit_send_connection is " << zmq_hit_send_connection;
-      m_tp_finders[chn]=std::make_unique<TriggerPrimitiveFinder>(zmq_hit_send_connection, cpu_offset);
+      m_tp_finders[chn]=std::make_unique<TriggerPrimitiveFinder>(zmq_hit_send_connection, m_windowOffset, cpu_offset);
   }
   catch(std::bad_alloc& e){
       DAQLogger::LogInfo("NetioHandler::addChannel") << "std::bad_alloc thrown in make_unique: " << e.what();

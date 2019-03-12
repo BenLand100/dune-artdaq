@@ -9,14 +9,15 @@
 const int64_t clocksPerTPCTick=25;
 
 //======================================================================
-TriggerPrimitiveFinder::TriggerPrimitiveFinder(std::string zmq_hit_send_connection, int32_t cpu_offset, int item_queue_size)
+TriggerPrimitiveFinder::TriggerPrimitiveFinder(std::string zmq_hit_send_connection, uint32_t window_offset, int32_t cpu_offset, int item_queue_size)
     : m_readyForMessages(false),
       m_itemsToProcess(item_queue_size),
       m_fiber_no(0xff),
       m_slot_no(0xff),
       m_crate_no(0xff),
       m_TPSender(std::string("{\"socket\": { \"type\": \"PUB\", \"bind\": [ \"")+zmq_hit_send_connection+std::string("\" ] } }")),
-      m_should_stop(false)
+      m_should_stop(false),
+      m_windowOffset(window_offset)
 {
     std::cout << zmq_hit_send_connection << std::endl;
     m_processingThread=std::thread(&TriggerPrimitiveFinder::processing_thread, this, 0, REGISTERS_PER_FRAME);
@@ -67,7 +68,8 @@ void TriggerPrimitiveFinder::hitsToFragment(uint64_t timestamp, uint32_t window_
 {
     dune::DAQLogger::LogInfo("TriggerPrimitiveFinder::hitsToFragment") << "Creating fragment for timestamp " << timestamp << " window_size " << window_size;
     std::vector<dune::TriggerPrimitive> tps=getHitsForWindow(m_triggerPrimitives,
-                                                             timestamp-2*window_size, timestamp+2*window_size);
+                                                             timestamp-m_windowOffset*clocksPerTPCTick,
+                                                             timestamp+window_size-m_windowOffset*clocksPerTPCTick);
     dune::DAQLogger::LogInfo("TriggerPrimitiveFinder::hitsToFragment") << "Got " << tps.size() << " hits for timestamp 0x" << std::hex << timestamp << std::dec;
 
     // The data payload of the fragment will be:
@@ -79,6 +81,7 @@ void TriggerPrimitiveFinder::hitsToFragment(uint64_t timestamp, uint32_t window_
 
     hitFrag.set_timestamp(timestamp);
     hitFrag.set_nhits(tps.size());
+    hitFrag.set_window_offset(m_windowOffset);
 
     hitFrag.set_fiber_no(m_fiber_no);
     hitFrag.set_slot_no(m_slot_no);
