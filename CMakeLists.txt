@@ -77,6 +77,11 @@ find_ups_product( messagefacility v1_10_00 )
 find_ups_product( cetlib v1_03_00 )
 find_ups_product( netio v0_8_0 )
 find_ups_product( ftd2xx v1_2_7 )
+# add a newer version of ZeroMQ for PTMP
+find_ups_product( zeromq v4_3_1 )
+find_ups_product( czmq v4_2_0 -q e15)
+# add protobuf for PTMP
+find_ups_product( protobuf v3_3_1a )
 find_ups_product( jsoncpp v1_8_0 )
 find_ups_root( v5_34_00 )
 find_ups_boost( v1_50_0 filesystem

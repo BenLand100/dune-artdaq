@@ -48,7 +48,28 @@ simple_plugin(FelixReceiver "generator"
   ${CETLIB}
   ${CETLIB_EXCEPT}
   dune-artdaq_DAQLogger
+  )
+  
+find_library( LIBPTMP NAMES ptmp PATHS $ENV{PTMP_LIB})
+
+simple_plugin(HitFinderCPUReceiver "generator"
+  dune-raw-data_Overlays
+  dune-artdaq_Generators_Felix
+  dune-artdaq_DAQLogger
+  artdaq_Application
+  artdaq_DAQdata
+  artdaq-core_Utilities
+  artdaq-core_Data
+  artdaq-utilities_Plugins
+  ${CANVAS}
+  ${FHICLCPP}
+  ${CETLIB}
+  ${CETLIB_EXCEPT}
+  ${LIBPTMP}
+  ${PROTOBUF}
+  dune-artdaq_DAQLogger
 )
+include_directories($ENV{PTMP_INC})
 
 # PAR 2018-12-03: Need these definitions to get my trigger primitive
 # code to work. They have to be target-specific otherwise they
