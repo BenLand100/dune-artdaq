@@ -1,3 +1,4 @@
+# -*- mode: cmake-mode -*-
 
 MESSAGE(INFO " Netio_LIBRARY_DIR " ${netio_LIBRARY_DIR}) 
 MESSAGE(INFO " Netio_INCLUDE_DIR " ${netio_INCLUDE_DIR}) 
@@ -42,7 +43,7 @@ if(DEFINED ENV{FABRIC_ROOT_DIR})
 
         pthread
         tbb
-        zmq
+        ${LIBZMQ}
     )
 else()
     art_make(
@@ -62,7 +63,7 @@ else()
         $ENV{ICP_ROOT}/build/libusdm_drv_s.so
         pthread
         tbb
-        zmq
+        ${LIBZMQ}
     )
 endif()
 

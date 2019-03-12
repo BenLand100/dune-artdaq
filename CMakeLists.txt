@@ -86,6 +86,9 @@ find_ups_boost( v1_50_0 filesystem
 find_ups_product( libxml2 v2_9_1a )
 find_ups_product( TRACE v3_07_00 )
 find_ups_product( protodune_timing v4_1_3 )
+find_ups_product( zeromq v4_3_1)
+find_ups_product( czmq v4_2_0)
+find_ups_product( protobuf v3_3_1a)
 
 find_ups_product( dune_artdaq_InhibitMaster v0_01_00 )
 
@@ -100,6 +103,9 @@ include_directories($ENV{UHAL_INC}/uhal)
 find_library( UHAL_UHAL NAMES cactus_uhal_uhal PATHS $ENV{UHAL_LIB})
 find_library( UHAL_LOG  NAMES cactus_uhal_log  PATHS $ENV{UHAL_LIB})
 find_library( PDT_CORE  NAMES protodune_pdt_core PATHS $ENV{PROTODUNE_TIMING_LIB})
+find_library( PROTOBUF  NAMES protobuf      PATHS $ENV{PROTOBUF_LIB})
+find_library( LIBPTMP NAMES ptmp PATHS $ENV{PTMP_INSTALL_DIR}/lib64)
+find_library( LIBZMQ NAMES zmq PATHS $ENV{ZEROMQ_LIB})
 #####################
 
 # have to make sure cmake doesn't select the system libraries
