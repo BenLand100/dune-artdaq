@@ -167,17 +167,15 @@ bool dune::HitFinderCPUReceiver::getNext_(artdaq::FragmentPtrs &frags)
       ptmp::data::TrigPrim* ptmp_prim=SetToSend.add_tps();
 
       ptmp_prim->set_channel(HitSet.tps()[it].channel());
-      ptmp::data::Timestamp* ts_out = ptmp_prim->mutable_tstart();
-      ptmp::data::Timestamp ts_in = ptmp_prim->tstart();
-      ts_out->set_seconds(ts_in.seconds());
-      ptmp_prim->set_tspan(HitSet.tps()[it].tspan());
-      ptmp_prim->set_adcsum(HitSet.tps()[it].adcsum());
+      ptmp_prim->set_tstart (HitSet.tps()[it].tstart ());
+      ptmp_prim->set_tspan  (HitSet.tps()[it].tspan  ());
+      ptmp_prim->set_adcsum (HitSet.tps()[it].adcsum ());
       
       std::unique_ptr<artdaq::Fragment> f = artdaq::Fragment::FragmentBytes(sizeof(dune::TriggerPrimitive),//HitFragment::size()*sizeof(uint32_t),
                                                                             artdaq::Fragment::InvalidSequenceID,
                                                                             artdaq::Fragment::InvalidFragmentID,
                                                                             artdaq::Fragment::InvalidFragmentType,
-                                                                            0);//dune::HitFragment::Metadata(HitFragment::VERSION));
+                                                                            dune::HitFragment::Metadata(HitFragment::VERSION));
       // It's unclear to me whether the constructor above actually sets the metadata, so let's do it here too to be sure
       // f->updateMetadata(HitFragment::Metadata(HitFragment::VERSION));
       f->updateMetadata(0);//HitFragment::Metadata(HitFragment::VERSION));
@@ -194,7 +192,7 @@ bool dune::HitFinderCPUReceiver::getNext_(artdaq::FragmentPtrs &frags)
       // << fo.get_tstamp();
 
       dune::HitFragment hitfrag(*f);    // Overlay class - the internal bits of the class are
-      f->setTimestamp(0);  // not too sure why we need this one again in the body
+      f->setTimestamp(HitSet.tps()[it].tstart());  // not too sure why we need this one again in the body
 
   
       // (i.e. what if there are too much hits?)
@@ -206,9 +204,7 @@ bool dune::HitFinderCPUReceiver::getNext_(artdaq::FragmentPtrs &frags)
       uint16_t timeOverThreshold = UINT16_MAX;
     
       if(HitSet.tps()[it].channel() < UINT16_MAX) channel = HitSet.tps()[it].channel(); // uint32_t -> uint16_t
-      startTime = 0;// HitSet.tps()[it].tstart(); // This one is effectively a cast from uint32_t -> uint64_t
-      // (i.e. we don't care about the max value it will always be
-      // in smaller than the uint64_t)
+      startTime = HitSet.tps()[it].tstart();
       if(HitSet.tps()[it].adcsum() < UINT16_MAX) charge = HitSet.tps()[it].adcsum(); // uint32_t -> uint16_t
       if(HitSet.tps()[it].tspan() < UINT16_MAX) timeOverThreshold = HitSet.tps()[it].tspan(); // uint32_t -> uint16_t
       dune::TriggerPrimitive hit(channel, startTime, charge, timeOverThreshold); // uint32_t -> uint16_t
