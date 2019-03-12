@@ -46,7 +46,6 @@ TriggerPrimitiveFinder::~TriggerPrimitiveFinder()
 //======================================================================
 void TriggerPrimitiveFinder::addMessage(SUPERCHUNK_CHAR_STRUCT& ucs)
 {
-    static bool printed=false;
     if(m_readyForMessages.load()){
         // The first frame in the message
         dune::FelixFrame* frame=reinterpret_cast<dune::FelixFrame*>(&ucs);
@@ -75,13 +74,6 @@ void TriggerPrimitiveFinder::hitsToFragment(uint64_t timestamp, uint32_t window_
     hitFrag.set_fiber_no(m_fiber_no);
     hitFrag.set_slot_no(m_slot_no);
     hitFrag.set_crate_no(m_crate_no);
-
-    std::cout << "Hits for timestamp " << timestamp << ", window size " << window_size << std::endl;
-    for(size_t i=0; i<tps.size(); ++i){
-        hitFrag.get_primitive(i)=tps[i];
-        std::cout << hitFrag.get_primitive(i).startTime << " " << ((int)hitFrag.get_crate_no()) << " " << ((int)hitFrag.get_slot_no()) << " " << ((int)hitFrag.get_fiber_no()) << " " << hitFrag.get_primitive(i).channel << std::endl;
-    }
-    std::cout << std::endl;
 }
 
 //======================================================================
@@ -152,8 +144,6 @@ TriggerPrimitiveFinder::addHitsToQueue(uint64_t timestamp,
             if(hit_charge[i] && chan[i]!=MAGIC){
                 primitive_queue.emplace_back(timestamp, chan[i], hit_end[i], hit_charge[i], hit_tover[i]);
                 uint64_t hit_start=timestamp+clocksPerTPCTick*(int64_t(hit_end[i])-hit_tover[i]);
-                // std::cout << "0x" << std::hex << hit_start << std::dec << " " << chan[i] << std::endl;
-                primitive_queue.emplace_back(chan[i], hit_start_pdts, hit_charge[i], hit_tover[i]);
                 ptmp::data::TrigPrim* ptmp_prim=tpset.add_tps();
                 ptmp_prim->set_channel(chan[i]);
                 ptmp::data::Timestamp* ts=ptmp_prim->mutable_tstart();

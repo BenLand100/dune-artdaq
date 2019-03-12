@@ -78,7 +78,7 @@ private:
     uint8_t m_fiber_no;
     uint8_t m_slot_no;
     uint8_t m_crate_no;
-    // ptmp::TPSender m_TPSender;
+    ptmp::TPSender m_TPSender;
 };
 
 #endif
