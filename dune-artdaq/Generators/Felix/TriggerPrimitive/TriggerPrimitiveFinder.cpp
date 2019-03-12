@@ -136,12 +136,8 @@ TriggerPrimitiveFinder::addHitsToQueue(uint64_t timestamp,
     
     tpset.set_count(count++);
     tpset.set_detid(4);
-    auto tstart = tpset.mutable_tstart();
-    tstart->set_seconds(timestamp);
-    tstart->set_nanosecs(0);
-    auto created = tpset.mutable_created();
-    created->set_seconds(timestamp);
-    created->set_nanosecs(0);
+    tpset.set_tstart(timestamp);
+    tpset.set_created(0);
     
     while(*input_loc!=MAGIC){
         for(int i=0; i<16; ++i) chan[i]       = collection_index_to_channel(*input_loc++);
@@ -155,9 +151,7 @@ TriggerPrimitiveFinder::addHitsToQueue(uint64_t timestamp,
                 uint64_t hit_start=timestamp+clocksPerTPCTick*(int64_t(hit_end[i])-hit_tover[i]);
                 ptmp::data::TrigPrim* ptmp_prim=tpset.add_tps();
                 ptmp_prim->set_channel(chan[i]);
-                ptmp::data::Timestamp* ts=ptmp_prim->mutable_tstart();
-                ts->set_seconds(hit_start);
-                ts->set_nanosecs(0);
+                ptmp_prim->set_tstart(hit_start);
                 ptmp_prim->set_tspan(hit_tover[i]);
                 ptmp_prim->set_adcsum(hit_charge[i]);
                 ++nhits;
