@@ -28,6 +28,12 @@ void RequestReceiver::start() {
   m_ctx = zmq_ctx_new();
   m_socket = zmq_socket(m_ctx, ZMQ_SUB);
 
+  // Set a receive timeout: this shouldn't be needed, except for
+  // working around a problem with multiple zeromq versions(?) that
+  // Phil is chasing on 2019-03-12
+  int timeout=3000;
+  zmq_setsockopt(m_socket, ZMQ_RCVTIMEO, &timeout, sizeof(int));
+
   // Connect the socket to the other end, and subscribe to all the messages on it
   int zrc = zmq_connect(m_socket, m_subscribeAddress.c_str());
   if (zrc!=0) {
