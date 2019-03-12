@@ -326,7 +326,7 @@ void NetioHandler::startSubscribers(){
 
 	    bool storeOk = m_pcqs[m_channels[chn]]->write( std::move(ics) ); // RS -> Add possibility for dry_run! (No push mode.)
 
-            m_tp_finders[m_channels[chn]]->addMessage(*m_pcqs[m_channels[chn]]->frontPtr());
+            m_tp_finders[m_channels[chn]]->addMessage(ics);
 
 	    if (!storeOk) {
               //DAQLogger::LogWarning("NetioHandler::subscriber") << " Fragments queue is full. Lost: " << lostData;

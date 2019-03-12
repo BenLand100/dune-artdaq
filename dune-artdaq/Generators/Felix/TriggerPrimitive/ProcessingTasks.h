@@ -23,7 +23,7 @@ namespace ProcessingTasks {
     {
         uint64_t timestamp;          // The timestamp of the first frame in the
                                      // netio message
-        SUPERCHUNK_CHAR_STRUCT* scs; // Pointer to the (raw) message to be
+        SUPERCHUNK_CHAR_STRUCT scs;  // The raw message to be
                                      // processed
         uint64_t timeQueued;         // The time this item was queued
                                      // so receivers can detect

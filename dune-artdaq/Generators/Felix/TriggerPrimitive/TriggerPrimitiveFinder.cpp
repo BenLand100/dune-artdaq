@@ -34,7 +34,7 @@ TriggerPrimitiveFinder::~TriggerPrimitiveFinder()
     dune::DAQLogger::LogInfo("TriggerPrimitiveFinder::~TriggerPrimitiveFinder") << "TriggerPrimitiveFinder dtor entered";
     // Superstition: add multiple "end of messages" messages
     for(int i=0; i<5; ++i){
-        m_itemsToProcess.write(ProcessingTasks::ItemToProcess{ProcessingTasks::END_OF_MESSAGES, nullptr, ProcessingTasks::now_us()});
+        m_itemsToProcess.write(ProcessingTasks::ItemToProcess{ProcessingTasks::END_OF_MESSAGES, SUPERCHUNK_CHAR_STRUCT{}, ProcessingTasks::now_us()});
     }
     dune::DAQLogger::LogInfo("TriggerPrimitiveFinder::~TriggerPrimitiveFinder") << "Joining processing thread";
     m_processingThread.join(); // Wait for it to actually stop
@@ -47,7 +47,7 @@ void TriggerPrimitiveFinder::addMessage(SUPERCHUNK_CHAR_STRUCT& ucs)
     if(m_readyForMessages.load()){
         // The first frame in the message
         dune::FelixFrame* frame=reinterpret_cast<dune::FelixFrame*>(&ucs);
-        m_itemsToProcess.write(ProcessingTasks::ItemToProcess{frame->timestamp(), &ucs, ProcessingTasks::now_us()});
+        m_itemsToProcess.write(ProcessingTasks::ItemToProcess{frame->timestamp(), ucs, ProcessingTasks::now_us()});
     }
 }
 
@@ -215,11 +215,11 @@ void TriggerPrimitiveFinder::processing_thread(uint8_t first_register, uint8_t l
         ++nmsg;
         if(item.timestamp==ProcessingTasks::END_OF_MESSAGES || n_read_tries>999998) break;
         measure_latency(item);
-        RegisterArray<REGISTERS_PER_FRAME*FRAMES_PER_MSG> expanded=expand_message_adcs(*item.scs);
+        RegisterArray<REGISTERS_PER_FRAME*FRAMES_PER_MSG> expanded=expand_message_adcs(item.scs);
         MessageCollectionADCs* mcadc=reinterpret_cast<MessageCollectionADCs*>(expanded.data());
         if(first){
             pi.setState(mcadc);
-            dune::FelixFrame* frame=reinterpret_cast<dune::FelixFrame*>(item.scs);
+            dune::FelixFrame* frame=reinterpret_cast<dune::FelixFrame*>(&item.scs);
             m_fiber_no=frame->fiber_no();
             m_crate_no=frame->crate_no();
             m_slot_no=frame->slot_no();
