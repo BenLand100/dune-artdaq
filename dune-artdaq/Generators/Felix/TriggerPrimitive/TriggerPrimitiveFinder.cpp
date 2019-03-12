@@ -15,7 +15,8 @@ TriggerPrimitiveFinder::TriggerPrimitiveFinder(std::string zmq_hit_send_connecti
       m_fiber_no(0xff),
       m_slot_no(0xff),
       m_crate_no(0xff),
-      m_TPSender(std::string("{\"socket\": { \"type\": \"PUB\", \"bind\": [ \"")+zmq_hit_send_connection+std::string("\" ] } }"))
+      m_TPSender(std::string("{\"socket\": { \"type\": \"PUB\", \"bind\": [ \"")+zmq_hit_send_connection+std::string("\" ] } }")),
+      m_should_stop(false)
 {
     std::cout << zmq_hit_send_connection << std::endl;
     m_processingThread=std::thread(&TriggerPrimitiveFinder::processing_thread, this, 0, REGISTERS_PER_FRAME);
@@ -34,6 +35,7 @@ TriggerPrimitiveFinder::TriggerPrimitiveFinder(std::string zmq_hit_send_connecti
 TriggerPrimitiveFinder::~TriggerPrimitiveFinder()
 {
     dune::DAQLogger::LogInfo("TriggerPrimitiveFinder::~TriggerPrimitiveFinder") << "TriggerPrimitiveFinder dtor entered";
+    m_should_stop.store(false);
     // Superstition: add multiple "end of messages" messages
     for(int i=0; i<5; ++i){
         m_itemsToProcess.write(ProcessingTasks::ItemToProcess{ProcessingTasks::END_OF_MESSAGES, SUPERCHUNK_CHAR_STRUCT{}, ProcessingTasks::now_us()});
@@ -41,6 +43,13 @@ TriggerPrimitiveFinder::~TriggerPrimitiveFinder()
     dune::DAQLogger::LogInfo("TriggerPrimitiveFinder::~TriggerPrimitiveFinder") << "Joining processing thread";
     m_processingThread.join(); // Wait for it to actually stop
     dune::DAQLogger::LogInfo("TriggerPrimitiveFinder::~TriggerPrimitiveFinder") << "Processing thread joined";
+}
+
+//======================================================================
+void TriggerPrimitiveFinder::stop()
+{
+    dune::DAQLogger::LogInfo("TriggerPrimitiveFinder::stop") << "Setting stop flag";
+    m_should_stop.store(true);
 }
 
 //======================================================================
@@ -232,10 +241,12 @@ void TriggerPrimitiveFinder::processing_thread(uint8_t first_register, uint8_t l
 
     while(true){
         ProcessingTasks::ItemToProcess item;
-        int n_read_tries=0;
-        while(!m_itemsToProcess.read(item) && n_read_tries<1000000){ std::this_thread::sleep_for(std::chrono::microseconds(10)); ++n_read_tries; }
+        while(!m_itemsToProcess.read(item) && !m_should_stop.load()){ 
+            std::this_thread::sleep_for(std::chrono::microseconds(10));
+        }
         ++nmsg;
-        if(item.timestamp==ProcessingTasks::END_OF_MESSAGES || n_read_tries>999998) break;
+        if(item.timestamp==ProcessingTasks::END_OF_MESSAGES) break;
+        if(m_should_stop.load()) break;
         measure_latency(item);
         RegisterArray<REGISTERS_PER_FRAME*FRAMES_PER_MSG> expanded=expand_message_adcs(item.scs);
         MessageCollectionADCs* mcadc=reinterpret_cast<MessageCollectionADCs*>(expanded.data());

@@ -396,6 +396,9 @@ void NetioHandler::stopSubscribers(){
     m_netioSubscribers[i].join();
     DAQLogger::LogInfo("NetioHandler::stopSubscriber") << "Subscriber[" << i << "] joined."; 
   }
+  for(auto& tp_finder: m_tp_finders){
+      tp_finder.second->stop();
+  }
   m_netioSubscribers.clear();
 }
 

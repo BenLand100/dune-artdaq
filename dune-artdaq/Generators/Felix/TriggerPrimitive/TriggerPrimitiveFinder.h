@@ -39,6 +39,7 @@ public:
         return getHitsForWindow(m_triggerPrimitives, start_ts, end_ts);
     }
 
+    void stop();
     // void waitForJobs() { for(auto& f: m_futures) f.wait(); }
 private:
 
@@ -79,6 +80,7 @@ private:
     uint8_t m_slot_no;
     uint8_t m_crate_no;
     ptmp::TPSender m_TPSender;
+    std::atomic<bool> m_should_stop;
 };
 
 #endif
