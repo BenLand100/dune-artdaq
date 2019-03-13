@@ -213,7 +213,16 @@ dune::TimingReceiver::TimingReceiver(fhicl::ParameterSet const & ps):
     status_publisher_->BindPublisher();
 
     fragment_publisher_.reset(new artdaq::FragmentPublisher(zmq_fragment_conn_out_));
-    fragment_publisher_->BindPublisher();
+    int rc=fragment_publisher_->BindPublisher();
+    if(rc==0){
+        DAQLogger::LogInfo(instance_name_) << "Successfully bound fragment publisher to " << zmq_fragment_conn_out_;
+    }
+    else{
+        std::stringstream ss;
+        ss  << "Could not bind fragment publisher to " << zmq_fragment_conn_out_ << ". errno is " << errno << ": " << strerror(errno);
+        DAQLogger::LogError(instance_name_) << ss.str();
+        throw std::runtime_error(ss.str());
+    }
 
     // TODO: Do we really need to sleep here to wait for the socket to bind?
     usleep(2000000);
