@@ -41,9 +41,9 @@ void RequestReceiver::start() {
       << "ZMQ connect return code is not zero, but: " << zrc;   
   } else {
      dune::DAQLogger::LogInfo("RequestReceiver::start")
-      << "Connected to ZMQ socket successfully!";
+         << "Connected to ZMQ socket " << m_subscribeAddress << " successfully!";
   }
-  zmq_setsockopt(m_socket, ZMQ_SUBSCRIBE, "", 0);
+  zmq_setsockopt(m_socket, ZMQ_SUBSCRIBE, NULL, 0);
 
   m_stop_thread = false;
   m_prevTrigger.seqID = 0;
@@ -97,8 +97,10 @@ bool RequestReceiver::rcvMore()
 {
   int rcvmore;
   size_t option_len;
-  zmq_getsockopt(m_socket, ZMQ_RCVMORE, &rcvmore, &option_len);
-  return rcvmore;
+  dune::DAQLogger::LogInfo("RequestReceiver::rcvMore") << "Calling getsockopt()";
+  zmq_getsockopt(m_socket, ZMQ_RCVMORE, rcvmore, option_len);
+  dune::DAQLogger::LogInfo("RequestReceiver::rcvMore") << "rcvmore is " << rcvmore[0];
+  return rcvmore[0];
 }
 
 std::vector<uint64_t> RequestReceiver::getVals()
@@ -118,12 +120,15 @@ std::vector<uint64_t> RequestReceiver::getVals()
     return ret;
   }
   else{
+    dune::DAQLogger::LogInfo("RequestReceiver::getVals") << "Got the first part of a message";
     // Yes, so receive the whole message
     ret.push_back(val);
     while(rcvMore()){
       zmq_recv(m_socket, &val, sizeof(val), 0);
+      dune::DAQLogger::LogInfo("RequestReceiver::getVals") << "Got another message part: " << val;
       ret.push_back(val);
     }
+    dune::DAQLogger::LogInfo("RequestReceiver::getVals") << "Done with message parts";
     return ret;
   }
 }
