@@ -26,25 +26,6 @@ RequestReceiver::~RequestReceiver() {
 void RequestReceiver::start() {
   // Create the zmq context and socket
   m_ctx = zmq_ctx_new();
-  m_socket = zmq_socket(m_ctx, ZMQ_SUB);
-
-  // Set a receive timeout: this shouldn't be needed, except for
-  // working around a problem with multiple zeromq versions(?) that
-  // Phil is chasing on 2019-03-12
-  int timeout=3000;
-  zmq_setsockopt(m_socket, ZMQ_RCVTIMEO, &timeout, sizeof(int));
-
-  // Connect the socket to the other end, and subscribe to all the messages on it
-  int zrc = zmq_connect(m_socket, m_subscribeAddress.c_str());
-  if (zrc!=0) {
-    dune::DAQLogger::LogWarning("RequestReceiver::start")
-      << "ZMQ connect return code is not zero, but: " << zrc;   
-  } else {
-     dune::DAQLogger::LogInfo("RequestReceiver::start")
-         << "Connected to ZMQ socket " << m_subscribeAddress << " successfully!";
-  }
-  zmq_setsockopt(m_socket, ZMQ_SUBSCRIBE, NULL, 0);
-
   m_stop_thread = false;
   m_prevTrigger.seqID = 0;
   m_receiver = std::thread(&RequestReceiver::thread, this);
@@ -63,7 +44,6 @@ void RequestReceiver::stop() {
   dune::DAQLogger::LogInfo("RequestReceiver::stop")
       << "Request receiver thread joined! Request queue flushed.";
 
-  zmq_close(m_socket);
   zmq_ctx_destroy(m_ctx);
 
 }
@@ -98,9 +78,9 @@ bool RequestReceiver::rcvMore()
   int rcvmore;
   size_t option_len;
   dune::DAQLogger::LogInfo("RequestReceiver::rcvMore") << "Calling getsockopt()";
-  zmq_getsockopt(m_socket, ZMQ_RCVMORE, rcvmore, option_len);
-  dune::DAQLogger::LogInfo("RequestReceiver::rcvMore") << "rcvmore is " << rcvmore[0];
-  return rcvmore[0];
+  zmq_getsockopt(m_socket, ZMQ_RCVMORE, &rcvmore, &option_len);
+  dune::DAQLogger::LogInfo("RequestReceiver::rcvMore") << "rcvmore is " << rcvmore;
+  return rcvmore;
 }
 
 std::vector<uint64_t> RequestReceiver::getVals()
@@ -136,6 +116,25 @@ std::vector<uint64_t> RequestReceiver::getVals()
 
 void RequestReceiver::thread(){
   dune::DAQLogger::LogInfo("RequestReceiver::thread") << "Starting listening loop";
+  m_socket = zmq_socket(m_ctx, ZMQ_SUB);
+
+  // Set a receive timeout: this shouldn't be needed, except for
+  // working around a problem with multiple zeromq versions(?) that
+  // Phil is chasing on 2019-03-12
+  int timeout=3000;
+  zmq_setsockopt(m_socket, ZMQ_RCVTIMEO, &timeout, sizeof(int));
+
+  // Connect the socket to the other end, and subscribe to all the messages on it
+  int zrc = zmq_connect(m_socket, m_subscribeAddress.c_str());
+  if (zrc!=0) {
+    dune::DAQLogger::LogWarning("RequestReceiver::start")
+      << "ZMQ connect return code is not zero, but: " << zrc;   
+  } else {
+     dune::DAQLogger::LogInfo("RequestReceiver::start")
+         << "Connected to ZMQ socket " << m_subscribeAddress << " successfully!";
+  }
+  zmq_setsockopt(m_socket, ZMQ_SUBSCRIBE, NULL, 0);
+
   // Spin while stop issued.
   while(!m_stop_thread){
     std::vector<uint64_t> vals=getVals();
@@ -152,5 +151,7 @@ void RequestReceiver::thread(){
       m_req->write(t);
     }
   }
+  dune::DAQLogger::LogInfo("RequestReceiver::thread") << "Listening thread shutting down and closing socket";
+  zmq_close(m_socket);
 }
 
