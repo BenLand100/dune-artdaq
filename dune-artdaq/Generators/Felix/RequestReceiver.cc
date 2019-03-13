@@ -76,7 +76,7 @@ TriggerInfo RequestReceiver::getNextRequest(const long timeout_ms) {
 bool RequestReceiver::rcvMore()
 {
   int rcvmore;
-  size_t option_len;
+  size_t option_len=sizeof(int);
   dune::DAQLogger::LogInfo("RequestReceiver::rcvMore") << "Calling getsockopt()";
   zmq_getsockopt(m_socket, ZMQ_RCVMORE, &rcvmore, &option_len);
   dune::DAQLogger::LogInfo("RequestReceiver::rcvMore") << "rcvmore is " << rcvmore;
