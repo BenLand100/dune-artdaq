@@ -207,7 +207,7 @@ bool dune::HitFinderCPUReceiver::getNext_(artdaq::FragmentPtrs &frags)
       startTime = HitSet.tps()[it].tstart();
       if(HitSet.tps()[it].adcsum() < UINT16_MAX) charge = HitSet.tps()[it].adcsum(); // uint32_t -> uint16_t
       if(HitSet.tps()[it].tspan() < UINT16_MAX) timeOverThreshold = HitSet.tps()[it].tspan(); // uint32_t -> uint16_t
-      dune::TriggerPrimitive hit(channel, startTime, charge, timeOverThreshold); // uint32_t -> uint16_t
+      dune::TriggerPrimitive hit(startTime, channel, 0, charge, timeOverThreshold); // uint32_t -> uint16_t
       hitfrag.get_primitive() = hit; // Finally, fill this fragment with this hit.
       frags.emplace_back(std::move(f));
     }
