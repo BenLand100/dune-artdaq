@@ -76,10 +76,8 @@ TriggerInfo RequestReceiver::getNextRequest(const long timeout_ms) {
 bool RequestReceiver::rcvMore()
 {
   int rcvmore;
-  size_t option_len=sizeof(int);
-  dune::DAQLogger::LogInfo("RequestReceiver::rcvMore") << "Calling getsockopt()";
+  size_t option_len=sizeof(rcvmore);
   zmq_getsockopt(m_socket, ZMQ_RCVMORE, &rcvmore, &option_len);
-  dune::DAQLogger::LogInfo("RequestReceiver::rcvMore") << "rcvmore is " << rcvmore;
   return rcvmore;
 }
 
@@ -96,23 +94,18 @@ std::vector<uint64_t> RequestReceiver::getVals()
   }
   else if(rc==-1){
     // Some other error. Print it and return empty vector
-    dune::DAQLogger::LogError("RequestReceiver::getVals") << "Error in zmq_recv(): " << strerror(errno);
     return ret;
   }
   else{
-    dune::DAQLogger::LogInfo("RequestReceiver::getVals") << "Got the first part of a message";
     // Yes, so receive the whole message
     ret.push_back(val);
     while(rcvMore()){
       zmq_recv(m_socket, &val, sizeof(val), 0);
-      dune::DAQLogger::LogInfo("RequestReceiver::getVals") << "Got another message part: " << val;
       ret.push_back(val);
     }
-    dune::DAQLogger::LogInfo("RequestReceiver::getVals") << "Done with message parts";
     return ret;
   }
 }
-
 
 void RequestReceiver::thread(){
   dune::DAQLogger::LogInfo("RequestReceiver::thread") << "Starting listening loop";
@@ -143,7 +136,6 @@ void RequestReceiver::thread(){
       std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
     else {
-      dune::DAQLogger::LogInfo("RequestReceiver::thread") << "Got request with seqid " << vals[0] << " timestamp " << vals[5];
       TriggerInfo t;
       t.seqID = vals[0];
       t.timestamp = vals[5];
