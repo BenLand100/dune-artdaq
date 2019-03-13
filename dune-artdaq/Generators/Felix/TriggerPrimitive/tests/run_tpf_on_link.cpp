@@ -31,7 +31,7 @@ int main(int argc, char** argv)
     std::cout << "Setting up with link=" << link << " for " << n_msgs << " messages" << std::endl;
     SUPERCHUNK_CHAR_STRUCT* ics=new SUPERCHUNK_CHAR_STRUCT[n_msgs];
 
-    TriggerPrimitiveFinder* tpf=new TriggerPrimitiveFinder("tcp://localhost:54321");
+    TriggerPrimitiveFinder* tpf=new TriggerPrimitiveFinder("tcp://localhost:54321", 0);
     netio::context* context = new netio::context("fi_verbs");
     std::thread netio_bg_thread = std::thread( [&](){context->event_loop()->run_forever();} );
 

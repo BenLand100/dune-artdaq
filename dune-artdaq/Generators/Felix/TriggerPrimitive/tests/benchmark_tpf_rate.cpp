@@ -9,7 +9,7 @@ int main(int argc, char** argv)
     if(argc>=2)  sscanf(argv[1],"%d",&n_repeats);
 
     mf::setStandAloneMessageThreshold({"ERROR"});
-    TriggerPrimitiveFinder* tpf=new TriggerPrimitiveFinder("tcp://localhost:54321");
+    TriggerPrimitiveFinder* tpf=new TriggerPrimitiveFinder("tcp://localhost:54321", 0);
     // std::this_thread::sleep_for(std::chrono::seconds(1));
     FrameFile f("/nfs/sw/work_dirs/phrodrig/felixcosmics.dat");
     char* fragment=reinterpret_cast<char*>(f.fragment(0));
