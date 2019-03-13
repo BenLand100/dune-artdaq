@@ -18,7 +18,6 @@
 #include "artdaq/Application/CommandableFragmentGenerator.hh"
 
 #include "dune-raw-data/Overlays/FragmentType.hh"
-#include "PTMPConfig.h"
 
 #include <random>
 #include <vector>
