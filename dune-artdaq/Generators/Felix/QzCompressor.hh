@@ -8,6 +8,8 @@
 #include <mutex>
 #include <fstream>
 
+#define FLXQATDEBUG
+
 /*
  * QzCompressor
  * Author: Fabrice Le Goff - flegoff@cern.ch
@@ -35,7 +37,7 @@ public:
   ~QzCompressor();
   QzCompressor(QzCompressor const &) = delete;
 
-  int init(unsigned max_expected_fragment_size);
+  int init(unsigned max_expected_fragment_size, int engine);
   int shutdown();
 
   uint_fast32_t do_compress(artdaq::Fragment* fragPtr, uint_fast32_t fragSize);
@@ -45,7 +47,7 @@ private:
   QzSessionParams qzparams_;
 
   unsigned internal_buffer_size_;
-  uint8_t* internal_buffer_;
+  uint8_t* internal_buffer_; // align to 64B? 
 
   bool init_;
   std::mutex init_mutex_;

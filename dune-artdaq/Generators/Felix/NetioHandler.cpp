@@ -10,6 +10,9 @@
 #include <iomanip>
 #include <pthread.h>
 
+#define REORD_DEBUG
+#define QATCOMP_DEBUG
+
 using namespace dune;
 
 NetioHandler::NetioHandler()
@@ -199,7 +202,14 @@ void NetioHandler::startTriggerMatchers(){
 
         if (m_doCompress) {
           // RS -> Keep in mind, compFacility does all the fragment size resizes.
+#ifdef QATCOMP_DEBUG
+          std::chrono::high_resolution_clock::time_point tq1 = std::chrono::high_resolution_clock::now();
+#endif
           uint_fast32_t compSize = m_compressionFacility->do_compress(m_fragmentPtr, fragSize);
+#ifdef QATCOMP_DEBUG
+          auto tqdelta = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now() - tq1);
+          DAQLogger::LogInfo("NetioHandler::compressionTiming") << "compression took: " << tqdelta.count() << " us";
+#endif
           DAQLogger::LogInfo("NetioHandler::startTriggerMatchers")
             << "Data compressed! Orig:" << fragSize << " Compressed:" << compSize
             << " ratio:" << float(fragSize)/float(compSize);
@@ -364,6 +374,12 @@ void NetioHandler::startSubscribers(){
   }
 }
 
+bool NetioHandler::flushQueues(){
+  // while (!pcq.isEmpty()) { pcq.pop(); }
+  while (!m_pcqs[0]->isEmpty()) { m_pcqs[0]->popFront(); }
+  return true; ///m_pcqs[m_channels[chn]]
+}
+
 void NetioHandler::stopSubscribers(){
   m_stop_subs=true;
   for (uint32_t i=0; i<m_netioSubscribers.size(); ++i) {
@@ -396,6 +412,29 @@ void NetioHandler::lockSubsToCPUs(uint32_t offset) {
   m_cpu_lock = true;
 }
 
+void NetioHandler::lockTrmsToCPUs(uint32_t offset) {
+  DAQLogger::LogInfo("NetioHandler::lockTrmsToCPUs") << "Attempt to lock TriggerMatchers to CPUs."; 
+  cpu_set_t cpuset;
+  CPU_ZERO(&cpuset);
+  unsigned short cpuid = offset; // Beautiful hardcode.... :)
+  for (unsigned i=0; i< m_extractors.size(); ++i) { //  set_thread_name(m_extractors[i]->get_thread(), "nioh-trm", i);
+    CPU_SET(cpuid-12, &cpuset);
+    CPU_SET(cpuid-12+24, &cpuset);
+    // RS : Not a good attempt.
+    //CPU_SET(cpuid+16, &cpuset);
+    int ret = pthread_setaffinity_np(m_extractors[i]->get_thread().native_handle(), sizeof(cpu_set_t), &cpuset);
+    if (ret!=0) {
+      DAQLogger::LogError("NetioHandler::lockTrmsToCPUs") 
+        << "Error calling pthread_setaffinity! Return code:" << ret; 
+    } else {
+      DAQLogger::LogInfo("NetioHandler::lockTrmsToCPUs") 
+        << "TriggerMatchers locked to CPU["<<cpuid<<"]"; 
+    }
+//#warning RS: FIXME! Subscriber NUMA specific CPU locks should come from FHiCL configuration!
+    cpuid+=2; // RS: FIXME! This should come from a NUMA node mapping from configuration, or through auto-discovery.
+  }
+}
+
 bool NetioHandler::addChannel(uint64_t chn, uint16_t tag, std::string host, uint16_t port, size_t queueSize, bool zerocopy){
   m_host=host;
   m_port=port;
@@ -406,8 +445,11 @@ bool NetioHandler::addChannel(uint64_t chn, uint16_t tag, std::string host, uint
     netio::sockcfg cfg = netio::sockcfg::cfg(); 
     if (zerocopy) cfg(netio::sockcfg::ZERO_COPY);
     m_sub_sockets[chn] = new netio::subscribe_socket(m_context, cfg);
-    netio::tag elink = tag;
-    m_sub_sockets[chn]->subscribe(elink, netio::endpoint(host, port));
+
+    // RS:2019 -> Adding unsub support.
+    //netio::tag elink = tag;
+    //m_sub_sockets[chn]->subscribe(elink, netio::endpoint(host, port));
+
     std::this_thread::sleep_for(std::chrono::microseconds(10000)); // This is needed... Why? :/
     DAQLogger::LogInfo("NetioHandler::addChannel") 
       << "Added channel chn:" << chn << " tag:" << tag << " host:" << host << " port:" << port;
@@ -424,6 +466,20 @@ bool NetioHandler::addChannel(uint64_t chn, uint16_t tag, std::string host, uint
   m_activeChannels++;
   return true;
 } 
+
+bool NetioHandler::subscribe(uint64_t chn, uint16_t tag){
+  DAQLogger::LogInfo("NetioHandler::subscribe") << "Subscribing to tag (chn, tag):" << chn << "," << tag;
+  m_sub_sockets[chn]->subscribe(tag, netio::endpoint(m_host, m_port));
+  std::this_thread::sleep_for(std::chrono::microseconds(10000)); // This is needed... Why? :/
+  return true;
+}
+
+bool NetioHandler::unsubscribe(uint64_t chn, uint16_t tag){
+  DAQLogger::LogInfo("NetioHandler::unsubscribe") << "Unsubscribing from tag (chn, tag):" << chn << "," << tag;
+  m_sub_sockets[chn]->unsubscribe(tag, netio::endpoint(m_host, m_port));
+  std::this_thread::sleep_for(std::chrono::microseconds(10000)); // This is needed... Why? :/
+  return true;
+}
 
 void NetioHandler::recalculateByteSizes()
 {
@@ -443,6 +499,7 @@ void NetioHandler::recalculateByteSizes()
 
 void NetioHandler::recalculateFragmentSizes()
 {
+  DAQLogger::LogInfo("NetioHandler::recalculateFragmentSizes") << "Recalculating...";
   size_t framesPerMsg = m_msgsize / m_framesize;
   m_timeWindowNumMessages = (m_timeWindow / framesPerMsg) + 2;
 
