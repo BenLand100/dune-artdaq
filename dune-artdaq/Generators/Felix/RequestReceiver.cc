@@ -90,7 +90,7 @@ TriggerInfo RequestReceiver::getNextRequest() {
 bool RequestReceiver::rcvMore()
 {
   int rcvmore;
-  size_t option_len;
+  size_t option_len=sizeof(rcvmore);
   zmq_getsockopt(m_socket, ZMQ_RCVMORE, &rcvmore, &option_len);
   return rcvmore;
 }
