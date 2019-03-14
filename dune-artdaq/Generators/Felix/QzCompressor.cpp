@@ -1,4 +1,5 @@
 #include "QzCompressor.hh"
+#include "dune-artdaq/DAQLogger/DAQLogger.hh"
 
 QzCompressor::QzCompressor(
 		QzAlgo algo /*= QzAlgo::Deflate*/,
@@ -39,7 +40,7 @@ QzCompressor::QzCompressor(
 	}
 }
 
-int QzCompressor::init(unsigned max_expected_fragment_size)
+int QzCompressor::init(unsigned max_expected_fragment_size, int engine=-1)
 {
 	std::lock_guard<std::mutex> lock(init_mutex_);
 
@@ -49,7 +50,7 @@ int QzCompressor::init(unsigned max_expected_fragment_size)
 
 	int rv = QZ_OK;
 	//qzparams_.inputSzThrshold = 0;
-	rv = qzInit(&qzsession_, qzparams_.swBackup);
+	rv = qzInit(&qzsession_, qzparams_.swBackup, engine);
 	if (rv != QZ_OK) {
 		return rv;
 	}

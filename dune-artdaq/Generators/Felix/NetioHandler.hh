@@ -72,9 +72,9 @@ public:
     // QzCompressor qzc(QzCompressor::QzAlgo::Deflate, compression_level, hw_bufsize_kb);
     m_compressionFacility = std::make_unique<QzCompressor>(QzCompressor::QzAlgo::Deflate, 4, 64);
   }
-  int  initQAT() {
+  int  initQAT(int engine) {
     // If this fails, doCompression will fall back to 0.
-    int ret = m_compressionFacility->init(m_timeWindowByteSizeOut);
+    int ret = m_compressionFacility->init(m_timeWindowByteSizeOut, engine);
     if (ret!=0) { m_doCompress=false; }
     return ret;
   }
@@ -90,18 +90,23 @@ public:
   bool stopContext();
   // Enable an elink (prepare a queue, socket-pairs and sub to elink.
   bool addChannel(uint64_t chn, uint16_t tag, std::string host, uint16_t port, size_t queueSize, bool zerocopy, int32_t cpu_offset, std::string zmq_hit_send_connection);   
+  bool subscribe(uint64_t chn, uint16_t tag); // Subscribe to given tag for elink/channel.
+  bool unsubscribe(uint64_t chn, uint16_t tag); // Unsubscribe from a tag for elinkg/channel.
   bool busy(); // are trigger matchers busy
   void startTriggerMatchers(); // Starts trigger matcher threads.
   void stopTriggerMatchers();  // Stops trigger matcher threads.
   void startSubscribers(); // Starts the subscriber threads.
   void stopSubscribers();  // Stops the subscriber threads.
   void lockSubsToCPUs(uint32_t offset); // Lock subscriber threads to CPUset.
-  
+  void lockTrmsToCPUs(uint32_t offset); // Lock triggerMatcher threads to CPUset: highly experimental. :)
+ 
   // ArtDAQ specific
   //void setReadoutBuffer(char* buffPtr, size_t* bytePtr) { m_bufferPtr=&buffPtr; m_bytesReadPtr=&bytePtr; };
   bool triggerWorkers(uint64_t timestamp, uint64_t sequence_id,
                       std::unique_ptr<artdaq::Fragment>& frag,
                       std::unique_ptr<artdaq::Fragment>& fraghits);
+
+  bool flushQueues();
 
   // Queue utils if needed
   size_t getNumOfChannels() { return m_activeChannels; } // Get the number of active channels.

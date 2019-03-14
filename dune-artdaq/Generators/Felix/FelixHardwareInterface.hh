@@ -81,6 +81,7 @@ private:
   bool reordering_;
   bool trigger_primitive_finding_;
   bool compression_;
+  int qat_engine_;
   std::string requester_address_;
   std::string request_address_;
   unsigned short request_port_;
@@ -95,6 +96,7 @@ private:
   std::atomic<unsigned long long> messages_received_;
   std::atomic<unsigned long long> bytes_received_;
   std::atomic<bool> taking_data_;
+  std::atomic<bool> first_datataking_;
   std::atomic<unsigned long long> fake_trigger_;
   std::atomic<unsigned int> fake_trigger_attempts_;
 

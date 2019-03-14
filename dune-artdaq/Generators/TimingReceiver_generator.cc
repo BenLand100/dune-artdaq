@@ -354,6 +354,7 @@ bool dune::TimingReceiver::checkHWStatus_()
     int n_remaining_table_entries = dsmptr? dsmptr->GetRemainingRoutingTableEntries() : -1;
     int n_table_count = dsmptr? dsmptr->GetRoutingTableEntryCount() : -1;
     TLOG(TLVL_HWSTATUS) << "hwstatus: buf_warn=" << mp_ovrflw
+			<< " numEventsInBuffer=" << master_partition().numEventsInBuffer()
 			<< " table_count=" << n_table_count
 			<< " table_entries_remaining=" << n_remaining_table_entries;
 
