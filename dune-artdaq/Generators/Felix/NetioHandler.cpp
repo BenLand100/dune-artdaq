@@ -73,6 +73,8 @@ bool NetioHandler::stopContext() {
     << "Stopping eventloop, destroying context."; 
   m_context->event_loop()->stop();
   m_netio_bg_thread.join();
+  DAQLogger::LogInfo("NetioHandler::stopContext")
+    << "Background thread joined"; 
   delete m_context;
   return true;
 }
