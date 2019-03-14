@@ -90,7 +90,7 @@ void dune::HitFinderCPUReceiver::start(void)
   nlohmann::json sender_config;
 
   receiver_config["socket"]["type"] = "SUB";
-  receiver_config["socket"]["bind"] = receiver_socket_;
+  receiver_config["socket"]["connect"] = receiver_socket_;
 
   sender_config["socket"]["type"] = "PUB";
   sender_config["socket"]["bind"] = sender_socket_;
