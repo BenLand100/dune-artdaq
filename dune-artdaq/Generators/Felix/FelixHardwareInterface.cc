@@ -149,14 +149,6 @@ FelixHardwareInterface::~FelixHardwareInterface(){
 void FelixHardwareInterface::StartDatataking() {
   DAQLogger::LogInfo("dune::FelixHardwareInterface::StartDatataking") << "Start datataking...";
 
-  DAQLogger::LogInfo("dune::FelixHardwareInterface::FelixHardwareInterface")
-    << "Setting up NetioHandler (host, port, adding channels, starting subscribers, locking subs to CPUs.)";
-  nioh_.setupContext( backend_ ); // posix or infiniband
-  for ( auto const & link : link_parameters_ ){ // Add channels
-      nioh_.addChannel(link.id_, link.tag_, link.host_, link.port_, queue_size_, zerocopy_, offset_-12, link.zmq_hit_send_connection_); 
-  }
-  DAQLogger::LogInfo("dune::FelixHardwareInterface::FelixHardwareInterface")
-    << "Links added";
 
   // GLM: start listening to trigger before data stream, else data stream fills up
   taking_data_.store( true );
