@@ -93,7 +93,7 @@ void dune::HitFinderCPUReceiver::start(void)
   receiver_config["socket"]["connect"] = receiver_socket_;
 
   sender_config["socket"]["type"] = "PUB";
-  sender_config["socket"]["bind"] = sender_socket_;
+  sender_config["socket"]["connect"] = sender_socket_;
   
   receiver_ = new ptmp::TPReceiver(receiver_config.dump());
   sender_ = new ptmp::TPSender(sender_config.dump());
