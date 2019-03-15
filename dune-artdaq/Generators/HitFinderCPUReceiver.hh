@@ -101,8 +101,8 @@ namespace dune {
     std::string sender_socket_;
 
     // The actual receiver/sender
-    ptmp::TPReceiver* receiver_;
-    ptmp::TPSender* sender_;
+    std::unique_ptr<ptmp::TPReceiver> receiver_;
+    std::unique_ptr<ptmp::TPSender> sender_;
 
 
 
@@ -114,7 +114,7 @@ namespace dune {
     // std::string request_address_;
     // unsigned short request_port_;
     // unsigned short requests_size_;
-    
+    int nSetsReceived_;
   };
 }
 

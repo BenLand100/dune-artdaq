@@ -64,6 +64,7 @@ using json = nlohmann::json;
 //
 // Constructor ------------------------------------------------------------------------------
 dune::HitFinderCPUReceiver::HitFinderCPUReceiver(fhicl::ParameterSet const & ps):
+  CommandableFragmentGenerator(ps),
   instance_name_("HitFinderCPUReceiver"),
   timeout_(ps.get<int>("timeout")),
   waitretry_(ps.get<int>("waitretry")),
@@ -72,7 +73,8 @@ dune::HitFinderCPUReceiver::HitFinderCPUReceiver(fhicl::ParameterSet const & ps)
   receiver_socket_(ps.get<std::string>("receiver_socket")),
   sender_socket_(ps.get<std::string>("sender_socket")),
   receiver_(nullptr),
-  sender_(nullptr)
+  sender_(nullptr),
+  nSetsReceived_(0)
 {
   DAQLogger::LogInfo(instance_name_) << "Done - Configuring the TPReceiver\n";
   DAQLogger::LogInfo(instance_name_) << "Done - Configuring the TPSender\n";
@@ -83,28 +85,30 @@ dune::HitFinderCPUReceiver::HitFinderCPUReceiver(fhicl::ParameterSet const & ps)
 // start() routine --------------------------------------------------------------------------
 void dune::HitFinderCPUReceiver::start(void)
 {
-  DAQLogger::LogDebug(instance_name_) << "start() called\n";
-  // Setup the PTMP receiver
-  // The2 JSON configuration
-  nlohmann::json receiver_config;
-  nlohmann::json sender_config;
+  DAQLogger::LogInfo(instance_name_) << "start() called\n";
+  // // Setup the PTMP receiver
+  // // The2 JSON configuration
+  // nlohmann::json receiver_config;
+  // nlohmann::json sender_config;
 
-  receiver_config["socket"]["type"] = "SUB";
-  receiver_config["socket"]["connect"] = receiver_socket_;
+  // receiver_config["socket"]["type"] = "SUB";
+  // receiver_config["socket"]["connect"] = receiver_socket_;
 
-  sender_config["socket"]["type"] = "PUB";
-  sender_config["socket"]["connect"] = sender_socket_;
-  
-  receiver_ = new ptmp::TPReceiver(receiver_config.dump());
-  sender_ = new ptmp::TPSender(sender_config.dump());
-  DAQLogger::LogDebug(instance_name_) << "PTMP Receiver set\n";
-    
+  // sender_config["socket"]["type"] = "PUB";
+  // sender_config["socket"]["connect"] = sender_socket_;
+
+  std::string sr=std::string("{\"socket\": { \"type\": \"SUB\", \"connect\": [ \"")+receiver_socket_+std::string("\" ] } }");
+  receiver_.reset(new ptmp::TPReceiver(sr));
+
+  std::string ss=std::string("{\"socket\": { \"type\": \"PUB\", \"connect\": [ \"")+sender_socket_+std::string("\" ] } }");
+  sender_.reset(new ptmp::TPSender(ss));
+  DAQLogger::LogInfo(instance_name_) << "PTMP Receiver set\n";
 }
 
 
 void dune::HitFinderCPUReceiver::stop(void)
 {
-  DAQLogger::LogInfo(instance_name_) << "stop() called";
+    DAQLogger::LogInfo(instance_name_) << "stop() called after receiving " << nSetsReceived_ << " TPSets";
   // 
   
 }
@@ -125,19 +129,22 @@ bool dune::HitFinderCPUReceiver::checkHWStatus_()
 
 bool dune::HitFinderCPUReceiver::getNext_(artdaq::FragmentPtrs &frags)
 {
-  if (should_stop()) return true;
+    // DAQLogger::LogInfo("HitFinderCPUReceiver::getNext_") << "Start of getNext_()";
+
+  if (should_stop()) return false;
 
   // The hits that are going to be received and send
   std::vector<ptmp::data::TPSet> HitSets;
   size_t n_received = 0;
   size_t times = 0;
-  
-  while(n_received >= aggregation_) {
+
+  while(n_received < aggregation_) {
     // Call the receiver
     ptmp::data::TPSet SetReceived;
     bool received = (*receiver_)(SetReceived, timeout_);
     if (received) {
       n_received++;
+      ++nSetsReceived_;
       times = 0;
       HitSets.push_back(SetReceived);
     } else {
@@ -151,6 +158,7 @@ bool dune::HitFinderCPUReceiver::getNext_(artdaq::FragmentPtrs &frags)
       return true;
   }
 
+  // DAQLogger::LogInfo("HitFinderCPUReceiver::getNext_") << "received something. Have " << HitSets.size() << " hitsets";
   // Make a fragment.  Follow the way it is done in the SSP
   // boardreader. We always form fragments, even for the events
   // that we're not going to send out to artdaq (spill
@@ -160,10 +168,12 @@ bool dune::HitFinderCPUReceiver::getNext_(artdaq::FragmentPtrs &frags)
   ptmp::data::TPSet SetToSend;
   SetToSend.set_count(1);
   SetToSend.set_detid(4);
+  SetToSend.set_tstart(0);
+  SetToSend.set_created(0);
 
   for (auto const& HitSet: HitSets) {
     
-    for (uint32_t it=0; it<HitSet.count(); ++it) { // How do we check the size of the fragment?
+    for (int it=0; it<HitSet.tps_size(); ++it) { // How do we check the size of the fragment?
       ptmp::data::TrigPrim* ptmp_prim=SetToSend.add_tps();
 
       ptmp_prim->set_channel(HitSet.tps()[it].channel());
@@ -182,11 +192,11 @@ bool dune::HitFinderCPUReceiver::getNext_(artdaq::FragmentPtrs &frags)
 
       // Fill in the fragment header fields (not some other fragment generators may put these in the
       // constructor for the fragment, but here we push them in one at a time.
-      f->setSequenceID(ev_counter());  // ev_counter is in our base class  // or f->setSequenceID(fo.get_evtctr())
+      //f->setSequenceID(ev_counter());  // ev_counter is in our base class  // or f->setSequenceID(fo.get_evtctr())
       f->setFragmentID(fragment_id()); // fragment_id is in our base class, fhicl sets it
       f->setUserType(dune::detail::CPUHITS);
 
-      DAQLogger::LogInfo(instance_name_) << "For timing fragment with sequence ID " << ev_counter();
+      // DAQLogger::LogInfo(instance_name_) << "For timing fragment with sequence ID " << ev_counter();
       // << ", scmd " << std::showbase << std::hex << fo.get_scmd()
       // << std::dec <<  ", setting the timestamp to "
       // << fo.get_tstamp();
@@ -212,7 +222,9 @@ bool dune::HitFinderCPUReceiver::getNext_(artdaq::FragmentPtrs &frags)
       frags.emplace_back(std::move(f));
     }
   }
+  // DAQLogger::LogInfo("HitFinderCPUReceiver::getNext_") << "Made fragment, now sending set";
   (*sender_)(SetToSend);
+  // DAQLogger::LogInfo("HitFinderCPUReceiver::getNext_") << "Set sent";
   // We only increment the event counter for events we send out
   ev_counter_inc();
 
