@@ -376,7 +376,7 @@ typedef struct _QzStatus
  *      None
  *
  *****************************************************************************/
-int qzInit(QzSession *sess,  unsigned char swBackup);
+int qzInit(QzSession *sess,  unsigned char swBackup, int engine);
 
 /**
  *****************************************************************************

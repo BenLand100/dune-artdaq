@@ -68,14 +68,26 @@ bool raw24bit_to_raw16bit(std::deque<uint16_t> & raw16bitdata,
   // the first two bits were 01b. Apparently there are 24-bit words
   // undocumented in Matt Toups' thesis that start with values other
   // than 11b, but we just ignore them.
-  if(((in24bitword >> 22) & 3) != 3) return false;
+  if(((in24bitword >> 22) & 3) != 3) 
+  {
+    TLOG(TLVL_WARNING, "CRTdecode") << "Got a 24-bit word that starts with " << ((in24bitword >> 22) & 3) << "\n";
+    return false;
+  }
 
   // In ProtoDUNE, we have no interest in Unix time stamp packets.
-  if(is_unix_time_word(in24bitword)) return false;
+  if(is_unix_time_word(in24bitword)) 
+  {
+    TLOG(TLVL_WARNING, "CRTdecode") << "Throwing out a UNIX time word\n";
+    return false;
+  }
 
   // If it is something other than a Unix time stamp or hit data (see various
   // other codes in the comments above is_unix_time_word()), discard it.
-  if((in24bitword >> 16) != 0xc0) return false;
+  if((in24bitword >> 16) != 0xc0) 
+  {
+    TLOG(TLVL_WARNING, "CRTdecode") << "Throwing out a word that is not a UNIX time word or hit data: " << (in24bitword << 16) << "\n";
+    return false;
+  }
 
   raw16bitdata.push_back(in24bitword & 0xffff);
 
@@ -161,7 +173,7 @@ unsigned int serialize(char * cooked, const decoded_packet & packet,
        + sizeof packet.hits[0].charge + sizeof packet.hits[0].channel);
 
   if(size_needed > max_cooked){
-    TLOG(TLVL_DEBUG, "CRTdecode") << "Can't write packet of size " << size_needed << " with max " << max_cooked << "\n";
+    TLOG(TLVL_WARNING, "CRTdecode") << "Can't write packet of size " << size_needed << " with max " << max_cooked << "\n";
     return 0;
   }
 
@@ -183,7 +195,7 @@ unsigned int serialize(char * cooked, const decoded_packet & packet,
   }
 
   if(bytes != size_needed)
-    TLOG(TLVL_DEBUG, "CRTdecode") << "size mismatch " << bytes << " != " << size_needed << "\n";
+    TLOG(TLVL_WARNING, "CRTdecode") << "size mismatch " << bytes << " != " << size_needed << "\n";
   return bytes;
 }
 
@@ -223,7 +235,7 @@ unsigned int make_a_packet(char * cooked, std::deque<uint16_t> & raw,
   // First word of all packets other than unix timestamp packets is 0xffff
   // If there's any junk before 0xffff, discard it.
   while(!raw.empty() && raw[0] != 0xffff){
-    TLOG(TLVL_DEBUG, "CRTdecode") << "Discarding word 0x" << raw[0] << " appearing before 0xffff\n";
+    TLOG(TLVL_WARNING, "CRTdecode") << "Discarding word 0x" << raw[0] << " appearing before 0xffff\n";
     raw.pop_front();
   }
 
@@ -231,7 +243,7 @@ unsigned int make_a_packet(char * cooked, std::deque<uint16_t> & raw,
 
   unsigned int len = raw[ADC_WIDX_MODLEN] & 0xff;
   if(len == 0){
-    TLOG(TLVL_DEBUG, "CRT") << "Discarding packet with declared length zero.\n";
+    TLOG(TLVL_WARNING, "CRT") << "Discarding packet with declared length zero.\n";
     raw.clear();
     return 0;
   }
@@ -240,7 +252,7 @@ unsigned int make_a_packet(char * cooked, std::deque<uint16_t> & raw,
   if(raw.size() < len + 1) return 0;
 
   if(!(raw[ADC_WIDX_MODLEN] >> 15)){
-    TLOG(TLVL_DEBUG, "CRT") << "Non-ADC packet found, skipping\n";
+    TLOG(TLVL_WARNING, "CRT") << "Non-ADC packet found, skipping\n";
 
     // Throw out what we have so far, and then rely upon looking for
     // the leading 0xffff data word to throw out the rest of whatever
@@ -286,7 +298,7 @@ unsigned int make_a_packet(char * cooked, std::deque<uint16_t> & raw,
   for(unsigned int i = 0; i < len + 1; i++) raw.pop_front();
 
   if(!goodparity){
-    TLOG(TLVL_DEBUG, "CRT") << "Parity error.  Dropping packet.\n";
+    TLOG(TLVL_WARNING, "CRT") << "Parity error.  Dropping packet.\n";
     return 0;
   }
 
@@ -324,7 +336,8 @@ unsigned int raw2cook(char * const cooked_data,
   unsigned int cooked_bytes = 0;
 
   for(char * readptr = rawfromhardware; readptr < next_raw_byte; readptr++){
-    const char counter = ((*readptr) >> 6) & 3;
+    const char counter = ((*readptr) >> 6) & 3; //TODO: If we kept getting a counter value of 0, I guess we could 
+                                                //      get stuck in a loop here.  That doesn't seem very likely though.  
     const char payload = (*readptr) & 0x3f;
     if(counter == 0){
       expcounter = 1;
@@ -332,14 +345,16 @@ unsigned int raw2cook(char * const cooked_data,
     }
     else if(counter == expcounter){
       word = (word << 6) | payload;
-      if(++expcounter == 4){
+      if(++expcounter == 4){ //TODO: If we don't get here, we never try to make a packet
         expcounter = 0;
 
         // Every time we assemble a 24-bit word that could be part of
         // an ADC packet, try to decode the whole stream so far.
 
         unsigned int newcookedbytes = 0;
-        if(raw24bit_to_raw16bit(raw16bitdata, word) &&
+        const auto raw24bit_success = raw24bit_to_raw16bit(raw16bitdata, word);
+        //if(raw24bit_to_raw16bit(raw16bitdata, word) &&
+        if(raw24bit_success &&
            (newcookedbytes = make_a_packet(cooked_data + cooked_bytes,
                                            raw16bitdata,
                                            max_cooked - cooked_bytes,
@@ -354,10 +369,12 @@ unsigned int raw2cook(char * const cooked_data,
           // incurs many buffer rotations below.
           break;
         }
+        TLOG(TLVL_WARNING, "CRTdecode") << "Throwing out word " << word << " in raw2cook() because "
+                                      << (raw24bit_success?"make_a_packet()":"raw24bit_to_raw16bit()") << " failed\n";
       }
     }
     else{
-      TLOG(TLVL_DEBUG, "CRT") << "corrupted data: expected counter " << expcounter << ", got " << counter << "\n";
+      TLOG(TLVL_WARNING, "CRT") << "corrupted data: expected counter " << expcounter << ", got " << counter << "\n";
       expcounter = 0;
     }
   }
@@ -365,12 +382,12 @@ unsigned int raw2cook(char * const cooked_data,
   // Rotate buffer in the most wasteful way possible, by actually moving
   // the undecoded bytes to the front.
   if(used_raw_bytes){
-    //TLOG(TLVL_DEBUG, "CRT") << "Used " << used_raw_bytes << "bytes, and rotating " << next_raw_byte - rawfromhardware - used_raw_bytes << " to front for later use.\n";
+    TLOG(TLVL_WARNING, "CRT") << "Used " << used_raw_bytes << "bytes, and rotating " << next_raw_byte - rawfromhardware - used_raw_bytes << " to front for later use.\n";
     memmove(rawfromhardware, rawfromhardware + used_raw_bytes,
             next_raw_byte - rawfromhardware - used_raw_bytes);
   }
   else{
-    //TLOG(TLVL_DEBUG, "CRT") << "Used 0 bytes\n";
+    TLOG(TLVL_WARNING, "CRTdecode") << "Used 0 bytes\n";
   }
 
   next_raw_byte -= used_raw_bytes;
