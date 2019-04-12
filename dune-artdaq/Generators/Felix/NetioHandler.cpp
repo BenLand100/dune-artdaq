@@ -338,7 +338,7 @@ void NetioHandler::startSubscribers(){
 	    SUPERCHUNK_CHAR_STRUCT ics;
 	    msg.serialize_to_usr_buffer((void*)&ics);
 
-	    bool storeOk = m_pcqs[m_channels[chn]]->write( std::move(ics) ); // RS -> Add possibility for dry_run! (No push mode.)
+	    bool storeOk = m_pcqs[m_channels[chn]]->write(ics); // RS -> Add possibility for dry_run! (No push mode.)
 
             m_tp_finders[m_channels[chn]]->addMessage(ics);
 
@@ -522,14 +522,14 @@ bool NetioHandler::addChannel(uint64_t chn, uint16_t tag, std::string host, uint
 bool NetioHandler::subscribe(uint64_t chn, uint16_t tag){
   DAQLogger::LogInfo("NetioHandler::subscribe") << "Subscribing to tag (chn, tag):" << chn << "," << tag;
   m_sub_sockets[chn]->subscribe(tag, netio::endpoint(m_host, m_port));
-  std::this_thread::sleep_for(std::chrono::microseconds(10000)); // This is needed... Why? :/
+  std::this_thread::sleep_for(std::chrono::microseconds(100000)); // This is needed... Why? :/
   return true;
 }
 
 bool NetioHandler::unsubscribe(uint64_t chn, uint16_t tag){
   DAQLogger::LogInfo("NetioHandler::unsubscribe") << "Unsubscribing from tag (chn, tag):" << chn << "," << tag;
   m_sub_sockets[chn]->unsubscribe(tag, netio::endpoint(m_host, m_port));
-  std::this_thread::sleep_for(std::chrono::microseconds(10000)); // This is needed... Why? :/
+  std::this_thread::sleep_for(std::chrono::microseconds(100000)); // This is needed... Why? :/
   return true;
 }
 

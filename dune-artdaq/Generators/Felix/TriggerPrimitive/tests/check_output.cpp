@@ -92,7 +92,8 @@ int main(int, char**)
                             primfind_dest_naive,
                             taps_p, (uint8_t)taps.size(),
                             tap_exponent,
-                            0);
+                            0, // nhits
+                            0); // absTimeModNTAPS
 
     ProcessingInfo pi_avx2(nullptr,
                            FRAMES_PER_MSG, // We'll just process one message
@@ -101,7 +102,8 @@ int main(int, char**)
                            primfind_dest_avx2,
                            taps_p, (uint8_t)taps.size(),
                            tap_exponent,
-                           0);
+                           0, // nhits
+                           0); // absTimeModNTAPS
 
     bool pass=true;
     for(size_t imessage=0; imessage<n_messages; ++imessage){
@@ -118,6 +120,7 @@ int main(int, char**)
         process_window_avx2(pi_avx2);
         std::set<Hit> avx2_hits=get_avx2_hits(primfind_dest_avx2);
         std::set<Hit> naive_hits=get_naive_hits(primfind_dest_naive);
+        // for(auto const& hit: naive_hits) printf("% 5d % 5d % 5d % 5d\n", hit.chan, hit.hit_start, hit.hit_charge, hit.hit_tover);
         if(avx2_hits!=naive_hits){
             pass=false;
             printf("message %ld. %ld avx2 hits, %ld naive_hits\n", imessage, avx2_hits.size(), naive_hits.size());

@@ -41,7 +41,7 @@ int main(int, char**)
                         output_naive.data(),
                         taps.data(), taps.size(),
                         multiplier,
-                              0);
+                              0, 0);
             pi.setState(mcas.data());
 
             ProcessingInfo pi_avx2(mcas.data(),
@@ -51,7 +51,7 @@ int main(int, char**)
                         output_avx2.data(),
                         taps.data(), taps.size(),
                         multiplier,
-                              0);
+                                   0, 0);
             pi_avx2.setState(mcas.data());
 
             process_window_naive(pi);

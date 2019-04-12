@@ -34,6 +34,7 @@ process_window_naive(ProcessingInfo& info)
     uint16_t* output_loc=info.output;
     uint16_t* input16=(uint16_t*)info.input;
     int nhits=0;
+    uint16_t& absTimeModNTAPS=info.absTimeModNTAPS;
 
     for(size_t ichan=0; ichan<REGISTERS_PER_FRAME*SAMPLES_PER_REGISTER; ++ichan){
         const size_t register_index=ichan/SAMPLES_PER_REGISTER;
@@ -89,9 +90,11 @@ process_window_naive(ProcessingInfo& info)
             sample=std::min(sample, adcMax);
             int16_t filt_tmp=0;
             for(size_t j=0; j<NTAPS; ++j){
-                filt_tmp+=info.taps[j]*prev_samp[(j+itime)%NTAPS];
+                filt_tmp+=info.taps[j]*prev_samp[(j+absTimeModNTAPS)%NTAPS];
             }
-            prev_samp[itime%NTAPS]=sample;
+            prev_samp[absTimeModNTAPS%NTAPS]=sample;
+
+            absTimeModNTAPS=(absTimeModNTAPS+1)%NTAPS;
             int16_t filt=filt_tmp;
 
             // --------------------------------------------------------------
@@ -108,6 +111,10 @@ process_window_naive(ProcessingInfo& info)
                 prev_was_over=true;
             }
             if(prev_was_over && !is_over){
+                if(hit_tover==1){
+                    printf("% 5d % 5d % 5d % 5d\n", (uint16_t)ichan, (uint16_t)itime, hit_charge, hit_tover);
+                }
+
                 // We reached the end of the hit: write it out
                 (*output_loc++) = (uint16_t)ichan;
                 (*output_loc++) = itime;
@@ -119,6 +126,7 @@ process_window_naive(ProcessingInfo& info)
 
                 ++nhits;
                 prev_was_over=false;
+
             } // end if left hit
 
         } // end loop over samples

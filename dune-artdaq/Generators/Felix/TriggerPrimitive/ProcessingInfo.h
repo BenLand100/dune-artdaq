@@ -53,7 +53,8 @@ struct ProcessingInfo
                    const int16_t* __restrict__ taps_,
                    int16_t ntaps_,
                    const uint8_t tap_exponent_,
-                   size_t nhits_)
+                   size_t nhits_,
+                   uint16_t absTimeModNTAPS_)
         : input(input_),
           timeWindowNumFrames(timeWindowNumFrames_),
           first_register(first_register_),
@@ -64,7 +65,8 @@ struct ProcessingInfo
           tap_exponent(tap_exponent_),
           multiplier(1 << tap_exponent),
           adcMax(INT16_MAX/multiplier),
-          nhits(nhits_)
+          nhits(nhits_),
+          absTimeModNTAPS(absTimeModNTAPS_)
     {
     }
 
@@ -92,6 +94,7 @@ struct ProcessingInfo
     int16_t multiplier;
     int16_t adcMax;
     size_t nhits;
+    uint16_t absTimeModNTAPS;
     ChanState chanState;
 };
 

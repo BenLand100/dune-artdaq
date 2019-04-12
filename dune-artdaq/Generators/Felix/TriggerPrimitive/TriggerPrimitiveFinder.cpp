@@ -161,8 +161,8 @@ TriggerPrimitiveFinder::addHitsToQueue(uint64_t timestamp,
             }
         }
     }
-    // Send out the TPSet
-    m_TPSender(tpset);
+    // Send out the TPSet, if there's anything to send
+    if(nhits>0) m_TPSender(tpset);
 
     while(primitive_queue.size()>20000) primitive_queue.pop_front();
     return nhits;
@@ -227,6 +227,7 @@ void TriggerPrimitiveFinder::processing_thread(uint8_t first_register, uint8_t l
                       primfind_dest,
                       taps_p, (uint8_t)taps.size(),
                       tap_exponent,
+                      0,
                       0);
     size_t nhits=0;
     // -------------------------------------------------------- 

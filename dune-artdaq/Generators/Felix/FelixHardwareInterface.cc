@@ -136,7 +136,7 @@ FelixHardwareInterface::FelixHardwareInterface(fhicl::ParameterSet const& ps) :
 FelixHardwareInterface::~FelixHardwareInterface(){
   DAQLogger::LogInfo("dune::FelixHardwareInterface::FelixHardwareInterface")
     << "Destructing FelixHardwareInterface. Joining request thread.";
-// RS2019 -> Adding unsub func! Probably this is at a VERY VERY WRONG PLACE.
+
   nioh_.stopSubscribers();
 
   nioh_.stopContext();
@@ -189,6 +189,11 @@ void FelixHardwareInterface::StopDatataking() {
   // GLM: stop listening to trigger requests
   request_receiver_->stop();
   DAQLogger::LogInfo("dune::FelixHardwareInterface::StopDatataking") << "Request thread joined...";
+
+  // (PAR 2019-03-22) This was in the destructor, but there were hangs
+  // at shutdown: the subscriber thread was waiting forever in netio
+  // socket recv(). Trying it here, before the unsubscribe, to see if that helps. It does not
+  // nioh_.stopSubscribers();
 
 
 // RS2019 -> Adding unsub func.

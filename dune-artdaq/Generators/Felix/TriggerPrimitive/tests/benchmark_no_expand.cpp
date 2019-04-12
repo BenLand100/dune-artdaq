@@ -49,7 +49,8 @@ int main(int argc, char** argv)
                       primfind_dest,
                       taps_p, (uint8_t)taps.size(),
                       tap_exponent,
-                      0);
+                      0, // nhits
+                      0); // absTimeModNTAPS
 
     bool first=true;
     std::cout << "Running " << n_repeats << " repeats" << std::endl;
