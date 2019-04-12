@@ -350,6 +350,9 @@ bool dune::TimingReceiver::checkHWStatus_()
     if(!dsmptr)
       TLOG(TLVL_HWSTATUS) << "DataSenderManagerPtr not valid.";
 
+    // If the readout buffer is in error, nothing will work, so we stop datataking by returning false
+    if(master_partition().readROBError()) return false;
+
     auto mp_ovrflw = master_partition().readROBWarningOverflow();
     int n_remaining_table_entries = dsmptr? dsmptr->GetRemainingRoutingTableEntries() : -1;
     int n_table_count = dsmptr? dsmptr->GetRoutingTableEntryCount() : -1;
