@@ -14,6 +14,10 @@ if ! [[ "$HOSTNAME" =~ ^np04-srv ]]; then
     exit 1
 fi
 
+if [[ -e /cvmfs/fermilab.opensciencegrid.org/products/artdaq/setup ]]; then 
+     . /cvmfs/fermilab.opensciencegrid.org/products/artdaq/setup
+fi
+
 if [[ -e /nfs/sw/artdaq/products/setup ]]; then
     . /nfs/sw/artdaq/products/setup
 else
@@ -79,12 +83,6 @@ if [[ "$?" != "0" ]]; then
     echo "According to the \"which\" command, lsb_release is not available - this needs to be installed in order for dune-artdaq installation to work" >&2
     exit 1
 fi
-
-uhal_version=v2_6_0
-
-uhal_setup_cmd="setup uhal $uhal_version -q e15:prof:s64"
-$uhal_setup_cmd
-
 
 
 set -u   # complain about uninitialed shell variables - helps development
@@ -193,14 +191,12 @@ else
     build_type="prof"
 fi
 
-wget http://scisoft.fnal.gov/scisoft/bundles/tools/pullProducts
-chmod +x pullProducts
-./pullProducts $Base/products ${os} artdaq-${artdaq_manifest_version} ${squalifier}-${equalifier} ${build_type}
-
-if [ $? -ne 0 ]; then
-    echo "Error in pullProducts. Please go to http://scisoft.fnal.gov/scisoft/bundles/artdaq/${artdaq_manifest_version}/manifest and make sure that a manifest for the specified qualifiers (${squalifier}-${equalifier}) exists."
-    exit 1
-fi
+echo >&2
+echo "Skipping pullProducts, products needed for artdaq already assumed to be available. If this is wrong, then from $PWD, execute:" >&2
+echo "wget http://scisoft.fnal.gov/scisoft/bundles/tools/pullProducts" >&2
+echo "chmod +x pullProducts" >&2
+echo "./pullProducts $Base/products ${os} artdaq-${artdaq_manifest_version} ${squalifier}-${equalifier} ${build_type}" >&2
+echo >&2
 
 detectAndPull mrb noarch
 
@@ -216,7 +212,7 @@ cd $Base/products
 cp -p $upsfile .
 tar xjf $upsfile
 source $Base/products/setup
-setup mrb
+setup mrb v1_14_00
 setup git
 setup gitflow
 
@@ -260,14 +256,14 @@ fi
 
 
 
-mrb gitCheckout -t v3_04_02 -d artdaq_core http://cdcvs.fnal.gov/projects/artdaq-core
+mrb gitCheckout -b for_dune-artdaq -d artdaq_core http://cdcvs.fnal.gov/projects/artdaq-core
  
 if [[ "$?" != "0" ]]; then
     echo "Unable to perform checkout of http://cdcvs.fnal.gov/projects/artdaq-core"
     exit 1
 fi
 
-mrb gitCheckout -t v1_04_08 -d artdaq_utilities http://cdcvs.fnal.gov/projects/artdaq-utilities
+mrb gitCheckout -b for_dune-artdaq -d artdaq_utilities http://cdcvs.fnal.gov/projects/artdaq-utilities
  
 if [[ "$?" != "0" ]]; then
     echo "Unable to perform checkout of http://cdcvs.fnal.gov/projects/artdaq-utilities"
@@ -312,6 +308,7 @@ ARTDAQ_DEMO_DIR=$Base/srcs/dune_artdaq
 nprocessors=$( grep -E "processor\s+:" /proc/cpuinfo | wc -l )
 trace_file_label=$( basename $Base )
 
+uhal_version=v2_6_0
 protodune_timing_version=v5_1_0
 rogue_version=v2_10_0_3_gfaeedd0
 protodune_wibsoft_version=v349_hack
@@ -319,7 +316,7 @@ netio_version=v0_8_0
 ftd2xx_version=v1_2_7a
 dunepdsprce_version=v0_0_4
 jsoncpp_version=v1_8_0
-dune_artdaq_InhibitMaster_version=v0_01_01
+dune_artdaq_InhibitMaster_version=$( sed -r -n "s/^\s*dune_artdaq_InhibitMaster\s+(\S+).*/\1/p" $ARTDAQ_DEMO_DIR/ups/product_deps )
 artdaq_dim_plugin_version=v0_02_08
 artdaq_mpich_plugin_version=v1_00_03a
 TRACE_version=v3_13_07
@@ -328,10 +325,16 @@ cd $Base
     cat >setupDUNEARTDAQ_forBuilding <<-EOF
        echo # This script is intended to be sourced.                                                                    
                                                                                                                          
-        sh -c "[ \`ps \$\$ | grep bash | wc -l\` -gt 0 ] || { echo 'Please switch to the bash shell before running dune-artdaq.'; exit; }" || exit                                                                                           
+        sh -c "[ \`ps \$\$ | grep bash | wc -l\` -gt 0 ] || { echo 'Please switch to the bash shell before running dune-artdaq.'; exi
+t; }" || exit                                                                                           
+
+        if [[ -e /cvmfs/fermilab.opensciencegrid.org/products/artdaq/setup ]]; then 
+          source /cvmfs/fermilab.opensciencegrid.org/products/artdaq/setup
+        fi
+
         source /nfs/sw/artdaq/products/setup                                      
 
-        setup mrb
+        setup mrb v1_14_00
         source $Base/localProducts_dune_artdaq_${demo_version}_${equalifier}_${build_type}/setup
                                                                                                                   
         export DAQ_INDATA_PATH=$ARTDAQ_DEMO_DIR/test/Generators:$ARTDAQ_DEMO_DIR/inputData                               
@@ -354,7 +357,7 @@ cd $Base
         setup dunepdsprce $dunepdsprce_version -q e15:gen:prof
         setup rogue $rogue_version -q e15:prof
         setup protodune_timing $protodune_timing_version -q e15:prof:s64
-        setup dune_artdaq_InhibitMaster $dune_artdaq_InhibitMaster_version -q e15:prof
+        setup dune_artdaq_InhibitMaster $dune_artdaq_InhibitMaster_version -q e15:s64:prof
 
         export DIM_INC=/nfs/sw/dim/dim_v20r20
         export DIM_LIB=/nfs/sw/dim/dim_v20r20/linux
@@ -382,7 +385,12 @@ EOF
     cat >setupDUNEARTDAQ_forRunning <<-EOF
        echo # This script is intended to be sourced.                                                                    
                                                                                                                          
-        sh -c "[ \`ps \$\$ | grep bash | wc -l\` -gt 0 ] || { echo 'Please switch to the bash shell before running dune-artdaq.'; exit; }" || exit                                                                                           
+        sh -c "[ \`ps \$\$ | grep bash | wc -l\` -gt 0 ] || { echo 'Please switch to the bash shell before running dune-artdaq.'; exit; }" || exit     
+
+        if [[ -e /cvmfs/fermilab.opensciencegrid.org/products/artdaq/setup ]]; then 
+          source /cvmfs/fermilab.opensciencegrid.org/products/artdaq/setup
+        fi
+
         source /nfs/sw/artdaq/products/setup                                      
         source $Base/localProducts_dune_artdaq_${demo_version}_${equalifier}_${build_type}/setupWithoutMRB
         setup dune_artdaq $dune_artdaq_version -q e15:prof
@@ -411,7 +419,7 @@ EOF
         setup dunepdsprce $dunepdsprce_version -q e15:gen:prof
         setup rogue $rogue_version -q e15:prof
         setup protodune_timing $protodune_timing_version -q e15:prof:s64
-        setup dune_artdaq_InhibitMaster $dune_artdaq_InhibitMaster_version -q e15:prof
+        setup dune_artdaq_InhibitMaster $dune_artdaq_InhibitMaster_version -q e15:s64:prof
 export PYTHONUSERBASE=/nfs/sw/work_dirs/dune-artdaq-InhibitMaster/user_python
 
         export DIM_INC=/nfs/sw/dim/dim_v20r20
@@ -485,8 +493,12 @@ cat >setupDUNEARTDAQ_forInhibitMaster<<-EOF
 
         sh -c "[ `ps $$ | grep bash | wc -l` -gt 0 ] || { echo 'Please switch to the bash shell before running dune-artdaq.'; exit; }" || exit
 
+        if [[ -e /cvmfs/fermilab.opensciencegrid.org/products/artdaq/setup ]]; then 
+          source /cvmfs/fermilab.opensciencegrid.org/products/artdaq/setup
+        fi
+
         source /nfs/sw/artdaq/products/setup
-        setup dune_artdaq_InhibitMaster $dune_artdaq_InhibitMaster_version -q e15:prof
+        setup dune_artdaq_InhibitMaster $dune_artdaq_InhibitMaster_version -q e15:s64:prof
         export PYTHONUSERBASE=/nfs/sw/work_dirs/dune-artdaq-InhibitMaster/user_python
 
         setup TRACE $TRACE_version
@@ -501,6 +513,10 @@ cat >setupDUNEARTDAQ_forTRACE<<-EOF
 echo # This script is intended to be sourced.
 
         sh -c "[ `ps $$ | grep bash | wc -l` -gt 0 ] || { echo 'Please switch to the bash shell before running dune-artdaq.'; exit; }" || exit
+
+        if [[ -e /cvmfs/fermilab.opensciencegrid.org/products/artdaq/setup ]]; then 
+          source /cvmfs/fermilab.opensciencegrid.org/products/artdaq/setup
+        fi
 
         source /nfs/sw/artdaq/products/setup
         source $Base/localProducts_dune_artdaq_${demo_version}_${equalifier}_${build_type}/setupWithoutMRB
@@ -551,7 +567,7 @@ source /nfs/sw/artdaq/products/setup
         setup dunepdsprce $dunepdsprce_version -q e15:gen:prof
         setup rogue $rogue_version -q e15:prof
         setup protodune_timing $protodune_timing_version -q e15:prof:s64
-        setup dune_artdaq_InhibitMaster $dune_artdaq_InhibitMaster_version -q e15:prof
+        setup dune_artdaq_InhibitMaster $dune_artdaq_InhibitMaster_version -q e15:s64:prof
 	setup jsoncpp $jsoncpp_version -q e15
 
 set +u
