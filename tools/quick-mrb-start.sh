@@ -318,7 +318,7 @@ dunepdsprce_version=v0_0_4
 jsoncpp_version=v1_8_0
 dune_artdaq_InhibitMaster_version=$( sed -r -n "s/^\s*dune_artdaq_InhibitMaster\s+(\S+).*/\1/p" $ARTDAQ_DEMO_DIR/ups/product_deps )
 artdaq_dim_plugin_version=v0_02_08
-artdaq_mpich_plugin_version=v1_00_03a
+artdaq_mpich_plugin_version=v1_00_04
 TRACE_version=v3_13_07
 
 cd $Base
