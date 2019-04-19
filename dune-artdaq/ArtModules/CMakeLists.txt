@@ -75,6 +75,19 @@ simple_plugin(DuneInput "source"
   MF_MessageLogger
 )
 
+simple_plugin(FragmentWatcher "module"
+  artdaq_ArtModules
+  artdaq_DAQdata
+  artdaq-utilities_Plugins
+  art_Framework_Services_Registry
+  art_Utilities
+  MF_MessageLogger
+  fhiclcpp
+  cetlib
+  ${CETLIB_EXCEPT}
+  ${ROOT_RIO}
+)
+
 # simple_plugin(BasicMetrics "module"
 #   ${ART_FRAMEWORK_SERVICES_REGISTRY}
 #   ${ART_FRAMEWORK_SERVICES_OPTIONAL}
