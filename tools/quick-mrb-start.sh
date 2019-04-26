@@ -25,6 +25,12 @@ else
     exit 1
 fi
 
+if [[ -e /nfs/sw/artdaq/products_dev/setup ]]; then
+    . /nfs/sw/artdaq/products_dev/setup
+else
+    echo "Expected there to be a products directory /nfs/sw/artdaq/products_dev/" >&2
+    exit 1
+fi
 
 git_status=`git status 2>/dev/null`
 git_sts=$?
@@ -47,6 +53,7 @@ examples: `basename $0`
           `basename $0` --dune-raw-data-developer --dune-raw-data-develop-branch
           `basename $0` --debug --dune-raw-data-developer
 --debug       perform a debug build
+--include-artdaq-repos  use if you plan on developing the artdaq code (contact jcfree@fnal.gov or biery@fnal.gov before attempting this)
 --not-dune-artdaq-developer  use if you don't have write access to the dune-artdaq repository
 --dune-raw-data-develop-branch     Install the current \"develop\" version of dune-raw-data (may be unstable!)
 --dune-raw-data-developer    use if you have (and want to use) write access to the dune-raw-data repository
@@ -58,7 +65,7 @@ eval "set -- $env_opts \"\$@\""
 op1chr='rest=`expr "$op" : "[^-]\(.*\)"`   && set -- "-$rest" "$@"'
 op1arg='rest=`expr "$op" : "[^-]\(.*\)"`   && set --  "$rest" "$@"'
 reqarg="$op1arg;"'test -z "${1+1}" &&echo opt -$op requires arg. &&echo "$USAGE" &&exit'
-args= do_help= opt_v=0; opt_lrd_w=0; opt_lrd_develop=0; opt_la_nw=0;
+args= do_help= opt_v=0; opt_lrd_w=0; opt_lrd_develop=0; opt_la_nw=0; inc_artdaq_repos=0;
 while [ -n "${1-}" ];do
     if expr "x${1-}" : 'x-' >/dev/null;then
         op=`expr "x$1" : 'x-\(.*\)'`; shift   # done with $1
@@ -67,6 +74,7 @@ while [ -n "${1-}" ];do
         case "$op" in
             \?*|h*)     eval $op1chr; do_help=1;;
 	    -debug)     opt_debug=--debug;;
+	    -include-artdaq-repos) inc_artdaq_repos=1;;
 	    -not-dune-artdaq-developer) opt_la_nw=1;;
 	    -dune-raw-data-develop-branch) opt_lrd_develop=1;;
 	    -dune-raw-data-developer)  opt_lrd_w=1;;
@@ -236,53 +244,62 @@ fi
 if [[ $opt_lrd_w -eq 1 ]]; then
     dune_raw_data_repo="ssh://p-dune-raw-data@cdcvs.fnal.gov/cvs/projects/dune-raw-data"
 else
-    dune_raw_data_repo="http://cdcvs.fnal.gov/projects/dune-raw-data"
+    dune_raw_data_repo="https://cdcvs.fnal.gov/projects/dune-raw-data"
 fi
 
 if [[ $tag == "develop" ]]; then
     dune_artdaq_checkout_arg="-d dune_artdaq"
 else
-    dune_artdaq_checkout_arg="-b develop -d dune_artdaq"
+    dune_artdaq_checkout_arg="-b feature/works_with_artdaq_as_ups_product -d dune_artdaq"
 fi
 
 
 # Notice the default for write access to dune-artdaq is the opposite of that for dune-raw-data
 if [[ $opt_la_nw -eq 1 ]]; then
-    dune_artdaq_repo="http://cdcvs.fnal.gov/projects/dune-artdaq"
+    dune_artdaq_repo="https://cdcvs.fnal.gov/projects/dune-artdaq"
 else
     dune_artdaq_repo="ssh://p-dune-artdaq@cdcvs.fnal.gov/cvs/projects/dune-artdaq"
 fi
 
 
 
+if [[ "$inc_artdaq_repos" == "1" ]] ; then
 
-mrb gitCheckout -b for_dune-artdaq -d artdaq_core http://cdcvs.fnal.gov/projects/artdaq-core
+mrb gitCheckout -b for_dune-artdaq -d artdaq_core https://cdcvs.fnal.gov/projects/artdaq-core
  
 if [[ "$?" != "0" ]]; then
-    echo "Unable to perform checkout of http://cdcvs.fnal.gov/projects/artdaq-core"
+    echo "Unable to perform checkout of https://cdcvs.fnal.gov/projects/artdaq-core"
     exit 1
 fi
 
-mrb gitCheckout -b for_dune-artdaq -d artdaq_utilities http://cdcvs.fnal.gov/projects/artdaq-utilities
+mrb gitCheckout -b for_dune-artdaq -d artdaq_utilities https://cdcvs.fnal.gov/projects/artdaq-utilities
  
 if [[ "$?" != "0" ]]; then
-    echo "Unable to perform checkout of http://cdcvs.fnal.gov/projects/artdaq-utilities"
+    echo "Unable to perform checkout of https://cdcvs.fnal.gov/projects/artdaq-utilities"
     exit 1
 fi
 
-mrb gitCheckout -b for_dune-artdaq -d artdaq http://cdcvs.fnal.gov/projects/artdaq
+mrb gitCheckout -b for_dune-artdaq -d artdaq https://cdcvs.fnal.gov/projects/artdaq
 
 if [[ "$?" != "0" ]]; then
-    echo "Unable to perform checkout of http://cdcvs.fnal.gov/projects/artdaq"
+    echo "Unable to perform checkout of https://cdcvs.fnal.gov/projects/artdaq"
     exit 1
 fi
 
-mrb gitCheckout -b for_dune-artdaq -d artdaq_mpich_plugin http://cdcvs.fnal.gov/projects/artdaq-utilities-mpich-plugin
+mrb gitCheckout -b for_dune-artdaq -d artdaq_mpich_plugin https://cdcvs.fnal.gov/projects/artdaq-utilities-mpich-plugin
 
 if [[ "$?" != "0" ]]; then
-    echo "Unable to perform checkout of http://cdcvs.fnal.gov/projects/artdaq-utilities-mpich_plugin"
+    echo "Unable to perform checkout of https://cdcvs.fnal.gov/projects/artdaq-utilities-mpich_plugin"
     exit 1
 fi
+
+sed -i -r 's/^\s*defaultqual(\s+).*/defaultqual\1'$equalifier':'$squalifier'/' artdaq/ups/product_deps
+
+fi  # End "include artdaq repos"
+
+echo "About to run ups active"
+ups active | grep "^artdaq"
+
 
 mrb gitCheckout $dune_raw_data_checkout_arg $dune_raw_data_repo
 
@@ -298,7 +315,12 @@ if [[ "$?" != "0" ]]; then
     exit 1
 fi
 
-sed -i -r 's/^\s*defaultqual(\s+).*/defaultqual\1'$equalifier':'$squalifier'/' artdaq/ups/product_deps
+echo "JCF: HACK: need to explicitly check out the feature/works_with_artdaq_as_ups_product branch of dune-artdaq"
+cd dune_artdaq
+git checkout feature/works_with_artdaq_as_ups_product
+cd ..
+
+
 sed -i -r 's/^\s*defaultqual(\s+).*/defaultqual\1'$equalifier':online:'$squalifier'/' dune_raw_data/ups/product_deps
 dune_artdaq_version=$( sed -r -n 's/^\s*parent\s+\S+\s+(\S+).*/\1/p' dune_artdaq/ups/product_deps )
 
@@ -319,6 +341,7 @@ jsoncpp_version=v1_8_0
 dune_artdaq_InhibitMaster_version=$( sed -r -n "s/^\s*dune_artdaq_InhibitMaster\s+(\S+).*/\1/p" $ARTDAQ_DEMO_DIR/ups/product_deps )
 artdaq_dim_plugin_version=v0_02_08
 artdaq_mpich_plugin_version=v1_00_04
+smc_compiler_version=v6_6_0
 TRACE_version=v3_13_07
 
 cd $Base
@@ -333,6 +356,7 @@ t; }" || exit
         fi
 
         source /nfs/sw/artdaq/products/setup                                      
+        source /nfs/sw/artdaq/products_dev/setup                                      
 
         setup mrb v1_14_00
         source $Base/localProducts_dune_artdaq_${demo_version}_${equalifier}_${build_type}/setup
@@ -342,7 +366,8 @@ t; }" || exit
         export DUNEARTDAQ_BUILD=$MRB_BUILDDIR/dune_artdaq                                                            
         export DUNEARTDAQ_REPO="$ARTDAQ_DEMO_DIR"                                                                        
         export FHICL_FILE_PATH=.:\$DUNEARTDAQ_REPO/tools/fcl:\$FHICL_FILE_PATH                                           
-
+        setup artdaq $artdaq_version -q e15:s64:prof
+	setup smc_compiler            $smc_compiler_version
         setup protodune_wibsoft $protodune_wibsoft_version -q e15:s64
         setup uhal $uhal_version -q e15:prof:s64
         setup netio $netio_version -q e15:prof:s64
@@ -357,7 +382,6 @@ t; }" || exit
         setup dunepdsprce $dunepdsprce_version -q e15:gen:prof
         setup rogue $rogue_version -q e15:prof
         setup protodune_timing $protodune_timing_version -q e15:prof:s64
-        setup dune_artdaq_InhibitMaster $dune_artdaq_InhibitMaster_version -q e15:s64:prof
 
         export DIM_INC=/nfs/sw/dim/dim_v20r20
         export DIM_LIB=/nfs/sw/dim/dim_v20r20/linux
@@ -392,6 +416,7 @@ EOF
         fi
 
         source /nfs/sw/artdaq/products/setup                                      
+        source /nfs/sw/artdaq/products_dev/setup                                      
         source $Base/localProducts_dune_artdaq_${demo_version}_${equalifier}_${build_type}/setupWithoutMRB
         setup dune_artdaq $dune_artdaq_version -q e15:prof
        
@@ -403,6 +428,7 @@ EOF
         export DUNEARTDAQ_REPO="$ARTDAQ_DEMO_DIR"                                                                        
         export FHICL_FILE_PATH=.:\$DUNEARTDAQ_REPO/tools/fcl:\$FHICL_FILE_PATH                                           
 
+	setup smc_compiler            $smc_compiler_version
         setup protodune_wibsoft $protodune_wibsoft_version -q e15:s64
         setup uhal $uhal_version -q e15:prof:s64
 
@@ -419,7 +445,7 @@ EOF
         setup dunepdsprce $dunepdsprce_version -q e15:gen:prof
         setup rogue $rogue_version -q e15:prof
         setup protodune_timing $protodune_timing_version -q e15:prof:s64
-        setup dune_artdaq_InhibitMaster $dune_artdaq_InhibitMaster_version -q e15:s64:prof
+
 export PYTHONUSERBASE=/nfs/sw/work_dirs/dune-artdaq-InhibitMaster/user_python
 
         export DIM_INC=/nfs/sw/dim/dim_v20r20
@@ -498,6 +524,7 @@ cat >setupDUNEARTDAQ_forInhibitMaster<<-EOF
         fi
 
         source /nfs/sw/artdaq/products/setup
+        source /nfs/sw/artdaq/products_dev/setup                                      
         setup dune_artdaq_InhibitMaster $dune_artdaq_InhibitMaster_version -q e15:s64:prof
         export PYTHONUSERBASE=/nfs/sw/work_dirs/dune-artdaq-InhibitMaster/user_python
 
@@ -519,6 +546,7 @@ echo # This script is intended to be sourced.
         fi
 
         source /nfs/sw/artdaq/products/setup
+        source /nfs/sw/artdaq/products_dev/setup                                      
         source $Base/localProducts_dune_artdaq_${demo_version}_${equalifier}_${build_type}/setupWithoutMRB
 
         setup TRACE $TRACE_version
@@ -552,8 +580,13 @@ cd $MRB_BUILDDIR
 
 export CETPKG_J=$nprocessors
 source /nfs/sw/artdaq/products/setup
+source /nfs/sw/artdaq/products_dev/setup                                      
 
-
+if [[ "$inc_artdaq_repos" == "0" ]] ; then
+    echo "artdaq repos not being include; will setup artdaq and smc_compiler"
+        setup artdaq $artdaq_version -q e15:s64:prof
+	setup smc_compiler            $smc_compiler_version
+fi
         setup protodune_wibsoft $protodune_wibsoft_version -q e15:s64
         setup uhal $uhal_version -q e15:prof:s64
         setup netio $netio_version -q e15:prof:s64
@@ -567,8 +600,10 @@ source /nfs/sw/artdaq/products/setup
         setup dunepdsprce $dunepdsprce_version -q e15:gen:prof
         setup rogue $rogue_version -q e15:prof
         setup protodune_timing $protodune_timing_version -q e15:prof:s64
-        setup dune_artdaq_InhibitMaster $dune_artdaq_InhibitMaster_version -q e15:s64:prof
 	setup jsoncpp $jsoncpp_version -q e15
+
+echo "PRODUCTS == $PRODUCTS"
+ups active | grep "^artdaq"
 
 set +u
 source mrbSetEnv
