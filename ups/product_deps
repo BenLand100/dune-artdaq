@@ -21,7 +21,7 @@ artdaq		v3_03_01
 dune_raw_data 	v1_17_06a
 cetbuildtools	v7_02_01	-	only_for_build
 uhal		v2_6_0
-dune_artdaq_InhibitMaster v0_02_00
+dune_artdaq_InhibitMaster v0_02_03
 protodune_wibsoft v349_hack
 end_product_list
 
