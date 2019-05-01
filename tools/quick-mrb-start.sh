@@ -146,19 +146,7 @@ function detectAndPull() {
     cd $startDir
 }
 
-os=
-
 cd $Base/download
-
-if [[ -z $os ]]; then
-    echo "Cloning cetpkgsupport to determine current OS"
-    git clone http://cdcvs.fnal.gov/projects/cetpkgsupport
-    os=`./cetpkgsupport/bin/get-directory-name os`
-fi
-
-if [[ "$os" == "u14" ]]; then
-	echo "-H Linux64bit+3.19-2.19" >../products/ups_OVERRIDE.`hostname`
-fi
 
 # Get all the information we'll need to decide which exact flavor of the software to install
 if [ -z "${tag:-}" ]; then 
@@ -201,7 +189,7 @@ echo >&2
 echo "Skipping pullProducts, products needed for artdaq already assumed to be available. If this is wrong, then from $PWD, execute:" >&2
 echo "wget http://scisoft.fnal.gov/scisoft/bundles/tools/pullProducts" >&2
 echo "chmod +x pullProducts" >&2
-echo "./pullProducts $Base/products ${os} artdaq-${artdaq_manifest_version} ${squalifier}-${equalifier} ${build_type}" >&2
+echo "./pullProducts $Base/products <OS name - e.g., slf7> artdaq-${artdaq_manifest_version} ${squalifier}-${equalifier} ${build_type}" >&2
 echo >&2
 
 detectAndPull mrb noarch
