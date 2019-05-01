@@ -32,11 +32,6 @@ if [[ -e $new_installation ]]; then
     exit 3
 fi
 
-if [[ ! $new_installation =~ ^/nfs/sw/work_dirs ]]; then
-    echo "Requested new installation area $new_installation should be located in /nfs/sw/work_dirs; exiting..." >&2
-    exit 4
-fi
-
 if [[ ! -e $orig_installation/setupDUNEARTDAQ_forBuilding ]]; then
     echo "Unable to find expected file $orig_installation/setupDUNEARTDAQ_forBuilding in original dune-artdaq installation $orig_installation; exiting..." >&2
     exit 5
@@ -49,9 +44,9 @@ if (( $num_local_products_dirs == 1 )); then
     local_products_dir=$( find $orig_installation -maxdepth 1 -type d -regex ".*localProducts.*prof\|debug" )
 
     project=$( echo $local_products_dir | sed -r 's/.*localProducts_(.*)_v[0-9]+_.*/\1/' )
-    version=$( echo $local_products_dir | sed -r 's/.*localProducts_.*_(v[0-9]+_[0-9]+_[0-9]+).*/\1/' )
-    qualifiers=$( echo $local_products_dir | sed -r 's/.*localProducts_.*_v[0-9]+_[0-9]+_[0-9]+_(.*)_prof|debug/\1/' )
-    buildtype=$( echo $local_products_dir | sed -r 's/.*localProducts_.*_v[0-9]+_[0-9]+_[0-9]+_.*_(prof|debug)/\1/' )
+    version=$( echo $local_products_dir | sed -r 's/.*localProducts_.*_(v[0-9]+_[0-9]+_[0-9a-bA-B]+)_.*/\1/' )
+    qualifiers=$( echo $local_products_dir | sed -r 's/.*localProducts_.*_v[0-9]+_[0-9]+_[0-9a-bA-B]+_(.*)_prof|debug/\1/' )
+    buildtype=$( echo $local_products_dir | sed -r 's/.*localProducts_.*_v[0-9]+_[0-9]+_[0-9a-bA-B]+_.*_(prof|debug)/\1/' )
 
     echo "Project: $project"
     echo "Version: $version"
@@ -79,10 +74,6 @@ echo "Copy took "$(( endtime - begintime ))" seconds; will now attempt to rebuil
 
 cd $new_installation
 
-orig_installation_subdir=$( basename $orig_installation )
-new_installation_subdir=$( basename $new_installation )
-sed -r -i 's#'$orig_installation_subdir'#'$new_installation_subdir'#g' $new_installation/setupDUNEARTDAQ*
-
 sed -r -i 's#'$orig_installation'#'$new_installation'#g' $new_installation/setupDUNEARTDAQ*
 
 rm -rf $new_installation/localProducts_*
@@ -94,6 +85,7 @@ if ! [[ -n $( diff $orig_installation/setupDUNEARTDAQ_forBuilding $new_installat
 fi
 
 source /nfs/sw/artdaq/products/setup
+source /nfs/sw/artdaq/products_dev/setup
 
 setup mrb
 setup git 
