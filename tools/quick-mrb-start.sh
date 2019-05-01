@@ -12,10 +12,8 @@
 if ! [[ "$HOSTNAME" =~ ^np04-srv ]]; then 
     echo "This script will only work on the CERN protoDUNE teststand computers, np04-srv-*" >&2
     exit 1
-fi
-
-if [[ -e /cvmfs/fermilab.opensciencegrid.org/products/artdaq/setup ]]; then 
-     . /cvmfs/fermilab.opensciencegrid.org/products/artdaq/setup
+else
+    :  # Note to myself (JCF): should consider putting a cvmfs source in here if I formalize this script for non-ProtoDUNE cluster installation
 fi
 
 if [[ -e /nfs/sw/artdaq/products/setup ]]; then
@@ -351,10 +349,6 @@ cd $Base
         sh -c "[ \`ps \$\$ | grep bash | wc -l\` -gt 0 ] || { echo 'Please switch to the bash shell before running dune-artdaq.'; exi
 t; }" || exit                                                                                           
 
-        if [[ -e /cvmfs/fermilab.opensciencegrid.org/products/artdaq/setup ]]; then 
-          source /cvmfs/fermilab.opensciencegrid.org/products/artdaq/setup
-        fi
-
         source /nfs/sw/artdaq/products/setup                                      
         source /nfs/sw/artdaq/products_dev/setup                                      
 
@@ -410,10 +404,6 @@ EOF
        echo # This script is intended to be sourced.                                                                    
                                                                                                                          
         sh -c "[ \`ps \$\$ | grep bash | wc -l\` -gt 0 ] || { echo 'Please switch to the bash shell before running dune-artdaq.'; exit; }" || exit     
-
-        if [[ -e /cvmfs/fermilab.opensciencegrid.org/products/artdaq/setup ]]; then 
-          source /cvmfs/fermilab.opensciencegrid.org/products/artdaq/setup
-        fi
 
         source /nfs/sw/artdaq/products/setup                                      
         source /nfs/sw/artdaq/products_dev/setup                                      
@@ -519,10 +509,6 @@ cat >setupDUNEARTDAQ_forInhibitMaster<<-EOF
 
         sh -c "[ `ps $$ | grep bash | wc -l` -gt 0 ] || { echo 'Please switch to the bash shell before running dune-artdaq.'; exit; }" || exit
 
-        if [[ -e /cvmfs/fermilab.opensciencegrid.org/products/artdaq/setup ]]; then 
-          source /cvmfs/fermilab.opensciencegrid.org/products/artdaq/setup
-        fi
-
         source /nfs/sw/artdaq/products/setup
         source /nfs/sw/artdaq/products_dev/setup                                      
         setup dune_artdaq_InhibitMaster $dune_artdaq_InhibitMaster_version -q e15:s64:prof
@@ -540,10 +526,6 @@ cat >setupDUNEARTDAQ_forTRACE<<-EOF
 echo # This script is intended to be sourced.
 
         sh -c "[ `ps $$ | grep bash | wc -l` -gt 0 ] || { echo 'Please switch to the bash shell before running dune-artdaq.'; exit; }" || exit
-
-        if [[ -e /cvmfs/fermilab.opensciencegrid.org/products/artdaq/setup ]]; then 
-          source /cvmfs/fermilab.opensciencegrid.org/products/artdaq/setup
-        fi
 
         source /nfs/sw/artdaq/products/setup
         source /nfs/sw/artdaq/products_dev/setup                                      
@@ -601,9 +583,6 @@ fi
         setup rogue $rogue_version -q e15:prof
         setup protodune_timing $protodune_timing_version -q e15:prof:s64
 	setup jsoncpp $jsoncpp_version -q e15
-
-echo "PRODUCTS == $PRODUCTS"
-ups active | grep "^artdaq"
 
 set +u
 source mrbSetEnv
