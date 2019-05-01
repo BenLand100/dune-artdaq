@@ -325,6 +325,7 @@ ftd2xx_version=v1_2_7a
 dunepdsprce_version=v0_0_4
 jsoncpp_version=v1_8_0
 dune_artdaq_InhibitMaster_version=$( sed -r -n "s/^\s*dune_artdaq_InhibitMaster\s+(\S+).*/\1/p" $ARTDAQ_DEMO_DIR/ups/product_deps )
+dim_version=v20r24
 artdaq_dim_plugin_version=v0_02_08
 artdaq_mpich_plugin_version=v1_00_04
 smc_compiler_version=v6_6_0
@@ -364,10 +365,6 @@ t; }" || exit
         setup dunepdsprce $dunepdsprce_version -q e15:gen:prof
         setup rogue $rogue_version -q e15:prof
         setup protodune_timing $protodune_timing_version -q e15:prof:s64
-
-        export DIM_INC=/nfs/sw/dim/dim_v20r20
-        export DIM_LIB=/nfs/sw/dim/dim_v20r20/linux
-        export LD_LIBRARY_PATH=\$DIM_LIB:\$LD_LIBRARY_PATH
         
 setup jsoncpp $jsoncpp_version -q e15
 
@@ -426,12 +423,10 @@ EOF
 
 export PYTHONUSERBASE=/nfs/sw/work_dirs/dune-artdaq-InhibitMaster/user_python
 
-        export DIM_INC=/nfs/sw/dim/dim_v20r20
-        export DIM_LIB=/nfs/sw/dim/dim_v20r20/linux
-        export LD_LIBRARY_PATH=\$DIM_LIB:\$LD_LIBRARY_PATH
+       setup dim $dim_version -q e15
+       setup artdaq_dim_plugin $artdaq_dim_plugin_version -q e15:prof:s64
 
-       setup -j artdaq_dim_plugin $artdaq_dim_plugin_version -q e15:prof:s64
-        setup artdaq_mpich_plugin $artdaq_mpich_plugin_version -q e15:eth:prof:s64
+       setup artdaq_mpich_plugin $artdaq_mpich_plugin_version -q e15:eth:prof:s64
         
        setup TRACE $TRACE_version
         export TRACE_FILE=/tmp/trace_$trace_file_label
