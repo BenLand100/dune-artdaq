@@ -365,6 +365,8 @@ t; }" || exit
         
 setup jsoncpp $jsoncpp_version -q e15
 
+        export DISABLE_DOXYGEN="defined"
+
         # 26-Apr-2018, KAB: moved the sourcing of mrbSetEnv to *after* all product
         # setups so that we get the right env vars for the source repositories that
         # are part of the mrb build area.
@@ -570,6 +572,8 @@ source /nfs/sw/artdaq/products/setup
         setup dune_artdaq_InhibitMaster $dune_artdaq_InhibitMaster_version -q e15:s64:prof
 	setup jsoncpp $jsoncpp_version -q e15
 
+
+export DISABLE_DOXYGEN="defined"
 set +u
 source mrbSetEnv
 set -u
