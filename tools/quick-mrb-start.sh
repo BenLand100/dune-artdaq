@@ -368,6 +368,8 @@ t; }" || exit
         
 setup jsoncpp $jsoncpp_version -q e15
 
+        export DISABLE_DOXYGEN="defined"
+
         # 26-Apr-2018, KAB: moved the sourcing of mrbSetEnv to *after* all product
         # setups so that we get the right env vars for the source repositories that
         # are part of the mrb build area.
@@ -566,6 +568,8 @@ fi
         setup rogue $rogue_version -q e15:prof
         setup protodune_timing $protodune_timing_version -q e15:prof:s64
 	setup jsoncpp $jsoncpp_version -q e15
+
+export DISABLE_DOXYGEN="defined"
 
 set +u
 source mrbSetEnv
