@@ -59,10 +59,17 @@ void TriggerPrimitiveFinder::stop()
 //======================================================================
 void TriggerPrimitiveFinder::addMessage(SUPERCHUNK_CHAR_STRUCT& ucs)
 {
+    static size_t nPrinted=0;
     if(m_readyForMessages.load()){
         // The first frame in the message
         dune::FelixFrame* frame=reinterpret_cast<dune::FelixFrame*>(&ucs);
-        m_itemsToProcess.write(ProcessingTasks::ItemToProcess{frame->timestamp(), ucs, ProcessingTasks::now_us()});
+        const uint64_t timestamp=frame->timestamp();
+        if(timestamp==0 && nPrinted<10){
+            dune::DAQLogger::LogInfo("TriggerPrimitiveFinder::addMessage") << "Got frame with timestamp zero!";
+            frame->print();
+            ++nPrinted;
+        }
+        m_itemsToProcess.write(ProcessingTasks::ItemToProcess{timestamp, ucs, ProcessingTasks::now_us()});
     }
 }
 
@@ -253,7 +260,7 @@ void TriggerPrimitiveFinder::processing_thread(uint8_t first_register, uint8_t l
             break;
         }
         if(m_should_stop.load()){
-            dune::DAQLogger::LogInfo("TriggerPrimitiveFinder::processing_thread") << "m_should_stop is truee. Exiting";
+            dune::DAQLogger::LogInfo("TriggerPrimitiveFinder::processing_thread") << "m_should_stop is true. Exiting";
             break;
         }
         measure_latency(item);
