@@ -6,6 +6,9 @@
 
 #include <cstddef> // For offsetof
 
+#include <sys/time.h>
+#include <sys/resource.h>
+
 const int64_t clocksPerTPCTick=25;
 
 //======================================================================
@@ -199,6 +202,7 @@ void TriggerPrimitiveFinder::measure_latency(const ProcessingTasks::ItemToProces
 void TriggerPrimitiveFinder::processing_thread(uint8_t first_register, uint8_t last_register)
 {
     pthread_setname_np(pthread_self(), "processing");
+    uint64_t start_us=ProcessingTasks::now_us();
 
     // -------------------------------------------------------- 
     // Set up the processing info
@@ -243,8 +247,14 @@ void TriggerPrimitiveFinder::processing_thread(uint8_t first_register, uint8_t l
             std::this_thread::sleep_for(std::chrono::microseconds(10));
         }
         ++nmsg;
-        if(item.timestamp==ProcessingTasks::END_OF_MESSAGES) break;
-        if(m_should_stop.load()) break;
+        if(item.timestamp==ProcessingTasks::END_OF_MESSAGES){
+            dune::DAQLogger::LogInfo("TriggerPrimitiveFinder::processing_thread") << "Got END_OF_MESSAGES. Exiting";
+            break;
+        }
+        if(m_should_stop.load()){
+            dune::DAQLogger::LogInfo("TriggerPrimitiveFinder::processing_thread") << "m_should_stop is truee. Exiting";
+            break;
+        }
         measure_latency(item);
         RegisterArray<REGISTERS_PER_FRAME*FRAMES_PER_MSG> expanded=expand_message_adcs(item.scs);
         MessageCollectionADCs* mcadc=reinterpret_cast<MessageCollectionADCs*>(expanded.data());
@@ -265,7 +275,13 @@ void TriggerPrimitiveFinder::processing_thread(uint8_t first_register, uint8_t l
         nhits+=addHitsToQueue(item.timestamp, primfind_dest, m_triggerPrimitives);
         m_latestProcessedTimestamp.store(item.timestamp);
     }
-    dune::DAQLogger::LogInfo("TriggerPrimitiveFinder::processing_thread") << "Received " << nmsg << " messages. Found " << nhits << " hits";
+    uint64_t end_us=ProcessingTasks::now_us();
+    int64_t walltime_us=end_us-start_us;
+    rusage r;
+    getrusage(RUSAGE_THREAD, &r);
+    double hitsPerMsg=double(nhits)/nmsg;
+    double cputime_us=1e6*double(r.ru_utime.tv_sec)+double(r.ru_utime.tv_usec);
+    dune::DAQLogger::LogInfo("TriggerPrimitiveFinder::processing_thread") << "Received " << nmsg << " messages. Found " << nhits << " hits. hits/msg=" << hitsPerMsg << ". CPU time / wall time = " << (1e-6*cputime_us) << "s / " << (1e-6*walltime_us) << "s. Avg CPU % = " << (100*cputime_us/walltime_us);
 
     // -------------------------------------------------------- 
     // Cleanup
