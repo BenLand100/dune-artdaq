@@ -14,11 +14,13 @@ int main(int argc, char** argv)
     int link, n_ticks;
     int n_channels;
     const char* outdir=argv[1];
-    if(argc!=5 ||
+    int n_repeats=1;
+    if((argc!=5 && argc!=6) ||
        sscanf(argv[2],"%d",&link)!=1 ||
        sscanf(argv[3],"%d",&n_ticks)!=1 ||
-       sscanf(argv[4],"%d",&n_channels)!=1){
-        std::cerr << "Usage: dump_link outdir link_number n_ticks n_channels" << std::endl;
+       sscanf(argv[4],"%d",&n_channels)!=1 ||
+       sscanf(argv[5],"%d",&n_repeats)!=1 ){
+        std::cerr << "Usage: dump_link outdir link_number n_ticks n_channels [n_repeats]" << std::endl;
         exit(1);
     }
 
@@ -47,13 +49,14 @@ int main(int argc, char** argv)
     std::cout << "Getting messages" << std::endl;
     // =============================================================================
     // Read messages
-    for(int i=0; i<n_msgs; ++i){
-        netio::message msg;
-        sub_socket->recv(std::ref(msg));
-        if (msg.size()!=SUPERCHUNK_FRAME_SIZE) break;
-        msg.serialize_to_usr_buffer((void*)&ics[i]);
+    for(int j=0; j<n_repeats; ++j){
+        for(int i=0; i<n_msgs; ++i){
+            netio::message msg;
+            sub_socket->recv(std::ref(msg));
+            if (msg.size()!=SUPERCHUNK_FRAME_SIZE) break;
+            msg.serialize_to_usr_buffer((void*)&ics[i]);
+        }
     }
-
     // =============================================================================
     // Cleanup
 

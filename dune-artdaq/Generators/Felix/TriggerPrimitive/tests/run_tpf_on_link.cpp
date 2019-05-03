@@ -19,6 +19,7 @@ int main(int argc, char** argv)
     int link, n_msgs;
     std::string outfilebase("");
     if(argc==4) outfilebase=argv[3];
+    bool write_output=(outfilebase!="");
     if((argc!=3 && argc!=4) ||
        sscanf(argv[1],"%d",&link)!=1 ||
        sscanf(argv[2],"%d",&n_msgs)!=1){
@@ -29,9 +30,20 @@ int main(int argc, char** argv)
     // =============================================================================
     // Setup
     std::cout << "Setting up with link=" << link << " for " << n_msgs << " messages" << std::endl;
-    SUPERCHUNK_CHAR_STRUCT* ics=new SUPERCHUNK_CHAR_STRUCT[n_msgs];
+    if(write_output){
+        std::cout << "Buffering all data in order to write to " << outfilebase << std::endl;
+    }
+    else{
+        std::cout << "Not writing output, so not buffering" << std::endl;
+    }
+    // If we're not going to be writing the output, no need for a big
+    // buffer to hold all the data. This means we can run indefinitely
+    // if we're not writing output
+    const size_t buffer_size=write_output ? n_msgs : 1024000;
+    SUPERCHUNK_CHAR_STRUCT* ics=new SUPERCHUNK_CHAR_STRUCT[buffer_size];
 
-    TriggerPrimitiveFinder* tpf=new TriggerPrimitiveFinder("tcp://localhost:54321", 0);
+    TriggerPrimitiveFinder* tpf=new TriggerPrimitiveFinder("tcp://*:54321", 0);
+
     netio::context* context = new netio::context("fi_verbs");
     std::thread netio_bg_thread = std::thread( [&](){context->event_loop()->run_forever();} );
 
@@ -55,8 +67,9 @@ int main(int argc, char** argv)
         netio::message msg;
         sub_socket->recv(std::ref(msg));
         if (msg.size()!=SUPERCHUNK_FRAME_SIZE) break;
-        msg.serialize_to_usr_buffer((void*)&ics[i]);
-        tpf->addMessage(ics[i]);
+        const size_t index=i%buffer_size;
+        msg.serialize_to_usr_buffer((void*)&ics[index]);
+        tpf->addMessage(ics[index]);
         if(i==0){
             dune::FelixFrame* frame=reinterpret_cast<dune::FelixFrame*>(ics);
             first_ts=frame->timestamp();
