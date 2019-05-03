@@ -202,7 +202,7 @@ void TriggerPrimitiveFinder::measure_latency(const ProcessingTasks::ItemToProces
 void TriggerPrimitiveFinder::processing_thread(uint8_t first_register, uint8_t last_register)
 {
     pthread_setname_np(pthread_self(), "processing");
-    uint64_t start_us=ProcessingTasks::now_us();
+    uint64_t first_msg_us=0;
 
     // -------------------------------------------------------- 
     // Set up the processing info
@@ -247,6 +247,7 @@ void TriggerPrimitiveFinder::processing_thread(uint8_t first_register, uint8_t l
             std::this_thread::sleep_for(std::chrono::microseconds(10));
         }
         ++nmsg;
+        if(first_msg_us==0) first_msg_us=ProcessingTasks::now_us();
         if(item.timestamp==ProcessingTasks::END_OF_MESSAGES){
             dune::DAQLogger::LogInfo("TriggerPrimitiveFinder::processing_thread") << "Got END_OF_MESSAGES. Exiting";
             break;
@@ -276,12 +277,12 @@ void TriggerPrimitiveFinder::processing_thread(uint8_t first_register, uint8_t l
         m_latestProcessedTimestamp.store(item.timestamp);
     }
     uint64_t end_us=ProcessingTasks::now_us();
-    int64_t walltime_us=end_us-start_us;
+    int64_t walltime_us=end_us-first_msg_us;
     rusage r;
     getrusage(RUSAGE_THREAD, &r);
     double hitsPerMsg=double(nhits)/nmsg;
     double cputime_us=1e6*double(r.ru_utime.tv_sec)+double(r.ru_utime.tv_usec);
-    dune::DAQLogger::LogInfo("TriggerPrimitiveFinder::processing_thread") << "Received " << nmsg << " messages. Found " << nhits << " hits. hits/msg=" << hitsPerMsg << ". CPU time / wall time = " << (1e-6*cputime_us) << "s / " << (1e-6*walltime_us) << "s. Avg CPU % = " << (100*cputime_us/walltime_us);
+    dune::DAQLogger::LogInfo("TriggerPrimitiveFinder::processing_thread") << "Received " << nmsg << " messages. Found " << nhits << " hits. hits/msg=" << hitsPerMsg << ". CPU time / wall time (from first message received) = " << (1e-6*cputime_us) << "s / " << (1e-6*walltime_us) << "s. Avg CPU % = " << (100*cputime_us/walltime_us);
 
     // -------------------------------------------------------- 
     // Cleanup
