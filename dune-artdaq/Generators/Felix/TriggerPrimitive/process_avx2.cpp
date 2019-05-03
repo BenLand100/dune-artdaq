@@ -74,6 +74,8 @@ process_window_avx2(ProcessingInfo& info)
 
     int nhits=0;
 
+    uint16_t& absTimeModNTAPS=info.absTimeModNTAPS;
+
     for(uint16_t ireg = info.first_register; ireg < info.last_register; ++ireg){
 
         // TODO: All these variables need to be saved at the end of the window for the next go-round
@@ -181,12 +183,10 @@ process_window_avx2(ProcessingInfo& info)
             __m256i filt3 = _mm256_setzero_si256();
 
             // % would be slow, but we're making sure that NTAPS is a power of two so the optimizer ought to save us
-            //
-            // TODO: is using `itime` correct here? the original code used `isample`
-#define ADDTAP0(x) filt0 = _mm256_add_epi16(filt0, _mm256_mullo_epi16(tap_256[x], prev_samp[(x+itime)%NTAPS]));
-#define ADDTAP1(x) filt1 = _mm256_add_epi16(filt1, _mm256_mullo_epi16(tap_256[x], prev_samp[(x+itime)%NTAPS]));
-#define ADDTAP2(x) filt2 = _mm256_add_epi16(filt2, _mm256_mullo_epi16(tap_256[x], prev_samp[(x+itime)%NTAPS]));
-#define ADDTAP3(x) filt3 = _mm256_add_epi16(filt3, _mm256_mullo_epi16(tap_256[x], prev_samp[(x+itime)%NTAPS]));
+#define ADDTAP0(x) filt0 = _mm256_add_epi16(filt0, _mm256_mullo_epi16(tap_256[x], prev_samp[(x+absTimeModNTAPS)%NTAPS]));
+#define ADDTAP1(x) filt1 = _mm256_add_epi16(filt1, _mm256_mullo_epi16(tap_256[x], prev_samp[(x+absTimeModNTAPS)%NTAPS]));
+#define ADDTAP2(x) filt2 = _mm256_add_epi16(filt2, _mm256_mullo_epi16(tap_256[x], prev_samp[(x+absTimeModNTAPS)%NTAPS]));
+#define ADDTAP3(x) filt3 = _mm256_add_epi16(filt3, _mm256_mullo_epi16(tap_256[x], prev_samp[(x+absTimeModNTAPS)%NTAPS]));
 
             ADDTAP0(0);
             ADDTAP1(1);
@@ -197,8 +197,11 @@ process_window_avx2(ProcessingInfo& info)
             ADDTAP2(6);
 
             __m256i filt = _mm256_add_epi16(_mm256_add_epi16(filt0, filt1), _mm256_add_epi16(filt2, filt3));
-            prev_samp[itime%NTAPS]=s;
-
+            prev_samp[absTimeModNTAPS]=s;
+            // This is a reference to the value in the ProcessingInfo,
+            // so this line has the effect of directly modifying the
+            // `info` object
+            absTimeModNTAPS=(absTimeModNTAPS+1)%NTAPS;
             // --------------------------------------------------------------
             // Hit finding
             // --------------------------------------------------------------
