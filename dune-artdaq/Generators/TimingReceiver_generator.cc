@@ -402,13 +402,13 @@ bool dune::TimingReceiver::checkHWStatus_()
     // Extra complication: only the TLU has the necessary registers (the fanouts do not), so test that first
     if(!hw_.getNodes("master_top.trig").empty()){
         ValWord<uint32_t> trig_endpoint_ready = hw_.getNode("master_top.trig.csr.stat.ep_rdy").read();
+        // The full status of the endpoint
+        ValWord<uint32_t> trig_endpoint_status = hw_.getNode("master_top.trig.csr.stat.ep_stat").read();
         hw_.dispatch();
-        if(trig_endpoint_ready==0){
+        if(trig_endpoint_ready==0 || trig_endpoint_status.value()>0x8){
             // Is this partition interested in external triggers? The lowest four triggers are internal; higher are external
             bool want_external=trigger_mask_ & 0xfffffff0;
             if(want_external){
-                // The full status of the endpoint
-                ValWord<uint32_t> trig_endpoint_status = hw_.getNode("master_top.trig.csr.stat.ep_stat").read();
                 hw_.dispatch();
                 DAQLogger::LogError(instance_name_)
                     << "timing-trigger endpoint is not ready: status is "
