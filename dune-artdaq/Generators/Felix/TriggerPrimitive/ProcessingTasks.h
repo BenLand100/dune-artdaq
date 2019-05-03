@@ -30,7 +30,7 @@ namespace ProcessingTasks {
                                      // whether they're getting behind
     };
 
-    constexpr uint64_t END_OF_MESSAGES=0;
+    constexpr uint64_t END_OF_MESSAGES=0xffffffffffffffff;
 
     // Return the current steady clock in microseconds
     inline uint64_t now_us()
