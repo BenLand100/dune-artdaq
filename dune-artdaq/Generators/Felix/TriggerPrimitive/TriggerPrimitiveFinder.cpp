@@ -96,6 +96,11 @@ void TriggerPrimitiveFinder::hitsToFragment(uint64_t timestamp, uint32_t window_
     hitFrag.set_fiber_no(m_fiber_no);
     hitFrag.set_slot_no(m_slot_no);
     hitFrag.set_crate_no(m_crate_no);
+
+    for(size_t i=0; i<tps.size(); ++i){
+        hitFrag.get_primitive(i)=tps[i];
+    }
+
 }
 
 //======================================================================
