@@ -57,7 +57,7 @@ void TriggerPrimitiveFinder::stop()
 }
 
 //======================================================================
-void TriggerPrimitiveFinder::addMessage(SUPERCHUNK_CHAR_STRUCT& ucs)
+bool TriggerPrimitiveFinder::addMessage(SUPERCHUNK_CHAR_STRUCT& ucs)
 {
     static size_t nPrinted=0;
     if(m_readyForMessages.load()){
@@ -69,8 +69,9 @@ void TriggerPrimitiveFinder::addMessage(SUPERCHUNK_CHAR_STRUCT& ucs)
             frame->print();
             ++nPrinted;
         }
-        m_itemsToProcess.write(ProcessingTasks::ItemToProcess{timestamp, ucs, ProcessingTasks::now_us()});
+        return m_itemsToProcess.write(ProcessingTasks::ItemToProcess{timestamp, ucs, ProcessingTasks::now_us()});
     }
+    return true;
 }
 
 //======================================================================

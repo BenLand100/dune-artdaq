@@ -29,7 +29,8 @@ public:
   
     ~TriggerPrimitiveFinder();
 
-    void addMessage(SUPERCHUNK_CHAR_STRUCT& ucs);
+    // Returns true if message was successfully added, false if message queue was full because we're too far behind
+    bool addMessage(SUPERCHUNK_CHAR_STRUCT& ucs);
 
     // Find all the hits around `timestamp` and write them into the fragment at fragPtr
     void hitsToFragment(uint64_t timestamp, uint32_t windowSize, artdaq::Fragment* fragPtr);
