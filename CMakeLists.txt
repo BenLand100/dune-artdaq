@@ -68,14 +68,13 @@ cet_report_compiler_flags()
 # these are minimum required versions, not the actual product versions
 find_ups_product( cetbuildtools v5_06_06 )
 
-# JCF, May-8-2019
-# Commented out ups product minimums for the artdaq packages +
-# dune-raw-data so that dev-versioning can be used on ProtoDUNE
-
-#find_ups_product( artdaq v2_01_00 )
-#find_ups_product( artdaq_utilities v1_00_00)
-#find_ups_product( artdaq_core v1_06_01 )
-#find_ups_product( dune_raw_data v0_00_02 )
+# JCF, May-9-2019
+# Removing ups product minimums for the artdaq packages so that
+# dev-versioning can be used on ProtoDUNE
+find_ups_product( artdaq ) # v2_01_00 )
+find_ups_product( artdaq_utilities ) # v1_00_00)
+find_ups_product( artdaq_core ) # v1_06_01 )
+find_ups_product( dune_raw_data ) # v0_00_02 )
 find_ups_product( art v2_03_00 )
 find_ups_product( fhiclcpp v2_16_00 )
 find_ups_product( messagefacility v1_10_00 )
