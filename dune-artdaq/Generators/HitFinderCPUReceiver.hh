@@ -28,19 +28,14 @@
 #include <chrono>
 
 #include "ptmp/api.h"
-#include "ptmp/json.hpp"
 
-#pragma GCC diagnostic ignored "-Wunused"
-#pragma GCC diagnostic ignored "-Wunused-parameter"
-#pragma GCC diagnostic ignored "-Woverloaded-virtual"
-#pragma GCC diagnostic push
-#include "uhal/uhal.hpp"   // The real uhal
-#pragma GCC diagnostic pop
-
-
-using namespace uhal;
 
 namespace dune {
+  class SetZMQSigHandler {
+    public:
+      SetZMQSigHandler();   // Constructor
+  };
+  
 
   class HitFinderCPUReceiver : public artdaq::CommandableFragmentGenerator {
   public:
@@ -78,14 +73,16 @@ namespace dune {
 
     // Reporting functionality, for future use, if/when needed
     std::string report() override { return ""; }
+    
+    dune::SetZMQSigHandler zmq_sig_handler_;  // See explanation of this fiddle in 
 
     // An name for what we want to log to.
     std::string instance_name_;
 
-    // The maximum time in microseconds before we timeout for a TPReceiver call
+    // The maximum time in microseconds before we timeout for a TPReceiver call (ms)
     int timeout_;
 
-    // The amount of time the BR should wait before the next call to the TPReceiver
+    // The amount of time the BR should wait before the next call to the TPReceiver (ms)
     int waitretry_;
 
     // The maximum  number of time the BR should try to call the TPReceiver
@@ -94,6 +91,9 @@ namespace dune {
     // The number of input PTMP messages in the outpout
     size_t aggregation_;
 
+
+    bool must_stop_;
+
     // Config:
     // Socket sender
     std::string receiver_socket_;
@@ -101,20 +101,38 @@ namespace dune {
     std::string sender_socket_;
 
     // The actual receiver/sender
-    std::unique_ptr<ptmp::TPReceiver> receiver_;
-    std::unique_ptr<ptmp::TPSender> sender_;
+    ptmp::TPReceiver receiver_;
+    ptmp::TPSender sender_;
 
-
+    // Counters
+    size_t nTPHit_received_;
+    size_t nTPSet_received_;
+    size_t nTPCHit_sent_;
+    size_t nTPCSet_sent_;
 
     // Request receiver things. That should listen to PTMP and check whether there are hits broadcasted or not.
     // Not sure whether artdaq allows to do that.
-
+    
     // std::unique_ptr<RequestReceiver> request_receiver_;
     // std::string requester_address_;
     // std::string request_address_;
     // unsigned short request_port_;
     // unsigned short requests_size_;
-    int nSetsReceived_;
+
+    // Dummy mode (deoesn't actually read the hit from PTMP, and fire an number of them)
+    bool dummy_mode_; // Whether to enable this mode
+    int dummy_wait_; // How long to wait after sending the ptmp message (miliseconds)
+    size_t dummy_nhit_per_tpset_; // Number of hit sent per tpset (actually send poisson fluctuated around this number).
+    size_t nextntime;
+    size_t nextntimestop;
+    std::vector<double> average_tps_size;
+    std::vector<double> average_total_time;
+    std::vector<double> average_receive_time;
+    std::vector<double> average_send_time;
+    std::vector<double> average_1_time;
+    std::vector<double> average_2_time;
+    std::vector<double> average_3_time;
+    std::vector<double> average_4_time;
   };
 }
 
