@@ -196,9 +196,6 @@ if [[ -z $( git tag | grep -E "^$tagname\s*$" ) ]]; then
 
 	echo "Automatically modified ups/product_deps in $PWD to reflect the new dev-version $tagname and performed a local commit"
 
-#    else
-#	echo "There was a failure in this script's attempt to automatically update ups/product deps in $PWD in that no change appears to have been performed; exiting..." >&2
-#	exit 1
     fi
 
     git tag $tagname
@@ -216,11 +213,17 @@ else
     fi
 fi
 
-cd ../..
+cd ..  # to the ./srcs directory
+cp -p CMakeLists.txt CMakeLists.txt.backup
+sed -i -r 's/^(\s*ADD_SUBDIRECTORY.*)/#\1/' CMakeLists.txt
+sed -i -r 's/^#(\s*ADD_SUBDIRECTORY\s*\('$packagedir'\).*)/\1/' CMakeLists.txt
+cd ..
 . $sourceme_for_build
 
 export MRB_INSTALL=/nfs/sw/artdaq/products_dev
 mrb i -j16
+
+cp -p srcs/CMakeLists.txt.backup srcs/CMakeLists.txt
 
 echo
 
