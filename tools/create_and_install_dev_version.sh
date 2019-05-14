@@ -82,100 +82,91 @@ echo "Tag is \"$tagname\""
 
 cd ../..
 
-function update_product_deps() {
+sed -i -r 's/^(\s*parent\s+'$package'\s+)[^\s#]+(.*)/\1'$tagname'\2/' srcs/$packagedir/ups/product_deps
 
-    sed -i -r 's/^(\s*parent\s+'$package'\s+)[^\s#]+(.*)/\1'$tagname'\2/' srcs/$packagedir/ups/product_deps
+dependent_packages_to_bookkeep="artdaq artdaq-core artdaq-mpich-plugin artdaq-utilities dune-raw-data"
+
+for dependent_package in $dependent_packages_to_bookkeep;  do
+
+    dependent_package_underscores=$( echo $dependent_package | sed -r 's/-/_/g' )
     
-    dependent_packages_to_bookkeep="artdaq artdaq-core artdaq-mpich-plugin artdaq-utilities dune-raw-data"
+    if [[ -z $(grep -E -l "^\s*$dependent_package_underscores\s+" srcs/$packagedir/ups/product_deps) ]]; then
+	continue
+    fi
 
-    for dependent_package in $dependent_packages_to_bookkeep;  do
+    commit_or_version=$( sed -r -n 's/^\s*'$dependent_package' commit\/version: (\S+).*/\1/p' $run_records_dir/$run_tested/metadata.txt   )
 
-	dependent_package_underscores=$( echo $dependent_package | sed -r 's/-/_/g' )
-	
-	if [[ -z $(grep -E -l "^\s*$dependent_package_underscores\s+" srcs/$packagedir/ups/product_deps) ]]; then
-	    continue
-	fi
+    echo "Commit or version for dependent package $dependent_package in run $run_tested is $commit_or_version"
 
-	commit_or_version=$( sed -r -n 's/^\s*'$dependent_package' commit\/version: (\S+).*/\1/p' $run_records_dir/$run_tested/metadata.txt   )
+    if [[ -z $commit_or_version ]]; then
+	echo "Unable to determine the commit/dev-version/version of dependent package $dependent_package used in run $run_tested; exiting..." >&2
+	exit 1
+    fi
 
-	echo "Commit or version for dependent package $dependent_package in run $run_tested is $commit_or_version"
+    if [[ ${#commit_or_version} == 40 ]]; then  # it's a commit hash
+	dependent_package_dir=$( echo $dependent_package | sed -r 's/-/_/g'  )
 
-	if [[ -z $commit_or_version ]]; then
-	    echo "Unable to determine the commit/dev-version/version of dependent package $dependent_package used in run $run_tested; exiting..." >&2
-	    exit 1
-	fi
+	if [[ -d srcs/$dependent_package_dir ]]; then
+	    cd srcs/$dependent_package_dir
 
-	if [[ ${#commit_or_version} == 40 ]]; then  # it's a commit hash
-	    dependent_package_dir=$( echo $dependent_package | sed -r 's/-/_/g'  )
+	    dependent_package_tagname=$( git tag --points-at $commit_or_version | tail -1)
+	    if [[ -z $dependent_package_tagname ]]; then
+		dependent_package_tagname=$( git tag --points-at HEAD | tail -1 )
 
-	    if [[ -d srcs/$dependent_package_dir ]]; then
-		cd srcs/$dependent_package_dir
-
-		dependent_package_tagname=$( git tag --points-at $commit_or_version | tail -1)
 		if [[ -z $dependent_package_tagname ]]; then
-		    dependent_package_tagname=$( git tag --points-at HEAD | tail -1 )
-
-		    if [[ -z $dependent_package_tagname ]]; then
-			echo "Unable to determine the tag of dependent package $dependent_package which repesents the code used in run $run_tested; exiting..."
-			exit 1
-		    fi
-		fi
-
-		echo "Snatched a dependent_package_tagname of $dependent_package_tagname"
-
-		if ! [[ $dependent_package_tagname =~ .*_20[0-9]{6}_.* || $dependent_package_tagname =~ ^v[0-9_]$ ]]; then
-		    echo "The tag this script determined corresponded to the code in run $run_tested does not appear to be an expected format (either <branchname>_<yyyymmdd>_<descriptive tag> or a version)" >&2 
+		    echo "Unable to determine the tag of dependent package $dependent_package which repesents the code used in run $run_tested; exiting..."
 		    exit 1
 		fi
+	    fi
 
-		files_changed_between_commit_and_tag=$( git diff $dependent_package_tagname $commit_or_version --name-status | grep -v ups/product_deps | wc -l)  # What we really care about is that the tag describes the functioning code used during the run, so it's OK if product_deps is modified
-		echo "files_changed_between_commit_and_tag == $files_changed_between_commit_and_tag"
+	    echo "Snatched a dependent_package_tagname of $dependent_package_tagname"
 
-		if [[ $files_changed_between_commit_and_tag > 0 ]]; then
-		    
-		    git diff $dependent_package_tagname $commit_or_version --name-status 
+	    if ! [[ $dependent_package_tagname =~ .*_20[0-9]{6}_.* || $dependent_package_tagname =~ ^v[0-9_]$ ]]; then
+		echo "The tag this script determined corresponded to the code in run $run_tested does not appear to be an expected format (either <branchname>_<yyyymmdd>_<descriptive tag> or a version)" >&2 
+		exit 1
+	    fi
 
-		    cat<<EOF >&2
-		    
+	    files_changed_between_commit_and_tag=$( git diff $dependent_package_tagname $commit_or_version --name-status | grep -v ups/product_deps | wc -l)  # What we really care about is that the tag describes the functioning code used during the run, so it's OK if product_deps is modified
+	    echo "files_changed_between_commit_and_tag == $files_changed_between_commit_and_tag"
+
+	    if [[ $files_changed_between_commit_and_tag > 0 ]]; then
+		
+		git diff $dependent_package_tagname $commit_or_version --name-status 
+
+		cat<<EOF >&2
 Although this script's best guess as to the tag corresponding to commit $commit_or_version for dependent package 
 $dependent_package_tagname is "$dependent_package_tagname", it appears that at least one file that isn't product_deps 
 has been modified between the tag and the commit (see right above). Exiting...
 
 EOF
-		    exit 1
-
-		fi
-
-		if [[ -z $dependent_package_tagname ]]; then
-		    echo "Unable to find a tag corresponding to commit $commit_or_version of dependent package $dependent_package, used in run $run_tested. Exiting..." >&2
-		    exit 1
-		fi
-		cd ../..
-	    else
-		echo "Developer error: unable to find srcs/$dependent_package_dir in $PWD. Exiting..." >&2
 		exit 1
+
 	    fi
 
+	    if [[ -z $dependent_package_tagname ]]; then
+		echo "Unable to find a tag corresponding to commit $commit_or_version of dependent package $dependent_package, used in run $run_tested. Exiting..." >&2
+		exit 1
+	    fi
+	    cd ../..
 	else
-	    dependent_package_tagname=$commit_or_version
-	    #echo "In run $run_tested, $dependent package version (or dev-version) $commit_or_version was used"
+	    echo "Developer error: unable to find srcs/$dependent_package_dir in $PWD. Exiting..." >&2
+	    exit 1
 	fi
 
-	echo "Tag for dependent package $dependent_package found to be $dependent_package_tagname for code used in run $run_tested" 
-	sed -i -r 's/^(\s*'$dependent_package_dir'\s+)\S+(.*)/\1'$dependent_package_tagname'\2/' srcs/$packagedir/ups/product_deps
-    done
+    else
+	dependent_package_tagname=$commit_or_version
+	#echo "In run $run_tested, $dependent package version (or dev-version) $commit_or_version was used"
+    fi
 
-    cd srcs/$packagedir
-    git diff HEAD
-#	git reset HEAD --hard
-    git add ups/product_deps
-    git commit -m "JCF: automatic update of product_deps by "$(basename $0)
-    cd ../..
-}
-
-update_product_deps
+    echo "Tag for dependent package $dependent_package found to be $dependent_package_tagname for code used in run $run_tested" 
+    sed -i -r 's/^(\s*'$dependent_package_dir'\s+)\S+(.*)/\1'$dependent_package_tagname'\2/' srcs/$packagedir/ups/product_deps
+done
 
 cd srcs/$packagedir
+git diff HEAD
+#	git reset HEAD --hard
+git add ups/product_deps
+git commit -m "JCF: automatic update of product_deps by "$(basename $0)
 
 if [[ -z $( git tag | grep -E "^$tagname\s*$" ) ]]; then
 
@@ -214,12 +205,37 @@ else
 fi
 
 cd ..  # to the ./srcs directory
+
+if [[ $packagedir == "dune_artdaq" ]]; then
+    dependent_packages="artdaq dune_raw_data"
+elif [[ $packagedir == "dune_raw_data" ]]; then
+    dependent_packages="artdaq_core"
+elif [[  $packagedir == "artdaq" ]]; then
+    dependent_packages="artdaq_core artdaq_utilities" 
+elif [[ $packagedir == "artdaq_mpich_plugin" ]]; then
+    dependent_packages="artdaq"
+elif [[ $packagedir == "artdaq_core" || $packagedir == "artdaq_utilities" ]]; then
+    dependent_packages=""
+else
+    echo "This script can't make a dev-version for package \"$packagedir\" because it's not good enough. Exiting..." >&2
+    exit 1
+fi
+
+# Modify the CMakeLists.txt in the srcs directory so we only build the target package and its dependencies
+
 cp -p CMakeLists.txt CMakeLists.txt.backup
 sed -i -r 's/^(\s*ADD_SUBDIRECTORY.*)/#\1/' CMakeLists.txt
-sed -i -r 's/^#(\s*ADD_SUBDIRECTORY\s*\('$packagedir'\).*)/\1/' CMakeLists.txt
+
+for pkg in $packagedir $dependent_packages ; do
+    pkg=$( echo $pkg | sed -r 's/ //g' ) # strip whitespace
+    sed -i -r 's/^#(\s*ADD_SUBDIRECTORY\s*\('$pkg'\).*)/\1/' CMakeLists.txt
+done
+
 cd ..
 . $sourceme_for_build
 
+mrb z 
+mrbsetenv
 export MRB_INSTALL=/nfs/sw/artdaq/products_dev
 mrb i -j16
 
