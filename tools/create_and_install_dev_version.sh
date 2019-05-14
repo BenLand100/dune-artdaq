@@ -31,7 +31,15 @@ fi
 development_area_from_run=$( sed -r -n 's/^\s*DAQ\s+setup\s+script\s*:\s*(.*)\/setupDUNEARTDAQ.*/\1/p' $run_records_dir/$run_tested/boot.txt )
 if [[ -n $development_area_from_run ]]; then
     if [[ "$PWD" != "$development_area_from_run" ]]; then
-	echo "You don't appear to be in the dune-artdaq development directory used in the run you provided ($run_tested) ($development_area_from_run); exiting..." >&2
+
+	cat<<EOF >&2
+
+You don't appear to be in the dune-artdaq development directory
+($development_area_from_run) used in the run you provided ($run_tested); 
+right now you're in $PWD. Exiting...
+
+EOF
+
 	exit 1
     fi
 else
@@ -58,7 +66,14 @@ cd ./srcs/$packagedir
 git fetch origin
 
 if [[ "$?" != "0" ]]; then
-    echo "There was a problem calling git fetch origin in ./srcs/$packagedir; note that you need to have ownership of the repo for this script to work. Exiting..." >&2
+    cat<<EOF >&2
+
+There was a problem calling git fetch origin in ./srcs/$packagedir;
+note that you need to have ownership of the repo for this script to
+work. Exiting...
+
+EOF
+
     exit 1
 fi
 
@@ -82,21 +97,28 @@ echo "Tag is \"$tagname\""
 
 cd ../..
 
+if [[ $packagedir == "dune_artdaq" ]]; then
+    dependent_packages="artdaq dune_raw_data artdaq_core artdaq_utilities"
+elif [[ $packagedir == "dune_raw_data" ]]; then
+    dependent_packages="artdaq_core"
+elif [[  $packagedir == "artdaq" ]]; then
+    dependent_packages="artdaq_core artdaq_utilities" 
+elif [[ $packagedir == "artdaq_mpich_plugin" ]]; then
+    dependent_packages="artdaq artdaq_core artdaq_utilities"
+elif [[ $packagedir == "artdaq_core" || $packagedir == "artdaq_utilities" ]]; then
+    dependent_packages=""
+else
+    echo "This script can't make a dev-version for package \"$packagedir\" because it's not good enough. Exiting..." >&2
+    exit 1
+fi
+
 sed -i -r 's/^(\s*parent\s+'$package'\s+)[^\s#]+(.*)/\1'$tagname'\2/' srcs/$packagedir/ups/product_deps
 
-dependent_packages_to_bookkeep="artdaq artdaq-core artdaq-mpich-plugin artdaq-utilities dune-raw-data"
+for dependent_package in $dependent_packages;  do
 
-for dependent_package in $dependent_packages_to_bookkeep;  do
-
-    dependent_package_underscores=$( echo $dependent_package | sed -r 's/-/_/g' )
+    dependent_package_dashes=$( echo $dependent_package | sed -r 's/_/-/g' )
     
-    if [[ -z $(grep -E -l "^\s*$dependent_package_underscores\s+" srcs/$packagedir/ups/product_deps) ]]; then
-	continue
-    fi
-
-    commit_or_version=$( sed -r -n 's/^\s*'$dependent_package' commit\/version: (\S+).*/\1/p' $run_records_dir/$run_tested/metadata.txt   )
-
-    echo "Commit or version for dependent package $dependent_package in run $run_tested is $commit_or_version"
+    commit_or_version=$( sed -r -n 's/^\s*'$dependent_package_dashes' commit\/version: (\S+).*/\1/p' $run_records_dir/$run_tested/metadata.txt   )
 
     if [[ -z $commit_or_version ]]; then
 	echo "Unable to determine the commit/dev-version/version of dependent package $dependent_package used in run $run_tested; exiting..." >&2
@@ -104,14 +126,13 @@ for dependent_package in $dependent_packages_to_bookkeep;  do
     fi
 
     if [[ ${#commit_or_version} == 40 ]]; then  # it's a commit hash
-	dependent_package_dir=$( echo $dependent_package | sed -r 's/-/_/g'  )
 
-	if [[ -d srcs/$dependent_package_dir ]]; then
-	    cd srcs/$dependent_package_dir
+	if [[ -d srcs/$dependent_package ]]; then
+	    cd srcs/$dependent_package
 
-	    dependent_package_tagname=$( git tag --points-at $commit_or_version | tail -1)
+	    dependent_package_tagname=$( git tag --points-at HEAD )
 	    if [[ -z $dependent_package_tagname ]]; then
-		dependent_package_tagname=$( git tag --points-at HEAD | tail -1 )
+		dependent_package_tagname=$( git tag --points-at $commit_or_version )
 
 		if [[ -z $dependent_package_tagname ]]; then
 		    echo "Unable to determine the tag of dependent package $dependent_package which repesents the code used in run $run_tested; exiting..."
@@ -119,7 +140,10 @@ for dependent_package in $dependent_packages_to_bookkeep;  do
 		fi
 	    fi
 
-	    echo "Snatched a dependent_package_tagname of $dependent_package_tagname"
+	    if [[ -n $( echo $dependent_package_tagname | grep -E " " ) ]]; then
+		echo "Error: more than one tag - $dependent_package_tagname - points to the code for $dependent_package which was used in $run_tested. Exiting..." >&2
+		exit 1
+	    fi
 
 	    if ! [[ $dependent_package_tagname =~ .*_20[0-9]{6}_.* || $dependent_package_tagname =~ ^v[0-9_]$ ]]; then
 		echo "The tag this script determined corresponded to the code in run $run_tested does not appear to be an expected format (either <branchname>_<yyyymmdd>_<descriptive tag> or a version)" >&2 
@@ -127,7 +151,6 @@ for dependent_package in $dependent_packages_to_bookkeep;  do
 	    fi
 
 	    files_changed_between_commit_and_tag=$( git diff $dependent_package_tagname $commit_or_version --name-status | grep -v ups/product_deps | wc -l)  # What we really care about is that the tag describes the functioning code used during the run, so it's OK if product_deps is modified
-	    echo "files_changed_between_commit_and_tag == $files_changed_between_commit_and_tag"
 
 	    if [[ $files_changed_between_commit_and_tag > 0 ]]; then
 		
@@ -155,18 +178,16 @@ EOF
 
     else
 	dependent_package_tagname=$commit_or_version
-	#echo "In run $run_tested, $dependent package version (or dev-version) $commit_or_version was used"
     fi
 
     echo "Tag for dependent package $dependent_package found to be $dependent_package_tagname for code used in run $run_tested" 
-    sed -i -r 's/^(\s*'$dependent_package_dir'\s+)\S+(.*)/\1'$dependent_package_tagname'\2/' srcs/$packagedir/ups/product_deps
+    sed -i -r 's/^(\s*'$dependent_package'\s+)\S+(.*)/\1'$dependent_package_tagname'\2/' srcs/$packagedir/ups/product_deps
 done
 
 cd srcs/$packagedir
 git diff HEAD
-#	git reset HEAD --hard
 git add ups/product_deps
-git commit -m "JCF: automatic update of product_deps by "$(basename $0)
+git commit -m "Automatic update of product_deps done by "$(basename $0)" executed under user account $USER, based on code tested in run $run_tested"
 
 if [[ -z $( git tag | grep -E "^$tagname\s*$" ) ]]; then
 
@@ -206,21 +227,6 @@ fi
 
 cd ..  # to the ./srcs directory
 
-if [[ $packagedir == "dune_artdaq" ]]; then
-    dependent_packages="artdaq dune_raw_data"
-elif [[ $packagedir == "dune_raw_data" ]]; then
-    dependent_packages="artdaq_core"
-elif [[  $packagedir == "artdaq" ]]; then
-    dependent_packages="artdaq_core artdaq_utilities" 
-elif [[ $packagedir == "artdaq_mpich_plugin" ]]; then
-    dependent_packages="artdaq"
-elif [[ $packagedir == "artdaq_core" || $packagedir == "artdaq_utilities" ]]; then
-    dependent_packages=""
-else
-    echo "This script can't make a dev-version for package \"$packagedir\" because it's not good enough. Exiting..." >&2
-    exit 1
-fi
-
 # Modify the CMakeLists.txt in the srcs directory so we only build the target package and its dependencies
 
 cp -p CMakeLists.txt CMakeLists.txt.backup
@@ -240,22 +246,16 @@ export MRB_INSTALL=/nfs/sw/artdaq/products_dev
 mrb i -j16
 
 cp -p srcs/CMakeLists.txt.backup srcs/CMakeLists.txt
-
-echo
-
 cat<<EOF
 
-DISREGARD ANY BUILD ERRORS WHICH MAY APPEAR ABOVE OF THE FORM "file
-INSTALL cannot set permissions on" PRE-EXISTING
-/nfs/sw/artdaq/products_dev VERSIONS WHICH ALREADY EXIST AND WERE
-CREATED BY SOMEONE ELSE
-
-Try running:
+If the build was successful, try running:
 
 . /nfs/sw/artdaq/products/setup
 . /nfs/sw/artdaq/products_dev/setup
 ups list -aK+ $packagedir $tagname
 
+
 EOF
 
 exit 0
+
