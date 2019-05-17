@@ -17,6 +17,8 @@
 
 #include "zmq.h"
 
+#include "PdspChannelMapService.h"
+
 namespace artdaq
 {
     class Fragment;
@@ -66,6 +68,7 @@ private:
 
     void measure_latency(const ProcessingTasks::ItemToProcess& item);
 
+
     // The queue of trigger primitives found, and a mutex to protect it
     std::deque<dune::TriggerPrimitive> m_triggerPrimitives;
     std::mutex m_triggerPrimitiveMutex;
@@ -83,6 +86,7 @@ private:
     ptmp::TPSender m_TPSender;
     std::atomic<bool> m_should_stop;
     uint32_t m_windowOffset;
+    uint32_t m_offline_channel_base;
 };
 
 #endif

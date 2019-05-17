@@ -9,6 +9,8 @@
 #include <sys/time.h>
 #include <sys/resource.h>
 
+#include "tests/frames2array.h"
+
 const int64_t clocksPerTPCTick=25;
 
 //======================================================================
@@ -20,7 +22,8 @@ TriggerPrimitiveFinder::TriggerPrimitiveFinder(std::string zmq_hit_send_connecti
       m_crate_no(0xff),
       m_TPSender(std::string("{\"socket\": { \"type\": \"PUB\", \"bind\": [ \"")+zmq_hit_send_connection+std::string("\" ] } }")),
       m_should_stop(false),
-      m_windowOffset(window_offset)
+      m_windowOffset(window_offset),
+      m_offline_channel_base(0)
 {
     std::cout << zmq_hit_send_connection << std::endl;
     m_processingThread=std::thread(&TriggerPrimitiveFinder::processing_thread, this, 0, REGISTERS_PER_FRAME);
@@ -159,17 +162,19 @@ TriggerPrimitiveFinder::addHitsToQueue(uint64_t timestamp,
     tpset.set_created(0);
     
     while(*input_loc!=MAGIC){
-        for(int i=0; i<16; ++i) chan[i]       = collection_index_to_channel(*input_loc++);
+        for(int i=0; i<16; ++i) chan[i]       = *input_loc++;
         for(int i=0; i<16; ++i) hit_end[i]    = *input_loc++;
         for(int i=0; i<16; ++i) hit_charge[i] = *input_loc++;
         for(int i=0; i<16; ++i) hit_tover[i]  = *input_loc++;
         
         for(int i=0; i<16; ++i){
             if(hit_charge[i] && chan[i]!=MAGIC){
-                primitive_queue.emplace_back(timestamp, chan[i], hit_end[i], hit_charge[i], hit_tover[i]);
+                const uint16_t online_channel=collection_index_to_channel(chan[i]);
+                const uint32_t offline_channel=m_offline_channel_base+collection_index_to_offline(chan[i]);
+                primitive_queue.emplace_back(timestamp, online_channel, hit_end[i], hit_charge[i], hit_tover[i]);
                 uint64_t hit_start=timestamp+clocksPerTPCTick*(int64_t(hit_end[i])-hit_tover[i]);
                 ptmp::data::TrigPrim* ptmp_prim=tpset.add_tps();
-                ptmp_prim->set_channel(chan[i]);
+                ptmp_prim->set_channel(offline_channel);
                 ptmp_prim->set_tstart(hit_start);
                 ptmp_prim->set_tspan(hit_tover[i]);
                 ptmp_prim->set_adcsum(hit_charge[i]);
@@ -246,6 +251,11 @@ void TriggerPrimitiveFinder::processing_thread(uint8_t first_register, uint8_t l
                       tap_exponent,
                       0,
                       0);
+
+    // TODO: hardcoded paths :-O
+    PdspChannelMapService channelMap("/nfs/sw/work_dirs/phrodrig/march2019-felix-trigger-primitive/srcs/dune_artdaq/dune-artdaq/Generators/Felix/TriggerPrimitive/protoDUNETPCChannelMap_RCE_v4.txt",
+                                     "/nfs/sw/work_dirs/phrodrig/march2019-felix-trigger-primitive/srcs/dune_artdaq/dune-artdaq/Generators/Felix/TriggerPrimitive/protoDUNETPCChannelMap_FELIX_v4.txt");
+
     size_t nhits=0;
     // -------------------------------------------------------- 
     // Actually process
@@ -278,6 +288,14 @@ void TriggerPrimitiveFinder::processing_thread(uint8_t first_register, uint8_t l
             m_fiber_no=frame->fiber_no();
             m_crate_no=frame->crate_no();
             m_slot_no=frame->slot_no();
+            // getOfflineChannel comes from frames2array.h. The magic
+            // "48" is (maybe) the online channel number of the
+            // lowest-numbered collection channel in the link. Found
+            // by comparing the `offlines` and `index_to_chan` arrays
+            // in frame_expand.h`: the [16] entry is 0 in offlines,
+            // and 48 in `index_to_chan`
+            m_offline_channel_base=getOfflineChannel(channelMap, frame, 48);
+
             first=false;
         }
         pi.input=mcadc;
