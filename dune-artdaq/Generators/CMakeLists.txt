@@ -54,7 +54,23 @@ find_library( LIBPTMP NAMES ptmp PATHS $ENV{PTMP_LIB})
 
 simple_plugin(HitFinderCPUReceiver "generator"
   dune-raw-data_Overlays
-  dune-artdaq_Generators_Felix
+  dune-artdaq_DAQLogger
+  artdaq_Application
+  artdaq_DAQdata
+  artdaq-core_Utilities
+  artdaq-core_Data
+  artdaq-utilities_Plugins
+  ${CANVAS}
+  ${FHICLCPP}
+  ${CETLIB}
+  ${CETLIB_EXCEPT}
+  ${LIBPTMP}
+  ${PROTOBUF}
+  dune-artdaq_DAQLogger
+)
+
+simple_plugin(SWTriggerReceiver "generator"
+  dune-raw-data_Overlays
   dune-artdaq_DAQLogger
   artdaq_Application
   artdaq_DAQdata
