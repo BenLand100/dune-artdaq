@@ -91,7 +91,7 @@ year_in_greenwich=$( date --utc +%Y )
 month_in_greenwich=$( date --utc +%m )
 day_in_greenwich=$(  date --utc +%d )
 
-tagname=${branchname}_${year_in_greenwich}${month_in_greenwich}${day_in_greenwich}_${descriptive_token}
+tagname=v${year_in_greenwich}_${month_in_greenwich}_${day_in_greenwich}_${branchname}_${descriptive_token}
 
 echo "Tag is \"$tagname\""
 
@@ -145,7 +145,7 @@ for dependent_package in $dependent_packages;  do
 		exit 1
 	    fi
 
-	    if ! [[ $dependent_package_tagname =~ .*_20[0-9]{6}_.* || $dependent_package_tagname =~ ^v[0-9_]$ ]]; then
+	    if ! [[ $dependent_package_tagname =~ ^v20[0-9]{2}_[0-9]{2}_[0-9]{2}_.*$ || $dependent_package_tagname =~ ^v[0-9_]$ ]]; then
 		echo "The tag this script determined corresponded to the code in run $run_tested does not appear to be an expected format (either <branchname>_<yyyymmdd>_<descriptive tag> or a version)" >&2 
 		exit 1
 	    fi
