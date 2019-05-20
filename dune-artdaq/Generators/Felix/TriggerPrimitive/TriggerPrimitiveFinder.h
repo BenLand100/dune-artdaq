@@ -84,6 +84,8 @@ private:
     uint8_t m_slot_no;
     uint8_t m_crate_no;
     ptmp::TPSender m_TPSender;
+    std::unique_ptr<ptmp::data::TPSet> m_current_tpset;
+    unsigned int m_msgs_per_tpset;
     std::atomic<bool> m_should_stop;
     uint32_t m_windowOffset;
     uint32_t m_offline_channel_base;

@@ -21,6 +21,8 @@ TriggerPrimitiveFinder::TriggerPrimitiveFinder(std::string zmq_hit_send_connecti
       m_slot_no(0xff),
       m_crate_no(0xff),
       m_TPSender(std::string("{\"socket\": { \"type\": \"PUB\", \"bind\": [ \"")+zmq_hit_send_connection+std::string("\" ] } }")),
+      m_current_tpset(new ptmp::data::TPSet),
+      m_msgs_per_tpset(20),
       m_should_stop(false),
       m_windowOffset(window_offset),
       m_offline_channel_base(0)
@@ -154,12 +156,15 @@ TriggerPrimitiveFinder::addHitsToQueue(uint64_t timestamp,
     std::lock_guard<std::mutex> guard(m_triggerPrimitiveMutex);
 
     static uint32_t count=0;
-    ptmp::data::TPSet tpset;
+    static unsigned int msgs_in_tpset=0;
+    ptmp::data::TPSet& tpset=*m_current_tpset.get();
     
-    tpset.set_count(count++);
-    tpset.set_detid(4);
-    tpset.set_tstart(timestamp);
-    tpset.set_created(0);
+    if(msgs_in_tpset==0){
+        tpset.set_count(count++);
+        tpset.set_detid(4);
+        tpset.set_tstart(timestamp);
+        tpset.set_created(0);
+    }
     
     while(*input_loc!=MAGIC){
         for(int i=0; i<16; ++i) chan[i]       = *input_loc++;
@@ -182,8 +187,12 @@ TriggerPrimitiveFinder::addHitsToQueue(uint64_t timestamp,
             }
         }
     }
-    // Send out the TPSet, if there's anything to send
-    if(nhits>0) m_TPSender(tpset);
+    // Send out the TPSet every m_msgs_per_tpset messages
+    if(msgs_in_tpset==m_msgs_per_tpset){
+        m_TPSender(tpset);
+        msgs_in_tpset=0;
+        m_current_tpset.reset(new ptmp::data::TPSet);
+    }
 
     while(primitive_queue.size()>20000) primitive_queue.pop_front();
     return nhits;
