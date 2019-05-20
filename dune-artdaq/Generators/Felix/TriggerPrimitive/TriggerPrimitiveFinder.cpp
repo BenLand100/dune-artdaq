@@ -25,7 +25,8 @@ TriggerPrimitiveFinder::TriggerPrimitiveFinder(std::string zmq_hit_send_connecti
       m_msgs_per_tpset(20),
       m_should_stop(false),
       m_windowOffset(window_offset),
-      m_offline_channel_base(0)
+      m_offline_channel_base(0),
+      m_n_tpsets_sent(0)
 {
     std::cout << zmq_hit_send_connection << std::endl;
     m_processingThread=std::thread(&TriggerPrimitiveFinder::processing_thread, this, 0, REGISTERS_PER_FRAME);
@@ -52,6 +53,7 @@ TriggerPrimitiveFinder::~TriggerPrimitiveFinder()
     dune::DAQLogger::LogInfo("TriggerPrimitiveFinder::~TriggerPrimitiveFinder") << "Joining processing thread";
     m_processingThread.join(); // Wait for it to actually stop
     dune::DAQLogger::LogInfo("TriggerPrimitiveFinder::~TriggerPrimitiveFinder") << "Processing thread joined";
+    dune::DAQLogger::LogInfo("TriggerPrimitiveFinder::~TriggerPrimitiveFinder") << "Sent a total of " << m_n_tpsets_sent << " TPSets";
 }
 
 //======================================================================
@@ -187,11 +189,15 @@ TriggerPrimitiveFinder::addHitsToQueue(uint64_t timestamp,
             }
         }
     }
+
+    ++msgs_in_tpset;
+
     // Send out the TPSet every m_msgs_per_tpset messages
     if(msgs_in_tpset==m_msgs_per_tpset){
         m_TPSender(tpset);
         msgs_in_tpset=0;
         m_current_tpset.reset(new ptmp::data::TPSet);
+        ++m_n_tpsets_sent;
     }
 
     while(primitive_queue.size()>20000) primitive_queue.pop_front();

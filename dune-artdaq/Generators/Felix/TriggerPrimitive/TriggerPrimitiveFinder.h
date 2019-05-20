@@ -89,6 +89,7 @@ private:
     std::atomic<bool> m_should_stop;
     uint32_t m_windowOffset;
     uint32_t m_offline_channel_base;
+    size_t m_n_tpsets_sent;
 };
 
 #endif
