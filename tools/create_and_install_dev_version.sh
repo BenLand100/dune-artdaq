@@ -86,6 +86,7 @@ fi
 
 # I apologize on behalf of git for there not to be a simple way to JUST get the branch you're on
 branchname=$( git branch | sed -r -n 's/^\s*\*\s*(.*)/\1/p' )
+branchname=$( echo $branchname | sed -r 's/\//_/g'  )
 
 year_in_greenwich=$( date --utc +%Y )
 month_in_greenwich=$( date --utc +%m )
@@ -172,7 +173,7 @@ EOF
 	    fi
 	    cd ../..
 	else
-	    echo "Developer error: unable to find srcs/$dependent_package_dir in $PWD. Exiting..." >&2
+	    echo "Unable to find srcs/$dependent_package_dir in $PWD. Exiting..." >&2
 	    exit 1
 	fi
 
@@ -181,7 +182,11 @@ EOF
     fi
 
     echo "Tag for dependent package $dependent_package found to be $dependent_package_tagname for code used in run $run_tested" 
-    sed -i -r 's/^(\s*'$dependent_package'\s+)\S+(.*)/\1'$dependent_package_tagname'\2/' srcs/$packagedir/ups/product_deps
+    if [[ "$packagedir" != "dune_raw_data" ]]; then
+	sed -i -r 's/^(\s*'$dependent_package'\s+)\S+(.*)/\1'$dependent_package_tagname'\2/' srcs/$packagedir/ups/product_deps
+    else
+	sed -i -r 's/^(\s*'$dependent_package'\s+)\S+(.*online\s*$)/\1'$dependent_package_tagname'\2/' srcs/$packagedir/ups/product_deps
+    fi
 done
 
 cd srcs/$packagedir
@@ -254,6 +259,9 @@ If the build was successful, try running:
 . /nfs/sw/artdaq/products_dev/setup
 ups list -aK+ $packagedir $tagname
 
+And once this script is on the develop branch of dune-artdaq, then
+you'd be asked to visually inspect the results of the tag, and if you
+were happy with what you saw, to push it to the central repo.
 
 EOF
 
