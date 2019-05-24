@@ -147,7 +147,7 @@ for dependent_package in $dependent_packages;  do
 	    fi
 
 	    if ! [[ $dependent_package_tagname =~ ^v20[0-9]{2}_[0-9]{2}_[0-9]{2}_.*$ || $dependent_package_tagname =~ ^v[0-9_]$ ]]; then
-		echo "The tag this script determined corresponded to the code in run $run_tested does not appear to be an expected format (either <branchname>_<yyyymmdd>_<descriptive tag> or a version)" >&2 
+		echo "The tag this script determined corresponded to the code for $dependent_package in run $run_tested does not appear to be an expected format (either v<yyyy>_<mm>_<dd>_<branchname>_<descriptive tag> or a version). This may be because no such tag exists; check $development_area_from_run/srcs/$packagedir" >&2 
 		exit 1
 	    fi
 
@@ -248,6 +248,12 @@ cd ..
 mrb z 
 mrbsetenv
 export MRB_INSTALL=/nfs/sw/artdaq/products_dev
+
+if [[ ! -d /nfs/sw/artdaq/products_dev/$packagedir ]]; then
+    mkdir /nfs/sw/artdaq/products_dev/$packagedir
+    chmod go+w /nfs/sw/artdaq/products_dev/$packagedir # So others can install dev-versions as well
+fi
+
 mrb i -j16
 
 cp -p srcs/CMakeLists.txt.backup srcs/CMakeLists.txt
