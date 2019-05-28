@@ -191,6 +191,22 @@ simple_plugin(TimingReceiver "generator"
   ${PDT_CORE}
   )
 
+simple_plugin(SWTrigger "generator"
+   dune-raw-data_Overlays
+   dune-artdaq_Generators_timingBoard
+   artdaq-core_Data
+   artdaq_Application
+   artdaq_DAQdata
+   artdaq-core_Utilities
+   artdaq-utilities_Plugins
+   ${CANVAS}
+   ${FHICLCPP}
+   ${MF_MESSAGELOGGER}
+   ${CETLIB}
+   ${CETLIB_EXCEPT}
+   dune-artdaq_DAQLogger
+   )
+
 if ( (DEFINED ENV{PROTODUNE_WIBSOFT_LIB}) AND (DEFINED ENV{PROTODUNE_WIBSOFT_INC}) )
 
 include_directories( $ENV{PROTODUNE_WIBSOFT_INC} )
