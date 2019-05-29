@@ -117,6 +117,7 @@ sed -i -r 's/^(\s*parent\s+'$package'\s+)[^\s#]+(.*)/\1'$tagname'\2/' srcs/$pack
 
 for dependent_package in $dependent_packages;  do
 
+    echo "Checking $dependent_package"
     dependent_package_dashes=$( echo $dependent_package | sed -r 's/_/-/g' )
     
     commit_or_version=$( sed -r -n 's/^\s*'$dependent_package_dashes' commit\/version: (\S+).*/\1/p' $run_records_dir/$run_tested/metadata.txt   )
@@ -189,6 +190,8 @@ EOF
     fi
 done
 
+echo "Finished checking dependent packages"
+
 cd srcs/$packagedir
 git diff HEAD
 git add ups/product_deps
@@ -243,7 +246,13 @@ for pkg in $packagedir $dependent_packages ; do
 done
 
 cd ..
-. $sourceme_for_build
+
+if [[ -e $sourceme_for_build ]]; then
+    . $sourceme_for_build
+else
+    echo "JCF: I made an assumption in this script which doesn't hold; can't find $sourceme_for_build from directory $PWD. Exiting..." >&2
+    exit 1
+fi
 
 mrb z 
 mrbsetenv
