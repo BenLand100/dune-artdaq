@@ -15,7 +15,7 @@ art_make(
    ${CANVAS}
    ${FHICLCPP}
    ${CETLIB}
-
+  ${CETLIB_EXCEPT}
 	${Boost_SYSTEM_LIBRARY}
    ${Boost_THREAD_LIBRARY}
    ${Boost_ATOMIC_LIBRARY}
