@@ -46,7 +46,9 @@ public:
     }
 
     void stop();
-    // void waitForJobs() { for(auto& f: m_futures) f.wait(); }
+
+    // Are we ready to receive data? (ie, has the processing thread successfully started up?)
+    bool readyForMessages() const { return m_readyForMessages.load(); }
 private:
 
     void processing_thread(uint8_t first_register, uint8_t last_register);

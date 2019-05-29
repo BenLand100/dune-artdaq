@@ -8,7 +8,7 @@ int main(int argc, char** argv)
     int n_repeats=10;
     if(argc>=2)  sscanf(argv[1],"%d",&n_repeats);
 
-    mf::setStandAloneMessageThreshold({"ERROR"});
+    mf::setStandAloneMessageThreshold({"INFO"});
 
     // std::this_thread::sleep_for(std::chrono::seconds(1));
     FrameFile f("/nfs/sw/work_dirs/phrodrig/felixcosmics.dat");
@@ -23,6 +23,9 @@ int main(int argc, char** argv)
     ps.put<std::string>("zmq_hit_send_connection", "tcp://*:54321");
     ps.put<uint32_t>("window_offset", 500);
     TriggerPrimitiveFinder* tpf=new TriggerPrimitiveFinder(ps);
+    // Wait a bit so the processing thread has a chance to start up
+    while(!tpf->readyForMessages()) std::this_thread::sleep_for(std::chrono::milliseconds(10));
+
     auto t0=std::chrono::steady_clock::now();
 
     std::cout << "Running " << n_repeats << " repeats" << std::endl;
