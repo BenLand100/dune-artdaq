@@ -14,22 +14,23 @@
 const int64_t clocksPerTPCTick=25;
 
 //======================================================================
-TriggerPrimitiveFinder::TriggerPrimitiveFinder(std::string zmq_hit_send_connection, uint32_t window_offset, int32_t cpu_offset, int item_queue_size)
+TriggerPrimitiveFinder::TriggerPrimitiveFinder(fhicl::ParameterSet const & ps)
+//std::string zmq_hit_send_connection, uint32_t window_offset, int32_t cpu_offset, int item_queue_size)
     : m_readyForMessages(false),
-      m_itemsToProcess(item_queue_size),
+      m_itemsToProcess(ps.get<int>("item_queue_size", 100000)),
       m_fiber_no(0xff),
       m_slot_no(0xff),
       m_crate_no(0xff),
-      m_TPSender(std::string("{\"socket\": { \"type\": \"PUB\", \"bind\": [ \"")+zmq_hit_send_connection+std::string("\" ] } }")),
+      m_TPSender(std::string("{\"socket\": { \"type\": \"PUB\", \"bind\": [ \"")+ps.get<std::string>("zmq_hit_send_connection")+std::string("\" ] } }")),
       m_current_tpset(new ptmp::data::TPSet),
-      m_msgs_per_tpset(20),
+      m_msgs_per_tpset(ps.get<unsigned int>("messages_per_tpset", 20)),
       m_should_stop(false),
-      m_windowOffset(window_offset),
+      m_windowOffset(ps.get<uint32_t>("window_offset")),
       m_offline_channel_base(0),
       m_n_tpsets_sent(0)
 {
-    std::cout << zmq_hit_send_connection << std::endl;
     m_processingThread=std::thread(&TriggerPrimitiveFinder::processing_thread, this, 0, REGISTERS_PER_FRAME);
+    int32_t cpu_offset=ps.get<int32_t>("cpu_offset", -1);
     if(cpu_offset>=0){
         // Copied from NetioHandler::lockSubsToCPUs()
         cpu_set_t cpuset;

@@ -58,7 +58,7 @@ FelixHardwareInterface::FelixHardwareInterface(fhicl::ParameterSet const& ps) :
                      linkPs.get<std::string>("host"),
                      linkPs.get<unsigned short>("port"),
                      linkPs.get<unsigned short>("tag"),
-                     linkPs.get<std::string>("zmq_hit_send_connection"))
+                     linkPs.get<fhicl::ParameterSet>("TriggerPrimitiveFinding"))
     );
   }
 
@@ -126,7 +126,7 @@ FelixHardwareInterface::FelixHardwareInterface(fhicl::ParameterSet const& ps) :
     << "Setting up NetioHandler (host, port, adding channels, starting subscribers, locking subs to CPUs.)";
   nioh_.setupContext( backend_ ); // posix or infiniband
   for ( auto const & link : link_parameters_ ){ // Add channels
-    nioh_.addChannel(link.id_, link.tag_, link.host_, link.port_, queue_size_, zerocopy_, offset_-12, link.zmq_hit_send_connection_); 
+    nioh_.addChannel(link.id_, link.tag_, link.host_, link.port_, queue_size_, zerocopy_, link.tpf_params_); 
   }
 
   DAQLogger::LogInfo("dune::FelixHardwareInterface::FelixHardwareInterface")

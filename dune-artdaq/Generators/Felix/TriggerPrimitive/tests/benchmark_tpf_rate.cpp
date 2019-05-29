@@ -18,7 +18,11 @@ int main(int argc, char** argv)
 
     printf("n_messages = %ld, n_repeats= %d, NETIO_MSG_SIZE= %ld, queue size = %ld\n",
            n_messages, n_repeats, NETIO_MSG_SIZE, NETIO_MSG_SIZE*n_messages*n_repeats);
-    TriggerPrimitiveFinder* tpf=new TriggerPrimitiveFinder("tcp://*:54321", 0, -1, 100000);
+
+    fhicl::ParameterSet ps;
+    ps.put<std::string>("zmq_hit_send_connection", "tcp://*:54321");
+    ps.put<uint32_t>("window_offset", 500);
+    TriggerPrimitiveFinder* tpf=new TriggerPrimitiveFinder(ps);
     auto t0=std::chrono::steady_clock::now();
 
     std::cout << "Running " << n_repeats << " repeats" << std::endl;

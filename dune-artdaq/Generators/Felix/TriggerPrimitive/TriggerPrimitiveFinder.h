@@ -10,6 +10,8 @@
 #include "dune-artdaq/Generators/Felix/Types.hh"
 #include "dune-raw-data/Overlays/FelixHitFormat.hh"
 
+#include "fhiclcpp/ParameterSet.h"
+
 #include "ptmp/api.h"
 
 #include <deque>
@@ -27,7 +29,8 @@ namespace artdaq
 class TriggerPrimitiveFinder
 {
 public:
-    TriggerPrimitiveFinder(std::string zmq_hit_send_connection, uint32_t window_offset, int32_t cpu_offset=-1, int item_queue_size=100000);
+    //TriggerPrimitiveFinder(std::string zmq_hit_send_connection, uint32_t window_offset, int32_t cpu_offset=-1, int item_queue_size=100000);
+    TriggerPrimitiveFinder(fhicl::ParameterSet const & ps);
   
     ~TriggerPrimitiveFinder();
 
