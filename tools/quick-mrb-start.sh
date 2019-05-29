@@ -320,6 +320,7 @@ smc_compiler_version=v6_6_0
 artdaq_dim_plugin_version=v0_02_08a
 artdaq_mpich_plugin_version=v2019_05_28_for_dune-artdaq_A
 TRACE_version=v3_13_07
+pyzmq_version=v18_0_1a
 
 cd $Base
     cat >setupDUNEARTDAQ_forBuilding <<-EOF
@@ -416,8 +417,8 @@ EOF
         setup rogue $rogue_version -q e15:prof
         setup protodune_timing $protodune_timing_version -q e15:prof:s64
 
-export PYTHONUSERBASE=/nfs/sw/work_dirs/dune-artdaq-InhibitMaster/user_python
-
+       
+       setup pyzmq $pyzmq_version  -q p2714b
        setup dim $dim_version -q e15
        setup artdaq_dim_plugin $artdaq_dim_plugin_version -q e15:prof:s64
 
@@ -491,7 +492,7 @@ cat >setupDUNEARTDAQ_forInhibitMaster<<-EOF
         source /nfs/sw/artdaq/products/setup
         source /nfs/sw/artdaq/products_dev/setup                                      
         setup dune_artdaq_InhibitMaster $dune_artdaq_InhibitMaster_version -q e15:s64:prof
-        export PYTHONUSERBASE=/nfs/sw/work_dirs/dune-artdaq-InhibitMaster/user_python
+        setup pyzmq $pyzmq_version  -q p2714b
 
         setup TRACE $TRACE_version
         export TRACE_FILE=/tmp/trace_$trace_file_label
