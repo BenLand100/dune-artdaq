@@ -318,7 +318,7 @@ dunepdsprce_version=v0_0_4
 jsoncpp_version=v1_8_0
 dune_artdaq_InhibitMaster_version=$( sed -r -n "s/^\s*dune_artdaq_InhibitMaster\s+(\S+).*/\1/p" $ARTDAQ_DEMO_DIR/ups/product_deps )
 artdaq_dim_plugin_version=v0_02_08
-artdaq_mpich_plugin_version=v1_00_04
+artdaq_mpich_plugin_version=v2019_05_28_for_dune-artdaq_A
 TRACE_version=v3_13_07
 
 cd $Base
@@ -327,6 +327,8 @@ cd $Base
                                                                                                                          
         sh -c "[ \`ps \$\$ | grep bash | wc -l\` -gt 0 ] || { echo 'Please switch to the bash shell before running dune-artdaq.'; exi
 t; }" || exit                                                                                           
+
+        export UPS_OVERRIDE="\${UPS_OVERRIDE:--B}"
 
         if [[ -e /cvmfs/fermilab.opensciencegrid.org/products/artdaq/setup ]]; then 
           source /cvmfs/fermilab.opensciencegrid.org/products/artdaq/setup
@@ -388,6 +390,8 @@ EOF
        echo # This script is intended to be sourced.                                                                    
                                                                                                                          
         sh -c "[ \`ps \$\$ | grep bash | wc -l\` -gt 0 ] || { echo 'Please switch to the bash shell before running dune-artdaq.'; exit; }" || exit     
+
+        export UPS_OVERRIDE="\${UPS_OVERRIDE:--B}"
 
         if [[ -e /cvmfs/fermilab.opensciencegrid.org/products/artdaq/setup ]]; then 
           source /cvmfs/fermilab.opensciencegrid.org/products/artdaq/setup
@@ -495,6 +499,8 @@ cat >setupDUNEARTDAQ_forInhibitMaster<<-EOF
 
         sh -c "[ `ps $$ | grep bash | wc -l` -gt 0 ] || { echo 'Please switch to the bash shell before running dune-artdaq.'; exit; }" || exit
 
+        export UPS_OVERRIDE="\${UPS_OVERRIDE:--B}"
+
         if [[ -e /cvmfs/fermilab.opensciencegrid.org/products/artdaq/setup ]]; then 
           source /cvmfs/fermilab.opensciencegrid.org/products/artdaq/setup
         fi
@@ -515,6 +521,8 @@ cat >setupDUNEARTDAQ_forTRACE<<-EOF
 echo # This script is intended to be sourced.
 
         sh -c "[ `ps $$ | grep bash | wc -l` -gt 0 ] || { echo 'Please switch to the bash shell before running dune-artdaq.'; exit; }" || exit
+
+        export UPS_OVERRIDE="\${UPS_OVERRIDE:--B}"
 
         if [[ -e /cvmfs/fermilab.opensciencegrid.org/products/artdaq/setup ]]; then 
           source /cvmfs/fermilab.opensciencegrid.org/products/artdaq/setup
