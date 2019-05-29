@@ -22,6 +22,8 @@ art_make_library( LIBRARY_NAME dune-artdaq_Generators_Felix_TriggerPrimitive
                   ${LIBZMQ}
                   ${LIBPTMP}
                   ${PROTOBUF}
+                  $ENV{JSONCPP_LIB}/libjsoncpp.so
+                  ${JSONCPP}
 )
 
 add_subdirectory(tests)
