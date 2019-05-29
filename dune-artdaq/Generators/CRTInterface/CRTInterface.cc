@@ -305,6 +305,9 @@ bool CRTInterface::check_events()
   //      only using inotify to check for events, we could probably just try a 
   //      non-blocking read on the backend file every time FillBuffer() is 
   //      called and return like we currently do based on the number of bytes.  
+  //
+  //      Looks like problem is instead that raw2cook() is returning 0 bytes despite 
+  //      full buffer.  
   TLOG(TLVL_INFO, "CRTInterface") << "Got a \"modified\" event from inotify.\n";
   if(state & CRT_READ_ACTIVE) return true; //Note: Without the below error check, we remove an 
                                            //      if statement by returning state & CRT_READ_ACTIVE
@@ -338,6 +341,9 @@ size_t CRTInterface::read_everything_from_file(char * cooked_data)
 
   // We're leaving unread data in the file, so we will need to come back and
   // read more even if we aren't informed that the file has been written to.
+  // TODO: Something is wrong about when we set the CRT_READ_MORE bit here.
+  //       We once got into a loop where this was always set even though 
+  //       read_everything_from_file() returned nothing.  
   if(next_raw_byte >= rawfromhardware + RAWBUFSIZE)
     state |= CRT_READ_MORE;
 
@@ -378,7 +384,7 @@ void CRTInterface::FillBuffer(char* cooked_data, size_t* bytes_ret)
     TLOG(TLVL_DEBUG, "CRTInterface") << "Read data from " << datafile_name
                                      << " because there was more to read from file.  Buffer had "
                                      << bytesBefore << " bytes in it before read.\n";
-    if((*bytes_ret = read_everything_from_file(cooked_data))) return;
+    if((*bytes_ret = read_everything_from_file(cooked_data))) return; 
   }
 
   // It seems like we don't have anything else to read in the current file

@@ -10,7 +10,7 @@ simple_plugin(TPCMilliSliceSimulatorWithCopy "generator"
   ${FHICLCPP}
   ${MF_MESSAGELOGGER}
   ${CETLIB}
-  boost_system
+  ${BOOST_SYSTEM}
   ${CETLIB_EXCEPT}
   )
 
@@ -62,7 +62,7 @@ simple_plugin(ToySimulator "generator"
   ${MF_UTILITIES}
   ${CETLIB}
   ${CETLIB_EXCEPT}
-  boost_system
+  ${BOOST_SYSTEM}
   )
 
   add_subdirectory(anlBoard)
@@ -120,7 +120,7 @@ simple_plugin(TriggerBoardReader "generator"
   ${MF_MESSAGELOGGER}
   ${CETLIB}
   ${CETLIB_EXCEPT}
-  jsoncpp
+  ${JSONCPP}
   )
 
 add_subdirectory(timingBoard)
@@ -156,7 +156,7 @@ simple_plugin(WIBReader "generator"
   	 ${CETLIB_EXCEPT}
   	 ${CETLIB}
   	 ${FHICLCPP}
-	 boost_system
+	 ${BOOST_SYSTEM}
 )
 
 else()

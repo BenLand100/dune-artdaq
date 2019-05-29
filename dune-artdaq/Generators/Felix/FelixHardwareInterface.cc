@@ -21,6 +21,7 @@ FelixHardwareInterface::FelixHardwareInterface(fhicl::ParameterSet const& ps) :
   nioh_{ NetioHandler::getInstance() },
   //artdaq_request_receiver_{ ps }, // This automatically setups requestReceiver!
   taking_data_(false),
+  first_datataking_(true),
   fragment_type_(dune::toFragmentType("FELIX")), 
   usecs_between_sends_(0), //ps.get<size_t>("usecs_between_sends", 0)),
   start_time_(fake_time_),
@@ -41,6 +42,7 @@ FelixHardwareInterface::FelixHardwareInterface(fhicl::ParameterSet const& ps) :
   window_offset_ = hps.get<unsigned>("trigger_matching_offset_ticks");
   reordering_ = hps.get<bool>("reordering", false);
   compression_ = hps.get<bool>("compression", false);  
+  qat_engine_ = hps.get<int>("qat_engine", -1);  
   requester_address_ = ps.get<std::string>("zmq_fragment_connection_out");
   
 
@@ -63,12 +65,6 @@ FelixHardwareInterface::FelixHardwareInterface(fhicl::ParameterSet const& ps) :
   request_receiver_ = std::make_unique<RequestReceiver>(requester_address_);
 
   nioh_.setExtract(extract_);
-  //DAQLogger::LogInfo("dune::FelixHardwareInterface::FelixHardwareInterface")
-  //  << "Setting up NetioHandler (host, port, adding channels, starting subscribers, locking subs to CPUs.)";
-  //nioh_.setupContext( backend_ ); // posix or infiniband
-  //for ( auto const & link : link_parameters_ ){ // Add channels
-  //  nioh_.addChannel(link.id_, link.tag_, link.host_, link.port_, queue_size_, zerocopy_); 
-  //}
   nioh_.setVerbosity(true);
   nioh_.setFrameSize( ps.get<unsigned>("frame_size") );
   nioh_.setMessageSize(message_size_);
@@ -96,7 +92,7 @@ FelixHardwareInterface::FelixHardwareInterface(fhicl::ParameterSet const& ps) :
 
   // QAT compression
   if (compression_) {
-    int ret = nioh_.initQAT();
+    int ret = nioh_.initQAT(qat_engine_);
     DAQLogger::LogInfo("dune::FelixHardwareInterface::FelixHardwareInterface")
       << "Init QAT: " << ret;
     if (ret==0){
@@ -115,6 +111,14 @@ FelixHardwareInterface::FelixHardwareInterface(fhicl::ParameterSet const& ps) :
   fragment_meta_.offset_frames = window_offset_; // <- ???
   fragment_meta_.window_frames = window_; // should be 6000
 
+// RS2019 -> Adding unsub func!
+  DAQLogger::LogInfo("dune::FelixHardwareInterface::FelixHardwareInterface")
+    << "Setting up NetioHandler (host, port, adding channels, starting subscribers, locking subs to CPUs.)";
+  nioh_.setupContext( backend_ ); // posix or infiniband
+  for ( auto const & link : link_parameters_ ){ // Add channels
+    nioh_.addChannel(link.id_, link.tag_, link.host_, link.port_, queue_size_, zerocopy_); 
+  }
+
   DAQLogger::LogInfo("dune::FelixHardwareInterface::FelixHardwareInterface")
     << "FelixHardwareInterface is ready.";
 }
@@ -122,6 +126,9 @@ FelixHardwareInterface::FelixHardwareInterface(fhicl::ParameterSet const& ps) :
 FelixHardwareInterface::~FelixHardwareInterface(){
   DAQLogger::LogInfo("dune::FelixHardwareInterface::FelixHardwareInterface")
     << "Destructing FelixHardwareInterface. Joining request thread.";
+// RS2019 -> Adding unsub func! Probably this is at a VERY VERY WRONG PLACE.
+  nioh_.stopSubscribers();
+
   nioh_.stopContext();
   DAQLogger::LogInfo("dune::FelixHardwareInterface::FelixHardwareInterface")
     << "Shutting down QAT.";
@@ -132,30 +139,36 @@ FelixHardwareInterface::~FelixHardwareInterface(){
 void FelixHardwareInterface::StartDatataking() {
   DAQLogger::LogInfo("dune::FelixHardwareInterface::StartDatataking") << "Start datataking...";
 
-  DAQLogger::LogInfo("dune::FelixHardwareInterface::FelixHardwareInterface")
-    << "Setting up NetioHandler (host, port, adding channels, starting subscribers, locking subs to CPUs.)";
-  nioh_.setupContext( backend_ ); // posix or infiniband
-  for ( auto const & link : link_parameters_ ){ // Add channels
-    nioh_.addChannel(link.id_, link.tag_, link.host_, link.port_, queue_size_, zerocopy_); 
-  }
+// RS2019 -> Adding unsub func!
+  //DAQLogger::LogInfo("dune::FelixHardwareInterface::FelixHardwareInterface")
+  //  << "Setting up NetioHandler (host, port, adding channels, starting subscribers, locking subs to CPUs.)";
+  //nioh_.setupContext( backend_ ); // posix or infiniband
 
   // GLM: start listening to trigger before data stream, else data stream fills up
-
   taking_data_.store( true );
   send_calls_ = 0;
   fake_trigger_ = 0;
   fake_trigger_attempts_ = 0;
   nioh_.startTriggerMatchers(); // Start trigger matchers in NIOH.
-  
+  nioh_.lockTrmsToCPUs(offset_);
+
   request_receiver_->start(); // Start request receiver.
   sleep(1);
   // GLM: start listening to felix stream here
   nioh_.setExtract(extract_);
 
-  DAQLogger::LogInfo("dune::FelixHardwareInterface::FelixHardwareInterface")
-    << "Starting subscribers and locking to CPUs...";
-  nioh_.startSubscribers();
-  nioh_.lockSubsToCPUs(offset_);// This should be always after startSubs!!!
+  for ( auto const & link : link_parameters_ ){ // Add channels
+    //nioh_.addChannel(link.id_, link.tag_, link.host_, link.port_, queue_size_, zerocopy_); 
+    nioh_.subscribe(link.id_, link.tag_);
+  }
+
+  if (first_datataking_){
+    DAQLogger::LogInfo("dune::FelixHardwareInterface::FelixHardwareInterface")
+      << "Starting subscribers and locking to CPUs...";
+    nioh_.startSubscribers();
+    nioh_.lockSubsToCPUs(offset_);// This should be always after startSubs!!!
+    first_datataking_.store(false);
+  }
 
   start_time_ = std::chrono::high_resolution_clock::now();
   DAQLogger::LogInfo("dune::FelixHardwareInterface::StartDatataking")
@@ -171,9 +184,15 @@ void FelixHardwareInterface::StopDatataking() {
   request_receiver_->stop();
   DAQLogger::LogInfo("dune::FelixHardwareInterface::StopDatataking") << "Request thread joined...";
 
-  // GLM: stop listening to FELIX stream here
-  nioh_.stopSubscribers();
 
+// RS2019 -> Adding unsub func.
+  for ( auto const & link : link_parameters_ ){ // Add channels
+    //nioh_.addChannel(link.id_, link.tag_, link.host_, link.port_, queue_size_, zerocopy_); 
+    nioh_.unsubscribe(link.id_, link.tag_);
+  }
+  nioh_.flushQueues();
+  // GLM: stop listening to FELIX stream here
+  //nioh_.stopSubscribers();
 
   // Netio busy check.
   while (nioh_.busy()) {
