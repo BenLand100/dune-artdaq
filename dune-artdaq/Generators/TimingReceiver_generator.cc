@@ -213,7 +213,16 @@ dune::TimingReceiver::TimingReceiver(fhicl::ParameterSet const & ps):
     status_publisher_->BindPublisher();
 
     fragment_publisher_.reset(new artdaq::FragmentPublisher(zmq_fragment_conn_out_));
-    fragment_publisher_->BindPublisher();
+    int rc=fragment_publisher_->BindPublisher();
+    if(rc==0){
+        DAQLogger::LogInfo(instance_name_) << "Successfully bound fragment publisher to " << zmq_fragment_conn_out_;
+    }
+    else{
+        std::stringstream ss;
+        ss  << "Could not bind fragment publisher to " << zmq_fragment_conn_out_ << ". errno is " << errno << ": " << strerror(errno);
+        DAQLogger::LogError(instance_name_) << ss.str();
+        throw std::runtime_error(ss.str());
+    }
 
     // TODO: Do we really need to sleep here to wait for the socket to bind?
     usleep(2000000);
@@ -341,10 +350,14 @@ bool dune::TimingReceiver::checkHWStatus_()
     if(!dsmptr)
       TLOG(TLVL_HWSTATUS) << "DataSenderManagerPtr not valid.";
 
+    // If the readout buffer is in error, nothing will work, so we stop datataking by returning false
+    if(master_partition().readROBError()) return false;
+
     auto mp_ovrflw = master_partition().readROBWarningOverflow();
     int n_remaining_table_entries = dsmptr? dsmptr->GetRemainingRoutingTableEntries() : -1;
     int n_table_count = dsmptr? dsmptr->GetRoutingTableEntryCount() : -1;
     TLOG(TLVL_HWSTATUS) << "hwstatus: buf_warn=" << mp_ovrflw
+			<< " numEventsInBuffer=" << master_partition().numEventsInBuffer()
 			<< " table_count=" << n_table_count
 			<< " table_entries_remaining=" << n_remaining_table_entries;
 
@@ -389,13 +402,13 @@ bool dune::TimingReceiver::checkHWStatus_()
     // Extra complication: only the TLU has the necessary registers (the fanouts do not), so test that first
     if(!hw_.getNodes("master_top.trig").empty()){
         ValWord<uint32_t> trig_endpoint_ready = hw_.getNode("master_top.trig.csr.stat.ep_rdy").read();
+        // The full status of the endpoint
+        ValWord<uint32_t> trig_endpoint_status = hw_.getNode("master_top.trig.csr.stat.ep_stat").read();
         hw_.dispatch();
-        if(trig_endpoint_ready==0){
+        if(trig_endpoint_ready==0 || trig_endpoint_status.value()>0x8){
             // Is this partition interested in external triggers? The lowest four triggers are internal; higher are external
             bool want_external=trigger_mask_ & 0xfffffff0;
             if(want_external){
-                // The full status of the endpoint
-                ValWord<uint32_t> trig_endpoint_status = hw_.getNode("master_top.trig.csr.stat.ep_stat").read();
                 hw_.dispatch();
                 DAQLogger::LogError(instance_name_)
                     << "timing-trigger endpoint is not ready: status is "

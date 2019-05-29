@@ -69,8 +69,13 @@ bool dune::FelixReceiver::getNext_(artdaq::FragmentPtrs & frags) {
     //std::size_t bytes_to_read = frame_size_ * trigger_window_size_;
     //eg180601 specify bytes to read in msgsize
     //GLM: create empty fragment!
+    auto ev_no=ev_counter();
     std::unique_ptr<artdaq::Fragment> fragptr(
-      artdaq::Fragment::FragmentBytes(0, ev_counter(), fragment_id(),
+      artdaq::Fragment::FragmentBytes(0, ev_no, fragment_id(),
+                                      fragment_type_, metadata_, timestamp_)
+    );
+    std::unique_ptr<artdaq::Fragment> fragptrhits(
+      artdaq::Fragment::FragmentBytes(0, ev_no, fragment_id(),
                                       fragment_type_, metadata_, timestamp_)
     );
 
@@ -84,7 +89,7 @@ bool dune::FelixReceiver::getNext_(artdaq::FragmentPtrs & frags) {
     //       -> Need to be handled, and understood if it should return false or true from the getNext_
     bool done = false;
     while ( !done ){
-      done = netio_hardware_interface_->FillFragment( fragptr );
+      done = netio_hardware_interface_->FillFragment( fragptr, fragptrhits );
       if (should_stop()) { return true; } // interrupt data capture and return; at next getNext stopping will be done
     }
 
@@ -105,6 +110,7 @@ bool dune::FelixReceiver::getNext_(artdaq::FragmentPtrs & frags) {
 
 
     frags.emplace_back( std::move(fragptr) );
+    frags.emplace_back( std::move(fragptrhits) );
     /* RS -> Add metric manager...
     if(artdaq::Globals::metricMan_ != nullptr) {
       artdaq::Globals::metricMan_->sendMetric("Fragments Sent", ev_counter(), "fragments", 1, artdaq::MetricMode::Accumulate);
