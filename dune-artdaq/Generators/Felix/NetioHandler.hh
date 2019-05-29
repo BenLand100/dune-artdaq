@@ -108,8 +108,6 @@ public:
 
   bool flushQueues();
 
-  bool flushQueues();
-
   // Queue utils if needed
   size_t getNumOfChannels() { return m_activeChannels; } // Get the number of active channels.
 
