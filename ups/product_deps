@@ -20,6 +20,7 @@ product		version		optional
 artdaq		v2019_05_28_for_dune-artdaq_A
 dune_raw_data 	v2019_05_29_for_dune-artdaq_A
 cetbuildtools	v7_02_01	-	only_for_build
+smc_compiler    v6_6_0          -nq-    only_for_build
 uhal		v2_6_0
 dune_artdaq_InhibitMaster v0_02_05
 protodune_wibsoft v349_hack

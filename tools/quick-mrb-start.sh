@@ -248,7 +248,6 @@ else
 fi
 
 
-
 if [[ "$inc_artdaq_repos" == "1" ]] ; then
 
 mrb gitCheckout -b for_dune-artdaq -d artdaq_core https://cdcvs.fnal.gov/projects/artdaq-core
@@ -316,7 +315,6 @@ dunepdsprce_version=v0_0_4
 jsoncpp_version=v1_8_0
 dune_artdaq_InhibitMaster_version=$( sed -r -n "s/^\s*dune_artdaq_InhibitMaster\s+(\S+).*/\1/p" $ARTDAQ_DEMO_DIR/ups/product_deps )
 dim_version=v20r20
-smc_compiler_version=v6_6_0
 artdaq_dim_plugin_version=v0_02_08a
 artdaq_mpich_plugin_version=v2019_05_28_for_dune-artdaq_A
 TRACE_version=v3_13_07
@@ -342,8 +340,6 @@ t; }" || exit
         export DUNEARTDAQ_BUILD=$MRB_BUILDDIR/dune_artdaq                                                            
         export DUNEARTDAQ_REPO="$ARTDAQ_DEMO_DIR"                                                                        
         export FHICL_FILE_PATH=.:\$DUNEARTDAQ_REPO/tools/fcl:\$FHICL_FILE_PATH                                           
-        setup artdaq $artdaq_version -q e15:s64:prof
-	setup smc_compiler            $smc_compiler_version
         setup protodune_wibsoft $protodune_wibsoft_version -q e15:s64
         setup uhal $uhal_version -q e15:prof:s64
         setup netio $netio_version -q e15:prof:s64
@@ -399,7 +395,6 @@ EOF
         export DUNEARTDAQ_REPO="$ARTDAQ_DEMO_DIR"                                                                        
         export FHICL_FILE_PATH=.:\$DUNEARTDAQ_REPO/tools/fcl:\$FHICL_FILE_PATH                                           
 
-	setup smc_compiler            $smc_compiler_version
         setup protodune_wibsoft $protodune_wibsoft_version -q e15:s64
         setup uhal $uhal_version -q e15:prof:s64
 
@@ -545,11 +540,6 @@ export CETPKG_J=$nprocessors
 source /nfs/sw/artdaq/products/setup
 source /nfs/sw/artdaq/products_dev/setup                                      
 
-if [[ "$inc_artdaq_repos" == "0" ]] ; then
-    echo "artdaq repos not being included; will setup artdaq ($artdaq_version) and smc_compiler ($smc_compiler_version)"
-        setup artdaq $artdaq_version -q e15:s64:prof
-	setup smc_compiler            $smc_compiler_version
-fi
         setup protodune_wibsoft $protodune_wibsoft_version -q e15:s64
         setup uhal $uhal_version -q e15:prof:s64
         setup netio $netio_version -q e15:prof:s64
