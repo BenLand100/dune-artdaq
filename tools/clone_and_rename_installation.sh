@@ -15,12 +15,8 @@ new_installation=$(echo $new_installation | awk '{ gsub("/$", ""); print }' )
 
 node_number=$( echo $HOSTNAME | awk -F- '{print $NF}' )
 
-if [[ $node_number != 011 && $node_number != 012 && $node_number != 013 && $node_number != 014 ]]; then
-    echo "You're currently on $HOSTNAME but need to be on np04-srv-011, 012, 013 or 014 to run this script; exiting..."
-    exit 2
-else 
-    processors=32
-fi
+processors=32
+
 
 if [[ ! -e $orig_installation ]]; then
     echo "Original dune-artdaq installation $orig_installation doesn't appear to exist; exiting..." >&2
@@ -30,6 +26,11 @@ fi
 if [[ -e $new_installation ]]; then
     echo "Requested new installation area $new_installation already appears to exist; exiting..." >&2
     exit 3
+fi
+
+if [[ ! $new_installation =~ ^/nfs/sw/work_dirs ]]; then
+    echo "Requested new installation area $new_installation should be located in /nfs/sw/work_dirs; exiting..." >&2
+    exit 4
 fi
 
 if [[ ! -e $orig_installation/setupDUNEARTDAQ_forBuilding ]]; then
@@ -44,9 +45,9 @@ if (( $num_local_products_dirs == 1 )); then
     local_products_dir=$( find $orig_installation -maxdepth 1 -type d -regex ".*localProducts.*prof\|debug" )
 
     project=$( echo $local_products_dir | sed -r 's/.*localProducts_(.*)_v[0-9]+_.*/\1/' )
-    version=$( echo $local_products_dir | sed -r 's/.*localProducts_.*_(v[0-9]+_[0-9]+_[0-9a-bA-B]+)_.*/\1/' )
-    qualifiers=$( echo $local_products_dir | sed -r 's/.*localProducts_.*_v[0-9]+_[0-9]+_[0-9a-bA-B]+_(.*)_prof|debug/\1/' )
-    buildtype=$( echo $local_products_dir | sed -r 's/.*localProducts_.*_v[0-9]+_[0-9]+_[0-9a-bA-B]+_.*_(prof|debug)/\1/' )
+    version=$( echo $local_products_dir | sed -r 's/.*localProducts_.*_(v[0-9]+_[0-9]+_[^_]+).*/\1/' )
+    qualifiers=$(  echo $local_products_dir | sed -r 's/.*localProducts_.*_v[0-9]+_[0-9]+_[^_]+_(.*)_prof|debug/\1/'  )
+    buildtype=$( echo $local_products_dir | sed -r 's/.*localProducts_.*_v[0-9]+_[0-9]+_[^_]+_.*_(prof|debug)/\1/' )
 
     echo "Project: $project"
     echo "Version: $version"
@@ -74,7 +75,11 @@ echo "Copy took "$(( endtime - begintime ))" seconds; will now attempt to rebuil
 
 cd $new_installation
 
-sed -r -i 's#'$orig_installation'#'$new_installation'#g' $new_installation/setupDUNEARTDAQ*
+orig_installation_subdir=$( basename $orig_installation )
+new_installation_subdir=$( basename $new_installation )
+sed -r -i 's#trace_'$orig_installation_subdir'#trace_'$new_installation_subdir'#g' $new_installation/setupDUNEARTDAQ*
+
+sed -r -i 's#'$orig_installation'/#'$new_installation'/#g' $new_installation/setupDUNEARTDAQ*
 
 rm -rf $new_installation/localProducts_*
 rm -rf $new_installation/build_slf7.x86_64
@@ -85,7 +90,6 @@ if ! [[ -n $( diff $orig_installation/setupDUNEARTDAQ_forBuilding $new_installat
 fi
 
 source /nfs/sw/artdaq/products/setup
-source /nfs/sw/artdaq/products_dev/setup
 
 setup mrb
 setup git 
