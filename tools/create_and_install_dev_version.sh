@@ -11,6 +11,19 @@ package=$1
 descriptive_token=$2
 run_tested=$3
 
+if [[ -n $MRB_TOP ]]; then
+
+    cat<<EOF >&2
+
+    Environment variable MRB_TOP is already defined ($MRB_TOP); this
+    suggests that you've already set up a build environment, which can
+    interfere with the running of this script. Please log into a clean
+    shell and try again. Exiting...
+
+EOF
+    exit 1
+fi
+
 if [[ -n $( echo $package | grep "-" ) ]]; then
     echo "You provided the package name as \"$package\"; for consistency's sake please replace the dashes \"-\" with underscores \"_\". Exiting..." >&2
     exit 1
@@ -87,6 +100,24 @@ fi
 # I apologize on behalf of git for there not to be a simple way to JUST get the branch you're on
 branchname=$( git branch | sed -r -n 's/^\s*\*\s*(.*)/\1/p' )
 branchname=$( echo $branchname | sed -r 's/\//_/g'  )
+
+
+echo "Checking to make sure the remote $branchname branch (if it exists) isn't ahead of the local $branchname"
+
+if [[ -n $( git branch -a | grep "origin/$branchname" ) ]]; then
+
+    remotehead=$( git log origin/$branchname -1 | sed -r -n 's/^commit\s+(.*)/\1/p' )
+
+    if [[ -z $( git log $branchname | grep $remotehead ) ]]; then
+	echo "Error: current HEAD of origin/$branchname is not found in the local $branchname in ./srcs/$packagedir. This suggests that you won't be able to push your code as-is to the central repo"
+	echo
+	echo "HEAD of origin/$branchname:"
+	git log -1 origin/$branchname
+	echo
+	echo "Exiting..."
+	exit 1
+    fi
+fi
 
 year_in_greenwich=$( date --utc +%Y )
 month_in_greenwich=$( date --utc +%m )
