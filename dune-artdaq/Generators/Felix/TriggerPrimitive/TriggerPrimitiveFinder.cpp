@@ -1,6 +1,7 @@
 #include "TriggerPrimitiveFinder.h"
 
 #include "dune-artdaq/DAQLogger/DAQLogger.hh"
+#include "dune-artdaq/Generators/swTrigger/ptmp_util.hh"
 #include "artdaq-core/Data/Fragment.hh"
 #include "dune-raw-data/Overlays/FelixFragment.hh"
 
@@ -10,26 +11,11 @@
 #include <sys/time.h>
 #include <sys/resource.h>
 
-#include "json/json.h"
 
 #include "tests/frames2array.h"
 
 const int64_t clocksPerTPCTick=25;
 
-std::string make_ptmp_socket_string(std::string pattern,
-                                    std::string bind_or_connect,
-                                    std::vector<std::string> endpoints)
-{
-    Json::Value root(Json::objectValue);
-    Json::Value endpoints_json(Json::arrayValue);
-    for(auto const& ep: endpoints) endpoints_json.append(ep);
-    root["socket"]=Json::Value(Json::objectValue);
-    root["socket"]["type"]=pattern;
-    root["socket"][bind_or_connect]=endpoints_json;
-    std::stringstream ss;
-    ss << root;
-    return ss.str();
-}
 
 //======================================================================
 TriggerPrimitiveFinder::TriggerPrimitiveFinder(fhicl::ParameterSet const & ps)
@@ -39,7 +25,7 @@ TriggerPrimitiveFinder::TriggerPrimitiveFinder(fhicl::ParameterSet const & ps)
       m_fiber_no(0xff),
       m_slot_no(0xff),
       m_crate_no(0xff),
-      m_TPSender(make_ptmp_socket_string("PUB", "bind", {ps.get<std::string>("zmq_hit_send_connection")})),
+      m_TPSender(ptmp_util::make_ptmp_socket_string("PUB", "bind", {ps.get<std::string>("zmq_hit_send_connection")})),
       m_current_tpset(new ptmp::data::TPSet),
       m_msgs_per_tpset(ps.get<unsigned int>("messages_per_tpset", 20)),
       m_should_stop(false),
