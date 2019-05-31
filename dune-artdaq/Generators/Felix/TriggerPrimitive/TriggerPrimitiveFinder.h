@@ -82,7 +82,7 @@ private:
     std::thread m_processingThread;
     std::atomic<bool> m_readyForMessages;
     folly::ProducerConsumerQueue<ProcessingTasks::ItemToProcess> m_itemsToProcess;
-    // The elecrtonics co-ordinates of the link we're getting data
+    // The electronics co-ordinates of the link we're getting data
     // from. We assume that this class will only deal with data from
     // one link
     uint8_t m_fiber_no;
