@@ -27,6 +27,7 @@ TriggerPrimitiveFinder::TriggerPrimitiveFinder(fhicl::ParameterSet const & ps)
       m_crate_no(0xff),
       m_TPSender(ptmp_util::make_ptmp_socket_string("PUB", "bind", {ps.get<std::string>("zmq_hit_send_connection")})),
       m_current_tpset(new ptmp::data::TPSet),
+      m_send_ptmp_msgs(ps.get<bool>("send_ptmp_messages", true)),
       m_msgs_per_tpset(ps.get<unsigned int>("messages_per_tpset", 20)),
       m_should_stop(false),
       m_windowOffset(ps.get<uint32_t>("window_offset")),
@@ -166,7 +167,7 @@ TriggerPrimitiveFinder::addHitsToQueue(uint64_t timestamp,
     static unsigned int msgs_in_tpset=0;
     ptmp::data::TPSet& tpset=*m_current_tpset.get();
     
-    if(msgs_in_tpset==0){
+    if(m_send_ptmp_msgs && msgs_in_tpset==0){
         tpset.set_count(count++);
         tpset.set_detid(4);
         tpset.set_tstart(timestamp);
@@ -184,16 +185,18 @@ TriggerPrimitiveFinder::addHitsToQueue(uint64_t timestamp,
                 const uint16_t online_channel=collection_index_to_channel(chan[i]);
                 const uint32_t offline_channel=m_offline_channel_base+collection_index_to_offline(chan[i]);
                 primitive_queue.emplace_back(timestamp, online_channel, hit_end[i], hit_charge[i], hit_tover[i]);
-                // hit_end is the end time of the hit in TPC clock
-                // ticks after the start of the netio message in which
-                // the hit ended
-                uint64_t hit_start=timestamp+clocksPerTPCTick*(int64_t(hit_end[i])-hit_tover[i]);
-                ptmp::data::TrigPrim* ptmp_prim=tpset.add_tps();
-                ptmp_prim->set_channel(offline_channel);
-                ptmp_prim->set_tstart(hit_start);
-                // Convert time-over-threshold to 50MHz clock ticks, so all the ptmp quantities are in the same units
-                ptmp_prim->set_tspan(clocksPerTPCTick*hit_tover[i]);
-                ptmp_prim->set_adcsum(hit_charge[i]);
+                if(m_send_ptmp_msgs){
+                    // hit_end is the end time of the hit in TPC clock
+                    // ticks after the start of the netio message in which
+                    // the hit ended
+                    uint64_t hit_start=timestamp+clocksPerTPCTick*(int64_t(hit_end[i])-hit_tover[i]);
+                    ptmp::data::TrigPrim* ptmp_prim=tpset.add_tps();
+                    ptmp_prim->set_channel(offline_channel);
+                    ptmp_prim->set_tstart(hit_start);
+                    // Convert time-over-threshold to 50MHz clock ticks, so all the ptmp quantities are in the same units
+                    ptmp_prim->set_tspan(clocksPerTPCTick*hit_tover[i]);
+                    ptmp_prim->set_adcsum(hit_charge[i]);
+                }
                 ++nhits;
             }
         }
@@ -202,7 +205,7 @@ TriggerPrimitiveFinder::addHitsToQueue(uint64_t timestamp,
     ++msgs_in_tpset;
 
     // Send out the TPSet every m_msgs_per_tpset messages
-    if(msgs_in_tpset==m_msgs_per_tpset){
+    if(m_send_ptmp_msgs && msgs_in_tpset==m_msgs_per_tpset){
         // Don't send empty TPSets
         if(tpset.tps_size()!=0) m_TPSender(tpset);
         msgs_in_tpset=0;
