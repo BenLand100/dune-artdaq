@@ -210,6 +210,7 @@ TriggerPrimitiveFinder::addHitsToQueue(uint64_t timestamp,
 
     // Send out the TPSet every m_msgs_per_tpset messages
     if(m_send_ptmp_msgs && msgs_in_tpset==m_msgs_per_tpset){
+        tpset.set_tspan(timestamp+FRAMES_PER_MSG*clocksPerTPCTick-tpset.tstart());
         // Don't send empty TPSets
         if(tpset.tps_size()!=0) m_TPSender(tpset);
         msgs_in_tpset=0;
