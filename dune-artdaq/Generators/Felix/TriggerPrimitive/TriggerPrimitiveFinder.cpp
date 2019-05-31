@@ -169,7 +169,8 @@ TriggerPrimitiveFinder::addHitsToQueue(uint64_t timestamp,
     
     if(m_send_ptmp_msgs && msgs_in_tpset==0){
         tpset.set_count(count++);
-        tpset.set_detid((m_fiber_no << 16) | (m_slot_no << 8) | (m_crate_no << 0));
+        // m_*_no are uint8_t, so maybe the casts to uint32_t before shifting are necessary?
+        tpset.set_detid((uint32_t(m_fiber_no) << 16) | (uint32_t(m_slot_no) << 8) | (uint32_t(m_crate_no) << 0));
         tpset.set_tstart(timestamp);
         std::chrono::time_point<std::chrono::system_clock> now = std::chrono::system_clock::now();
         //                                       number of ticks per second for a 50MHz clock
