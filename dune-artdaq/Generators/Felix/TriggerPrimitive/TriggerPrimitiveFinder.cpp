@@ -169,9 +169,12 @@ TriggerPrimitiveFinder::addHitsToQueue(uint64_t timestamp,
     
     if(m_send_ptmp_msgs && msgs_in_tpset==0){
         tpset.set_count(count++);
-        tpset.set_detid(4);
+        tpset.set_detid((m_fiber_no << 16) | (m_slot_no << 8) | (m_crate_no << 0));
         tpset.set_tstart(timestamp);
-        tpset.set_created(0);
+        std::chrono::time_point<std::chrono::system_clock> now = std::chrono::system_clock::now();
+        //                                       number of ticks per second for a 50MHz clock
+        auto ticks = std::chrono::duration_cast<std::chrono::duration<int, std::ratio<1,50000000>>>(now.time_since_epoch());
+        tpset.set_created(ticks.count());
     }
     
     while(*input_loc!=MAGIC){
