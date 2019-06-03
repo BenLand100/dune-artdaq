@@ -173,8 +173,8 @@ TriggerPrimitiveFinder::addHitsToQueue(uint64_t timestamp,
         tpset.set_detid((uint32_t(m_fiber_no) << 16) | (uint32_t(m_slot_no) << 8) | (uint32_t(m_crate_no) << 0));
         tpset.set_tstart(timestamp);
         std::chrono::time_point<std::chrono::system_clock> now = std::chrono::system_clock::now();
-        //                                       number of ticks per second for a 50MHz clock
-        auto ticks = std::chrono::duration_cast<std::chrono::duration<int, std::ratio<1,50000000>>>(now.time_since_epoch());
+        // Brett asked for TPSet creation time in microseconds, not timing system ticks
+        auto ticks = std::chrono::duration_cast<std::chrono::microseconds>(now.time_since_epoch());
         tpset.set_created(ticks.count());
     }
     
