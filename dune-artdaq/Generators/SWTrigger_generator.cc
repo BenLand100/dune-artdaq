@@ -6,8 +6,6 @@
 //# */
 //################################################################################
 
-
-#include <fstream>
 #include "artdaq/DAQdata/Globals.hh"
 #define TRACE_NAME (app_name + "_SWTrigger").c_str()
 #define TLVL_HWSTATUS 20
@@ -24,6 +22,20 @@
 #include "fhiclcpp/ParameterSet.h"
 #include "timingBoard/InhibitGet.h" // The interface to the ZeroMQ trigger inhibit master
 
+#include <fstream>
+#include <iomanip>
+#include <iterator>
+#include <iostream>
+#include <sstream>
+#include <thread>
+#include <chrono>
+#include <set>
+#include <random>
+
+#include <unistd.h>
+
+#include <cstdio>
+
 #pragma GCC diagnostic ignored "-Wpedantic"
 #pragma GCC diagnostic ignored "-Woverloaded-virtual"
 #pragma GCC diagnostic push
@@ -33,9 +45,14 @@
 
 using namespace dune;
 
+dune::SetZMQSigHandler::SetZMQSigHandler() {
+  setenv("ZSYS_SIGHANDLER", "false", true);
+}
+
 // Constructor ------------------------------------------------------------------------------
 dune::SWTrigger::SWTrigger(fhicl::ParameterSet const & ps):
   CommandableFragmentGenerator(ps)
+  ,zmq_sig_handler_()
   ,instance_name_("SWTrigger")
   ,stopping_flag_(0)
   ,throttling_state_(true)
@@ -50,6 +67,11 @@ dune::SWTrigger::SWTrigger(fhicl::ParameterSet const & ps):
   ,last_spillend_tstamph_(0xffffffff)   // ...
   ,last_runstart_tstampl_(0xffffffff)   // Timestamp of most recent start-of-run
   ,last_runstart_tstamph_(0xffffffff)   // ...
+  ,receiver_1_("{\"socket\": { \"type\": \"SUB\", \"connect\": [ \"tcp://10.73.136.67:25141\" ] } }") //Corresponds to HitFinder501
+  ,receiver_2_("{\"socket\": { \"type\": \"SUB\", \"connect\": [ \"tcp://10.73.136.67:25142\" ] } }") //Corresponds to HitFinder502
+  ,n_recvd_(0)
+  ,p_count_1_(0)
+  ,p_count_2_(0)
 {
 
   std::stringstream instance_name_ss;
@@ -191,11 +213,49 @@ bool dune::SWTrigger::getNext_(artdaq::FragmentPtrs &frags)
     return true;
   }
 
-  uint64_t ts = latest_ts_; // copy value as it may change during execution....
+  ptmp::data::TPSet SetReceived_1;
+  ptmp::data::TPSet SetReceived_2;
+
+  bool received_1 = receiver_1_(SetReceived_1, 100);
+  bool received_2 = receiver_2_(SetReceived_2, 100);
+
+  if (!received_1 && !received_2){
+    DAQLogger::LogInfo(instance_name_) << "No TPSet for one of the connections.";
+ }
+
+  unsigned int count_1 = SetReceived_1.count();
+  unsigned int count_2 = SetReceived_2.count();
+
+  DAQLogger::LogInfo(instance_name_) << "TPSet count for connection 1 is: " << count_1;
+  DAQLogger::LogInfo(instance_name_) << "TPSet count for connection 2 is: " << count_2;
+
+  if (count_1 != p_count_1_){
+    DAQLogger::LogInfo(instance_name_) << "Received New TPSet from connection 1.";
+    ++n_recvd_;
+  }
+
+  if (count_2 != p_count_2_){
+    DAQLogger::LogInfo(instance_name_) << "Received New TPSet from connection 2.";
+    ++n_recvd_;
+  }
+
+  p_count_1_=count_1;
+  p_count_2_=count_2;
+
+  if (n_recvd_ < 16666){
+    return true;
+  }
+
+  n_recvd_ = 0;
+
+  /*
   if ( ts == 0 || ts == previous_ts_ ) {
     usleep(10000);
     return true;
   }
+  */
+
+  uint64_t ts = latest_ts_; // copy value as it may change during execution....
   previous_ts_ = ts;
   std::unique_ptr<artdaq::Fragment> f = artdaq::Fragment::FragmentBytes( TimingFragment::size()*sizeof(uint32_t),
       artdaq::Fragment::InvalidSequenceID,

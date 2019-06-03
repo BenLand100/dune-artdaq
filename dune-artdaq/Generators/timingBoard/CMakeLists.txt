@@ -3,7 +3,7 @@ art_make_library( LIBRARY_NAME dune-artdaq_Generators_timingBoard
 		  LIBRARIES ${UHAL_UHAL}
       ${UHAL_LOG}
       ${Boost_SYSTEM_LIBRARY}
-      zmq
+      ${LIBZMQ}
       dune-artdaq_DAQLogger
       ${CETLIB}
       ${CETLIB_EXCEPT}
@@ -47,4 +47,4 @@ cet_make_exec(FragmentSubscriber
   ${MF_UTILITIES}
   ${CETLIB}
   ${Boost_SYSTEM_LIBRARY}
-  zmq)
+  ${LIBZMQ})

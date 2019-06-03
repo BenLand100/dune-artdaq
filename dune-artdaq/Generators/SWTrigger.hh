@@ -21,6 +21,11 @@
 #include <vector>
 #include <atomic>
 #include <thread>
+#include <memory>
+#include <map>
+#include <chrono>
+
+#include "ptmp/api.h"
 
 #include "timingBoard/StatusPublisher.hh"
 #include "timingBoard/FragmentPublisher.hh"
@@ -28,10 +33,15 @@
 
 
 namespace dune {
-class TimingFragment;
+  class TimingFragment;
 }
 
 namespace dune {
+  class SetZMQSigHandler {
+  public:
+    SetZMQSigHandler(); //Constructor
+  };
+
   class SWTrigger : public artdaq::CommandableFragmentGenerator {
   public:
     explicit SWTrigger(fhicl::ParameterSet const & ps);
@@ -61,6 +71,8 @@ namespace dune {
 
     // Reporting functionality, for future use, if/when needed
     std::string report() override { return ""; }
+
+    dune::SetZMQSigHandler zmq_sig_handler_;
 
     std::string instance_name_;
 
@@ -102,6 +114,15 @@ namespace dune {
     uint32_t last_runstart_tstamph_;   //                                       (high 32 bits)
     std::atomic<uint64_t> latest_ts_; // needs to be atomic as shared between threads
     uint64_t previous_ts_; // only used within getNext
+
+    ptmp::TPReceiver receiver_1_;
+    ptmp::TPReceiver receiver_2_;
+
+    int n_recvd_;
+
+    unsigned int p_count_1_;
+    unsigned int p_count_2_;
+
   };
 }
 
