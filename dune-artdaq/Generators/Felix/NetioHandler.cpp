@@ -466,15 +466,14 @@ void NetioHandler::lockTrmsToCPUs(uint32_t offset) {
   }
 }
 
-bool NetioHandler::addChannel(uint64_t chn, uint16_t tag, std::string host, uint16_t port, size_t queueSize, bool zerocopy, int32_t cpu_offset, std::string zmq_hit_send_connection){
+bool NetioHandler::addChannel(uint64_t chn, uint16_t tag, std::string host, uint16_t port, size_t queueSize, bool zerocopy, fhicl::ParameterSet const& tpf_params){
     DAQLogger::LogInfo("NetioHandler::addChannel") << "entering...";
   m_host=host;
   m_port=port;
   m_channels.push_back(chn);
   m_pcqs[chn] = std::make_unique<FrameQueue>(queueSize);
   try{
-      DAQLogger::LogInfo("NetioHandler::addChannel") << "zmq_hit_send_connection is " << zmq_hit_send_connection;
-      m_tp_finders[chn]=std::make_unique<TriggerPrimitiveFinder>(zmq_hit_send_connection, m_windowOffset, cpu_offset);
+      m_tp_finders[chn]=std::make_unique<TriggerPrimitiveFinder>(tpf_params);
   }
   catch(std::bad_alloc& e){
       DAQLogger::LogInfo("NetioHandler::addChannel") << "std::bad_alloc thrown in make_unique: " << e.what();

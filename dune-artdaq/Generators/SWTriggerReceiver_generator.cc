@@ -45,7 +45,7 @@ dune::SWTriggerReceiver::SWTriggerReceiver(fhicl::ParameterSet const & ps):
   must_stop_(0),
   tpsorted_("{\
 \"input\": \
-{\"socket\": { \"type\": \"SUB\", \"connect\": [ \"tcp://10.73.136.67:25141\", \"tcp://10.73.136.67:25142\" ] } },\
+{\"socket\": { \"type\": \"SUB\", \"connect\": [ \"tcp://10.73.136.60:15151\", \"tcp://10.73.136.60:15152\" ] } },\
 \"output\":\
 {\"socket\": { \"type\": \"PUB\", \"bind\": [ \"tcp://*:25441\" ] } },\
 \"tardy\": 1000\
