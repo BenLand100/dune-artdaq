@@ -25,7 +25,6 @@ dune_artdaq_InhibitMaster v0_02_00
 protodune_wibsoft v349_hack
 netio           v0_8_0
 ftd2xx          v1_2_7a
-dunepdsprce     v0_0_4
 rogue           v2_10_0_3_gfaeedd0
 protodune_timing v5_1_0
 jsoncpp         v1_8_0
