@@ -320,6 +320,7 @@ artdaq_mpich_plugin_version=v2019_05_28_for_dune-artdaq_A
 TRACE_version=v3_13_07
 pyzmq_version=v18_0_1a
 
+
 cd $Base
     cat >setupDUNEARTDAQ_forBuilding <<-EOF
        echo # This script is intended to be sourced.                                                                    
@@ -340,22 +341,21 @@ t; }" || exit
         export DUNEARTDAQ_BUILD=$MRB_BUILDDIR/dune_artdaq                                                            
         export DUNEARTDAQ_REPO="$ARTDAQ_DEMO_DIR"                                                                        
         export FHICL_FILE_PATH=.:\$DUNEARTDAQ_REPO/tools/fcl:\$FHICL_FILE_PATH                                           
+
         setup protodune_wibsoft $protodune_wibsoft_version -q e15:s64
         setup uhal $uhal_version -q e15:prof:s64
         setup netio $netio_version -q e15:prof:s64
-# RSIPOS 03/07/18 -> Infiniband workaround for FELIX BR build
-        #source /nfs/sw/felix/HACK-FELIX-BR-BUILD.sh
+
+        # RSIPOS 03/07/18 -> Infiniband workaround for FELIX BR build
         export ICP_ROOT=/nfs/sw/felix/QAT/QAT2.0
         export LD_LIBRARY_PATH=\$LD_LIBRARY_PATH:/nfs/sw/felix/QAT/QAT2.0/build
         export LD_LIBRARY_PATH=\$LD_LIBRARY_PATH:/nfs/sw/felix/QAT/QAT2.0/qatzip2/qatzip/src
-
 
         setup ftd2xx $ftd2xx_version
         setup dunepdsprce $dunepdsprce_version -q e15:gen:prof
         setup rogue $rogue_version -q e15:prof
         setup protodune_timing $protodune_timing_version -q e15:prof:s64
-        
-setup jsoncpp $jsoncpp_version -q e15
+        setup jsoncpp $jsoncpp_version -q e15
 
         export DISABLE_DOXYGEN="defined"
 
@@ -395,10 +395,7 @@ EOF
         export DUNEARTDAQ_REPO="$ARTDAQ_DEMO_DIR"                                                                        
         export FHICL_FILE_PATH=.:\$DUNEARTDAQ_REPO/tools/fcl:\$FHICL_FILE_PATH                                           
 
-        setup protodune_wibsoft $protodune_wibsoft_version -q e15:s64
-        setup uhal $uhal_version -q e15:prof:s64
 
-        setup netio $netio_version -q e15:prof:s64
 # RSIPOS 03/07/18 -> Infiniband workaround for FELIX BR build
 #        export LD_LIBRARY_PATH=\$LD_LIBRARY_PATH:/nfs/sw/felix/new-software/multidma/software/external/libfabric/1.4.1.3/x86_64-centos7-gcc62-opt/lib
         export LD_LIBRARY_PATH=\$LD_LIBRARY_PATH:/nfs/sw/felix/fabric/build/lib
@@ -407,12 +404,6 @@ EOF
         export LD_LIBRARY_PATH=\$LD_LIBRARY_PATH:/nfs/sw/sysadmin/QAT/QAT2.0/build
         export LD_LIBRARY_PATH=\$LD_LIBRARY_PATH:/nfs/sw/sysadmin/QAT/QAT2.0/qatzip2/qatzip/src
 
-        setup ftd2xx $ftd2xx_version
-        setup dunepdsprce $dunepdsprce_version -q e15:gen:prof
-        setup rogue $rogue_version -q e15:prof
-        setup protodune_timing $protodune_timing_version -q e15:prof:s64
-
-       
        setup pyzmq $pyzmq_version  -q p2714b
        setup dim $dim_version -q e15
        setup artdaq_dim_plugin $artdaq_dim_plugin_version -q e15:prof:s64
@@ -423,7 +414,6 @@ EOF
         export TRACE_FILE=/tmp/trace_$trace_file_label
         export TRACE_LIMIT_MS="500,1000,2000"
 
-setup jsoncpp $jsoncpp_version -q e15
 
      # Uncomment the "tonM" line for a given TRACE below which you
         # want to activate. If you don't see the TRACE you want, then
