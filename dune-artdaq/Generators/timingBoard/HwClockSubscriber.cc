@@ -1,3 +1,4 @@
+#include "dune-artdaq/DAQLogger/DAQLogger.hh"
 #include "trace.h"
 
 #include "HwClockSubscriber.hh"
@@ -24,6 +25,12 @@ HwClockSubscriber::~HwClockSubscriber() {
 // ----------------------------------------------------------------------------
 int HwClockSubscriber::connect( int timeout ) {
     int rc = zmq_connect(socket_, address_.c_str());
+    if (rc!=0){
+      dune::DAQLogger::LogWarning("HwClockSubscriber::start") << "ZMQ connect return code is not zero, but: " << rc;
+    }
+    else{
+      dune::DAQLogger::LogInfo("HwClockSubscriber::start") << "Connected successfully to ZMQ Socket: " << address_ ;
+    }
     zmq_setsockopt(socket_, ZMQ_SUBSCRIBE, "", 0);
     zmq_setsockopt(socket_, ZMQ_RCVTIMEO, &timeout, sizeof(timeout));
     return rc;

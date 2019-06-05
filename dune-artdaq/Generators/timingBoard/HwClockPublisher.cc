@@ -1,3 +1,4 @@
+#include "dune-artdaq/DAQLogger/DAQLogger.hh"
 #include "trace.h"
 
 #include "HwClockPublisher.hh"
@@ -24,6 +25,13 @@ HwClockPublisher::~HwClockPublisher() {
 // ----------------------------------------------------------------------------
 int HwClockPublisher::bind() {
     int rc = zmq_bind(socket_, address_.c_str());
+    if (rc!=0){
+      dune::DAQLogger::LogWarning("HwClockPublisher::start") << "ZMQ connect return code is not zero, but: " << rc;
+    }
+    else{
+      dune::DAQLogger::LogInfo("HwClockPublisher::start") << "Connected successfully to ZMQ Socket: " << address_ ;
+    }
+
     return rc;
 }
 

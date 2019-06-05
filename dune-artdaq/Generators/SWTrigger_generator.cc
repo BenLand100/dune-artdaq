@@ -110,7 +110,15 @@ void dune::SWTrigger::start(void)
   throttling_state_ = true;    // 0 Causes it to start triggers immediately, 1 means wait for InhibitMaster to release
   previous_ts_ = 0;
   latest_ts_ = 0;
-  ts_receiver_->connect(100);    
+  int isConnected = ts_receiver_->connect(100);    
+
+  if (isConnected!=0){
+    dune::DAQLogger::LogWarning(instance_name_) << "ZMQ connect for TS return code is not zero, but: " << isConnected;
+  }
+  else{
+    dune::DAQLogger::LogInfo(instance_name_) << "Connected successfully to ZMQ TS Socket!";
+  }
+
   InhibitGet_connect(zmq_conn_.c_str());
   InhibitGet_retime(inhibitget_timer_);
 
@@ -257,6 +265,8 @@ bool dune::SWTrigger::getNext_(artdaq::FragmentPtrs &frags)
 
   uint64_t ts = latest_ts_; // copy value as it may change during execution....
   previous_ts_ = ts;
+  DAQLogger::LogInfo(instance_name_) << "Timestamp going to triggered fragment should be: " << ts;
+
   std::unique_ptr<artdaq::Fragment> f = artdaq::Fragment::FragmentBytes( TimingFragment::size()*sizeof(uint32_t),
       artdaq::Fragment::InvalidSequenceID,
       artdaq::Fragment::InvalidFragmentID,
