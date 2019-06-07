@@ -2,7 +2,7 @@
 
 if [[ "$#" != "3" ]]; then
     echo
-    echo "Usage: "$( basename $0)" <package> <descriptive token> <run you tested with>"
+    echo "Usage: "$( basename $0)" <package> <descriptive token -- use \"\" if you don't want one> <run # you tested with>"
     echo
     exit 0
 fi
@@ -76,6 +76,7 @@ fi
 
 cd ./srcs/$packagedir
 
+echo "Calling \"git fetch origin\" from $PWD..."
 git fetch origin
 
 if [[ "$?" != "0" ]]; then
@@ -89,13 +90,16 @@ EOF
 
     exit 1
 fi
-
+echo "Done with \"git fetch origin\" call"
+echo
+echo "Calling \"git fetch --tags\" from $PWD"
 git fetch --tags
 
 if [[ "$?" != "0" ]]; then
     echo "There was a problem calling git fetch --tags in ./srcs/$packagedir. Exiting..." >&2
     exit 1
 fi
+echo "Done with \"git fetch --tags\" call"
 
 # I apologize on behalf of git for there not to be a simple way to JUST get the branch you're on
 branchname=$( git branch | sed -r -n 's/^\s*\*\s*(.*)/\1/p' )
@@ -118,12 +122,17 @@ if [[ -n $( git branch -a | grep "origin/$branchname" ) ]]; then
 	exit 1
     fi
 fi
+echo "Done checking that remote $branchname branch (if it exists) isn't ahead of the local $branchname"
 
 year_in_greenwich=$( date --utc +%Y )
 month_in_greenwich=$( date --utc +%m )
 day_in_greenwich=$(  date --utc +%d )
 
-tagname=v${year_in_greenwich}_${month_in_greenwich}_${day_in_greenwich}_${branchname}_${descriptive_token}
+if [[ "$descriptive_token" != "" ]]; then
+    tagname=v${year_in_greenwich}_${month_in_greenwich}_${day_in_greenwich}_${branchname}_${descriptive_token}
+else
+    tagname=v${year_in_greenwich}_${month_in_greenwich}_${day_in_greenwich}_${branchname}
+fi
 
 echo "Tag is \"$tagname\""
 
@@ -144,7 +153,7 @@ else
     exit 1
 fi
 
-sed -i -r 's/^(\s*parent\s+'$package'\s+)[^\s#]+(.*)/\1'$tagname'\2/' srcs/$packagedir/ups/product_deps
+sed -i -r 's/^(\s*parent\s+'$package'\s+)[^ #]+(.*)/\1'$tagname'\2/' srcs/$packagedir/ups/product_deps
 
 for dependent_package in $dependent_packages;  do
 
@@ -178,8 +187,8 @@ for dependent_package in $dependent_packages;  do
 		exit 1
 	    fi
 
-	    if ! [[ $dependent_package_tagname =~ ^v20[0-9]{2}_[0-9]{2}_[0-9]{2}_.*$ || $dependent_package_tagname =~ ^v[0-9_]$ ]]; then
-		echo "The tag this script determined corresponded to the code for $dependent_package in run $run_tested does not appear to be an expected format (either v<yyyy>_<mm>_<dd>_<branchname>_<descriptive tag> or a version). This may be because no such tag exists; check $development_area_from_run/srcs/$packagedir" >&2 
+	    if ! [[ $dependent_package_tagname =~ ^v20[0-9]{2}_[0-9]{2}_[0-9]{2}.*$ || $dependent_package_tagname =~ ^v[0-9_]$ ]]; then
+		echo "The tag this script determined corresponded to the code for $dependent_package in run $run_tested does not appear to be an expected format (either v<yyyy>_<mm>_<dd>_<branchname>_<descriptive tag>, v<yyyy>_<mm>_<dd>_<branchname>, or a version). This may be because no such tag exists; check $development_area_from_run/srcs/$packagedir" >&2 
 		exit 1
 	    fi
 
