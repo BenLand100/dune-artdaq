@@ -8,6 +8,20 @@
 # JCF, Mar-2-2017
 # Modified it again to work with the brand new dune-artdaq package
 
+if [[ "$USER" == "np04daq" ]]; then
+    
+    cat<<EOF >&2
+
+    Unless the dune-artdaq installation you're creating is meant for
+    standard experiment-wide running rather than for code development
+    purposes, you should run this script under your own user account,
+    not under the np04daq account
+
+EOF
+
+exit 1
+
+fi
 
 if ! [[ "$HOSTNAME" =~ ^np04-srv ]]; then 
     echo "This script will only work on the CERN protoDUNE teststand computers, np04-srv-*" >&2
