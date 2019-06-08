@@ -418,6 +418,7 @@ EOF
         export LD_LIBRARY_PATH=\$LD_LIBRARY_PATH:/nfs/sw/sysadmin/QAT/QAT2.0/build
         export LD_LIBRARY_PATH=\$LD_LIBRARY_PATH:/nfs/sw/sysadmin/QAT/QAT2.0/qatzip2/qatzip/src
 
+       setup ftd2xx $ftd2xx_version
        setup pyzmq $pyzmq_version  -q p2714b
        setup dim $dim_version -q e15
        setup artdaq_dim_plugin $artdaq_dim_plugin_version -q e15:prof:s64
