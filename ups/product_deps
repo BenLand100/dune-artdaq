@@ -1,6 +1,6 @@
 # The parent line must be the first non-comment line in the file
 # This line defines the product name and version
-parent dune_artdaq	v2019_05_29_develop_A
+parent dune_artdaq	v2019_06_09_develop_June2019
 defaultqual	e15
 
 # These optional lines define the installed directories where
