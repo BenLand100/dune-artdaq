@@ -250,12 +250,18 @@ bool FelixHardwareInterface::FillFragment( std::unique_ptr<artdaq::Fragment>& fr
       uint64_t requestSeqId = request.seqID;
       uint64_t requestTimestamp = request.timestamp;
 
+      //Compare the TPHits TS with the current Felix TS (50MHz ticks)
+      std::chrono::time_point<std::chrono::system_clock> now = std::chrono::system_clock::now();
+
       //auto reqMap = artdaq_request_receiver_.GetRequests();
       //uint64_t requestSeqId = reqMap.cbegin()->first;
       //uint64_t requestTimestamp = reqMap.cbegin()->second;
 
       bool success = nioh_.triggerWorkers(requestTimestamp, requestSeqId, frag, fraghits);
       if (success) {
+	//number of ticks per second for a 50MHz clock
+	auto ticks = std::chrono::duration_cast<std::chrono::duration<uint64_t, std::ratio<1,50000000>>>(now.time_since_epoch());
+
         frag->setSequenceID(requestSeqId);
         frag->setTimestamp(requestTimestamp);
         frag->updateMetadata(fragment_meta_);
@@ -273,6 +279,8 @@ bool FelixHardwareInterface::FillFragment( std::unique_ptr<artdaq::Fragment>& fr
 	  DAQLogger::LogInfo("dune::FelixHardwareInterface::FillFragment") 
 	    << " NIOH returned OK for trigger TS " << requestTimestamp << " and seqID " << requestSeqId <<"."
             << " Size:" << frag->dataSizeBytes() << " Brief:" << oss.str(); 
+	  DAQLogger::LogInfo("dune::FelixHardwareInterface::FillFragment") << "Difference between current TS and SWTrigger request TS "
+									   << ticks.count() - requestTimestamp;
 	}
         //artdaq_request_receiver_.RemoveRequest(requestSeqId);
       } else {

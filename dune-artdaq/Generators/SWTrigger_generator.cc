@@ -221,6 +221,15 @@ bool dune::SWTrigger::getNext_(artdaq::FragmentPtrs &frags)
     return true;
   }
 
+  /* Commented out so that TPSet timing is used. 
+  uint64_t ts = latest_ts_; // copy value as it may change during execution....
+  if (ts != 0 && ts != previous_ts_ ) {
+    previous_ts_ = ts;
+  }
+  */
+
+  auto start = std::chrono::high_resolution_clock::now();
+
   ptmp::data::TPSet SetReceived_1;
   ptmp::data::TPSet SetReceived_2;
 
@@ -229,43 +238,37 @@ bool dune::SWTrigger::getNext_(artdaq::FragmentPtrs &frags)
 
   if (!received_1 && !received_2){
     DAQLogger::LogInfo(instance_name_) << "No TPSet for one of the connections.";
- }
+  }
 
   unsigned int count_1 = SetReceived_1.count();
   unsigned int count_2 = SetReceived_2.count();
 
-  DAQLogger::LogInfo(instance_name_) << "TPSet count for connection 1 is: " << count_1;
-  DAQLogger::LogInfo(instance_name_) << "TPSet count for connection 2 is: " << count_2;
+  //DAQLogger::LogInfo(instance_name_) << "TPSet count for connection 1 is: " << count_1;
+  //DAQLogger::LogInfo(instance_name_) << "TPSet count for connection 2 is: " << count_2;
 
   if (count_1 != p_count_1_){
-    DAQLogger::LogInfo(instance_name_) << "Received New TPSet from connection 1.";
+    //DAQLogger::LogInfo(instance_name_) << "Received New TPSet from connection 1.";
     ++n_recvd_;
   }
 
   if (count_2 != p_count_2_){
-    DAQLogger::LogInfo(instance_name_) << "Received New TPSet from connection 2.";
+    //DAQLogger::LogInfo(instance_name_) << "Received New TPSet from connection 2.";
     ++n_recvd_;
   }
 
   p_count_1_=count_1;
   p_count_2_=count_2;
 
-  if (n_recvd_ < 16666){
+  if (n_recvd_ < 60){
     return true;
   }
+
+  //previous_ts_ = SetReceived_1.tstart();
+  previous_ts_ = std::max(SetReceived_1.tstart(),SetReceived_2.tstart());
 
   n_recvd_ = 0;
 
-  /*
-  if ( ts == 0 || ts == previous_ts_ ) {
-    usleep(10000);
-    return true;
-  }
-  */
-
-  uint64_t ts = latest_ts_; // copy value as it may change during execution....
-  previous_ts_ = ts;
-  DAQLogger::LogInfo(instance_name_) << "Timestamp going to triggered fragment should be: " << ts;
+  DAQLogger::LogInfo(instance_name_) << "Timestamp going to triggered fragment should be: " << previous_ts_;
 
   std::unique_ptr<artdaq::Fragment> f = artdaq::Fragment::FragmentBytes( TimingFragment::size()*sizeof(uint32_t),
       artdaq::Fragment::InvalidSequenceID,
@@ -313,6 +316,11 @@ bool dune::SWTrigger::getNext_(artdaq::FragmentPtrs &frags)
   int pubSuccess = fragment_publisher_->PublishFragment(f.get(), &fo);
   if(!pubSuccess)
     DAQLogger::LogError(instance_name_) << "Publishing fragment to ZeroMQ failed";
+
+  //Check how long is the time between receive/send of the PTMP message
+  auto elapsed = std::chrono::high_resolution_clock::now() - start;
+  long long microseconds = std::chrono::duration_cast<std::chrono::microseconds>(elapsed).count();
+  DAQLogger::LogInfo(instance_name_) << "Time from receive PTMP until published (usec): " << microseconds;
 
   frags.emplace_back(std::move(f));
   // We only increment the event counter for events we send out
