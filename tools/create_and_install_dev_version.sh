@@ -314,9 +314,9 @@ If the build was successful, try running:
 . /nfs/sw/artdaq/products_dev/setup
 ups list -aK+ $packagedir $tagname
 
-And once this script is on the develop branch of dune-artdaq, then
-you'd be asked to visually inspect the results of the tag, and if you
-were happy with what you saw, to push it to the central repo.
+If that looks OK, cd into ./srcs/$packagedir, check that the
+automatically-updated product_deps looks fine, and then push the code
+and the associated $tagname tag to the central repo at Fermilab.
 
 EOF
 
