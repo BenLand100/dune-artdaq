@@ -42,7 +42,12 @@ int main(int argc, char** argv)
     const size_t buffer_size=write_output ? n_msgs : 1024000;
     SUPERCHUNK_CHAR_STRUCT* ics=new SUPERCHUNK_CHAR_STRUCT[buffer_size];
 
-    TriggerPrimitiveFinder* tpf=new TriggerPrimitiveFinder("tcp://*:54321", 0);
+    fhicl::ParameterSet ps;
+    ps.put<std::string>("zmq_hit_send_connection", "tcp://*:54321");
+    ps.put<uint32_t>("window_offset", 500);
+    TriggerPrimitiveFinder* tpf=new TriggerPrimitiveFinder(ps);
+    // Wait for the processing thread to start up
+    while(!tpf->readyForMessages()) std::this_thread::sleep_for(std::chrono::milliseconds(10));
 
     netio::context* context = new netio::context("fi_verbs");
     std::thread netio_bg_thread = std::thread( [&](){context->event_loop()->run_forever();} );

@@ -1,34 +1,41 @@
 #include "TriggerPrimitiveFinder.h"
 
 #include "dune-artdaq/DAQLogger/DAQLogger.hh"
+#include "dune-artdaq/Generators/swTrigger/ptmp_util.hh"
 #include "artdaq-core/Data/Fragment.hh"
 #include "dune-raw-data/Overlays/FelixFragment.hh"
 
 #include <cstddef> // For offsetof
+#include <sstream>
 
 #include <sys/time.h>
 #include <sys/resource.h>
+
 
 #include "tests/frames2array.h"
 
 const int64_t clocksPerTPCTick=25;
 
+
 //======================================================================
-TriggerPrimitiveFinder::TriggerPrimitiveFinder(std::string zmq_hit_send_connection, uint32_t window_offset, int32_t cpu_offset, int item_queue_size)
+TriggerPrimitiveFinder::TriggerPrimitiveFinder(fhicl::ParameterSet const & ps)
+//std::string zmq_hit_send_connection, uint32_t window_offset, int32_t cpu_offset, int item_queue_size)
     : m_readyForMessages(false),
-      m_itemsToProcess(item_queue_size),
+      m_itemsToProcess(ps.get<int>("item_queue_size", 100000)),
       m_fiber_no(0xff),
       m_slot_no(0xff),
       m_crate_no(0xff),
-      m_TPSender(std::string("{\"socket\": { \"type\": \"PUB\", \"bind\": [ \"")+zmq_hit_send_connection+std::string("\" ] } }")),
+      m_TPSender(ptmp_util::make_ptmp_socket_string("PUB", "bind", {ps.get<std::string>("zmq_hit_send_connection")})),
       m_current_tpset(new ptmp::data::TPSet),
-      m_msgs_per_tpset(20),
+      m_send_ptmp_msgs(ps.get<bool>("send_ptmp_messages", true)),
+      m_msgs_per_tpset(ps.get<unsigned int>("messages_per_tpset", 20)),
       m_should_stop(false),
-      m_windowOffset(window_offset),
-      m_offline_channel_base(0)
+      m_windowOffset(ps.get<uint32_t>("window_offset")),
+      m_offline_channel_base(0),
+      m_n_tpsets_sent(0)
 {
-    std::cout << zmq_hit_send_connection << std::endl;
     m_processingThread=std::thread(&TriggerPrimitiveFinder::processing_thread, this, 0, REGISTERS_PER_FRAME);
+    int32_t cpu_offset=ps.get<int32_t>("cpu_offset", -1);
     if(cpu_offset>=0){
         // Copied from NetioHandler::lockSubsToCPUs()
         cpu_set_t cpuset;
@@ -52,6 +59,7 @@ TriggerPrimitiveFinder::~TriggerPrimitiveFinder()
     dune::DAQLogger::LogInfo("TriggerPrimitiveFinder::~TriggerPrimitiveFinder") << "Joining processing thread";
     m_processingThread.join(); // Wait for it to actually stop
     dune::DAQLogger::LogInfo("TriggerPrimitiveFinder::~TriggerPrimitiveFinder") << "Processing thread joined";
+    dune::DAQLogger::LogInfo("TriggerPrimitiveFinder::~TriggerPrimitiveFinder") << "Sent a total of " << m_n_tpsets_sent << " TPSets";
 }
 
 //======================================================================
@@ -159,11 +167,15 @@ TriggerPrimitiveFinder::addHitsToQueue(uint64_t timestamp,
     static unsigned int msgs_in_tpset=0;
     ptmp::data::TPSet& tpset=*m_current_tpset.get();
     
-    if(msgs_in_tpset==0){
+    if(m_send_ptmp_msgs && msgs_in_tpset==0){
         tpset.set_count(count++);
-        tpset.set_detid(4);
+        // m_*_no are uint8_t, so maybe the casts to uint32_t before shifting are necessary?
+        tpset.set_detid((uint32_t(m_fiber_no) << 16) | (uint32_t(m_slot_no) << 8) | (uint32_t(m_crate_no) << 0));
         tpset.set_tstart(timestamp);
-        tpset.set_created(0);
+        std::chrono::time_point<std::chrono::system_clock> now = std::chrono::system_clock::now();
+        // Brett asked for TPSet creation time in microseconds, not timing system ticks
+        auto ticks = std::chrono::duration_cast<std::chrono::microseconds>(now.time_since_epoch());
+        tpset.set_created(ticks.count());
     }
     
     while(*input_loc!=MAGIC){
@@ -177,21 +189,33 @@ TriggerPrimitiveFinder::addHitsToQueue(uint64_t timestamp,
                 const uint16_t online_channel=collection_index_to_channel(chan[i]);
                 const uint32_t offline_channel=m_offline_channel_base+collection_index_to_offline(chan[i]);
                 primitive_queue.emplace_back(timestamp, online_channel, hit_end[i], hit_charge[i], hit_tover[i]);
-                uint64_t hit_start=timestamp+clocksPerTPCTick*(int64_t(hit_end[i])-hit_tover[i]);
-                ptmp::data::TrigPrim* ptmp_prim=tpset.add_tps();
-                ptmp_prim->set_channel(offline_channel);
-                ptmp_prim->set_tstart(hit_start);
-                ptmp_prim->set_tspan(hit_tover[i]);
-                ptmp_prim->set_adcsum(hit_charge[i]);
+                if(m_send_ptmp_msgs){
+                    // hit_end is the end time of the hit in TPC clock
+                    // ticks after the start of the netio message in which
+                    // the hit ended
+                    uint64_t hit_start=timestamp+clocksPerTPCTick*(int64_t(hit_end[i])-hit_tover[i]);
+                    ptmp::data::TrigPrim* ptmp_prim=tpset.add_tps();
+                    ptmp_prim->set_channel(offline_channel);
+                    ptmp_prim->set_tstart(hit_start);
+                    // Convert time-over-threshold to 50MHz clock ticks, so all the ptmp quantities are in the same units
+                    ptmp_prim->set_tspan(clocksPerTPCTick*hit_tover[i]);
+                    ptmp_prim->set_adcsum(hit_charge[i]);
+                }
                 ++nhits;
             }
         }
     }
+
+    ++msgs_in_tpset;
+
     // Send out the TPSet every m_msgs_per_tpset messages
-    if(msgs_in_tpset==m_msgs_per_tpset){
-        m_TPSender(tpset);
+    if(m_send_ptmp_msgs && msgs_in_tpset==m_msgs_per_tpset){
+        tpset.set_tspan(timestamp+FRAMES_PER_MSG*clocksPerTPCTick-tpset.tstart());
+        // Don't send empty TPSets
+        if(tpset.tps_size()!=0) m_TPSender(tpset);
         msgs_in_tpset=0;
         m_current_tpset.reset(new ptmp::data::TPSet);
+        ++m_n_tpsets_sent;
     }
 
     while(primitive_queue.size()>20000) primitive_queue.pop_front();

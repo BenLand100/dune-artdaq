@@ -10,6 +10,8 @@
 #include "dune-artdaq/Generators/Felix/Types.hh"
 #include "dune-raw-data/Overlays/FelixHitFormat.hh"
 
+#include "fhiclcpp/ParameterSet.h"
+
 #include "ptmp/api.h"
 
 #include <deque>
@@ -27,7 +29,8 @@ namespace artdaq
 class TriggerPrimitiveFinder
 {
 public:
-    TriggerPrimitiveFinder(std::string zmq_hit_send_connection, uint32_t window_offset, int32_t cpu_offset=-1, int item_queue_size=100000);
+    //TriggerPrimitiveFinder(std::string zmq_hit_send_connection, uint32_t window_offset, int32_t cpu_offset=-1, int item_queue_size=100000);
+    TriggerPrimitiveFinder(fhicl::ParameterSet const & ps);
   
     ~TriggerPrimitiveFinder();
 
@@ -43,7 +46,9 @@ public:
     }
 
     void stop();
-    // void waitForJobs() { for(auto& f: m_futures) f.wait(); }
+
+    // Are we ready to receive data? (ie, has the processing thread successfully started up?)
+    bool readyForMessages() const { return m_readyForMessages.load(); }
 private:
 
     void processing_thread(uint8_t first_register, uint8_t last_register);
@@ -77,7 +82,7 @@ private:
     std::thread m_processingThread;
     std::atomic<bool> m_readyForMessages;
     folly::ProducerConsumerQueue<ProcessingTasks::ItemToProcess> m_itemsToProcess;
-    // The elecrtonics co-ordinates of the link we're getting data
+    // The electronics co-ordinates of the link we're getting data
     // from. We assume that this class will only deal with data from
     // one link
     uint8_t m_fiber_no;
@@ -85,10 +90,12 @@ private:
     uint8_t m_crate_no;
     ptmp::TPSender m_TPSender;
     std::unique_ptr<ptmp::data::TPSet> m_current_tpset;
+    bool m_send_ptmp_msgs;
     unsigned int m_msgs_per_tpset;
     std::atomic<bool> m_should_stop;
     uint32_t m_windowOffset;
     uint32_t m_offline_channel_base;
+    size_t m_n_tpsets_sent;
 };
 
 #endif

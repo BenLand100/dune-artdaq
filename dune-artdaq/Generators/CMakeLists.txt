@@ -1,8 +1,6 @@
 # For ptmp
 include_directories($ENV{PTMP_INCLUDE_DIR})
 
-
-
 simple_plugin(TPCMilliSliceSimulatorWithCopy "generator"
   dune-raw-data_Overlays
   artdaq_Application
@@ -190,6 +188,23 @@ simple_plugin(TimingReceiver "generator"
   ${UHAL_LOG}
   ${PDT_CORE}
   )
+
+simple_plugin(SWTrigger "generator"
+  dune-raw-data_Overlays
+  dune-artdaq_Generators_timingBoard
+  artdaq_Application
+  artdaq_DAQdata
+  artdaq-core_Utilities
+  artdaq-core_Data
+  artdaq-utilities_Plugins
+  ${CANVAS}
+  ${FHICLCPP}
+  ${CETLIB}
+  ${CETLIB_EXCEPT}
+  ${LIBPTMP}
+  ${PROTOBUF}
+  dune-artdaq_DAQLogger	  
+)
 
 if ( (DEFINED ENV{PROTODUNE_WIBSOFT_LIB}) AND (DEFINED ENV{PROTODUNE_WIBSOFT_INC}) )
 

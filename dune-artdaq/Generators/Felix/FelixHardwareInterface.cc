@@ -58,7 +58,7 @@ FelixHardwareInterface::FelixHardwareInterface(fhicl::ParameterSet const& ps) :
                      linkPs.get<std::string>("host"),
                      linkPs.get<unsigned short>("port"),
                      linkPs.get<unsigned short>("tag"),
-                     linkPs.get<std::string>("zmq_hit_send_connection"))
+                     linkPs.get<fhicl::ParameterSet>("TriggerPrimitiveFinding"))
     );
   }
 
@@ -126,7 +126,7 @@ FelixHardwareInterface::FelixHardwareInterface(fhicl::ParameterSet const& ps) :
     << "Setting up NetioHandler (host, port, adding channels, starting subscribers, locking subs to CPUs.)";
   nioh_.setupContext( backend_ ); // posix or infiniband
   for ( auto const & link : link_parameters_ ){ // Add channels
-    nioh_.addChannel(link.id_, link.tag_, link.host_, link.port_, queue_size_, zerocopy_, offset_-12, link.zmq_hit_send_connection_); 
+    nioh_.addChannel(link.id_, link.tag_, link.host_, link.port_, queue_size_, zerocopy_, link.tpf_params_); 
   }
 
   DAQLogger::LogInfo("dune::FelixHardwareInterface::FelixHardwareInterface")
@@ -258,12 +258,18 @@ bool FelixHardwareInterface::FillFragment( std::unique_ptr<artdaq::Fragment>& fr
       uint64_t requestSeqId = request.seqID;
       uint64_t requestTimestamp = request.timestamp;
 
+      //Compare the TPHits TS with the current Felix TS (50MHz ticks)
+      std::chrono::time_point<std::chrono::system_clock> now = std::chrono::system_clock::now();
+
       //auto reqMap = artdaq_request_receiver_.GetRequests();
       //uint64_t requestSeqId = reqMap.cbegin()->first;
       //uint64_t requestTimestamp = reqMap.cbegin()->second;
 
       bool success = nioh_.triggerWorkers(requestTimestamp, requestSeqId, frag, fraghits);
       if (success) {
+	//number of ticks per second for a 50MHz clock
+	auto ticks = std::chrono::duration_cast<std::chrono::duration<uint64_t, std::ratio<1,50000000>>>(now.time_since_epoch());
+
         frag->setSequenceID(requestSeqId);
         frag->setTimestamp(requestTimestamp);
         frag->updateMetadata(fragment_meta_);
@@ -281,6 +287,8 @@ bool FelixHardwareInterface::FillFragment( std::unique_ptr<artdaq::Fragment>& fr
 	  DAQLogger::LogInfo("dune::FelixHardwareInterface::FillFragment") 
 	    << " NIOH returned OK for trigger TS " << requestTimestamp << " and seqID " << requestSeqId <<"."
             << " Size:" << frag->dataSizeBytes() << " Brief:" << oss.str(); 
+	  DAQLogger::LogInfo("dune::FelixHardwareInterface::FillFragment") << "Difference between current TS and SWTrigger request TS "
+									   << ticks.count() - requestTimestamp;
 	}
         //artdaq_request_receiver_.RemoveRequest(requestSeqId);
       } else {

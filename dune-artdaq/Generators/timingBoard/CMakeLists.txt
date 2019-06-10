@@ -1,8 +1,16 @@
 art_make_library( LIBRARY_NAME dune-artdaq_Generators_timingBoard
-		  SOURCE InhibitGet.c StatusPublisher.cc FragmentPublisher.cc
-		  LIBRARIES ${UHAL_UHAL} ${UHAL_LOG} ${Boost_SYSTEM_LIBRARY} ${LIBZMQ} dune-artdaq_DAQLogger ${CETLIB} ${CETLIB_EXCEPT}
+		  SOURCE InhibitGet.c StatusPublisher.cc FragmentPublisher.cc HwClockPublisher.cc HwClockSubscriber.cc
+		  LIBRARIES ${UHAL_UHAL}
+      ${UHAL_LOG}
+      ${Boost_SYSTEM_LIBRARY}
+      ${LIBZMQ}
+      dune-artdaq_DAQLogger
+      ${CETLIB}
+      ${CETLIB_EXCEPT}
 )
 		  #LIBRARY_NAME_VAR TIMING_BOARD_LIB )
+
+add_subdirectory(test)
 
 
 cet_make_exec(TimingMain
