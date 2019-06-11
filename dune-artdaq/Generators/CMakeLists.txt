@@ -248,3 +248,4 @@ simple_plugin(CRTFragGen "generator"
   )
  
 
+add_subdirectory(swTrigger)
