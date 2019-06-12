@@ -28,13 +28,15 @@ public:
         return bin;
     }
 
+    size_t nbins() const { return Nbins; }
+
     // Get the bin content in bin `ibin`
-    uint64_t bin(size_t ibin) { return bins[ibin]; }
+    uint64_t bin(size_t ibin) const { return bins[ibin]; }
 
     // The minimum value that will be stored in bin `ibin`
-    uint64_t binLo(size_t ibin) { return ibin==0 ? 0 : (1<<(ibin-1)); }
+    uint64_t binLo(size_t ibin) const { return ibin==0 ? 0 : (1<<(ibin-1)); }
     // The maximum value that will be stored in bin `ibin`
-    uint64_t binHi(size_t ibin)
+    uint64_t binHi(size_t ibin) const
     {
         if(ibin==0) return 0;
         else if(ibin==Nbins-1) return UINT64_MAX;
