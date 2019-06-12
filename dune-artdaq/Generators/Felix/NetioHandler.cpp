@@ -345,7 +345,7 @@ void NetioHandler::startSubscribers(){
 
 	    bool storeOk = m_pcqs[m_channels[chn]]->write(ics); // RS -> Add possibility for dry_run! (No push mode.)
 
-            m_tp_finders[m_channels[chn]]->addMessage(ics);
+            if(m_doTPFinding) m_tp_finders[m_channels[chn]]->addMessage(ics);
 
 	    if (!storeOk) {
               //DAQLogger::LogWarning("NetioHandler::subscriber") << " Fragments queue is full. Lost: " << lostData;
@@ -480,20 +480,22 @@ bool NetioHandler::addChannel(uint64_t chn, uint16_t tag, std::string host, uint
   m_port=port;
   m_channels.push_back(chn);
   m_pcqs[chn] = std::make_unique<FrameQueue>(queueSize);
-  try{
-      m_tp_finders[chn]=std::make_unique<TriggerPrimitiveFinder>(tpf_params);
-  }
-  catch(std::bad_alloc& e){
-      DAQLogger::LogInfo("NetioHandler::addChannel") << "std::bad_alloc thrown in make_unique: " << e.what();
-      throw;
-  }
-  catch(std::exception& e){
-      DAQLogger::LogInfo("NetioHandler::addChannel") << "std::exception thrown in make_unique: " << e.what();
-      throw;
-  }
-  catch(...){
-      DAQLogger::LogInfo("NetioHandler::addChannel") << "exception thrown in make_unique";
-      throw;
+  if(m_doTPFinding){
+      try{
+          m_tp_finders[chn]=std::make_unique<TriggerPrimitiveFinder>(tpf_params);
+      }
+      catch(std::bad_alloc& e){
+          DAQLogger::LogInfo("NetioHandler::addChannel") << "std::bad_alloc thrown in make_unique: " << e.what();
+          throw;
+      }
+      catch(std::exception& e){
+          DAQLogger::LogInfo("NetioHandler::addChannel") << "std::exception thrown in make_unique: " << e.what();
+          throw;
+      }
+      catch(...){
+          DAQLogger::LogInfo("NetioHandler::addChannel") << "exception thrown in make_unique";
+          throw;
+      }
   }
 
   DAQLogger::LogInfo("NetioHandler::addChannel") << "setting up netio...";
