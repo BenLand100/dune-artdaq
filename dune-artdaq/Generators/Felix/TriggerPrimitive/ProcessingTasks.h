@@ -36,7 +36,7 @@ namespace ProcessingTasks {
     inline uint64_t now_us()
     {
         // std::chrono is the worst
-        return std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
+        return std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
     }
 
 } // end namespace ProcessingTasks
