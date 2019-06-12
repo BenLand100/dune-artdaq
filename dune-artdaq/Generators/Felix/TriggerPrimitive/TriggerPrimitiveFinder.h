@@ -91,7 +91,7 @@ private:
     uint8_t m_fiber_no;
     uint8_t m_slot_no;
     uint8_t m_crate_no;
-    ptmp::TPSender m_TPSender;
+    std::unique_ptr<ptmp::TPSender> m_TPSender;
     std::unique_ptr<ptmp::data::TPSet> m_current_tpset;
     bool m_send_ptmp_msgs;
     unsigned int m_msgs_per_tpset;

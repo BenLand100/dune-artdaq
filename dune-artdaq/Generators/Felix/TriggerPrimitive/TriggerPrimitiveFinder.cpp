@@ -25,7 +25,7 @@ TriggerPrimitiveFinder::TriggerPrimitiveFinder(fhicl::ParameterSet const & ps)
       m_fiber_no(0xff),
       m_slot_no(0xff),
       m_crate_no(0xff),
-      m_TPSender(ptmp_util::make_ptmp_socket_string("PUB", "bind", {ps.get<std::string>("zmq_hit_send_connection")})),
+      m_TPSender(std::make_unique<ptmp::TPSender>(ptmp_util::make_ptmp_socket_string("PUB", "bind", {ps.get<std::string>("zmq_hit_send_connection")}))),
       m_current_tpset(new ptmp::data::TPSet),
       m_send_ptmp_msgs(ps.get<bool>("send_ptmp_messages", true)),
       m_msgs_per_tpset(ps.get<unsigned int>("messages_per_tpset", 20)),
@@ -67,6 +67,8 @@ void TriggerPrimitiveFinder::stop()
 {
     dune::DAQLogger::LogInfo("TriggerPrimitiveFinder::stop") << "Setting stop flag";
     m_should_stop.store(true);
+    // delete the TPSender so it closes its socket, hopefully before zsys_shutdown gets called
+    m_TPSender.reset();
 }
 
 //======================================================================
@@ -212,7 +214,10 @@ TriggerPrimitiveFinder::addHitsToQueue(uint64_t timestamp,
     if(m_send_ptmp_msgs && msgs_in_tpset==m_msgs_per_tpset){
         tpset.set_tspan(timestamp+FRAMES_PER_MSG*clocksPerTPCTick-tpset.tstart());
         // Don't send empty TPSets
-        if(tpset.tps_size()!=0) m_TPSender(tpset);
+        if(tpset.tps_size()!=0 && m_TPSender){
+            ptmp::TPSender& tpsender=*m_TPSender;
+            tpsender(tpset);
+        }
         msgs_in_tpset=0;
         m_current_tpset.reset(new ptmp::data::TPSet);
         ++m_n_tpsets_sent;
