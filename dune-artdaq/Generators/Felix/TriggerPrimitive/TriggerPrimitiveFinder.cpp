@@ -232,19 +232,37 @@ void TriggerPrimitiveFinder::measure_latency(const ProcessingTasks::ItemToProces
     static uint64_t entered_late_time=0;
 
     uint64_t now=ProcessingTasks::now_us();
-    int64_t latency=now-item.timeQueued;
-    static int64_t last_printed_latency=0;
-    if(!was_behind && latency > latencyThresholdEnter){
-        entered_late_time=now;
-        dune::DAQLogger::LogInfo("TriggerPrimitiveFinder::measure_latency") << "Processing late by " << (latency/1000) << "ms (threshold is " << (latencyThresholdEnter/1000) << "ms)";
-        was_behind=true;
+    // The time in us between the timestamp on the data and now. In
+    // principle, the full latency to get from the detector to this
+    // hit-finding processing, on the assumption that the timing
+    // system clock is in sync with this machine's clock
+    int64_t full_latency=now-item.timestamp/50;
+    // The time in us between the item being queued in addMessage()
+    // and it starting processing. This is (sort of) the latency added
+    // by TPF
+    int64_t tpf_latency=now-item.timeQueued;
+
+    static size_t nitem=0;
+    if(nitem++ < 50){
+        dune::DAQLogger::LogInfo("TriggerPrimitiveFinder::measure_latency") << "Item with TS " << item.timestamp << " (ticks) queued at " << item.timeQueued << " (us), processed at " << now << " (us), full latency " << full_latency << "us, TPF latency " << tpf_latency << "us";
     }
-    if(latency < latencyThresholdLeave && was_behind){
+
+    m_full_latency_hist.fill((uint64_t)std::max(0L, full_latency));
+    m_tpf_latency_hist.fill((uint64_t)std::max(0L, tpf_latency));
+
+    static int64_t last_printed_latency=0;
+    if(!was_behind && full_latency > latencyThresholdEnter){
+        entered_late_time=now;
+        dune::DAQLogger::LogInfo("TriggerPrimitiveFinder::measure_latency") << "Processing late by " << (full_latency/1000) << "ms (threshold is " << (latencyThresholdEnter/1000) << "ms). Latency since queueing: " << (tpf_latency/1000) << "ms";
+        was_behind=true;
+        last_printed_latency=full_latency;
+    }
+    if(full_latency < latencyThresholdLeave && was_behind){
         dune::DAQLogger::LogInfo("TriggerPrimitiveFinder::measure_latency") << "Processing caught up. Was late for " << ((now-entered_late_time)/1000) << "ms";
         was_behind=false;
     }
-    if(was_behind && latency>last_printed_latency+latencyThresholdEnter){
-        dune::DAQLogger::LogInfo("TriggerPrimitiveFinder::measure_latency") << "Processing now late by " << (latency/1000) << "ms (threshold is " << (latencyThresholdEnter/1000) << "ms)";
+    if(was_behind && full_latency>last_printed_latency+latencyThresholdEnter){
+        dune::DAQLogger::LogInfo("TriggerPrimitiveFinder::measure_latency") << "Processing now late by " << (full_latency/1000) << "ms (threshold is " << (latencyThresholdEnter/1000) << "ms). Latency since queueing: " << (tpf_latency/1000) << "ms";
         last_printed_latency+=latencyThresholdEnter;
     }
 }
@@ -348,11 +366,24 @@ void TriggerPrimitiveFinder::processing_thread(uint8_t first_register, uint8_t l
     double cputime_us=1e6*double(r.ru_utime.tv_sec)+double(r.ru_utime.tv_usec);
     dune::DAQLogger::LogInfo("TriggerPrimitiveFinder::processing_thread") << "Received " << nmsg << " messages. Found " << nhits << " hits. hits/msg=" << hitsPerMsg << ". CPU time / wall time (from first message received) = " << (1e-6*cputime_us) << "s / " << (1e-6*walltime_us) << "s. Avg CPU % = " << (100*cputime_us/walltime_us);
 
+    // Print the histograms of latencies
+    print_latency_hist(m_full_latency_hist, "Full");
+    print_latency_hist(m_tpf_latency_hist, "TPF");
     // -------------------------------------------------------- 
     // Cleanup
     delete[] primfind_dest;
 }
 
+void TriggerPrimitiveFinder::print_latency_hist(const PowerTwoHist<24>& hist, const std::string name) const
+{
+    std::stringstream latency_hist_ss;
+    latency_hist_ss << name << " latency histogram (bin low edge, microseconds):" << std::endl;
+    for(size_t i=0; i<hist.nbins(); ++i){
+        latency_hist_ss << hist.binLo(i) << "\t" << hist.bin(i) << std::endl;
+    }
+    dune::DAQLogger::LogInfo("TriggerPrimitiveFinder::print_latency_hist") << latency_hist_ss.str();
+
+}
 
 /* Local Variables:  */
 /* mode: c++         */

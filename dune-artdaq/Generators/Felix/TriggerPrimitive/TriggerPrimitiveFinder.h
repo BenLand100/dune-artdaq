@@ -10,6 +10,8 @@
 #include "dune-artdaq/Generators/Felix/Types.hh"
 #include "dune-raw-data/Overlays/FelixHitFormat.hh"
 
+#include "dune-artdaq/Generators/swTrigger/PowerTwoHist.hh"
+
 #include "fhiclcpp/ParameterSet.h"
 
 #include "ptmp/api.h"
@@ -73,6 +75,7 @@ private:
 
     void measure_latency(const ProcessingTasks::ItemToProcess& item);
 
+    void print_latency_hist(const PowerTwoHist<24>& hist, const std::string name) const;
 
     // The queue of trigger primitives found, and a mutex to protect it
     std::deque<dune::TriggerPrimitive> m_triggerPrimitives;
@@ -96,6 +99,8 @@ private:
     uint32_t m_windowOffset;
     uint32_t m_offline_channel_base;
     size_t m_n_tpsets_sent;
+    PowerTwoHist<24> m_full_latency_hist; // Latencies calculated from time processed - data timestamp
+    PowerTwoHist<24> m_tpf_latency_hist;  // Latencies calculated from time processed - time queued
 };
 
 #endif
