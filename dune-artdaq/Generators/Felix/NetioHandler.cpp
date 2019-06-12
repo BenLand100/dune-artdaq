@@ -324,7 +324,12 @@ void NetioHandler::startSubscribers(){
 	uint64_t expDist = (m_msgsize/m_framesize)*m_tickdist;
         std::vector<std::pair<uint_fast64_t, uint_fast64_t>> distFails;
         while (!m_stop_subs) {
-          m_sub_sockets[m_channels[chn]]->recv(ep, std::ref(msg));
+          try{
+            m_sub_sockets[m_channels[chn]]->recv(ep, std::ref(msg));
+          } 
+          catch (netio::connection_closed) {
+              break;
+          }
           m_nmessages++;
           if (msg.size()!=m_msgsize) { // non-serializable
             badOnes++;
@@ -410,12 +415,15 @@ bool NetioHandler::flushQueues(){
 
 void NetioHandler::stopSubscribers(){
   m_stop_subs=true;
+  for(auto& tp_finder: m_tp_finders){
+      tp_finder.second->stop();
+  }
+  for(auto& sub_socket: m_sub_sockets){
+      sub_socket.second->close();
+  }
   for (uint32_t i=0; i<m_netioSubscribers.size(); ++i) {
     m_netioSubscribers[i].join();
     DAQLogger::LogInfo("NetioHandler::stopSubscriber") << "Subscriber[" << i << "] joined."; 
-  }
-  for(auto& tp_finder: m_tp_finders){
-      tp_finder.second->stop();
   }
   m_netioSubscribers.clear();
 }
