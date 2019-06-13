@@ -123,7 +123,7 @@ simple_plugin(TpcRceReceiver "generator"
   artdaq_DAQdata
   artdaq-core_Utilities
   dune-artdaq_DAQLogger
-  #artdaq-utilities_Plugins
+  artdaq-utilities_Plugins
   ${CANVAS}
   ${FHICLCPP}
   ${CETLIB}
@@ -169,6 +169,7 @@ simple_plugin(TriggerBoardReader "generator"
   )
 
 add_subdirectory(timingBoard)
+
 include_directories($ENV{SMC_HOME}/lib/C++)
 simple_plugin(TimingReceiver "generator"
   dune-raw-data_Overlays
@@ -176,6 +177,7 @@ simple_plugin(TimingReceiver "generator"
   artdaq-core_Data
   artdaq_Application
   artdaq_DAQdata
+  artdaq_DAQrate
   artdaq-core_Utilities
   artdaq-utilities_Plugins
   ${CANVAS}
@@ -218,7 +220,7 @@ simple_plugin(WIBReader "generator"
   	 ${CETLIB_EXCEPT}
   	 ${CETLIB}
   	 ${FHICLCPP}
-	 ${BOOST_SYSTEM}
+         ${Boost_SYSTEM_LIBRARY}
 )
 
 else()

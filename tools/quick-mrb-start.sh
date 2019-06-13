@@ -8,14 +8,26 @@
 # JCF, Mar-2-2017
 # Modified it again to work with the brand new dune-artdaq package
 
+if [[ "$USER" == "np04daq" ]]; then
+    
+    cat<<EOF >&2
+
+    Unless the dune-artdaq installation you're creating is meant for
+    standard experiment-wide running rather than for code development
+    purposes, you should run this script under your own user account,
+    not under the np04daq account
+
+EOF
+
+exit 1
+
+fi
 
 if ! [[ "$HOSTNAME" =~ ^np04-srv ]]; then 
     echo "This script will only work on the CERN protoDUNE teststand computers, np04-srv-*" >&2
     exit 1
-fi
-
-if [[ -e /cvmfs/fermilab.opensciencegrid.org/products/artdaq/setup ]]; then 
-     . /cvmfs/fermilab.opensciencegrid.org/products/artdaq/setup
+else
+    :  # Note to myself (JCF): should consider putting a cvmfs source in here if I formalize this script for non-ProtoDUNE cluster installation
 fi
 
 if [[ -e /nfs/sw/artdaq/products/setup ]]; then
@@ -25,6 +37,12 @@ else
     exit 1
 fi
 
+if [[ -e /nfs/sw/artdaq/products_dev/setup ]]; then
+    . /nfs/sw/artdaq/products_dev/setup
+else
+    echo "Expected there to be a products directory /nfs/sw/artdaq/products_dev/" >&2
+    exit 1
+fi
 
 git_status=`git status 2>/dev/null`
 git_sts=$?
@@ -47,6 +65,7 @@ examples: `basename $0`
           `basename $0` --dune-raw-data-developer --dune-raw-data-develop-branch
           `basename $0` --debug --dune-raw-data-developer
 --debug       perform a debug build
+--include-artdaq-repos  use if you plan on developing the artdaq code (contact jcfree@fnal.gov or biery@fnal.gov before attempting this)
 --not-dune-artdaq-developer  use if you don't have write access to the dune-artdaq repository
 --dune-raw-data-develop-branch     Install the current \"develop\" version of dune-raw-data (may be unstable!)
 --dune-raw-data-developer    use if you have (and want to use) write access to the dune-raw-data repository
@@ -58,7 +77,7 @@ eval "set -- $env_opts \"\$@\""
 op1chr='rest=`expr "$op" : "[^-]\(.*\)"`   && set -- "-$rest" "$@"'
 op1arg='rest=`expr "$op" : "[^-]\(.*\)"`   && set --  "$rest" "$@"'
 reqarg="$op1arg;"'test -z "${1+1}" &&echo opt -$op requires arg. &&echo "$USAGE" &&exit'
-args= do_help= opt_v=0; opt_lrd_w=0; opt_lrd_develop=0; opt_la_nw=0;
+args= do_help= opt_v=0; opt_lrd_w=0; opt_lrd_develop=0; opt_la_nw=0; inc_artdaq_repos=0;
 while [ -n "${1-}" ];do
     if expr "x${1-}" : 'x-' >/dev/null;then
         op=`expr "x$1" : 'x-\(.*\)'`; shift   # done with $1
@@ -67,6 +86,7 @@ while [ -n "${1-}" ];do
         case "$op" in
             \?*|h*)     eval $op1chr; do_help=1;;
 	    -debug)     opt_debug=--debug;;
+	    -include-artdaq-repos) inc_artdaq_repos=1;;
 	    -not-dune-artdaq-developer) opt_la_nw=1;;
 	    -dune-raw-data-develop-branch) opt_lrd_develop=1;;
 	    -dune-raw-data-developer)  opt_lrd_w=1;;
@@ -140,19 +160,7 @@ function detectAndPull() {
     cd $startDir
 }
 
-os=
-
 cd $Base/download
-
-if [[ -z $os ]]; then
-    echo "Cloning cetpkgsupport to determine current OS"
-    git clone http://cdcvs.fnal.gov/projects/cetpkgsupport
-    os=`./cetpkgsupport/bin/get-directory-name os`
-fi
-
-if [[ "$os" == "u14" ]]; then
-	echo "-H Linux64bit+3.19-2.19" >../products/ups_OVERRIDE.`hostname`
-fi
 
 # Get all the information we'll need to decide which exact flavor of the software to install
 if [ -z "${tag:-}" ]; then 
@@ -195,7 +203,7 @@ echo >&2
 echo "Skipping pullProducts, products needed for artdaq already assumed to be available. If this is wrong, then from $PWD, execute:" >&2
 echo "wget http://scisoft.fnal.gov/scisoft/bundles/tools/pullProducts" >&2
 echo "chmod +x pullProducts" >&2
-echo "./pullProducts $Base/products ${os} artdaq-${artdaq_manifest_version} ${squalifier}-${equalifier} ${build_type}" >&2
+echo "./pullProducts $Base/products <OS name - e.g., slf7> artdaq-${artdaq_manifest_version} ${squalifier}-${equalifier} ${build_type}" >&2
 echo >&2
 
 detectAndPull mrb noarch
@@ -236,7 +244,7 @@ fi
 if [[ $opt_lrd_w -eq 1 ]]; then
     dune_raw_data_repo="ssh://p-dune-raw-data@cdcvs.fnal.gov/cvs/projects/dune-raw-data"
 else
-    dune_raw_data_repo="http://cdcvs.fnal.gov/projects/dune-raw-data"
+    dune_raw_data_repo="https://cdcvs.fnal.gov/projects/dune-raw-data"
 fi
 
 if [[ $tag == "develop" ]]; then
@@ -248,41 +256,45 @@ fi
 
 # Notice the default for write access to dune-artdaq is the opposite of that for dune-raw-data
 if [[ $opt_la_nw -eq 1 ]]; then
-    dune_artdaq_repo="http://cdcvs.fnal.gov/projects/dune-artdaq"
+    dune_artdaq_repo="https://cdcvs.fnal.gov/projects/dune-artdaq"
 else
     dune_artdaq_repo="ssh://p-dune-artdaq@cdcvs.fnal.gov/cvs/projects/dune-artdaq"
 fi
 
 
+if [[ "$inc_artdaq_repos" == "1" ]] ; then
 
-
-mrb gitCheckout -b for_dune-artdaq -d artdaq_core http://cdcvs.fnal.gov/projects/artdaq-core
+mrb gitCheckout -b for_dune-artdaq -d artdaq_core https://cdcvs.fnal.gov/projects/artdaq-core
  
 if [[ "$?" != "0" ]]; then
-    echo "Unable to perform checkout of http://cdcvs.fnal.gov/projects/artdaq-core"
+    echo "Unable to perform checkout of https://cdcvs.fnal.gov/projects/artdaq-core"
     exit 1
 fi
 
-mrb gitCheckout -b for_dune-artdaq -d artdaq_utilities http://cdcvs.fnal.gov/projects/artdaq-utilities
+mrb gitCheckout -b for_dune-artdaq -d artdaq_utilities https://cdcvs.fnal.gov/projects/artdaq-utilities
  
 if [[ "$?" != "0" ]]; then
-    echo "Unable to perform checkout of http://cdcvs.fnal.gov/projects/artdaq-utilities"
+    echo "Unable to perform checkout of https://cdcvs.fnal.gov/projects/artdaq-utilities"
     exit 1
 fi
 
-mrb gitCheckout -b for_dune-artdaq -d artdaq http://cdcvs.fnal.gov/projects/artdaq
+mrb gitCheckout -b for_dune-artdaq -d artdaq https://cdcvs.fnal.gov/projects/artdaq
 
 if [[ "$?" != "0" ]]; then
-    echo "Unable to perform checkout of http://cdcvs.fnal.gov/projects/artdaq"
+    echo "Unable to perform checkout of https://cdcvs.fnal.gov/projects/artdaq"
     exit 1
 fi
 
-mrb gitCheckout -b for_dune-artdaq -d artdaq_mpich_plugin http://cdcvs.fnal.gov/projects/artdaq-utilities-mpich-plugin
+mrb gitCheckout -b for_dune-artdaq -d artdaq_mpich_plugin https://cdcvs.fnal.gov/projects/artdaq-utilities-mpich-plugin
 
 if [[ "$?" != "0" ]]; then
-    echo "Unable to perform checkout of http://cdcvs.fnal.gov/projects/artdaq-utilities-mpich_plugin"
+    echo "Unable to perform checkout of https://cdcvs.fnal.gov/projects/artdaq-utilities-mpich_plugin"
     exit 1
 fi
+
+sed -i -r 's/^\s*defaultqual(\s+).*/defaultqual\1'$equalifier':'$squalifier'/' artdaq/ups/product_deps
+
+fi  # End "include artdaq repos"
 
 mrb gitCheckout $dune_raw_data_checkout_arg $dune_raw_data_repo
 
@@ -298,7 +310,6 @@ if [[ "$?" != "0" ]]; then
     exit 1
 fi
 
-sed -i -r 's/^\s*defaultqual(\s+).*/defaultqual\1'$equalifier':'$squalifier'/' artdaq/ups/product_deps
 sed -i -r 's/^\s*defaultqual(\s+).*/defaultqual\1'$equalifier':online:'$squalifier'/' dune_raw_data/ups/product_deps
 dune_artdaq_version=$( sed -r -n 's/^\s*parent\s+\S+\s+(\S+).*/\1/p' dune_artdaq/ups/product_deps )
 
@@ -308,18 +319,14 @@ ARTDAQ_DEMO_DIR=$Base/srcs/dune_artdaq
 nprocessors=$( grep -E "processor\s+:" /proc/cpuinfo | wc -l )
 trace_file_label=$( basename $Base )
 
-uhal_version=v2_6_0
-protodune_timing_version=v5_1_0
-rogue_version=v2_10_0_3_gfaeedd0
-protodune_wibsoft_version=v349_hack
-netio_version=v0_8_0
 ftd2xx_version=v1_2_7a
-dunepdsprce_version=v0_0_4
-jsoncpp_version=v1_8_0
 dune_artdaq_InhibitMaster_version=$( sed -r -n "s/^\s*dune_artdaq_InhibitMaster\s+(\S+).*/\1/p" $ARTDAQ_DEMO_DIR/ups/product_deps )
-artdaq_dim_plugin_version=v0_02_08
-artdaq_mpich_plugin_version=v1_00_04
+dim_version=v20r20
+artdaq_dim_plugin_version=v0_02_08a
+artdaq_mpich_plugin_version=v2019_05_28_for_dune-artdaq_A
 TRACE_version=v3_13_07
+pyzmq_version=v18_0_1a
+
 
 cd $Base
     cat >setupDUNEARTDAQ_forBuilding <<-EOF
@@ -328,11 +335,10 @@ cd $Base
         sh -c "[ \`ps \$\$ | grep bash | wc -l\` -gt 0 ] || { echo 'Please switch to the bash shell before running dune-artdaq.'; exi
 t; }" || exit                                                                                           
 
-        if [[ -e /cvmfs/fermilab.opensciencegrid.org/products/artdaq/setup ]]; then 
-          source /cvmfs/fermilab.opensciencegrid.org/products/artdaq/setup
-        fi
+        export UPS_OVERRIDE="\${UPS_OVERRIDE:--B}"
 
         source /nfs/sw/artdaq/products/setup                                      
+        source /nfs/sw/artdaq/products_dev/setup                                      
 
         setup mrb v1_14_00
         source $Base/localProducts_dune_artdaq_${demo_version}_${equalifier}_${build_type}/setup
@@ -343,27 +349,12 @@ t; }" || exit
         export DUNEARTDAQ_REPO="$ARTDAQ_DEMO_DIR"                                                                        
         export FHICL_FILE_PATH=.:\$DUNEARTDAQ_REPO/tools/fcl:\$FHICL_FILE_PATH                                           
 
-        setup protodune_wibsoft $protodune_wibsoft_version -q e15:s64
-        setup uhal $uhal_version -q e15:prof:s64
-        setup netio $netio_version -q e15:prof:s64
-# RSIPOS 03/07/18 -> Infiniband workaround for FELIX BR build
-        #source /nfs/sw/felix/HACK-FELIX-BR-BUILD.sh
+        # RSIPOS 03/07/18 -> Infiniband workaround for FELIX BR build
         export ICP_ROOT=/nfs/sw/felix/QAT/QAT2.0
         export LD_LIBRARY_PATH=\$LD_LIBRARY_PATH:/nfs/sw/felix/QAT/QAT2.0/build
         export LD_LIBRARY_PATH=\$LD_LIBRARY_PATH:/nfs/sw/felix/QAT/QAT2.0/qatzip2/qatzip/src
 
-
         setup ftd2xx $ftd2xx_version
-        setup dunepdsprce $dunepdsprce_version -q e15:gen:prof
-        setup rogue $rogue_version -q e15:prof
-        setup protodune_timing $protodune_timing_version -q e15:prof:s64
-        setup dune_artdaq_InhibitMaster $dune_artdaq_InhibitMaster_version -q e15:s64:prof
-
-        export DIM_INC=/nfs/sw/dim/dim_v20r20
-        export DIM_LIB=/nfs/sw/dim/dim_v20r20/linux
-        export LD_LIBRARY_PATH=\$DIM_LIB:\$LD_LIBRARY_PATH
-        
-setup jsoncpp $jsoncpp_version -q e15
 
         export DISABLE_DOXYGEN="defined"
 
@@ -389,11 +380,9 @@ EOF
                                                                                                                          
         sh -c "[ \`ps \$\$ | grep bash | wc -l\` -gt 0 ] || { echo 'Please switch to the bash shell before running dune-artdaq.'; exit; }" || exit     
 
-        if [[ -e /cvmfs/fermilab.opensciencegrid.org/products/artdaq/setup ]]; then 
-          source /cvmfs/fermilab.opensciencegrid.org/products/artdaq/setup
-        fi
-
+        export UPS_OVERRIDE="\${UPS_OVERRIDE:--B}"
         source /nfs/sw/artdaq/products/setup                                      
+        source /nfs/sw/artdaq/products_dev/setup                                      
         source $Base/localProducts_dune_artdaq_${demo_version}_${equalifier}_${build_type}/setupWithoutMRB
         setup dune_artdaq $dune_artdaq_version -q e15:prof
        
@@ -405,10 +394,7 @@ EOF
         export DUNEARTDAQ_REPO="$ARTDAQ_DEMO_DIR"                                                                        
         export FHICL_FILE_PATH=.:\$DUNEARTDAQ_REPO/tools/fcl:\$FHICL_FILE_PATH                                           
 
-        setup protodune_wibsoft $protodune_wibsoft_version -q e15:s64
-        setup uhal $uhal_version -q e15:prof:s64
 
-        setup netio $netio_version -q e15:prof:s64
 # RSIPOS 03/07/18 -> Infiniband workaround for FELIX BR build
 #        export LD_LIBRARY_PATH=\$LD_LIBRARY_PATH:/nfs/sw/felix/new-software/multidma/software/external/libfabric/1.4.1.3/x86_64-centos7-gcc62-opt/lib
         export LD_LIBRARY_PATH=\$LD_LIBRARY_PATH:/nfs/sw/felix/fabric/build/lib
@@ -417,25 +403,17 @@ EOF
         export LD_LIBRARY_PATH=\$LD_LIBRARY_PATH:/nfs/sw/sysadmin/QAT/QAT2.0/build
         export LD_LIBRARY_PATH=\$LD_LIBRARY_PATH:/nfs/sw/sysadmin/QAT/QAT2.0/qatzip2/qatzip/src
 
-        setup ftd2xx $ftd2xx_version
-        setup dunepdsprce $dunepdsprce_version -q e15:gen:prof
-        setup rogue $rogue_version -q e15:prof
-        setup protodune_timing $protodune_timing_version -q e15:prof:s64
-        setup dune_artdaq_InhibitMaster $dune_artdaq_InhibitMaster_version -q e15:s64:prof
-export PYTHONUSERBASE=/nfs/sw/work_dirs/dune-artdaq-InhibitMaster/user_python
+       setup ftd2xx $ftd2xx_version
+       setup pyzmq $pyzmq_version  -q p2714b
+       setup dim $dim_version -q e15
+       setup artdaq_dim_plugin $artdaq_dim_plugin_version -q e15:prof:s64
 
-        export DIM_INC=/nfs/sw/dim/dim_v20r20
-        export DIM_LIB=/nfs/sw/dim/dim_v20r20/linux
-        export LD_LIBRARY_PATH=\$DIM_LIB:\$LD_LIBRARY_PATH
-
-       setup -j artdaq_dim_plugin $artdaq_dim_plugin_version -q e15:prof:s64
-        setup artdaq_mpich_plugin $artdaq_mpich_plugin_version -q e15:eth:prof:s64
+       setup artdaq_mpich_plugin $artdaq_mpich_plugin_version -q e15:eth:prof:s64
         
        setup TRACE $TRACE_version
         export TRACE_FILE=/tmp/trace_$trace_file_label
         export TRACE_LIMIT_MS="500,1000,2000"
 
-setup jsoncpp $jsoncpp_version -q e15
 
      # Uncomment the "tonM" line for a given TRACE below which you
         # want to activate. If you don't see the TRACE you want, then
@@ -495,13 +473,11 @@ cat >setupDUNEARTDAQ_forInhibitMaster<<-EOF
 
         sh -c "[ `ps $$ | grep bash | wc -l` -gt 0 ] || { echo 'Please switch to the bash shell before running dune-artdaq.'; exit; }" || exit
 
-        if [[ -e /cvmfs/fermilab.opensciencegrid.org/products/artdaq/setup ]]; then 
-          source /cvmfs/fermilab.opensciencegrid.org/products/artdaq/setup
-        fi
-
+        export UPS_OVERRIDE="\${UPS_OVERRIDE:--B}"
         source /nfs/sw/artdaq/products/setup
+        source /nfs/sw/artdaq/products_dev/setup                                      
         setup dune_artdaq_InhibitMaster $dune_artdaq_InhibitMaster_version -q e15:s64:prof
-        export PYTHONUSERBASE=/nfs/sw/work_dirs/dune-artdaq-InhibitMaster/user_python
+        setup pyzmq $pyzmq_version  -q p2714b
 
         setup TRACE $TRACE_version
         export TRACE_FILE=/tmp/trace_$trace_file_label
@@ -516,11 +492,9 @@ echo # This script is intended to be sourced.
 
         sh -c "[ `ps $$ | grep bash | wc -l` -gt 0 ] || { echo 'Please switch to the bash shell before running dune-artdaq.'; exit; }" || exit
 
-        if [[ -e /cvmfs/fermilab.opensciencegrid.org/products/artdaq/setup ]]; then 
-          source /cvmfs/fermilab.opensciencegrid.org/products/artdaq/setup
-        fi
-
+        export UPS_OVERRIDE="\${UPS_OVERRIDE:--B}"
         source /nfs/sw/artdaq/products/setup
+        source /nfs/sw/artdaq/products_dev/setup                                      
         source $Base/localProducts_dune_artdaq_${demo_version}_${equalifier}_${build_type}/setupWithoutMRB
 
         setup TRACE $TRACE_version
@@ -554,11 +528,8 @@ cd $MRB_BUILDDIR
 
 export CETPKG_J=$nprocessors
 source /nfs/sw/artdaq/products/setup
+source /nfs/sw/artdaq/products_dev/setup                                      
 
-
-        setup protodune_wibsoft $protodune_wibsoft_version -q e15:s64
-        setup uhal $uhal_version -q e15:prof:s64
-        setup netio $netio_version -q e15:prof:s64
 # RSIPOS 03/07/18 -> Infiniband workaround for FELIX BR build
         #source /nfs/sw/felix/HACK-FELIX-BR-BUILD.sh
         export ICP_ROOT=/nfs/sw/felix/QAT/QAT2.0
@@ -566,12 +537,6 @@ source /nfs/sw/artdaq/products/setup
         export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/nfs/sw/felix/QAT/QAT2.0/qatzip2/qatzip/src
 
         setup ftd2xx $ftd2xx_version
-        setup dunepdsprce $dunepdsprce_version -q e15:gen:prof
-        setup rogue $rogue_version -q e15:prof
-        setup protodune_timing $protodune_timing_version -q e15:prof:s64
-        setup dune_artdaq_InhibitMaster $dune_artdaq_InhibitMaster_version -q e15:s64:prof
-	setup jsoncpp $jsoncpp_version -q e15
-
 
 export DISABLE_DOXYGEN="defined"
 set +u
