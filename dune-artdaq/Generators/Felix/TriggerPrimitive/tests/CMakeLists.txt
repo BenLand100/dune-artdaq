@@ -94,6 +94,11 @@ cet_make_exec(dump_link
   LIBRARIES ${TP_LIBS}
 )
 
+cet_make_exec(dump_link_raw
+  SOURCE dump_link_raw.cpp
+  LIBRARIES ${TP_LIBS}
+)
+
 cet_make_exec(subscribe_only
   SOURCE subscribe_only.cpp
   LIBRARIES ${TP_LIBS}
