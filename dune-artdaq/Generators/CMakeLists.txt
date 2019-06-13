@@ -196,6 +196,7 @@ simple_plugin(SWTrigger "generator"
   dune-artdaq_Generators_timingBoard
   artdaq_Application
   artdaq_DAQdata
+  artdaq_DAQrate
   artdaq-core_Utilities
   artdaq-core_Data
   artdaq-utilities_Plugins

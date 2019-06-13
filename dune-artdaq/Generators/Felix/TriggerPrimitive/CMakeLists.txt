@@ -17,6 +17,7 @@ art_make_library( LIBRARY_NAME dune-artdaq_Generators_Felix_TriggerPrimitive
                   ${Boost_SYSTEM_LIBRARY}
                   ${Boost_THREAD_LIBRARY}
                   ${CETLIB}
+                  ${CETLIB_EXCEPT}
                   ${FHICLCPP}
                   artdaq-core_Data
                   ${LIBZMQ}
