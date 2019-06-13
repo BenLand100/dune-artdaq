@@ -1,5 +1,5 @@
 # For ptmp
-include_directories($ENV{PTMP_INCLUDE_DIR})
+# include_directories($ENV{PTMP_INCLUDE_DIR})
 
 simple_plugin(TPCMilliSliceSimulatorWithCopy "generator"
   dune-raw-data_Overlays
@@ -48,7 +48,7 @@ simple_plugin(FelixReceiver "generator"
   dune-artdaq_DAQLogger
   )
   
-find_library( LIBPTMP NAMES ptmp PATHS $ENV{PTMP_LIB})
+
 
 simple_plugin(HitFinderCPUReceiver "generator"
   dune-raw-data_Overlays
@@ -83,7 +83,7 @@ simple_plugin(SWTriggerReceiver "generator"
   ${PROTOBUF}
   dune-artdaq_DAQLogger
 )
-include_directories($ENV{PTMP_INC})
+# include_directories($ENV{PTMP_INC})
 
 # PAR 2018-12-03: Need these definitions to get my trigger primitive
 # code to work. They have to be target-specific otherwise they
