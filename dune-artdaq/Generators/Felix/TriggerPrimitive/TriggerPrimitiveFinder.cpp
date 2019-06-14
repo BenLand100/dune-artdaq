@@ -21,7 +21,6 @@ const int64_t clocksPerTPCTick=25;
 TriggerPrimitiveFinder::TriggerPrimitiveFinder(fhicl::ParameterSet const & ps)
 //std::string zmq_hit_send_connection, uint32_t window_offset, int32_t cpu_offset, int item_queue_size)
     : m_readyForMessages(false),
-      m_itemsToProcess(ps.get<int>("item_queue_size", 100000)),
       m_fiber_no(0xff),
       m_slot_no(0xff),
       m_crate_no(0xff),
@@ -34,16 +33,9 @@ TriggerPrimitiveFinder::TriggerPrimitiveFinder(fhicl::ParameterSet const & ps)
       m_offline_channel_base(0),
       m_n_tpsets_sent(0)
 {
-    m_processingThread=std::thread(&TriggerPrimitiveFinder::processing_thread, this, 0, REGISTERS_PER_FRAME);
     std::vector<int32_t> cpus_to_pin=ps.get<std::vector<int32_t>>("cpus_to_pin", std::vector<int32_t>());
-    if(!cpus_to_pin.empty()){
-        cpu_set_t cpuset;
-        CPU_ZERO(&cpuset);
-        for(auto const& cpu: cpus_to_pin){
-            CPU_SET(cpu, &cpuset);
-        }
-        pthread_setaffinity_np(m_processingThread.native_handle(), sizeof(cpu_set_t), &cpuset);
-    }
+    size_t qsize=ps.get<size_t>("item_queue_size", 100000);
+    m_processingThread=std::thread(&TriggerPrimitiveFinder::processing_thread, this, 0, REGISTERS_PER_FRAME, qsize, cpus_to_pin);
 }
 
 //======================================================================
@@ -53,7 +45,7 @@ TriggerPrimitiveFinder::~TriggerPrimitiveFinder()
     m_should_stop.store(false);
     // Superstition: add multiple "end of messages" messages
     for(int i=0; i<5; ++i){
-        m_itemsToProcess.write(ProcessingTasks::ItemToProcess{ProcessingTasks::END_OF_MESSAGES, SUPERCHUNK_CHAR_STRUCT{}, ProcessingTasks::now_us()});
+        m_itemsToProcess->write(ProcessingTasks::ItemToProcess{ProcessingTasks::END_OF_MESSAGES, SUPERCHUNK_CHAR_STRUCT{}, ProcessingTasks::now_us()});
     }
     dune::DAQLogger::LogInfo("TriggerPrimitiveFinder::~TriggerPrimitiveFinder") << "Joining processing thread";
     m_processingThread.join(); // Wait for it to actually stop
@@ -83,7 +75,7 @@ bool TriggerPrimitiveFinder::addMessage(SUPERCHUNK_CHAR_STRUCT& ucs)
             frame->print();
             ++nPrinted;
         }
-        return m_itemsToProcess.write(ProcessingTasks::ItemToProcess{timestamp, ucs, ProcessingTasks::now_us()});
+        return m_itemsToProcess->write(ProcessingTasks::ItemToProcess{timestamp, ucs, ProcessingTasks::now_us()});
     }
     return true;
 }
@@ -272,9 +264,25 @@ void TriggerPrimitiveFinder::measure_latency(const ProcessingTasks::ItemToProces
 }
 
 //======================================================================
-void TriggerPrimitiveFinder::processing_thread(uint8_t first_register, uint8_t last_register)
+void TriggerPrimitiveFinder::processing_thread(uint8_t first_register, uint8_t last_register,
+                                               size_t qsize, std::vector<int32_t> cpus_to_pin)
 {
     pthread_setname_np(pthread_self(), "processing");
+
+    if(!cpus_to_pin.empty()){
+        cpu_set_t cpuset;
+        CPU_ZERO(&cpuset);
+        for(auto const& cpu: cpus_to_pin){
+            CPU_SET(cpu, &cpuset);
+        }
+        pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpuset);
+    }
+
+    // We allocate the queue of items in this thread *after* pinning
+    // with the hope of making sure the allocation is on NUMA1 not
+    // NUMA0, to spread the memory bandwidth load across NUMA cores
+    m_itemsToProcess=std::make_unique<folly::ProducerConsumerQueue<ProcessingTasks::ItemToProcess>>(qsize);
+
     uint64_t first_msg_us=0;
 
     // -------------------------------------------------------- 
@@ -321,7 +329,7 @@ void TriggerPrimitiveFinder::processing_thread(uint8_t first_register, uint8_t l
 
     while(true){
         ProcessingTasks::ItemToProcess item;
-        while(!m_itemsToProcess.read(item) && !m_should_stop.load()){ 
+        while(!m_itemsToProcess->read(item) && !m_should_stop.load()){ 
             std::this_thread::sleep_for(std::chrono::microseconds(10));
         }
         ++nmsg;
