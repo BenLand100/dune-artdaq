@@ -278,9 +278,13 @@ void TriggerPrimitiveFinder::processing_thread(uint8_t first_register, uint8_t l
         pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpuset);
     }
 
+    // NUMA allocation idea didn't see to work first time. Try a short sleep so the scheduler can move us?!?
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+
     // We allocate the queue of items in this thread *after* pinning
     // with the hope of making sure the allocation is on NUMA1 not
     // NUMA0, to spread the memory bandwidth load across NUMA cores
+    dune::DAQLogger::LogInfo("TriggerPrimitiveFinder::processing_thread") << "Allocating item queue of size " << qsize;
     m_itemsToProcess=std::make_unique<folly::ProducerConsumerQueue<ProcessingTasks::ItemToProcess>>(qsize);
 
     uint64_t first_msg_us=0;
