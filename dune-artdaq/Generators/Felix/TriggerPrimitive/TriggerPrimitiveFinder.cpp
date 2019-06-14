@@ -35,14 +35,13 @@ TriggerPrimitiveFinder::TriggerPrimitiveFinder(fhicl::ParameterSet const & ps)
       m_n_tpsets_sent(0)
 {
     m_processingThread=std::thread(&TriggerPrimitiveFinder::processing_thread, this, 0, REGISTERS_PER_FRAME);
-    int32_t cpu_offset=ps.get<int32_t>("cpu_offset", -1);
-    if(cpu_offset>=0){
-        // Copied from NetioHandler::lockSubsToCPUs()
+    std::vector<int32_t> cpus_to_pin=ps.get<std::vector<int32_t>>("cpus_to_pin", std::vector<int32_t>());
+    if(!cpus_to_pin.empty()){
         cpu_set_t cpuset;
         CPU_ZERO(&cpuset);
-        unsigned short cpuid = cpu_offset;
-        CPU_SET(cpuid, &cpuset);    // The physical core
-        CPU_SET(cpuid+24, &cpuset); // The corresponding HT core
+        for(auto const& cpu: cpus_to_pin){
+            CPU_SET(cpu, &cpuset);
+        }
         pthread_setaffinity_np(m_processingThread.native_handle(), sizeof(cpu_set_t), &cpuset);
     }
 }
