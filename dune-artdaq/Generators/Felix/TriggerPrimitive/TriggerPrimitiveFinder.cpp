@@ -217,10 +217,10 @@ TriggerPrimitiveFinder::addHitsToQueue(uint64_t timestamp,
         if(tpset.tps_size()!=0 && m_TPSender){
             ptmp::TPSender& tpsender=*m_TPSender;
             tpsender(tpset);
+            ++m_n_tpsets_sent;
         }
         msgs_in_tpset=0;
         m_current_tpset.reset(new ptmp::data::TPSet);
-        ++m_n_tpsets_sent;
     }
 
     while(primitive_queue.size()>20000) primitive_queue.pop_front();
@@ -267,7 +267,7 @@ void TriggerPrimitiveFinder::measure_latency(const ProcessingTasks::ItemToProces
         was_behind=false;
     }
     if(was_behind && full_latency>last_printed_latency+latencyThresholdEnter){
-        dune::DAQLogger::LogInfo("TriggerPrimitiveFinder::measure_latency") << "Processing now late by " << (full_latency/1000) << "ms (threshold is " << (latencyThresholdEnter/1000) << "ms). Latency since queueing: " << (tpf_latency/1000) << "ms";
+        dune::DAQLogger::LogInfo("TriggerPrimitiveFinder::measure_latency") << "Processing now late by " << (full_latency/1000) << "ms (threshold is " << (latencyThresholdEnter/1000) << "ms). Latency since queueing: " << tpf_latency << "us";
         last_printed_latency+=latencyThresholdEnter;
     }
 }
