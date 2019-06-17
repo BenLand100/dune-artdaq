@@ -1,48 +1,10 @@
 #! /bin/bash
-# quick-mrb-start.sh - Eric Flumerfelt, May 20, 2016
-# Downloads, installs, and runs the artdaq_demo as an MRB-controlled repository
+# Downloads and installs dune-raw-data as an MRB-controlled repository
 
-# JCF, Jan-1-2017
-# Modified this script to work with the lbne-artdaq package
+# THIS WILL INSTALL THE OFFLINE, I.E., nu-QUALIFIED VERSION OF dune-raw-data
 
-# JCF, Mar-2-2017
-# Modified it again to work with the brand new dune-artdaq package
+bad_network=false
 
-if [[ "$USER" == "np04daq" ]]; then
-    
-    cat<<EOF >&2
-
-    Unless the dune-artdaq installation you're creating is meant for
-    standard experiment-wide running rather than for code development
-    purposes, you should run this script under your own user account,
-    not under the np04daq account
-
-EOF
-
-exit 1
-
-fi
-
-if ! [[ "$HOSTNAME" =~ ^np04-srv ]]; then 
-    echo "This script will only work on the CERN protoDUNE teststand computers, np04-srv-*" >&2
-    exit 1
-else
-    :  # Note to myself (JCF): should consider putting a cvmfs source in here if I formalize this script for non-ProtoDUNE cluster installation
-fi
-
-if [[ -e /nfs/sw/artdaq/products/setup ]]; then
-    . /nfs/sw/artdaq/products/setup
-else
-    echo "Expected there to be a products directory /nfs/sw/artdaq/products/" >&2 
-    exit 1
-fi
-
-if [[ -e /nfs/sw/artdaq/products_dev/setup ]]; then
-    . /nfs/sw/artdaq/products_dev/setup
-else
-    echo "Expected there to be a products directory /nfs/sw/artdaq/products_dev/" >&2
-    exit 1
-fi
 
 git_status=`git status 2>/dev/null`
 git_sts=$?
@@ -57,16 +19,24 @@ test -d products || mkdir products
 test -d download || mkdir download
 test -d log || mkdir log
 
+if $bad_network ; then
+    echo "\"bad_network\" parameter is set; therefore quick-mrb-start.sh makes the following assumptions: "
+    echo "-All needed products are on the host, and the setup for those products has been sourced"
+    echo "-The git repos for artdaq, etc., are already in this directory"
+    echo "-There's a file already existing called $Base/download/product_deps which will tell this script what version of artdaq, etc., to expect"
+    echo "-Your host has the SLF7 operating system"
+    echo "-You've deleted the directories which look like localProducts_dune_raw_data_* and build_slf7.x86_64 (though the versions may have changed since this instruction was written)"
+    sleep 5
+fi
+
+
 
 env_opts_var=`basename $0 | sed 's/\.sh$//' | tr 'a-z-' 'A-Z_'`_OPTS
 USAGE="\
    usage: `basename $0` [options]
 examples: `basename $0` 
-          `basename $0` --dune-raw-data-developer --dune-raw-data-develop-branch
-          `basename $0` --debug --dune-raw-data-developer
+          `basename $0` --debug --dune-raw-data-developer --dune-raw-data-develop-branch
 --debug       perform a debug build
---include-artdaq-repos  use if you plan on developing the artdaq code (contact jcfree@fnal.gov or biery@fnal.gov before attempting this)
---not-dune-artdaq-developer  use if you don't have write access to the dune-artdaq repository
 --dune-raw-data-develop-branch     Install the current \"develop\" version of dune-raw-data (may be unstable!)
 --dune-raw-data-developer    use if you have (and want to use) write access to the dune-raw-data repository
 "
@@ -77,7 +47,7 @@ eval "set -- $env_opts \"\$@\""
 op1chr='rest=`expr "$op" : "[^-]\(.*\)"`   && set -- "-$rest" "$@"'
 op1arg='rest=`expr "$op" : "[^-]\(.*\)"`   && set --  "$rest" "$@"'
 reqarg="$op1arg;"'test -z "${1+1}" &&echo opt -$op requires arg. &&echo "$USAGE" &&exit'
-args= do_help= opt_v=0; opt_lrd_w=0; opt_lrd_develop=0; opt_la_nw=0; inc_artdaq_repos=0;
+args= do_help= opt_v=0; opt_lrd_w=0; opt_lrd_develop=0; opt_la_nw=0;
 while [ -n "${1-}" ];do
     if expr "x${1-}" : 'x-' >/dev/null;then
         op=`expr "x$1" : 'x-\(.*\)'`; shift   # done with $1
@@ -86,8 +56,6 @@ while [ -n "${1-}" ];do
         case "$op" in
             \?*|h*)     eval $op1chr; do_help=1;;
 	    -debug)     opt_debug=--debug;;
-	    -include-artdaq-repos) inc_artdaq_repos=1;;
-	    -not-dune-artdaq-developer) opt_la_nw=1;;
 	    -dune-raw-data-develop-branch) opt_lrd_develop=1;;
 	    -dune-raw-data-developer)  opt_lrd_w=1;;
             *)          echo "Unknown option -$op"; do_help=1;;
@@ -98,16 +66,29 @@ while [ -n "${1-}" ];do
 done
 eval "set -- $args \"\$@\""; unset args aa
 
-which lsb_release 2>&1 > /dev/null
-if [[ "$?" != "0" ]]; then
-    echo "According to the \"which\" command, lsb_release is not available - this needs to be installed in order for dune-artdaq installation to work" >&2
+set -u   # complain about uninitialed shell variables - helps development
+
+if [[ $opt_lrd_develop -eq 0 ]]; then
+    echo "JCF, May-12-2017: currently there isn't an official cut release of dune-raw-data; therefore you need to supply the --dune-raw-data-develop-branch argument to this script" >&2
     exit 1
 fi
 
+dune_repo=/cvmfs/dune.opensciencegrid.org/products/dune
 
-set -u   # complain about uninitialed shell variables - helps development
+if [[ ! -e $dune_repo ]]; then
+    echo "This installation needs access to the CVMFS mount point for the dune repo, ${dune_repo}, in order to obtain the dunepdsprce packages. Aborting..." >&2
+    exit 1
+fi
 
-test -n "${do_help-}" -o $# -ge 3 && echo "$USAGE" && exit
+source $dune_repo/setup
+
+larsoft_repo=/cvmfs/fermilab.opensciencegrid.org/products/larsoft
+
+if [[ -e $larsoft_repo ]]; then
+    source $larsoft_repo/setup
+fi
+
+test -n "${do_help-}" -o $# -ge 2 && echo "$USAGE" && exit
 
 # JCF, 1/16/15
 # Save all output from this script (stdout + stderr) in a file with a
@@ -160,76 +141,117 @@ function detectAndPull() {
     cd $startDir
 }
 
+if $bad_network ; then
+    os="slf7"    
+else 
+    os=
+fi
+
 cd $Base/download
+
+if [[ -z $os ]]; then
+    echo "Cloning cetpkgsupport to determine current OS"
+    git clone http://cdcvs.fnal.gov/projects/cetpkgsupport
+    os=`./cetpkgsupport/bin/get-directory-name os`
+fi
+
+if [[ "$os" == "u14" ]]; then
+	echo "-H Linux64bit+3.19-2.19" >../products/ups_OVERRIDE.`hostname`
+fi
 
 # Get all the information we'll need to decide which exact flavor of the software to install
 if [ -z "${tag:-}" ]; then 
   tag=develop;
 fi
 
-wget https://cdcvs.fnal.gov/redmine/projects/dune-artdaq/repository/revisions/develop/raw/ups/product_deps
+if ! $bad_network; then
+   wget https://cdcvs.fnal.gov/redmine/projects/dune-raw-data/repository/revisions/$tag/raw/ups/product_deps
+fi
 
 if [[ ! -e $Base/download/product_deps ]]; then
-    echo "You need to have a product_deps file in $Base/download" >&2
-    exit 1
+   echo "You need to have a product_deps file in $Base/download" >&2
+   exit 1
 fi
 
-demo_version=`grep "parent dune_artdaq" $Base/download/product_deps|awk '{print $3}'`
+coredemo_version=`grep "parent dune_raw_data" $Base/download/product_deps|awk '{print $3}'`
 
-artdaq_version=`grep -E "^artdaq\s+" $Base/download/product_deps | awk '{print $2}'`
+default_quals=$( awk '/^defaultqual/ {print $2} ' $Base/download/product_deps )
+default_quals=$( echo $default_quals | sed -r 's/online/nu/' )
 
-if [[ "$artdaq_version" == "v3_00_03a" ]]; then
-    artdaq_manifest_version=v3_00_03
-elif [[ "$artdaq_version" == "v3_03_00_beta" ]]; then
-    artdaq_manifest_version=v3_03_00
+quals=$default_quals
+
+defaultE=$( echo $quals |  sed -r 's/.*(e[0-9]+).*/\1/' )
+defaultS=$( echo $quals |  sed -r 's/.*(s[0-9]+).*/\1/' )
+
+if [ -n "${equalifier-}" ]; then 
+    equalifier="e${equalifier}";
 else
-    artdaq_manifest_version=$artdaq_version
+    equalifier=$defaultE
 fi
-
-
-coredemo_version=`grep -E "^dune_raw_data\s+" $Base/download/product_deps | awk '{print $2}'`
-
-
-equalifier=e15
-squalifier=s64
-
+if [ -n "${squalifier-}" ]; then
+    squalifier="s${squalifier}"
+else
+    squalifier=$defaultS
+fi
 if [[ -n "${opt_debug:-}" ]] ; then
     build_type="debug"
 else
     build_type="prof"
 fi
 
-echo >&2
-echo "Skipping pullProducts, products needed for artdaq already assumed to be available. If this is wrong, then from $PWD, execute:" >&2
-echo "wget http://scisoft.fnal.gov/scisoft/bundles/tools/pullProducts" >&2
-echo "chmod +x pullProducts" >&2
-echo "./pullProducts $Base/products <OS name - e.g., slf7> artdaq-${artdaq_manifest_version} ${squalifier}-${equalifier} ${build_type}" >&2
-echo >&2
+artdaq_core_version=$( sed -r -n 's/artdaq_core\s+(.*)\s+nu.*/\1/p'  $Base/download/product_deps )
+art_version=$( sed -r -n 's/art\s+(.*)\s+nu.*/\1/p' $Base/download/product_deps)
+TRACE_version=$( sed -r -n 's/TRACE\s+(.*)\s+nu.*/\1/p' $Base/download/product_deps)
+cetbuildtools_version=$( sed -r -n 's/cetbuildtools\s+(.*)\s+nu.*/\1/p' $Base/download/product_deps)
 
-detectAndPull mrb noarch
 
-# JCF, Apr-26-2018: Kurt discovered that it's necessary for the $Base/products area to be based on ups v6_0_7
-upsfile=/nfs/sw/control_files/misc/ups-6.0.7-Linux64bit+3.10-2.17.tar.bz2
+artdaq_core_version_dot=$( echo $artdaq_core_version | sed -r 's/v//;s/_/./g' )
+art_version_dot=$( echo $art_version | sed -r 's/v//;s/_/./g' )
+TRACE_version_dot=$( echo $TRACE_version | sed -r 's/v//;s/_/./g' )
+cetbuildtools_version_dot=$( echo $cetbuildtools_version | sed -r 's/v//;s/_/./g' )
 
-if [[ ! -e $upsfile ]]; then
-    echo "Unable to find ${upsfile}; you'll need to restore it from SciSoft" >&2
-    exit 1
+# If we aren't connected to the outside world, you'll need to have
+# previously scp'd or rsync'd the products to the host you're trying
+# to install dune-artdaq on
+
+if ! $bad_network; then
+    wget http://scisoft.fnal.gov/scisoft/bundles/tools/pullProducts
+    chmod +x pullProducts
+
+    ./pullProducts $Base/products ${os} art-${art_version} ${equalifier} ${build_type}
+
+    if [ $? -ne 0 ]; then
+	echo "Error in pullProducts. Please go to http://scisoft.fnal.gov/scisoft/bundles/art/${art_version}/manifest and make sure that a manifest for the specified qualifier (${equalifier}) exists."
+	exit 1
+    fi
+
+    detectAndPull mrb noarch
+
+    curl -O http://scisoft.fnal.gov/scisoft/packages/artdaq_core/$artdaq_core_version/artdaq_core-${artdaq_core_version_dot}-${os}-x86_64-${equalifier}-${squalifier}-${build_type}.tar.bz2
+    curl -O http://scisoft.fnal.gov/scisoft/packages/cetbuildtools/$cetbuildtools_version/cetbuildtools-${cetbuildtools_version_dot}-noarch.tar.bz2
+    curl -O http://scisoft.fnal.gov/scisoft/packages/TRACE/$TRACE_version/TRACE-${TRACE_version_dot}-${os}-x86_64.tar.bz2
 fi
 
 cd $Base/products
-cp -p $upsfile .
-tar xjf $upsfile
+
+echo "Unzipping downloaded archive files; this may take a while..."
+
+for archivefile in $Base/download/*.bz2; do
+    echo tar xjf $archivefile
+    tar xjf $archivefile
+done
+
 source $Base/products/setup
-setup mrb v1_14_00
+setup mrb
 setup git
 setup gitflow
 
-export MRB_PROJECT=dune_artdaq
+export MRB_PROJECT=dune_raw_data
 cd $Base
-mrb newDev -f -v $demo_version -q ${equalifier}:${build_type}
+mrb newDev -f -v $coredemo_version -q ${quals}:${build_type}
 set +u
-
-source $Base/localProducts_dune_artdaq_${demo_version}_${equalifier}_${build_type}/setup
+localproducts_setup=$Base/localProducts_dune_raw_data_${coredemo_version}_$( echo $quals | tr ':' '_' )_${build_type}/setup
+source $localproducts_setup
 set -u
 
 cd $MRB_SOURCE
@@ -237,330 +259,82 @@ cd $MRB_SOURCE
 if [[ $opt_lrd_develop -eq 1 ]]; then
     dune_raw_data_checkout_arg="-d dune_raw_data"
 else
-    dune_raw_data_checkout_arg="-b for_dune-artdaq -d dune_raw_data"
+    dune_raw_data_checkout_arg="-t ${coredemo_version} -d dune_raw_data"
 fi
 
 
 if [[ $opt_lrd_w -eq 1 ]]; then
     dune_raw_data_repo="ssh://p-dune-raw-data@cdcvs.fnal.gov/cvs/projects/dune-raw-data"
 else
-    dune_raw_data_repo="https://cdcvs.fnal.gov/projects/dune-raw-data"
+    dune_raw_data_repo="http://cdcvs.fnal.gov/projects/dune-raw-data"
 fi
 
-if [[ $tag == "develop" ]]; then
-    dune_artdaq_checkout_arg="-d dune_artdaq"
-else
-    dune_artdaq_checkout_arg="-b develop -d dune_artdaq"
+if ! $bad_network; then
+    
+
+    mrb gitCheckout $dune_raw_data_checkout_arg $dune_raw_data_repo
+
+    if [[ "$?" != "0" ]]; then
+	echo "Unable to perform checkout of $dune_raw_data_repo"
+	exit 1
+    fi
+
 fi
 
+sed -i -r '/^defaultqual/s/online/nu/' $Base/srcs/dune_raw_data/ups/product_deps
 
-# Notice the default for write access to dune-artdaq is the opposite of that for dune-raw-data
-if [[ $opt_la_nw -eq 1 ]]; then
-    dune_artdaq_repo="https://cdcvs.fnal.gov/projects/dune-artdaq"
-else
-    dune_artdaq_repo="ssh://p-dune-artdaq@cdcvs.fnal.gov/cvs/projects/dune-artdaq"
-fi
-
-
-if [[ "$inc_artdaq_repos" == "1" ]] ; then
-
-mrb gitCheckout -b for_dune-artdaq -d artdaq_core https://cdcvs.fnal.gov/projects/artdaq-core
- 
-if [[ "$?" != "0" ]]; then
-    echo "Unable to perform checkout of https://cdcvs.fnal.gov/projects/artdaq-core"
-    exit 1
-fi
-
-mrb gitCheckout -b for_dune-artdaq -d artdaq_utilities https://cdcvs.fnal.gov/projects/artdaq-utilities
- 
-if [[ "$?" != "0" ]]; then
-    echo "Unable to perform checkout of https://cdcvs.fnal.gov/projects/artdaq-utilities"
-    exit 1
-fi
-
-mrb gitCheckout -b for_dune-artdaq -d artdaq https://cdcvs.fnal.gov/projects/artdaq
-
-if [[ "$?" != "0" ]]; then
-    echo "Unable to perform checkout of https://cdcvs.fnal.gov/projects/artdaq"
-    exit 1
-fi
-
-mrb gitCheckout -b for_dune-artdaq -d artdaq_mpich_plugin https://cdcvs.fnal.gov/projects/artdaq-utilities-mpich-plugin
-
-if [[ "$?" != "0" ]]; then
-    echo "Unable to perform checkout of https://cdcvs.fnal.gov/projects/artdaq-utilities-mpich_plugin"
-    exit 1
-fi
-
-sed -i -r 's/^\s*defaultqual(\s+).*/defaultqual\1'$equalifier':'$squalifier'/' artdaq/ups/product_deps
-
-fi  # End "include artdaq repos"
-
-mrb gitCheckout $dune_raw_data_checkout_arg $dune_raw_data_repo
-
-if [[ "$?" != "0" ]]; then
-    echo "Unable to perform checkout of $dune_raw_data_repo"
-    exit 1
-fi
-
-mrb gitCheckout $dune_artdaq_checkout_arg $dune_artdaq_repo
-
-if [[ "$?" != "0" ]]; then
-    echo "Unable to perform checkout of $dune_artdaq_repo"
-    exit 1
-fi
-
-sed -i -r 's/^\s*defaultqual(\s+).*/defaultqual\1'$equalifier':online:'$squalifier'/' dune_raw_data/ups/product_deps
-dune_artdaq_version=$( sed -r -n 's/^\s*parent\s+\S+\s+(\S+).*/\1/p' dune_artdaq/ups/product_deps )
-
-ARTDAQ_DEMO_DIR=$Base/srcs/dune_artdaq
-
-
-nprocessors=$( grep -E "processor\s+:" /proc/cpuinfo | wc -l )
-trace_file_label=$( basename $Base )
-
-ftd2xx_version=v1_2_7a
-dune_artdaq_InhibitMaster_version=$( sed -r -n "s/^\s*dune_artdaq_InhibitMaster\s+(\S+).*/\1/p" $ARTDAQ_DEMO_DIR/ups/product_deps )
-dim_version=v20r20
-artdaq_dim_plugin_version=v0_02_08a
-artdaq_mpich_plugin_version=v2019_05_28_for_dune-artdaq_A
-TRACE_version=v3_13_07
-pyzmq_version=v18_0_1a
-
-
+ARTDAQ_DEMO_DIR=$Base/srcs/dune_raw_data
 cd $Base
-    cat >setupDUNEARTDAQ_forBuilding <<-EOF
+    cat >setupDUNERAWDATA <<-EOF
        echo # This script is intended to be sourced.                                                                    
                                                                                                                          
-        sh -c "[ \`ps \$\$ | grep bash | wc -l\` -gt 0 ] || { echo 'Please switch to the bash shell before running dune-artdaq.'; exi
-t; }" || exit                                                                                           
+        sh -c "[ \`ps \$\$ | grep bash | wc -l\` -gt 0 ] || { echo 'Please switch to the bash shell before running dune-raw-data.'; exit; }" || exit                                                                                           
+        source $Base/products/setup                                                                                   
+        source $dune_repo/setup
 
-        export UPS_OVERRIDE="\${UPS_OVERRIDE:--B}"
+        if [[ -e $larsoft_repo ]]; then
+             source $larsoft_repo/setup
+        fi
 
-        source /nfs/sw/artdaq/products/setup                                      
-        source /nfs/sw/artdaq/products_dev/setup                                      
-
-        setup mrb v1_14_00
-        source $Base/localProducts_dune_artdaq_${demo_version}_${equalifier}_${build_type}/setup
+        setup mrb
+        source $localproducts_setup
+        source mrbSetEnv       
                                                                                                                   
         export DAQ_INDATA_PATH=$ARTDAQ_DEMO_DIR/test/Generators:$ARTDAQ_DEMO_DIR/inputData                               
                                                                                                                          
-        export DUNEARTDAQ_BUILD=$MRB_BUILDDIR/dune_artdaq                                                            
-        export DUNEARTDAQ_REPO="$ARTDAQ_DEMO_DIR"                                                                        
-        export FHICL_FILE_PATH=.:\$DUNEARTDAQ_REPO/tools/fcl:\$FHICL_FILE_PATH                                           
-
-        # RSIPOS 03/07/18 -> Infiniband workaround for FELIX BR build
-        export ICP_ROOT=/nfs/sw/felix/QAT/QAT2.0
-        export LD_LIBRARY_PATH=\$LD_LIBRARY_PATH:/nfs/sw/felix/QAT/QAT2.0/build
-        export LD_LIBRARY_PATH=\$LD_LIBRARY_PATH:/nfs/sw/felix/QAT/QAT2.0/qatzip2/qatzip/src
-
-        setup ftd2xx $ftd2xx_version
-
-        export DISABLE_DOXYGEN="defined"
-
-        # 26-Apr-2018, KAB: moved the sourcing of mrbSetEnv to *after* all product
-        # setups so that we get the right env vars for the source repositories that
-        # are part of the mrb build area.
-        source mrbSetEnv
-
-echo "Only need to source this file once in the environment; now, to perform builds do the following:"
-echo ""
-echo "  mrb build -j32  # to build without 'installing' the built code"
-echo "  mrb install -j32  # to build and 'install' the built code"
-echo "    (where 'install' means copy-to-local-products-area and use in runtime environment)"
-echo ""
-echo "*** PLEASE NOTE that we should now use 'mrb install -j32' to build the dune-artdaq software ***"
-echo ""
-
-EOF
-
-
-    cat >setupDUNEARTDAQ_forRunning <<-EOF
-       echo # This script is intended to be sourced.                                                                    
-                                                                                                                         
-        sh -c "[ \`ps \$\$ | grep bash | wc -l\` -gt 0 ] || { echo 'Please switch to the bash shell before running dune-artdaq.'; exit; }" || exit     
-
-        export UPS_OVERRIDE="\${UPS_OVERRIDE:--B}"
-        source /nfs/sw/artdaq/products/setup                                      
-        source /nfs/sw/artdaq/products_dev/setup                                      
-        source $Base/localProducts_dune_artdaq_${demo_version}_${equalifier}_${build_type}/setupWithoutMRB
-        setup dune_artdaq $dune_artdaq_version -q e15:prof
-       
-        alias RoutingMaster="routing_master"
-                                                                                                           
-        export DAQ_INDATA_PATH=$ARTDAQ_DEMO_DIR/test/Generators:$ARTDAQ_DEMO_DIR/inputData                               
-                                                                                                                         
-        export DUNEARTDAQ_BUILD=$MRB_BUILDDIR/dune_artdaq                                                            
-        export DUNEARTDAQ_REPO="$ARTDAQ_DEMO_DIR"                                                                        
-        export FHICL_FILE_PATH=.:\$DUNEARTDAQ_REPO/tools/fcl:\$FHICL_FILE_PATH                                           
-
-
-# RSIPOS 03/07/18 -> Infiniband workaround for FELIX BR build
-#        export LD_LIBRARY_PATH=\$LD_LIBRARY_PATH:/nfs/sw/felix/new-software/multidma/software/external/libfabric/1.4.1.3/x86_64-centos7-gcc62-opt/lib
-        export LD_LIBRARY_PATH=\$LD_LIBRARY_PATH:/nfs/sw/felix/fabric/build/lib
-        #source /nfs/sw/felix/HACK-FELIX-BR-BUILD.sh
-        export ICP_ROOT=/nfs/sw/sysadmin/QAT/QAT2.0
-        export LD_LIBRARY_PATH=\$LD_LIBRARY_PATH:/nfs/sw/sysadmin/QAT/QAT2.0/build
-        export LD_LIBRARY_PATH=\$LD_LIBRARY_PATH:/nfs/sw/sysadmin/QAT/QAT2.0/qatzip2/qatzip/src
-
-       setup ftd2xx $ftd2xx_version
-       setup pyzmq $pyzmq_version  -q p2714b
-       setup dim $dim_version -q e15
-       setup artdaq_dim_plugin $artdaq_dim_plugin_version -q e15:prof:s64
-
-       setup artdaq_mpich_plugin $artdaq_mpich_plugin_version -q e15:eth:prof:s64
-        
-       setup TRACE $TRACE_version
-        export TRACE_FILE=/tmp/trace_$trace_file_label
-        export TRACE_LIMIT_MS="500,1000,2000"
-
-
-     # Uncomment the "tonM" line for a given TRACE below which you
-        # want to activate. If you don't see the TRACE you want, then
-        # add a toffM / tonM combination for it like you see in the
-        # other examples below. For more info, take a look at
-        # https://twiki.cern.ch/twiki/bin/view/CENF/TRACE
-
-        #toffM 12 -n RequestSender
-        #tonM 12 -n RequestSender
- 
-        #toffM 10 -n CommandableFragmentGenerator
-        #tonM 10 -n CommandableFragmentGenerator
-
-        toffM 50 -n RCE
-        tonM  50 -n RCE
-
-toffS 20 -n TriggerBoardReader
-#tonS  20 -n TriggerBoardReader
-
-
-# JCF, 11/25/14
-# Make it easy for users to take a quick look at their output file via "rawEventDump"
-
-alias rawEventDump="if [[ -n \\\$SETUP_TRACE ]]; then unsetup TRACE ; echo Disabling TRACE ; sleep 1; fi; art -c \$DUNEARTDAQ_REPO/tools/fcl/rawEventDump.fcl "                                                    
-
-echo ""
-echo "*** PLEASE NOTE that there are now TWO setup scripts:"
-echo "    - setupDUNEARTDAQ_forBuilding"
-echo "    - setupDUNEARTDAQ_forRunning"
-echo ""
-echo "You have just sourced setupDUNEARTDAQ_forRunning."
-echo "Please use this script for all uses except building the software."
-echo ""
-echo "If, instead, you would like to build the software, please start with a fresh"
-echo "shell and 'source setupDUNEARTDAQ_forBuilding' and 'mrb install -j 32'".
-echo ""
-
-# 02-Aug-2018, KAB: only enable core dumps for certain hosts
-if [[ "\${HOSTNAME}" == "np04-srv-001" ]] ; then
-    ulimit -c unlimited
-fi
-if [[ "\${HOSTNAME}" == "np04-srv-002" ]] ; then
-    ulimit -c unlimited
-fi
-if [[ "\${HOSTNAME}" == "np04-srv-003" ]] ; then
-    ulimit -c unlimited
-fi
-if [[ "\${HOSTNAME}" == "np04-srv-004" ]] ; then
-    ulimit -c unlimited
-fi
-
-EOF
-
-cat >setupDUNEARTDAQ_forInhibitMaster<<-EOF
-
-        echo # This script is intended to be sourced.
-
-        sh -c "[ `ps $$ | grep bash | wc -l` -gt 0 ] || { echo 'Please switch to the bash shell before running dune-artdaq.'; exit; }" || exit
-
-        export UPS_OVERRIDE="\${UPS_OVERRIDE:--B}"
-        source /nfs/sw/artdaq/products/setup
-        source /nfs/sw/artdaq/products_dev/setup                                      
-        setup dune_artdaq_InhibitMaster $dune_artdaq_InhibitMaster_version -q e15:s64:prof
-        setup pyzmq $pyzmq_version  -q p2714b
-
+        export DUNERAWDATA_BUILD=$MRB_BUILDDIR/dune_raw_data                                                            
+        export DUNERAWDATA_REPO="$ARTDAQ_DEMO_DIR"                                                                                    
         setup TRACE $TRACE_version
-        export TRACE_FILE=/tmp/trace_$trace_file_label
-        export TRACE_LIMIT_MS="500,1000,2000"
+        setup art $art_version -q ${equalifier}:${build_type}
+        setup artdaq_core $artdaq_core_version -q ${equalifier}:${build_type}:${squalifier}
 
 
-EOF
+	EOF
+    #
 
-cat >setupDUNEARTDAQ_forTRACE<<-EOF
-
-echo # This script is intended to be sourced.
-
-        sh -c "[ `ps $$ | grep bash | wc -l` -gt 0 ] || { echo 'Please switch to the bash shell before running dune-artdaq.'; exit; }" || exit
-
-        export UPS_OVERRIDE="\${UPS_OVERRIDE:--B}"
-        source /nfs/sw/artdaq/products/setup
-        source /nfs/sw/artdaq/products_dev/setup                                      
-        source $Base/localProducts_dune_artdaq_${demo_version}_${equalifier}_${build_type}/setupWithoutMRB
-
-        setup TRACE $TRACE_version
-        export TRACE_FILE=/tmp/trace_$trace_file_label
-        export TRACE_LIMIT_MS="500,1000,2000"
-
-        # Uncomment the "tonM" line for a given TRACE below which you
-        # want to activate. If you don't see the TRACE you want, then
-        # add a toffM / tonM combination for it like you see in the
-        # other examples below. For more info, take a look at
-        # https://twiki.cern.ch/twiki/bin/view/CENF/TRACE
-
-        #toffM 12 -n RequestSender
-        #tonM 12 -n RequestSender
- 
-        #toffM 10 -n CommandableFragmentGenerator
-        #tonM 10 -n CommandableFragmentGenerator
-
-EOF
-
-if [[ -e $Base/srcs/dune_artdaq/tools/setupWithoutMRB ]]; then
-    cp $Base/srcs/dune_artdaq/tools/setupWithoutMRB $Base/localProducts_dune_artdaq_${demo_version}_${equalifier}_${build_type}/setupWithoutMRB
-else
-    echo "Problem: there's no setupWithoutMRB script in $Base/srcs/dune_artdaq; exiting..." >&2
-    exit 10
-fi
-
-
+source $dune_repo/setup
+source $Base/products/setup   
 
 cd $MRB_BUILDDIR
-
-export CETPKG_J=$nprocessors
-source /nfs/sw/artdaq/products/setup
-source /nfs/sw/artdaq/products_dev/setup                                      
-
-# RSIPOS 03/07/18 -> Infiniband workaround for FELIX BR build
-        #source /nfs/sw/felix/HACK-FELIX-BR-BUILD.sh
-        export ICP_ROOT=/nfs/sw/felix/QAT/QAT2.0
-        export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/nfs/sw/felix/QAT/QAT2.0/build
-        export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/nfs/sw/felix/QAT/QAT2.0/qatzip2/qatzip/src
-
-        setup ftd2xx $ftd2xx_version
-
-export DISABLE_DOXYGEN="defined"
 set +u
 source mrbSetEnv
 set -u
-mrb install -j$nprocessors                              
+setup TRACE $TRACE_version
+setup art $art_version -q ${equalifier}:${build_type}
+setup artdaq_core $artdaq_core_version -q ${equalifier}:${build_type}:${squalifier}
 
+
+export CETPKG_J=$((`cat /proc/cpuinfo|grep processor|tail -1|awk '{print $3}'` + 1))
+mrb build    # VERBOSE=1
 installStatus=$?
 
-cd $Base
-find build_slf7.x86_64/ -type d | xargs -i chmod g+rwx {}              
-find build_slf7.x86_64/ -type f | xargs -i chmod g+rw {}               
-
-ln -s setupDUNEARTDAQ_forRunning setupDUNEARTDAQ
-
 if [ $installStatus -eq 0 ]; then
-     echo "dune-artdaq has been installed correctly."
-     echo
+    echo "dune-raw-data has been installed correctly."
+    echo
 else
-     echo "Build error. If all else fails, try (A) logging into a new terminal and (B) creating a new directory out of which to run this script."
-     echo
+    echo "Build error. If all else fails, try (A) logging into a new terminal and (B) creating a new directory out of which to run this script."
+    echo
 fi
-
-echo                                                               
 
 endtime=`date`
 

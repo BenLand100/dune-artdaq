@@ -1,7 +1,7 @@
 # The parent line must be the first non-comment line in the file
 # This line defines the product name and version
-parent dune_artdaq	v2019_06_09_develop_June2019
-defaultqual	e15
+parent dune_raw_data	v2019_05_29_for_dune-artdaq_A
+defaultqual    e15:online:s64
 
 # These optional lines define the installed directories where
 # headers, libraries, and executables will be found
@@ -15,35 +15,50 @@ incdir      product_dir include
 libdir      fq_dir      lib
 bindir      fq_dir      bin
 
+# table fragment to set FW_SEARCH_PATH needed
+# needed for channel map
+table_fragment_begin
+    pathPrepend(FW_SEARCH_PATH, ${DUNE_RAW_DATA_DIR}/files)
+table_fragment_end
+
 #
 product		version		optional
-artdaq		v2019_05_28_for_dune-artdaq_A
-dune_raw_data 	v2019_05_29_for_dune-artdaq_A
-cetbuildtools	v7_02_01	-	only_for_build
-smc_compiler    v6_6_0          -nq-    only_for_build
-uhal		v2_6_0
-dune_artdaq_InhibitMaster v0_02_05
-protodune_wibsoft v349_hack
-netio           v0_8_0
-ftd2xx          v1_2_7a
-rogue           v2_10_0_3_gfaeedd0
-protodune_timing v5_1_0
-jsoncpp         v1_8_0
-ptmp            v0_0_3
+art		v2_07_03	s50
+art		v2_10_02	s64
+art		v2_10_03	s65
+artdaq_core	v2019_05_28_for_dune-artdaq_A	online
+TRACE		v3_13_07	online
+dunepdsprce     v0_0_4		online
+cetbuildtools	v7_02_01	online			only_for_build
+artdaq_core	v3_04_01a	online_monitoring
+TRACE		v3_13_04	online_monitoring
+dunepdsprce     v0_0_4		online_monitoring
+cetbuildtools	v5_08_01	online_monitoring	only_for_build
+artdaq_core	v3_01_06	nu
+TRACE		v3_13_04	nu
+dunepdsprce     v0_0_4a		nu
+cetbuildtools	v6_01_01	nu			only_for_build
+
 end_product_list
 
-# e10 - with gcc 4.9.3a and -std=c++14
-# e14 - with gcc 6.3.0 
-# s41 - with art v2_03_00
-# s48 - with art v2_06_03
-# s50 - with art v2_07_03
+# e14 - with gcc v6_3_0
+# e15 - with gcc v6_4_0
 
 # -nq- here means there is no qualifier
 # a "-" here means the dependent product is not required by the parent and will not be setup
-qualifier    	       	artdaq                  	dune_raw_data  	   	uhal	       dune_artdaq_InhibitMaster protodune_wibsoft     netio      rogue     protodune_timing    jsoncpp  ptmp
-e15:prof 		e15:s64:prof   			online:e15:s64:prof	e15:prof:s64   e15:prof:s64		 e15:s64            e15:prof:s64  e15:prof   e15:prof:s64       e15      e15
-e15:debug 		e15:s64:debug   		online:e15:s64:debug    e15:debug:s64  e15:prof:s64		 e15:s64            e15:debug:s64 e15:debug  e15:debug:s64      e15      e15
-end_qualifier_list
+
+qualifier	        	 artdaq_core         	art	    	       dunepdsprce		notes
+online:e14:s50:debug		 e14:s50:debug	 	e14:debug	       e14:gen:debug
+online:e14:s50:prof		 e14:s50:prof	 	e14:prof	       e14:gen:prof
+online:e15:s64:debug		 e15:s64:debug	 	e15:debug	       e15:gen:debug
+online:e15:s64:prof		 e15:s64:prof	 	e15:prof	       e15:gen:prof
+nu:e15:s65:debug		 e15:s65:debug		e15:debug	       e15:gen:debug
+nu:e15:s65:prof			 e15:s65:prof 		e15:prof	       e15:gen:prof
+nu:c2:s65:debug		         c2:s65:debug		c2:debug	       c2:gen:debug
+nu:c2:s65:prof			 c2:s65:prof 		c2:prof 	       c2:gen:prof
+online_monitoring:e14:s50:debug	 nu:e14:s50:debug      	nu:e14:debug	       e14:gen:debug
+online_monitoring:e14:s50:prof	 nu:e14:s50:prof 	nu:e14:prof	       e14:gen:prof
+
 
 # Preserve tabs and formatting in emacs and vi / vim:
 

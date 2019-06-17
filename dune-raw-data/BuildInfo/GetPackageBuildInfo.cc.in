@@ -1,0 +1,18 @@
+#include "dune-raw-data/BuildInfo/GetPackageBuildInfo.hh"
+
+#include <string>
+
+namespace dunerawdata {
+
+  artdaq::PackageBuildInfo GetPackageBuildInfo::getPackageBuildInfo() {
+
+    artdaq::PackageBuildInfo pkg;
+
+    pkg.setPackageName("dune-raw-data");
+    pkg.setPackageVersion("@version@");
+    pkg.setBuildTimestamp("@utcDateTime@");
+
+    return pkg;
+  }
+}
+
