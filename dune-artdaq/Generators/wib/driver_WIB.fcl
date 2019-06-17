@@ -1,0 +1,109 @@
+#include "wib_standard.fcl"
+
+events_to_generate: 10
+run_number: 101
+transition_timeout: 30
+
+services: {
+    TimeTracker: {}
+}
+
+fragment_receiver: @local::wib902_standard.fragment_receiver
+#fragment_receiver: @local::wib905_standard.fragment_receiver
+#fragment_receiver: @local::wib001_standard.fragment_receiver
+
+event_builder: {
+
+  expected_fragments_per_event: 1
+  max_event_size_bytes: 1000
+  buffer_count: 1
+  use_art: true
+  print_event_store_stats: false
+  verbose: false
+  events_expected_in_SimpleQueueReader: @local::events_to_generate
+}
+
+physics:
+{
+  analyzers:
+  {
+    toyDump:
+    {
+      module_type: ToyDump
+      raw_data_label: daq
+      frag_type: @local::fragment_receiver.fragment_type
+      num_adcs_to_show: 10   # Obviously this should be no more than ADC counts per fragment
+      dump_to_screen: true
+    }
+  }
+
+  a1: [ toyDump ]
+  e1: [ out1 ]
+  end_paths: [ a1, e1 ]
+}
+
+
+outputs:
+{
+
+  out1:
+  {
+    module_type: FileDumperOutput
+    wantProductFriendlyClassName: true
+  }
+}
+
+
+
+source:
+{
+module_type: RawInput
+waiting_time: 900
+resume_after_timeout: true
+fragment_type_map: [[2, "TOY1"], [3, "TOY2"] ]
+}
+
+process_name: ToySimulator
+
+
+metrics: {
+
+  file: {
+
+  # Metric Plugin Configuration (Common to all ARTDAQ Metric Plugins)
+
+  #
+
+  level: 5 # Integer, verbosity level of metrics that will be recorded by this plugin. 
+
+           # 0 is minimum amount, maximum is implementation-defined.
+
+  metricPluginType: "file" # Must be "file" for the file plugin to be loaded
+
+  reporting_interval: 15.0 # Double value, the frequency in seconds that the plugin sends out metrics
+
+ 
+
+  #
+
+  # File Metric Plugin Configuration
+
+  #
+
+  fileName: "FileMetric.out" # Name (optionally path as well) of the output file
+
+  uniquify: false            # Whether to generate a unique file name. If true, fileName should contain
+
+                             # the string "%UID%".
+
+  fileMode: "append"         # The mode that the file will be opned with. If this is equal to "Overwrite",
+
+                             # "Create", or "Write", the plugin will overwrite the file if it exists,
+
+                             # otherwise, it will append to the file if it exists.
+
+ 
+
+  }
+
+}

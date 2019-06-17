@@ -1,0 +1,49 @@
+#include "channelmap_35t.fcl"
+
+process_name: OnlineMonitoring
+
+services:
+{
+  ChannelMapService: @local::channelmap35t
+}
+
+source:
+{
+  module_type: RootInput
+  fileNames:  [ "/dune/data2/users/wallbank/DAQToOffline.root" ]
+  firstEvent: 1
+  maxEvents:  -1
+}
+
+outputs:{}
+
+physics:
+{
+  analyzers:
+  {
+    monitoring:
+    {
+      module_type:                "OnlineMonitoring"
+      TPCModuleLabel:             "daq"
+      PhotonModuleLabel:          [ "sparseSsp", "daq" ]
+      TriggerModuleLabel:         "daq"
+      DetailedMonitoring:         false
+      ScopeMonitoring:            false
+      DataDirPath:                "/data/dunedaq/data/"
+      MonitorSavePath:            "/home/dunedaq/wallbank/monitoring/"
+      EVDSavePath:                "/home/dunedaq/wallbank/monitoring/"
+      PedestalFile:               "/home/dunedaq/wallbank/online_database.csv"
+      ImageType:                  ".png"
+      MonitoringRefreshRate:      500
+      InitialMonitoringUpdate:    30
+      EventDisplayRefreshRate:    60
+      LessFrequentFillRate:       20
+      DriftVelocity:              0.9 #mm/us
+      CollectionPedestal:         550
+      MicroslicePreBuffer:        5
+      MicrosliceTriggerLength:    5
+    }
+  }
+  analysis: [ monitoring ] //Directory for histograms
+  end_paths: [ analysis ]
+}

@@ -1,0 +1,400 @@
+<system>
+   <config>
+      <DebugCmdTime>False</DebugCmdTime>
+      <DebugEnable>True</DebugEnable>
+      <DataDpm>
+         <DataPath>
+            <EnableStream>False</EnableStream>
+            <sendDebugHeader>False</sendDebugHeader>
+            <sendHitMask>True</sendHitMask>
+            <debugFebEmu>False</debugFebEmu>
+            <TimeoutSize>63</TimeoutSize> 
+            <EnableTimeout>False</EnableTimeout>
+            <ConfigZeroSuppression>False</ConfigZeroSuppression>
+            <ZeroSuppressionMode>False</ZeroSuppressionMode>
+            <IgnoreDmaBackPressure>False</IgnoreDmaBackPressure>
+   </DataPath>
+         <DataBuffer>
+            <LatencyBuffer>6</LatencyBuffer>
+            <TriggerSize>15</TriggerSize>
+            <ScopeChannel>50</ScopeChannel>
+            <SwTrigPeriod>1000</SwTrigPeriod>
+            <SwTrigEnable>False</SwTrigEnable>
+       <RunMode>Trigger</RunMode>
+            <DaqHost>10.0.1.3</DaqHost> 
+            <DaqPort>8991</DaqPort>
+            <BlowOffDmaData>False</BlowOffDmaData>
+            <BlowOffDmaEofe>False</BlowOffDmaEofe>
+            <BlowOffTxEth>False</BlowOffTxEth>
+            <SendEmptyFrames>True</SendEmptyFrames>
+         </DataBuffer>
+            <LbneFrontEnd>
+            <AdcAsicDisable>0x0</AdcAsicDisable> 
+            <AdcAsicSpi000>0xc0c0c0c</AdcAsicSpi000>
+            <AdcAsicSpi001>0xc0c0c0c</AdcAsicSpi001>
+            <AdcAsicSpi002>0xc0c0c0c</AdcAsicSpi002>
+            <AdcAsicSpi003>0xc0c0c0c</AdcAsicSpi003>
+            <AdcAsicSpi004>0xc0c0c0c</AdcAsicSpi004>
+            <AdcAsicSpi005>0xc0c0c0c</AdcAsicSpi005>
+            <AdcAsicSpi006>0xc0c0c0c</AdcAsicSpi006>
+            <AdcAsicSpi007>0xc0c0c0c</AdcAsicSpi007>
+            <AdcAsicSpi008>0x18321832</AdcAsicSpi008>
+            <AdcAsicSpi009>0x18181818</AdcAsicSpi009>
+            <AdcAsicSpi010>0x18181818</AdcAsicSpi010>
+            <AdcAsicSpi011>0x18181818</AdcAsicSpi011>
+            <AdcAsicSpi012>0x18181818</AdcAsicSpi012>
+            <AdcAsicSpi013>0x18181818</AdcAsicSpi013>
+            <AdcAsicSpi014>0x18181818</AdcAsicSpi014>
+            <AdcAsicSpi015>0x18181818</AdcAsicSpi015>
+            <AdcAsicSpi016>0x64186418</AdcAsicSpi016>
+            <AdcAsicSpi017>0x30303030</AdcAsicSpi017>
+            <AdcAsicSpi018>0x30303030</AdcAsicSpi018>
+            <AdcAsicSpi019>0x30303030</AdcAsicSpi019>
+            <AdcAsicSpi020>0x30303030</AdcAsicSpi020>
+            <AdcAsicSpi021>0x30303030</AdcAsicSpi021>
+            <AdcAsicSpi022>0x30303030</AdcAsicSpi022>
+            <AdcAsicSpi023>0x30303030</AdcAsicSpi023>
+            <AdcAsicSpi024>0x30303030</AdcAsicSpi024>
+            <AdcAsicSpi025>0x60c860c8</AdcAsicSpi025>
+            <AdcAsicSpi026>0x60606060</AdcAsicSpi026>
+            <AdcAsicSpi027>0x60606060</AdcAsicSpi027>
+            <AdcAsicSpi028>0x60606060</AdcAsicSpi028>
+            <AdcAsicSpi029>0x60606060</AdcAsicSpi029>
+            <AdcAsicSpi030>0x60606060</AdcAsicSpi030>
+            <AdcAsicSpi031>0x60606060</AdcAsicSpi031>
+            <AdcAsicSpi032>0x60606060</AdcAsicSpi032>
+            <AdcAsicSpi033>0x90609060</AdcAsicSpi033>
+            <AdcAsicSpi034>0x10001</AdcAsicSpi034>
+       <AdcTestPatternEnable>False</AdcTestPatternEnable>
+            <ChnSelect>0x0</ChnSelect>
+            <ChpSelect>0x0</ChpSelect>
+            <DataTestPattern>0x123</DataTestPattern>
+            <FeAsicSpi000>0x54545454</FeAsicSpi000>  
+            <FeAsicSpi001>0x54545454</FeAsicSpi001>
+            <FeAsicSpi002>0x54545454</FeAsicSpi002>
+            <FeAsicSpi003>0x54545454</FeAsicSpi003>
+            <FeAsicSpi004>0x54545454</FeAsicSpi004>
+            <FeAsicSpi005>0x54545454</FeAsicSpi005>
+            <FeAsicSpi006>0x54545454</FeAsicSpi006>
+            <FeAsicSpi007>0x54545454</FeAsicSpi007>
+            <FeAsicSpi008>0x54005400</FeAsicSpi008>
+            <FeAsicSpi009>0x54545454</FeAsicSpi009>
+            <FeAsicSpi010>0x54545454</FeAsicSpi010>
+            <FeAsicSpi011>0x54545454</FeAsicSpi011>
+            <FeAsicSpi012>0x54545454</FeAsicSpi012>
+            <FeAsicSpi013>0x54545454</FeAsicSpi013>
+            <FeAsicSpi014>0x54545454</FeAsicSpi014>
+            <FeAsicSpi015>0x54545454</FeAsicSpi015>
+            <FeAsicSpi016>0x00540054</FeAsicSpi016>
+            <FeAsicSpi017>0x54545454</FeAsicSpi017>
+            <FeAsicSpi018>0x54545454</FeAsicSpi018>
+            <FeAsicSpi019>0x54545454</FeAsicSpi019>
+            <FeAsicSpi020>0x54545454</FeAsicSpi020>
+           <FeAsicSpi021>0x54545454</FeAsicSpi021>
+            <FeAsicSpi022>0x54545454</FeAsicSpi022>
+            <FeAsicSpi023>0x54545454</FeAsicSpi023>
+            <FeAsicSpi024>0x54545454</FeAsicSpi024>
+            <FeAsicSpi025>0x54005400</FeAsicSpi025>
+            <FeAsicSpi026>0x54545454</FeAsicSpi026>
+            <FeAsicSpi027>0x54545454</FeAsicSpi027>
+            <FeAsicSpi028>0x54545454</FeAsicSpi028>
+            <FeAsicSpi029>0x54545454</FeAsicSpi029>
+            <FeAsicSpi030>0x54545454</FeAsicSpi030>
+            <FeAsicSpi031>0x54545454</FeAsicSpi031>
+            <FeAsicSpi032>0x54545454</FeAsicSpi032>
+            <FeAsicSpi033>0x00540054</FeAsicSpi033>
+            <FpgaFAddr>0x0</FpgaFAddr>
+            <FpgaFEnable>False</FpgaFEnable>
+            <FpgaFOpCode>0x0</FpgaFOpCode>
+            <FpgaFStrtOp>0x0</FpgaFStrtOp> 
+            <HeaderPevent>0x1</HeaderPevent> 
+            <ScratchPad>0x0</ScratchPad>
+            <SendCnt>False</SendCnt>
+            <SendPbrs>False</SendPbrs>
+       <TestPulseEnable>0x0</TestPulseEnable>
+       <TestPulseAmplitude>0x1</TestPulseAmplitude>
+            <TestPulsePeriod>0x200</TestPulsePeriod>
+            <TestPulseSampleDelay>0x0</TestPulseSampleDelay>
+         </LbneFrontEnd>
+      </DataDpm>
+        <DataDpm index="0">
+         <DataBuffer index="0">
+            <DaqHost>10.0.1.1</DaqHost>
+            <DaqPort>7991</DaqPort>
+         </DataBuffer>
+         <LbneFrontEnd index="0">
+            <AdcClkPhase>0x02</AdcClkPhase>
+            <AdcLatchLoc1>0x6</AdcLatchLoc1>
+            <AdcLatchLoc2>0x5</AdcLatchLoc2>
+            <AdcLatchLoc3>0x6</AdcLatchLoc3>
+            <AdcLatchLoc4>0x6</AdcLatchLoc4>
+            <AdcLatchLoc5>0x6</AdcLatchLoc5>
+            <AdcLatchLoc6>0x6</AdcLatchLoc6>
+            <AdcLatchLoc7>0x6</AdcLatchLoc7>
+            <AdcLatchLoc8>0x6</AdcLatchLoc8>
+         </LbneFrontEnd>
+      </DataDpm> 
+      <DataDpm index="1">
+         <DataBuffer index="0">
+            <DaqHost>10.0.1.1</DaqHost>
+            <DaqPort>7992</DaqPort>
+         </DataBuffer>
+         <LbneFrontEnd index="0">
+            <AdcClkPhase>0x2</AdcClkPhase>
+            <AdcLatchLoc1>0x6</AdcLatchLoc1>
+            <AdcLatchLoc2>0x5</AdcLatchLoc2>
+            <AdcLatchLoc3>0x6</AdcLatchLoc3>
+            <AdcLatchLoc4>0x6</AdcLatchLoc4>
+            <AdcLatchLoc5>0x6</AdcLatchLoc5>
+            <AdcLatchLoc6>0x6</AdcLatchLoc6>
+            <AdcLatchLoc7>0x6</AdcLatchLoc7>
+            <AdcLatchLoc8>0x6</AdcLatchLoc8>
+         </LbneFrontEnd>
+      </DataDpm> 
+      <DataDpm index="2">
+         <DataBuffer index="0">
+            <DaqHost>10.0.1.1</DaqHost>
+            <DaqPort>7993</DaqPort>
+         </DataBuffer>
+         <LbneFrontEnd index="0">
+            <AdcClkPhase>0x0</AdcClkPhase>
+            <AdcLatchLoc1>0x6</AdcLatchLoc1>
+            <AdcLatchLoc2>0x6</AdcLatchLoc2>
+            <AdcLatchLoc3>0x6</AdcLatchLoc3>
+            <AdcLatchLoc4>0x6</AdcLatchLoc4>
+            <AdcLatchLoc5>0x6</AdcLatchLoc5>
+            <AdcLatchLoc6>0x6</AdcLatchLoc6>
+            <AdcLatchLoc7>0x6</AdcLatchLoc7>
+            <AdcLatchLoc8>0x6</AdcLatchLoc8>
+         </LbneFrontEnd>
+      </DataDpm> 
+      <DataDpm index="3">
+         <DataBuffer index="0">
+            <DaqHost>10.0.1.1</DaqHost>
+            <DaqPort>7994</DaqPort>
+         </DataBuffer>
+         <LbneFrontEnd index="0">
+            <AdcClkPhase>0x0</AdcClkPhase>
+            <AdcLatchLoc1>0x6</AdcLatchLoc1>
+            <AdcLatchLoc2>0x6</AdcLatchLoc2>
+            <AdcLatchLoc3>0x6</AdcLatchLoc3>
+            <AdcLatchLoc4>0x6</AdcLatchLoc4>
+            <AdcLatchLoc5>0x6</AdcLatchLoc5>
+            <AdcLatchLoc6>0x6</AdcLatchLoc6>
+            <AdcLatchLoc7>0x6</AdcLatchLoc7>
+            <AdcLatchLoc8>0x6</AdcLatchLoc8>
+         </LbneFrontEnd>
+      </DataDpm> 
+        <DataDpm index="4">
+         <DataBuffer index="0">
+            <DaqHost>10.0.1.1</DaqHost>
+            <DaqPort>7995</DaqPort>
+         </DataBuffer>
+         <LbneFrontEnd index="0">
+            <AdcClkPhase>0x2</AdcClkPhase>
+            <AdcLatchLoc1>0x6</AdcLatchLoc1>
+            <AdcLatchLoc2>0x5</AdcLatchLoc2>
+            <AdcLatchLoc3>0x6</AdcLatchLoc3>
+            <AdcLatchLoc4>0x6</AdcLatchLoc4>
+            <AdcLatchLoc5>0x6</AdcLatchLoc5>
+            <AdcLatchLoc6>0x6</AdcLatchLoc6>
+            <AdcLatchLoc7>0x6</AdcLatchLoc7>
+            <AdcLatchLoc8>0x6</AdcLatchLoc8>
+         </LbneFrontEnd>
+      </DataDpm> 
+      <DataDpm index="5">
+        <DataBuffer index="0">
+            <DaqHost>10.0.1.1</DaqHost>
+            <DaqPort>7996</DaqPort>
+         </DataBuffer>
+         <LbneFrontEnd index="0">
+            <AdcClkPhase>0x0</AdcClkPhase>
+            <AdcLatchLoc1>0x6</AdcLatchLoc1>
+            <AdcLatchLoc2>0x6</AdcLatchLoc2>
+            <AdcLatchLoc3>0x6</AdcLatchLoc3>
+            <AdcLatchLoc4>0x6</AdcLatchLoc4>
+            <AdcLatchLoc5>0x6</AdcLatchLoc5>
+            <AdcLatchLoc6>0x6</AdcLatchLoc6>
+            <AdcLatchLoc7>0x6</AdcLatchLoc7>
+            <AdcLatchLoc8>0x6</AdcLatchLoc8>
+         </LbneFrontEnd>
+      </DataDpm> 
+      <DataDpm index="6">
+         <DataBuffer index="0">
+            <DaqHost>10.0.1.1</DaqHost>
+            <DaqPort>7997</DaqPort>
+         </DataBuffer>
+         <LbneFrontEnd index="0">
+            <AdcClkPhase>0x2</AdcClkPhase>
+            <AdcLatchLoc1>0x6</AdcLatchLoc1>
+            <AdcLatchLoc2>0x5</AdcLatchLoc2>
+            <AdcLatchLoc3>0x6</AdcLatchLoc3>
+            <AdcLatchLoc4>0x6</AdcLatchLoc4>
+            <AdcLatchLoc5>0x6</AdcLatchLoc5>
+            <AdcLatchLoc6>0x6</AdcLatchLoc6>
+            <AdcLatchLoc7>0x6</AdcLatchLoc7>
+            <AdcLatchLoc8>0x6</AdcLatchLoc8>
+         </LbneFrontEnd>
+      </DataDpm> 
+      <DataDpm index="7">
+         <DataBuffer index="0">
+            <DaqHost>10.0.1.1</DaqHost>
+            <DaqPort>7998</DaqPort>
+         </DataBuffer>
+         <LbneFrontEnd index="0">
+            <AdcClkPhase>0x2</AdcClkPhase>
+            <AdcLatchLoc1>0x6</AdcLatchLoc1>
+            <AdcLatchLoc2>0x5</AdcLatchLoc2>
+            <AdcLatchLoc3>0x6</AdcLatchLoc3>
+            <AdcLatchLoc4>0x6</AdcLatchLoc4>
+            <AdcLatchLoc5>0x6</AdcLatchLoc5>
+            <AdcLatchLoc6>0x6</AdcLatchLoc6>
+            <AdcLatchLoc7>0x6</AdcLatchLoc7>
+            <AdcLatchLoc8>0x6</AdcLatchLoc8>
+         </LbneFrontEnd>
+      </DataDpm> 
+      <DataDpm index="8">
+         <DataBuffer index="0">
+            <DaqHost>10.0.1.3</DaqHost>
+            <DaqPort>8991</DaqPort>
+         </DataBuffer>
+         <LbneFrontEnd index="0">
+            <AdcClkPhase>0x0</AdcClkPhase>
+            <AdcLatchLoc1>0x6</AdcLatchLoc1>
+            <AdcLatchLoc2>0x5</AdcLatchLoc2>
+            <AdcLatchLoc3>0x6</AdcLatchLoc3>
+            <AdcLatchLoc4>0x6</AdcLatchLoc4>
+            <AdcLatchLoc5>0x6</AdcLatchLoc5>
+            <AdcLatchLoc6>0x6</AdcLatchLoc6>
+            <AdcLatchLoc7>0x6</AdcLatchLoc7>
+            <AdcLatchLoc8>0x6</AdcLatchLoc8>
+         </LbneFrontEnd>
+      </DataDpm> 
+      <DataDpm index="9">
+         <DataBuffer index="0">
+            <DaqHost>10.0.1.3</DaqHost>
+            <DaqPort>8992</DaqPort>
+         </DataBuffer>
+         <LbneFrontEnd index="0">
+            <AdcClkPhase>0x2</AdcClkPhase>
+            <AdcLatchLoc1>0x6</AdcLatchLoc1>
+            <AdcLatchLoc2>0x5</AdcLatchLoc2>
+            <AdcLatchLoc3>0x6</AdcLatchLoc3>
+            <AdcLatchLoc4>0x6</AdcLatchLoc4>
+            <AdcLatchLoc5>0x6</AdcLatchLoc5>
+            <AdcLatchLoc6>0x6</AdcLatchLoc6>
+            <AdcLatchLoc7>0x6</AdcLatchLoc7>
+            <AdcLatchLoc8>0x6</AdcLatchLoc8>
+         </LbneFrontEnd>
+      </DataDpm> 
+      <DataDpm index="10">
+         <DataBuffer index="0">
+            <DaqHost>10.0.1.3</DaqHost>
+            <DaqPort>8993</DaqPort>
+         </DataBuffer>
+         <LbneFrontEnd index="0">
+            <AdcClkPhase>0x2</AdcClkPhase>
+            <AdcLatchLoc1>0x6</AdcLatchLoc1>
+            <AdcLatchLoc2>0x5</AdcLatchLoc2>
+            <AdcLatchLoc3>0x6</AdcLatchLoc3>
+            <AdcLatchLoc4>0x6</AdcLatchLoc4>
+            <AdcLatchLoc5>0x6</AdcLatchLoc5>
+            <AdcLatchLoc6>0x6</AdcLatchLoc6>
+            <AdcLatchLoc7>0x6</AdcLatchLoc7>
+            <AdcLatchLoc8>0x6</AdcLatchLoc8>
+         </LbneFrontEnd>
+      </DataDpm> 
+      <DataDpm index="11">
+         <DataBuffer index="0">
+            <DaqHost>10.0.1.3</DaqHost>
+            <DaqPort>8994</DaqPort>
+         </DataBuffer>
+         <LbneFrontEnd index="0">
+            <AdcClkPhase>0x0</AdcClkPhase>
+            <AdcLatchLoc1>0x6</AdcLatchLoc1>
+            <AdcLatchLoc2>0x5</AdcLatchLoc2>
+            <AdcLatchLoc3>0x6</AdcLatchLoc3>
+            <AdcLatchLoc4>0x6</AdcLatchLoc4>
+            <AdcLatchLoc5>0x6</AdcLatchLoc5>
+            <AdcLatchLoc6>0x6</AdcLatchLoc6>
+          <AdcLatchLoc7>0x6</AdcLatchLoc7>
+            <AdcLatchLoc8>0x6</AdcLatchLoc8>
+         </LbneFrontEnd>
+      </DataDpm> 
+      <DataDpm index="12">
+         <DataBuffer index="0">
+            <DaqHost>10.0.1.3</DaqHost>
+            <DaqPort>8995</DaqPort>
+         </DataBuffer>
+         <LbneFrontEnd index="0">
+            <AdcClkPhase>0x2</AdcClkPhase>
+            <AdcLatchLoc1>0x6</AdcLatchLoc1>
+            <AdcLatchLoc2>0x5</AdcLatchLoc2>
+            <AdcLatchLoc3>0x6</AdcLatchLoc3>
+            <AdcLatchLoc4>0x6</AdcLatchLoc4>
+            <AdcLatchLoc5>0x6</AdcLatchLoc5>
+            <AdcLatchLoc6>0x6</AdcLatchLoc6>
+            <AdcLatchLoc7>0x6</AdcLatchLoc7>
+            <AdcLatchLoc8>0x6</AdcLatchLoc8>
+         </LbneFrontEnd>
+      </DataDpm> 
+      <DataDpm index="13">
+         <DataBuffer index="0">
+           <DaqHost>10.0.1.3</DaqHost>
+            <DaqPort>8996</DaqPort>
+         </DataBuffer>
+         <LbneFrontEnd index="0">
+            <AdcClkPhase>0x0</AdcClkPhase>
+            <AdcLatchLoc1>0x6</AdcLatchLoc1>
+            <AdcLatchLoc2>0x6</AdcLatchLoc2>
+            <AdcLatchLoc3>0x6</AdcLatchLoc3>
+            <AdcLatchLoc4>0x6</AdcLatchLoc4>
+            <AdcLatchLoc5>0x6</AdcLatchLoc5>
+            <AdcLatchLoc6>0x6</AdcLatchLoc6>
+            <AdcLatchLoc7>0x6</AdcLatchLoc7>
+            <AdcLatchLoc8>0x6</AdcLatchLoc8>
+         </LbneFrontEnd>
+      </DataDpm> 
+      <DataDpm index="14">
+         <DataBuffer index="0">
+            <DaqHost>10.0.1.3</DaqHost>
+            <DaqPort>8997</DaqPort>
+         </DataBuffer>
+         <LbneFrontEnd index="0">
+            <AdcClkPhase>0x0</AdcClkPhase>
+            <AdcLatchLoc1>0x6</AdcLatchLoc1>
+            <AdcLatchLoc2>0x6</AdcLatchLoc2>
+            <AdcLatchLoc3>0x6</AdcLatchLoc3>
+            <AdcLatchLoc4>0x6</AdcLatchLoc4>
+            <AdcLatchLoc5>0x6</AdcLatchLoc5>
+            <AdcLatchLoc6>0x6</AdcLatchLoc6>
+            <AdcLatchLoc7>0x6</AdcLatchLoc7>
+            <AdcLatchLoc8>0x5</AdcLatchLoc8>
+         </LbneFrontEnd>
+      </DataDpm> 
+      <DataDpm index="15">
+         <DataBuffer index="0">
+            <DaqHost>10.0.1.3</DaqHost>
+            <DaqPort>8998</DaqPort>
+         </DataBuffer>
+         <LbneFrontEnd index="0">
+            <AdcClkPhase>0x0</AdcClkPhase>
+            <AdcLatchLoc1>0x6</AdcLatchLoc1>
+            <AdcLatchLoc2>0x6</AdcLatchLoc2>
+            <AdcLatchLoc3>0x6</AdcLatchLoc3>
+            <AdcLatchLoc4>0x6</AdcLatchLoc4>
+            <AdcLatchLoc5>0x6</AdcLatchLoc5>
+            <AdcLatchLoc6>0x6</AdcLatchLoc6>
+            <AdcLatchLoc7>0x6</AdcLatchLoc7>
+          <AdcLatchLoc8>0x6</AdcLatchLoc8>
+         </LbneFrontEnd>
+      </DataDpm> 
+      <TimingDtm>
+         <Enabled>True</Enabled>
+         <TimingRtm>
+       <NovaDaisyChain>True</NovaDaisyChain>
+            <EmulationEnable>False</EmulationEnable>
+         </TimingRtm>
+      </TimingDtm>
+   </config>
+</system>

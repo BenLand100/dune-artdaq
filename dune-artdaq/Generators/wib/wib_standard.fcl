@@ -1,0 +1,398 @@
+BEGIN_PROLOG
+
+# FEMB configuration
+femb_config_default: {
+  # this must match the FEMB firmware version (hex)
+  expected_femb_fw_version: 0x323
+
+  # if true, enables FEMB fake data mode, else real data
+  enable_fake_data: false
+  # Select the fake data type
+  fake_data_select: "fake_word" # options: fake_word, fake_waveform, femb_channel_id, or counter_channel_id
+  # The fake data word for fake_word mode
+  fake_word: 0xFEB # 12 bits
+  
+  # FE gain value select
+  gain: 2 # 0 (4.7 mV/fC), 1 (7.8 mV/fC), 2 (14 mV/fC), 3 (25 mV/fC)
+  # FE shaping time select
+  shape: 2 # 0 (0.5 us), 1 (1 us), 2 (2 us), 3 (3 us)
+  # FE baseline select (don't need to change)
+  baselineHigh: 2 # 0 (200 mV), 1 (900 mV), 2 (200 mV for collection and 900 mV for induction channels)
+  # 1 for 500 pA FE leakage current, 0 for 100 pA (don't need to change)
+  leakHigh: 1 # 0 (100 pA), 1 (500 pA)
+  # 1 for 10x FE leakage current, 0 for 1x
+  leak10X: 0 # (if 1, multiply leakage by 10)
+  # 1 for AC coupling between FE and ADC channels, 0 for DC coupling
+  acCouple: 0 # 0 (DC coupling), 1 (AC coupling)
+  # 1 to use FE output buffer, 0 to bypass
+  buffer: 0 # 0 (bypass), 1 (use buffer)
+  # 0 to use ADC ASIC internal clocking, 1 to use external FPGA clocking
+  extClk: 1 # Almost always want 1
+
+  # List of 32 bit ADC FIFO clock phases, will try each phase until header bits line up
+  clk_phases: [0xFFFF,0xFDFF,0xEFEF,0xBFBF,0xBDFF]
+  # Calibration pulser mode
+  pls_mode: 0 # 0 off, 1 internal, 2 FPGA external
+  # Calibration pulser amplitude 
+  pls_dac_val: 0 # 6 bits in internal mode, 5 bits in external
+  # 1 to make FPGA to WIB header frame as BU WIB expects
+  start_frame_mode_sel: 1
+  # 1 to swap bytes in header frame
+  start_frame_swap: 1
+}
+
+# All just to set the fake_word without indexing arrays
+
+femb_config_default_femb1: @local::femb_config_default
+femb_config_default_femb2: @local::femb_config_default
+femb_config_default_femb3: @local::femb_config_default
+femb_config_default_femb4: @local::femb_config_default
+
+femb_config_default_femb1.fake_word: 0xFE1
+femb_config_default_femb2.fake_word: 0xFE2
+femb_config_default_femb3.fake_word: 0xFE3
+femb_config_default_femb4.fake_word: 0xFE4
+
+# WIB configuration
+wib_config: {
+      # WIB network address string
+      address: "" # can be either IP address or DNS address
+      # WIB register map
+      wib_table: "WIB.adt"
+      # FEMB register map
+      femb_table: "PDUNE_FEMB_323.adt"
+      # this must match the WIB firmware version (hex)
+      expected_wib_fw_version_rce: 0x18072501
+      expected_wib_fw_version_felix: 0x18072501
+      # this must match the WIB firmware version
+      expected_daq_mode: "any" # "RCE", "FELIX", or "any"
+
+      # If true, transmit fake data from WIB, if false data from FEMBs
+      use_WIB_fake_data: [false,false,false,false] # list of 4 bools
+      # if false, put a counters in the DAQ data frame, if true just transmit a raw counter
+      use_WIB_fake_data_counter: false # only applies when use_WIB_fake_data is true for a FEMB
+
+      # if true, generate the clock on the WIB, if false, use timing system clock
+      local_clock: false
+      # Where to get the timing system input from
+      DTS_source: 0 # 0 back plane, 1 front panel
+      # Which timing system partion or "timing group" to use
+      partition_number: 0
+
+      # if true, power up and configure FEMBs, else power down and don't configure
+      enable_FEMBs: [true,true,true,true] # list of 4 bools
+
+      # FEMB configuration documents
+      FEMBs: [@local::femb_config_default_femb1,@local::femb_config_default_femb2,@local::femb_config_default_femb3,@local::femb_config_default_femb4] # list of 4 FEMB configurations
+
+      # If these are true, then won't raise an exception--will keep going
+      continueOnError: {
+        # if true, continue on to the next FEMB
+        FEMBRegReadError: false # if you can't seem to control an FEMB
+        # if true, continue on to the next FEMB
+        FEMBSPIError: false # if you can't program the FE and ADC ASICs
+        # if true, continue on to the next FEMB
+        FEMBSyncError: false # if you can't get the ADC-FPGA data path sync'd
+        # if true, continue on to the next FEMB
+        ListOfFEMBClockPhasesDontSync: true # if true, will try to hunt for the proper phase, else error
+      }
+
+    #Use full reset over checked
+    force_full_reset: false
+    #Time to wait after setting do-not-disturb (unsigned int seconds)
+    dnd_wait_time: 10
+    #Number of times to try configuring before giving up
+    configuration_tries: 3
+}
+
+# standard wib configuration
+wib_standard: {
+  fragment_receiver: {
+    generator: WIBReader 
+    partition_number: 999 
+    fragment_type: TPC 
+    fragment_id: 400 
+    board_id: 400 
+    WIB: {
+      config: @local::wib_config
+    }
+    destinations: {}
+    sends_no_fragments: true 
+  }
+  metrics: {
+    dim: {
+      metricPluginType: dim 
+      level: 5 
+      reporting_interval: 5.0 
+      Verbose: false 
+      DNSPort: 2505 
+      DNSNode: "np04-srv-010.cern.ch" 
+      DIMServerName: WIBReader 
+      IDName: wibdefault
+    }
+  }
+}
+
+############################
+
+wib901_standard: @local::wib_standard
+wib901_standard.fragment_receiver.fragment_id: 491 
+wib901_standard.fragment_receiver.board_id: 91
+wib901_standard.fragment_receiver.WIB.address: "np04-wib-901" 
+wib901_standard.metrics.dim.IDName: "wib901"
+
+wib902_standard: @local::wib_standard
+wib902_standard.fragment_receiver.fragment_id: 492 
+wib902_standard.fragment_receiver.board_id: 92
+#wib902_standard.fragment_receiver.WIB.address: "np04-wib-902" 
+wib902_standard.fragment_receiver.WIB.address: "192.168.200.2" 
+wib902_standard.fragment_receiver.WIB.config.use_WIB_fake_data: [false,true,true,true]
+wib902_standard.fragment_receiver.WIB.config.enable_FEMBs: [true,false,false,false]
+wib902_standard.metrics.dim.IDName: "wib902"
+
+wib903_standard: @local::wib_standard
+wib903_standard.fragment_receiver.fragment_id: 493 
+wib903_standard.fragment_receiver.board_id: 93
+wib903_standard.fragment_receiver.WIB.address: "np04-wib-903" 
+wib903_standard.metrics.dim.IDName: "wib903"
+
+wib904_standard: @local::wib_standard
+wib904_standard.fragment_receiver.fragment_id: 494 
+wib904_standard.fragment_receiver.board_id: 94
+wib904_standard.fragment_receiver.WIB.address: "np04-wib-904" 
+wib904_standard.metrics.dim.IDName: "wib904"
+
+wib905_standard: @local::wib_standard
+wib905_standard.fragment_receiver.fragment_id: 495
+wib905_standard.fragment_receiver.board_id: 95
+#wib905_standard.fragment_receiver.WIB.address: "np04-wib-905" 
+wib905_standard.fragment_receiver.WIB.address: "192.168.200.5" 
+wib905_standard.fragment_receiver.WIB.config.use_WIB_fake_data: [true,true,false,false]
+wib905_standard.fragment_receiver.WIB.config.enable_FEMBs: [false,false,true,true]
+wib905_standard.metrics.dim.IDName: "wib905"
+
+############################
+
+wib001_standard: @local::wib_standard 
+wib001_standard.fragment_receiver.fragment_id: 401 
+wib001_standard.fragment_receiver.board_id: 1 
+wib001_standard.fragment_receiver.WIB.address: "np04-wib-001" 
+wib001_standard.metrics.dim.IDName: "wib001"
+
+wib002_standard: @local::wib_standard 
+wib002_standard.fragment_receiver.fragment_id: 402 
+wib002_standard.fragment_receiver.board_id: 2 
+wib002_standard.fragment_receiver.WIB.address: "np04-wib-002" 
+wib002_standard.metrics.dim.IDName: "wib002"
+
+wib003_standard: @local::wib_standard 
+wib003_standard.fragment_receiver.fragment_id: 403 
+wib003_standard.fragment_receiver.board_id: 3 
+wib003_standard.fragment_receiver.WIB.address: "np04-wib-003" 
+wib003_standard.metrics.dim.IDName: "wib003"
+
+wib004_standard: @local::wib_standard 
+wib004_standard.fragment_receiver.fragment_id: 404 
+wib004_standard.fragment_receiver.board_id: 4 
+wib004_standard.fragment_receiver.WIB.address: "np04-wib-004" 
+wib004_standard.metrics.dim.IDName: "wib004"
+
+wib005_standard: @local::wib_standard 
+wib005_standard.fragment_receiver.fragment_id: 405 
+wib005_standard.fragment_receiver.board_id: 5 
+wib005_standard.fragment_receiver.WIB.address: "np04-wib-005" 
+wib005_standard.metrics.dim.IDName: "wib005"
+
+############################
+
+wib101_standard: @local::wib_standard 
+wib101_standard.fragment_receiver.fragment_id: 411 
+wib101_standard.fragment_receiver.board_id: 11 
+wib101_standard.fragment_receiver.WIB.address: "np04-wib-101" 
+wib101_standard.metrics.dim.IDName: "wib101"
+
+wib102_standard: @local::wib_standard 
+wib102_standard.fragment_receiver.fragment_id: 412 
+wib102_standard.fragment_receiver.board_id: 12 
+wib102_standard.fragment_receiver.WIB.address: "np04-wib-102" 
+wib102_standard.metrics.dim.IDName: "wib102"
+
+wib103_standard: @local::wib_standard 
+wib103_standard.fragment_receiver.fragment_id: 413 
+wib103_standard.fragment_receiver.board_id: 13 
+wib103_standard.fragment_receiver.WIB.address: "np04-wib-103" 
+wib103_standard.metrics.dim.IDName: "wib103"
+
+wib104_standard: @local::wib_standard 
+wib104_standard.fragment_receiver.fragment_id: 414 
+wib104_standard.fragment_receiver.board_id: 14 
+wib104_standard.fragment_receiver.WIB.address: "np04-wib-104" 
+wib104_standard.metrics.dim.IDName: "wib104"
+
+wib105_standard: @local::wib_standard 
+wib105_standard.fragment_receiver.fragment_id: 415 
+wib105_standard.fragment_receiver.board_id: 15 
+wib105_standard.fragment_receiver.WIB.address: "np04-wib-105" 
+wib105_standard.metrics.dim.IDName: "wib105"
+
+############################
+
+wib201_standard: @local::wib_standard 
+wib201_standard.fragment_receiver.fragment_id: 421 
+wib201_standard.fragment_receiver.board_id: 21 
+wib201_standard.fragment_receiver.WIB.address: "np04-wib-201" 
+wib201_standard.metrics.dim.IDName: "wib201"
+
+wib202_standard: @local::wib_standard 
+wib202_standard.fragment_receiver.fragment_id: 422 
+wib202_standard.fragment_receiver.board_id: 22 
+wib202_standard.fragment_receiver.WIB.address: "np04-wib-202" 
+wib202_standard.metrics.dim.IDName: "wib202"
+
+wib203_standard: @local::wib_standard 
+wib203_standard.fragment_receiver.fragment_id: 423 
+wib203_standard.fragment_receiver.board_id: 23 
+wib203_standard.fragment_receiver.WIB.address: "np04-wib-203" 
+wib203_standard.metrics.dim.IDName: "wib203"
+
+wib204_standard: @local::wib_standard 
+wib204_standard.fragment_receiver.fragment_id: 424 
+wib204_standard.fragment_receiver.board_id: 24 
+wib204_standard.fragment_receiver.WIB.address: "np04-wib-204" 
+wib204_standard.metrics.dim.IDName: "wib204"
+
+wib205_standard: @local::wib_standard 
+wib205_standard.fragment_receiver.fragment_id: 425 
+wib205_standard.fragment_receiver.board_id: 25 
+wib205_standard.fragment_receiver.WIB.address: "np04-wib-205" 
+wib205_standard.metrics.dim.IDName: "wib205"
+
+############################
+
+wib301_standard: @local::wib_standard 
+wib301_standard.fragment_receiver.fragment_id: 431 
+wib301_standard.fragment_receiver.board_id: 31 
+wib301_standard.fragment_receiver.WIB.address: "np04-wib-301" 
+wib301_standard.metrics.dim.IDName: "wib301"
+
+wib302_standard: @local::wib_standard 
+wib302_standard.fragment_receiver.fragment_id: 432 
+wib302_standard.fragment_receiver.board_id: 32 
+wib302_standard.fragment_receiver.WIB.address: "np04-wib-302" 
+wib302_standard.metrics.dim.IDName: "wib302"
+
+wib303_standard: @local::wib_standard 
+wib303_standard.fragment_receiver.fragment_id: 433 
+wib303_standard.fragment_receiver.board_id: 33 
+wib303_standard.fragment_receiver.WIB.address: "np04-wib-303" 
+wib303_standard.metrics.dim.IDName: "wib303"
+
+wib304_standard: @local::wib_standard 
+wib304_standard.fragment_receiver.fragment_id: 434 
+wib304_standard.fragment_receiver.board_id: 34 
+wib304_standard.fragment_receiver.WIB.address: "np04-wib-304" 
+wib304_standard.metrics.dim.IDName: "wib304"
+
+wib305_standard: @local::wib_standard 
+wib305_standard.fragment_receiver.fragment_id: 435 
+wib305_standard.fragment_receiver.board_id: 35 
+wib305_standard.fragment_receiver.WIB.address: "np04-wib-305" 
+wib305_standard.metrics.dim.IDName: "wib305"
+
+############################
+
+wib401_standard: @local::wib_standard 
+wib401_standard.fragment_receiver.fragment_id: 441 
+wib401_standard.fragment_receiver.board_id: 41 
+wib401_standard.fragment_receiver.WIB.address: "np04-wib-401" 
+wib401_standard.metrics.dim.IDName: "wib401"
+
+wib402_standard: @local::wib_standard 
+wib402_standard.fragment_receiver.fragment_id: 442 
+wib402_standard.fragment_receiver.board_id: 42 
+wib402_standard.fragment_receiver.WIB.address: "np04-wib-402" 
+wib402_standard.metrics.dim.IDName: "wib402"
+
+wib403_standard: @local::wib_standard 
+wib403_standard.fragment_receiver.fragment_id: 443 
+wib403_standard.fragment_receiver.board_id: 43 
+wib403_standard.fragment_receiver.WIB.address: "np04-wib-403" 
+wib403_standard.metrics.dim.IDName: "wib403"
+
+wib404_standard: @local::wib_standard 
+wib404_standard.fragment_receiver.fragment_id: 444 
+wib404_standard.fragment_receiver.board_id: 44 
+wib404_standard.fragment_receiver.WIB.address: "np04-wib-404" 
+wib404_standard.metrics.dim.IDName: "wib404"
+
+wib405_standard: @local::wib_standard 
+wib405_standard.fragment_receiver.fragment_id: 445 
+wib405_standard.fragment_receiver.board_id: 45 
+wib405_standard.fragment_receiver.WIB.address: "np04-wib-405" 
+wib405_standard.metrics.dim.IDName: "wib405"
+
+############################
+
+wib501_standard: @local::wib_standard 
+wib501_standard.fragment_receiver.fragment_id: 451 
+wib501_standard.fragment_receiver.board_id: 51 
+wib501_standard.fragment_receiver.WIB.address: "np04-wib-501" 
+wib501_standard.metrics.dim.IDName: "wib501"
+
+wib502_standard: @local::wib_standard 
+wib502_standard.fragment_receiver.fragment_id: 452 
+wib502_standard.fragment_receiver.board_id: 52 
+wib502_standard.fragment_receiver.WIB.address: "np04-wib-502" 
+wib502_standard.metrics.dim.IDName: "wib502"
+
+wib503_standard: @local::wib_standard 
+wib503_standard.fragment_receiver.fragment_id: 453 
+wib503_standard.fragment_receiver.board_id: 53 
+wib503_standard.fragment_receiver.WIB.address: "np04-wib-503" 
+wib503_standard.metrics.dim.IDName: "wib503"
+
+wib504_standard: @local::wib_standard 
+wib504_standard.fragment_receiver.fragment_id: 454 
+wib504_standard.fragment_receiver.board_id: 54 
+wib504_standard.fragment_receiver.WIB.address: "np04-wib-504" 
+wib504_standard.metrics.dim.IDName: "wib504"
+
+wib505_standard: @local::wib_standard 
+wib505_standard.fragment_receiver.fragment_id: 455 
+wib505_standard.fragment_receiver.board_id: 55 
+wib505_standard.fragment_receiver.WIB.address: "np04-wib-505" 
+wib505_standard.metrics.dim.IDName: "wib505"
+
+############################
+
+wib601_standard: @local::wib_standard 
+wib601_standard.fragment_receiver.fragment_id: 461 
+wib601_standard.fragment_receiver.board_id: 61 
+wib601_standard.fragment_receiver.WIB.address: "np04-wib-601" 
+wib601_standard.metrics.dim.IDName: "wib601"
+
+wib602_standard: @local::wib_standard 
+wib602_standard.fragment_receiver.fragment_id: 462 
+wib602_standard.fragment_receiver.board_id: 62 
+wib602_standard.fragment_receiver.WIB.address: "np04-wib-602" 
+wib602_standard.metrics.dim.IDName: "wib602"
+
+wib603_standard: @local::wib_standard 
+wib603_standard.fragment_receiver.fragment_id: 463 
+wib603_standard.fragment_receiver.board_id: 63 
+wib603_standard.fragment_receiver.WIB.address: "np04-wib-603" 
+wib603_standard.metrics.dim.IDName: "wib603"
+
+wib604_standard: @local::wib_standard 
+wib604_standard.fragment_receiver.fragment_id: 464 
+wib604_standard.fragment_receiver.board_id: 64 
+wib604_standard.fragment_receiver.WIB.address: "np04-wib-604" 
+wib604_standard.metrics.dim.IDName: "wib604"
+
+wib605_standard: @local::wib_standard 
+wib605_standard.fragment_receiver.fragment_id: 465 
+wib605_standard.fragment_receiver.board_id: 65 
+wib605_standard.fragment_receiver.WIB.address: "np04-wib-605" 
+wib605_standard.metrics.dim.IDName: "wib605"
+
+END_PROLOG
