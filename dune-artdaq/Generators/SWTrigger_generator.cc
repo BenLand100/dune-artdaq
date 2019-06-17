@@ -75,6 +75,7 @@ dune::SWTrigger::SWTrigger(fhicl::ParameterSet const & ps):
   ,n_recvd_(0)
   ,p_count_1_(0)
   ,p_count_2_(0)
+  ,count_(0)
 {
 
   std::stringstream instance_name_ss;
@@ -264,6 +265,7 @@ bool dune::SWTrigger::getNext_(artdaq::FragmentPtrs &frags)
   p_count_2_=count_2;
 
   if (n_recvd_ < 60){
+    count_++;
     return true;
   }
 
@@ -305,8 +307,8 @@ bool dune::SWTrigger::getNext_(artdaq::FragmentPtrs &frags)
   word[11]=last_spillend_tstamph_;
 
   // Appended for trigger decision information
-  word[12]=last_runstart_tstampl_;
-  word[13]=last_runstart_tstamph_;
+  word[12]=count_;
+  word[13]=partition_number_;
 
   word[14]=last_spillstart_tstampl_;
   word[15]=last_spillstart_tstamph_;
