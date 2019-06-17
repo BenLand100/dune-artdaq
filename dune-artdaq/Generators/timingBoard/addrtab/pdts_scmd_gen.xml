@@ -1,0 +1,16 @@
+<node id="scmd_gen" description="internal trigger generator" fwinfo="endpoint">
+	<node id="ctrl" address="0x0" fwinfo="endpoint;width=0">
+		<node id="en" mask="0x1"/>
+		<node id="clr" mask="0x2"/>
+	</node>
+	<node id="sel" address="0x1" fwinfo="endpoint;width=0"/>
+	<node id="chan_ctrl" address="0x2" fwinfo="endpoint;width=0">
+		<node id="en" mask="0x1"/>
+		<node id="patt" mask="0x2"/>
+		<node id="force" mask="0x4"/>
+		<node id="type" mask="0xff00"/>
+		<node id="rate_div" mask="0x3f0000"/>
+	</node>
+	<node id="actrs" address="0x10" mode="block" size="0x10" fwinfo="endpoint;width=4"/>
+	<node id="rctrs" address="0x20" mode="block" size="0x10" fwinfo="endpoint;width=4"/>		
+</node>

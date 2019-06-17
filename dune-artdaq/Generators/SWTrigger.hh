@@ -123,8 +123,6 @@ namespace dune {
     unsigned int p_count_1_;
     unsigned int p_count_2_;
 
-    unsigned int count_;
-
   };
 }
 
