@@ -18,6 +18,7 @@
 #include "cetlib/exception.h"
 #include "dune-raw-data/Overlays/FragmentType.hh"
 #include "dune-raw-data/Overlays/TimingFragment.hh"
+#include "dune-raw-data/Overlays/TriggerFragment.hh"
 
 #include "fhiclcpp/ParameterSet.h"
 #include "timingBoard/InhibitGet.h" // The interface to the ZeroMQ trigger inhibit master
@@ -67,8 +68,10 @@ dune::SWTrigger::SWTrigger(fhicl::ParameterSet const & ps):
   ,last_spillend_tstamph_(0xffffffff)   // ...
   ,last_runstart_tstampl_(0xffffffff)   // Timestamp of most recent start-of-run
   ,last_runstart_tstamph_(0xffffffff)   // ...
-  ,receiver_1_("{\"socket\": { \"type\": \"SUB\", \"connect\": [ \"tcp://10.73.136.67:25141\" ] } }") //Corresponds to HitFinder501
-  ,receiver_2_("{\"socket\": { \"type\": \"SUB\", \"connect\": [ \"tcp://10.73.136.67:25142\" ] } }") //Corresponds to HitFinder502
+  ,receiver_1_("{\"socket\": { \"type\": \"SUB\", \"connect\": [ \"tcp://10.73.136.32:40501\" ] } }") //Corresponds to trigcand500
+  ,receiver_2_("{\"socket\": { \"type\": \"SUB\", \"connect\": [ \"tcp://10.73.136.32:40601\" ] } }") //Corresponds to trigcand600
+  //,receiver_1_("{\"socket\": { \"type\": \"SUB\", \"connect\": [ \"tcp://10.73.136.67:25141\" ] } }") //Corresponds to hitfind501
+  //,receiver_2_("{\"socket\": { \"type\": \"SUB\", \"connect\": [ \"tcp://10.73.136.67:25142\" ] } }") //Corresponds to hitfind502
   ,n_recvd_(0)
   ,p_count_1_(0)
   ,p_count_2_(0)
@@ -148,7 +151,7 @@ void dune::SWTrigger::stopNoMutex(void)
   // (PAR 2018-10-15) Change this to *not* set stopping_flag_: that
   // variable is a bare int (not std::atomic) and stopnoMutex() is
   // called from a different thread from getNext_(). So this means
-  // that stopping_flag_ can change in the middle of a getNext_()
+  // that stopping_flag_ can change in the middle of a getNext()
   // call, which would break the logic of getNext_() and may be
   // causing the "getNext: std::exception caught: Failed to stop
   // after 5000 milliseconds" errors.
@@ -209,6 +212,13 @@ bool dune::SWTrigger::getNext_(artdaq::FragmentPtrs &frags)
     DAQLogger::LogInfo(instance_name_) << "getNext_ stopping ";
     return false;
   }
+
+  ptmp::data::TPSet SetReceived_1;
+  ptmp::data::TPSet SetReceived_2;
+
+  bool received_1 = receiver_1_(SetReceived_1, 100);
+  bool received_2 = receiver_2_(SetReceived_2, 100);
+
   uint32_t tf = InhibitGet_get();  
   if (tf==1) {
     throttling_state_=false;
@@ -217,7 +227,7 @@ bool dune::SWTrigger::getNext_(artdaq::FragmentPtrs &frags)
     throttling_state_= true;
   }
   if (throttling_state_) {
-    usleep(10000);
+    usleep(1000);
     return true;
   }
 
@@ -230,14 +240,8 @@ bool dune::SWTrigger::getNext_(artdaq::FragmentPtrs &frags)
 
   auto start = std::chrono::high_resolution_clock::now();
 
-  ptmp::data::TPSet SetReceived_1;
-  ptmp::data::TPSet SetReceived_2;
-
-  bool received_1 = receiver_1_(SetReceived_1, 100);
-  bool received_2 = receiver_2_(SetReceived_2, 100);
-
   if (!received_1 && !received_2){
-    DAQLogger::LogInfo(instance_name_) << "No TPSet for one of the connections.";
+    DAQLogger::LogInfo(instance_name_) << "No TPSet for either of the connections.";
   }
 
   unsigned int count_1 = SetReceived_1.count();
@@ -247,12 +251,12 @@ bool dune::SWTrigger::getNext_(artdaq::FragmentPtrs &frags)
   //DAQLogger::LogInfo(instance_name_) << "TPSet count for connection 2 is: " << count_2;
 
   if (count_1 != p_count_1_){
-    //DAQLogger::LogInfo(instance_name_) << "Received New TPSet from connection 1.";
+    DAQLogger::LogInfo(instance_name_) << "Received New TPSet from connection 1.";
     ++n_recvd_;
   }
 
   if (count_2 != p_count_2_){
-    //DAQLogger::LogInfo(instance_name_) << "Received New TPSet from connection 2.";
+    DAQLogger::LogInfo(instance_name_) << "Received New TPSet from connection 2.";
     ++n_recvd_;
   }
 
@@ -270,13 +274,13 @@ bool dune::SWTrigger::getNext_(artdaq::FragmentPtrs &frags)
 
   DAQLogger::LogInfo(instance_name_) << "Timestamp going to triggered fragment should be: " << previous_ts_;
 
-  std::unique_ptr<artdaq::Fragment> f = artdaq::Fragment::FragmentBytes( TimingFragment::size()*sizeof(uint32_t),
+  std::unique_ptr<artdaq::Fragment> f = artdaq::Fragment::FragmentBytes( TriggerFragment::size()*sizeof(uint32_t),
       artdaq::Fragment::InvalidSequenceID,
       artdaq::Fragment::InvalidFragmentID,
       artdaq::Fragment::InvalidFragmentType,
-      dune::TimingFragment::Metadata(TimingFragment::VERSION));
+      dune::TriggerFragment::Metadata(TriggerFragment::VERSION));
   // It's unclear to me whether the constructor above actually sets the metadata, so let's do it here too to be sure
-  f->updateMetadata(TimingFragment::Metadata(TimingFragment::VERSION));
+  f->updateMetadata(TriggerFragment::Metadata(TriggerFragment::VERSION));
 
   // GLM: here get the trigger decisions based on hits
 
@@ -285,9 +289,9 @@ bool dune::SWTrigger::getNext_(artdaq::FragmentPtrs &frags)
   // Set the last spill/run timestamps in the fragment
 
   // There had better be enough space in the object. If not, something has gone horribly wrong
-  static_assert(TimingFragment::Body::size >= 12ul);
+  static_assert(TriggerFragment::Body::size >= 12ul);
 
-  // These must be kept in sync with the order declared in TimingFragment::Body in TimingFragment.hh
+  // These must be kept in sync with the order declared in TriggerFragment::Body in TriggerFragment.hh
   word[2]= previous_ts_&0xffffffff;
   word[3]= (previous_ts_>>32);
 
@@ -299,6 +303,17 @@ bool dune::SWTrigger::getNext_(artdaq::FragmentPtrs &frags)
 
   word[10]=last_spillend_tstampl_;
   word[11]=last_spillend_tstamph_;
+
+  // Appended for trigger decision information
+  word[12]=last_runstart_tstampl_;
+  word[13]=last_runstart_tstamph_;
+
+  word[14]=last_spillstart_tstampl_;
+  word[15]=last_spillstart_tstamph_;
+
+  word[16]=last_spillend_tstampl_;
+  word[17]=last_spillend_tstamph_;
+  //
 
   // Fill in the fragment header fields (not some other fragment generators may put these in the
   // constructor for the fragment, but here we push them in one at a time.
