@@ -310,10 +310,10 @@ bool dune::SWTrigger::getNext_(artdaq::FragmentPtrs &frags)
   word[12]=count_;
   word[13]=partition_number_;
 
-  word[14]=last_spillstart_tstampl_;
+  word[14]=0;
   word[15]=last_spillstart_tstamph_;
 
-  word[16]=last_spillend_tstampl_;
+  word[16]=last_spillstart_tstampl_;
   word[17]=last_spillend_tstamph_;
   //
 
