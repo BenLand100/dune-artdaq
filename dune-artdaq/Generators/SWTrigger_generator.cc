@@ -301,11 +301,13 @@ bool dune::SWTrigger::getNext_(artdaq::FragmentPtrs &frags)
   word[12]=count_;
   word[13]=partition_number_;
 
-  word[14]=last_spillstart_tstampl_;
-  word[15]=last_spillstart_tstamph_;
+  word[14]=0;
+  word[15]=last_spillstart_tstampl_; // dummy
+  word[16]=last_spillstart_tstamph_; // dummy
 
-  word[16]=last_spillend_tstampl_;
-  word[17]=last_spillend_tstamph_;
+  word[17]=last_spillstart_tstampl_; // dummy
+  word[18]=last_spillend_tstamph_;   // dummy
+  word[19]=last_spillend_tstamph_;   // dummy
   //
 
   // Fill in the fragment header fields (not some other fragment generators may put these in the
