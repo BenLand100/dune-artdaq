@@ -156,12 +156,11 @@ TriggerPrimitiveFinder::addHitsToQueue(uint64_t timestamp,
     unsigned int nhits=0;
     std::lock_guard<std::mutex> guard(m_triggerPrimitiveMutex);
 
-    static uint32_t count=0;
     static unsigned int msgs_in_tpset=0;
     ptmp::data::TPSet& tpset=*m_current_tpset.get();
     
     if(m_send_ptmp_msgs && msgs_in_tpset==0){
-        tpset.set_count(count++);
+        tpset.set_count(m_n_tpsets_sent);
         // m_*_no are uint8_t, so maybe the casts to uint32_t before shifting are necessary?
         tpset.set_detid((uint32_t(m_fiber_no) << 16) | (uint32_t(m_slot_no) << 8) | (uint32_t(m_crate_no) << 0));
         tpset.set_tstart(timestamp);
