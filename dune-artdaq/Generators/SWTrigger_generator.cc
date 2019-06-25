@@ -13,6 +13,7 @@
 
 #include "dune-artdaq/Generators/SWTrigger.hh"
 #include "dune-artdaq/DAQLogger/DAQLogger.hh"
+#include "dune-artdaq/Generators/swTrigger/ptmp_util.hh"
 
 #include "artdaq/Application/GeneratorMacros.hh"
 #include "cetlib/exception.h"
@@ -68,10 +69,9 @@ dune::SWTrigger::SWTrigger(fhicl::ParameterSet const & ps):
   ,last_spillend_tstamph_(0xffffffff)   // ...
   ,last_runstart_tstampl_(0xffffffff)   // Timestamp of most recent start-of-run
   ,last_runstart_tstamph_(0xffffffff)   // ...
-  ,receiver_1_("{\"socket\": { \"type\": \"SUB\", \"connect\": [ \"tcp://10.73.136.32:40501\" ] } }") //Corresponds to trigcand500
-  ,receiver_2_("{\"socket\": { \"type\": \"SUB\", \"connect\": [ \"tcp://10.73.136.32:40601\" ] } }") //Corresponds to trigcand600
-  //,receiver_1_("{\"socket\": { \"type\": \"SUB\", \"connect\": [ \"tcp://10.73.136.67:25141\" ] } }") //Corresponds to hitfind501
-  //,receiver_2_("{\"socket\": { \"type\": \"SUB\", \"connect\": [ \"tcp://10.73.136.67:25142\" ] } }") //Corresponds to hitfind502
+  ,receiver_1_( ptmp_util::make_ptmp_socket_string("SUB","connect",{ps.get<std::string>("receiver_1")}) ) //Corresponds to trigcand500
+  ,receiver_2_( ptmp_util::make_ptmp_socket_string("SUB","connect",{ps.get<std::string>("receiver_2")}) ) //Corresponds to trigcand600
+  ,timeout_(ps.get<int>("timeout"))
   ,n_recvd_(0)
   ,p_count_1_(0)
   ,p_count_2_(0)
@@ -208,6 +208,8 @@ bool dune::SWTrigger::checkHWStatus_()
 bool dune::SWTrigger::getNext_(artdaq::FragmentPtrs &frags)
 {
 
+  auto start = std::chrono::high_resolution_clock::now();
+
   // Check for stop run
   if (stopping_flag_) {
     DAQLogger::LogInfo(instance_name_) << "getNext_ stopping ";
@@ -215,10 +217,10 @@ bool dune::SWTrigger::getNext_(artdaq::FragmentPtrs &frags)
   }
 
   ptmp::data::TPSet SetReceived_1;
-  ptmp::data::TPSet SetReceived_2;
+  //  ptmp::data::TPSet SetReceived_2;
 
-  bool received_1 = receiver_1_(SetReceived_1, 100);
-  bool received_2 = receiver_2_(SetReceived_2, 100);
+  bool received_1 = receiver_1_(SetReceived_1, timeout_);
+  //bool received_2 = receiver_2_(SetReceived_2, timeout_);
 
   uint32_t tf = InhibitGet_get();  
   if (tf==1) {
@@ -228,49 +230,38 @@ bool dune::SWTrigger::getNext_(artdaq::FragmentPtrs &frags)
     throttling_state_= true;
   }
   if (throttling_state_) {
-    usleep(1000);
     return true;
   }
 
-  /* Commented out so that TPSet timing is used. 
-  uint64_t ts = latest_ts_; // copy value as it may change during execution....
-  if (ts != 0 && ts != previous_ts_ ) {
-    previous_ts_ = ts;
-  }
-  */
-
-  auto start = std::chrono::high_resolution_clock::now();
-
-  if (!received_1 && !received_2){
+  if (!received_1/* && !received_2*/){
     DAQLogger::LogInfo(instance_name_) << "No TPSet for either of the connections.";
   }
 
   unsigned int count_1 = SetReceived_1.count();
-  unsigned int count_2 = SetReceived_2.count();
+  //unsigned int count_2 = SetReceived_2.count();
 
   //DAQLogger::LogInfo(instance_name_) << "TPSet count for connection 1 is: " << count_1;
   //DAQLogger::LogInfo(instance_name_) << "TPSet count for connection 2 is: " << count_2;
 
   if (count_1 != p_count_1_){
-    DAQLogger::LogInfo(instance_name_) << "Received New TPSet from connection 1.";
     ++n_recvd_;
   }
 
+  /*
   if (count_2 != p_count_2_){
     DAQLogger::LogInfo(instance_name_) << "Received New TPSet from connection 2.";
     ++n_recvd_;
   }
-
+  */
   p_count_1_=count_1;
-  p_count_2_=count_2;
+  //p_count_2_=count_2;
 
-  if (n_recvd_ < 60){
-    count_++;
+  if (n_recvd_ < 9000){
     return true;
   }
 
-  //previous_ts_ = SetReceived_1.tstart();
-  previous_ts_ = std::max(SetReceived_1.tstart(),SetReceived_2.tstart());
+  previous_ts_ = SetReceived_1.tstart();
+  //previous_ts_ = std::max(SetReceived_1.tstart(),SetReceived_2.tstart());
 
   n_recvd_ = 0;
 
@@ -337,7 +328,7 @@ bool dune::SWTrigger::getNext_(artdaq::FragmentPtrs &frags)
   //Check how long is the time between receive/send of the PTMP message
   auto elapsed = std::chrono::high_resolution_clock::now() - start;
   long long microseconds = std::chrono::duration_cast<std::chrono::microseconds>(elapsed).count();
-  DAQLogger::LogInfo(instance_name_) << "Time from receive PTMP until published (usec): " << microseconds;
+  DAQLogger::LogInfo(instance_name_) << "Time from beginning of getNext until TPset published (usec): " << microseconds;
 
   frags.emplace_back(std::move(f));
   // We only increment the event counter for events we send out
