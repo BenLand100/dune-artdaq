@@ -341,26 +341,27 @@ void TriggerPrimitiveFinder::processing_thread(uint8_t first_register, uint8_t l
     m_readyForMessages.store(true);
 
     while(true){
-        ProcessingTasks::ItemToProcess item;
-        while(!m_itemsToProcess->read(item) && !m_should_stop.load()){ 
+        ProcessingTasks::ItemToProcess* item;
+        while(!(item=m_itemsToProcess->frontPtr()) && !m_should_stop.load()){ 
             std::this_thread::sleep_for(std::chrono::microseconds(10));
         }
         ++nmsg;
         if(first_msg_us==0) first_msg_us=ProcessingTasks::now_us();
-        if(item.timestamp==ProcessingTasks::END_OF_MESSAGES){
-            dune::DAQLogger::LogInfo("TriggerPrimitiveFinder::processing_thread") << "Got END_OF_MESSAGES. Exiting";
-            break;
-        }
         if(m_should_stop.load()){
             dune::DAQLogger::LogInfo("TriggerPrimitiveFinder::processing_thread") << "m_should_stop is true. Exiting";
             break;
         }
-        measure_latency(item);
-        RegisterArray<REGISTERS_PER_FRAME*FRAMES_PER_MSG> expanded=expand_message_adcs(item.scs);
+        if(item->timestamp==ProcessingTasks::END_OF_MESSAGES){
+            dune::DAQLogger::LogInfo("TriggerPrimitiveFinder::processing_thread") << "Got END_OF_MESSAGES. Exiting";
+            m_itemsToProcess->popFront();
+            break;
+        }
+        measure_latency(*item);
+        RegisterArray<REGISTERS_PER_FRAME*FRAMES_PER_MSG> expanded=expand_message_adcs(item->scs);
         MessageCollectionADCs* mcadc=reinterpret_cast<MessageCollectionADCs*>(expanded.data());
         if(first){
             pi.setState(mcadc);
-            dune::FelixFrame* frame=reinterpret_cast<dune::FelixFrame*>(&item.scs);
+            dune::FelixFrame* frame=reinterpret_cast<dune::FelixFrame*>(&item->scs);
             m_fiber_no=frame->fiber_no();
             m_crate_no=frame->crate_no();
             m_slot_no=frame->slot_no();
@@ -380,8 +381,9 @@ void TriggerPrimitiveFinder::processing_thread(uint8_t first_register, uint8_t l
         // Do the processing
         process_window_avx2(pi);
         // Create dune::TriggerPrimitives from the hits and put them in the queue for later retrieval
-        nhits+=addHitsToQueue(item.timestamp, primfind_dest, m_triggerPrimitives);
-        m_latestProcessedTimestamp.store(item.timestamp);
+        nhits+=addHitsToQueue(item->timestamp, primfind_dest, m_triggerPrimitives);
+        m_latestProcessedTimestamp.store(item->timestamp);
+        m_itemsToProcess->popFront();
     }
     uint64_t end_us=ProcessingTasks::now_us();
     int64_t walltime_us=end_us-first_msg_us;
