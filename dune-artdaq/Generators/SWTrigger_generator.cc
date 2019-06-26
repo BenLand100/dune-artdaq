@@ -276,6 +276,9 @@ bool dune::SWTrigger::getNext_(artdaq::FragmentPtrs &frags)
 
   DAQLogger::LogInfo(instance_name_) << "Timestamp going to triggered fragment should be: " << previous_ts_;
 
+
+
+//------------ Trigger Fragment -------------//
   std::unique_ptr<artdaq::Fragment> f = artdaq::Fragment::FragmentBytes( TriggerFragment::size()*sizeof(uint32_t),
       artdaq::Fragment::InvalidSequenceID,
       artdaq::Fragment::InvalidFragmentID,
@@ -286,38 +289,62 @@ bool dune::SWTrigger::getNext_(artdaq::FragmentPtrs &frags)
 
   // GLM: here get the trigger decisions based on hits
 
-  uint32_t* word = reinterpret_cast<uint32_t *> (f->dataBeginBytes());    // dataBeginBytes returns a byte_t pointer
+  uint32_t* triggerword = reinterpret_cast<uint32_t *> (f->dataBeginBytes());    // dataBeginBytes returns a byte_t pointer
 
   // Set the last spill/run timestamps in the fragment
 
   // There had better be enough space in the object. If not, something has gone horribly wrong
-  static_assert(TriggerFragment::Body::size >= 12ul);
+  static_assert(TriggerFragment::Body::size >= 20ul);
 
   // These must be kept in sync with the order declared in TriggerFragment::Body in TriggerFragment.hh
-  word[2]= previous_ts_&0xffffffff;
-  word[3]= (previous_ts_>>32);
+  triggerword[2]= previous_ts_&0xffffffff;
+  triggerword[3]= (previous_ts_>>32);
 
-  word[6]=last_runstart_tstampl_;
-  word[7]=last_runstart_tstamph_;
+  triggerword[6]=last_runstart_tstampl_;
+  triggerword[7]=last_runstart_tstamph_;
 
-  word[8]=last_spillstart_tstampl_;
-  word[9]=last_spillstart_tstamph_;
+  triggerword[8]=last_spillstart_tstampl_;
+  triggerword[9]=last_spillstart_tstamph_;
 
-  word[10]=last_spillend_tstampl_;
-  word[11]=last_spillend_tstamph_;
+  triggerword[10]=last_spillend_tstampl_;
+  triggerword[11]=last_spillend_tstamph_;
 
   // Appended for trigger decision information
-  word[12]=count_;
-  word[13]=partition_number_;
+  triggerword[12]=count_;
+  triggerword[13]=partition_number_;
 
-  word[14]=0;
-  word[15]=last_spillstart_tstampl_; // dummy
-  word[16]=last_spillstart_tstamph_; // dummy
+  triggerword[14]=0;
+  triggerword[15]=last_spillstart_tstampl_; // dummy
+  triggerword[16]=last_spillstart_tstamph_; // dummy
 
-  word[17]=last_spillstart_tstampl_; // dummy
-  word[18]=last_spillend_tstamph_;   // dummy
-  word[19]=last_spillend_tstamph_;   // dummy
-  //
+  triggerword[17]=last_spillstart_tstampl_; // dummy
+  triggerword[18]=last_spillend_tstamph_;   // dummy
+  triggerword[19]=last_spillend_tstamph_;   // dummy
+
+
+
+
+//---------- Timing Fragment -----------//
+  
+  uint32_t* timingword = reinterpret_cast<uint32_t *> (f->dataBeginBytes());    // dataBeginBytes returns a byte_t pointer
+
+  // Set the last spill/run timestamps in the fragment
+
+  // There had better be enough space in the object. If not, something has gone horribly wrong
+  static_assert(TimingFragment::Body::size >= 12ul);
+
+  // These must be kept in sync with the order declared in TimingFragment::Body in TimingFragment.hh
+  timingword[2]= previous_ts_&0xffffffff;
+  timingword[3]= (previous_ts_>>32);
+
+  timingword[6]=last_runstart_tstampl_;
+  timingword[7]=last_runstart_tstamph_;
+
+  timingword[8]=last_spillstart_tstampl_;
+  timingword[9]=last_spillstart_tstamph_;
+
+  timingword[10]=last_spillend_tstampl_;
+  timingword[11]=last_spillend_tstamph_;
 
   // Fill in the fragment header fields (not some other fragment generators may put these in the
   // constructor for the fragment, but here we push them in one at a time.
