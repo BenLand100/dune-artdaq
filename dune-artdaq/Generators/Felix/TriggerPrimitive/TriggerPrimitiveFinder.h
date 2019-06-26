@@ -77,6 +77,7 @@ private:
 
     void print_latency_hist(const PowerTwoHist<24>& hist, const std::string name) const;
 
+    // Which numa node is the memory pointed to by `p` allocated on?
     int which_numa_node(void *p) const;
 
     // The queue of trigger primitives found, and a mutex to protect it
