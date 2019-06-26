@@ -17,7 +17,7 @@ bindir      fq_dir      bin
 
 #
 product		version		optional
-artdaq		v2019_05_28_for_dune-artdaq_A
+artdaq		v2019_06_19_for_dune-artdaq_A
 dune_raw_data 	v2019_05_29_for_dune-artdaq_A
 cetbuildtools	v7_02_01	-	only_for_build
 smc_compiler    v6_6_0          -nq-    only_for_build

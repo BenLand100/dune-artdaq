@@ -53,7 +53,7 @@ public:
     bool readyForMessages() const { return m_readyForMessages.load(); }
 private:
 
-    void processing_thread(uint8_t first_register, uint8_t last_register);
+    void processing_thread(uint8_t first_register, uint8_t last_register, size_t qsize, std::vector<int32_t> cpus_to_pin);
 
     std::vector<dune::TriggerPrimitive> getHitsForWindow(const std::deque<dune::TriggerPrimitive>& primitive_queue,
                                                          uint64_t start_ts, uint64_t end_ts);
@@ -84,7 +84,7 @@ private:
     std::atomic<uint64_t> m_latestProcessedTimestamp;
     std::thread m_processingThread;
     std::atomic<bool> m_readyForMessages;
-    folly::ProducerConsumerQueue<ProcessingTasks::ItemToProcess> m_itemsToProcess;
+    std::unique_ptr<folly::ProducerConsumerQueue<ProcessingTasks::ItemToProcess>> m_itemsToProcess;
     // The electronics co-ordinates of the link we're getting data
     // from. We assume that this class will only deal with data from
     // one link

@@ -318,6 +318,7 @@ void NetioHandler::startSubscribers(){
         size_t goodOnes=0;
         size_t badOnes=0;
         size_t lostData=0;
+        size_t lostTPData=0;
 
         std::vector<size_t> badSizes;
         std::vector<size_t> badFrags;
@@ -345,7 +346,11 @@ void NetioHandler::startSubscribers(){
 
 	    bool storeOk = m_pcqs[m_channels[chn]]->write(ics); // RS -> Add possibility for dry_run! (No push mode.)
 
-            if(m_doTPFinding) m_tp_finders[m_channels[chn]]->addMessage(ics);
+            if(m_doTPFinding){
+                if(!m_tp_finders[m_channels[chn]]->addMessage(ics)){
+                    ++lostTPData;
+                }
+            }
 
 	    if (!storeOk) {
               //DAQLogger::LogWarning("NetioHandler::subscriber") << " Fragments queue is full. Lost: " << lostData;
@@ -354,7 +359,7 @@ void NetioHandler::startSubscribers(){
                 lostData+= m_pcqs[m_channels[chn]]->capacity()/2;
               }
               else {
-                ++ lostData;
+                ++lostData;
               }
 	    //  if(lostData%10000 == 0) {
 		//DAQLogger::LogWarning("NetioHandler::subscriber") << " Fragments queue is full. Lost: " << lostData;
@@ -390,7 +395,7 @@ void NetioHandler::startSubscribers(){
           << subsummary.str()
           << " -> Failed timestamp distances (expected distance between messages: " << expDist << ")\n";
           //<< distsummary.str();
-
+        DAQLogger::LogInfo("NetioHandler::subscriber") << lostTPData << " messages failed to push to TriggerPrimitiveFinder";
         // for(auto const& it: m_tp_finders){
         //     const uint64_t id=it.first;
         //     TriggerPrimitiveFinder& tpf=*(it.second);

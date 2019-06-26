@@ -191,6 +191,27 @@ simple_plugin(TimingReceiver "generator"
   ${PDT_CORE}
   )
 
+add_subdirectory(swTrigger)
+
+simple_plugin(Candidate "generator"
+  dune-raw-data_Overlays
+  dune-artdaq_Generators_swTrigger
+  artdaq_Application
+  artdaq_DAQdata
+  artdaq-core_Utilities
+  artdaq-core_Data
+  artdaq-utilities_Plugins
+  ${CANVAS}
+  ${FHICLCPP}
+  ${CETLIB}
+  ${CETLIB_EXCEPT}
+  ${LIBPTMP}
+  ${PROTOBUF}
+  $ENV{JSONCPP_LIB}/libjsoncpp.so
+  ${JSONCPP}
+  dune-artdaq_DAQLogger   
+)
+
 simple_plugin(SWTrigger "generator"
   dune-raw-data_Overlays
   dune-artdaq_Generators_timingBoard
@@ -206,6 +227,8 @@ simple_plugin(SWTrigger "generator"
   ${CETLIB_EXCEPT}
   ${LIBPTMP}
   ${PROTOBUF}
+  $ENV{JSONCPP_LIB}/libjsoncpp.so
+  ${JSONCPP}
   dune-artdaq_DAQLogger	  
 )
 
@@ -251,4 +274,3 @@ simple_plugin(CRTFragGen "generator"
   )
  
 
-add_subdirectory(swTrigger)
