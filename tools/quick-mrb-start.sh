@@ -323,7 +323,7 @@ ftd2xx_version=v1_2_7a
 dune_artdaq_InhibitMaster_version=$( sed -r -n "s/^\s*dune_artdaq_InhibitMaster\s+(\S+).*/\1/p" $ARTDAQ_DEMO_DIR/ups/product_deps )
 dim_version=v20r20
 artdaq_dim_plugin_version=v0_02_08a
-artdaq_mpich_plugin_version=v2019_05_28_for_dune-artdaq_A
+artdaq_mpich_plugin_version=v2019_06_19_for_dune-artdaq_A
 TRACE_version=v3_13_07
 pyzmq_version=v18_0_1a
 

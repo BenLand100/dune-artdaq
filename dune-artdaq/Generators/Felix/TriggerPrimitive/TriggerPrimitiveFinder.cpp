@@ -184,6 +184,9 @@ TriggerPrimitiveFinder::addHitsToQueue(uint64_t timestamp,
             if(hit_charge[i] && chan[i]!=MAGIC){
                 const uint16_t online_channel=collection_index_to_channel(chan[i]);
                 const uint32_t offline_channel=m_offline_channel_base+collection_index_to_offline(chan[i]);
+                // Hack for now, to exclude high TP rate (>10kHz) channels. -JLS June 2019
+                if (offline_channel==9691 || offline_channel==5296 || offline_channel==5010 || offline_channel==4387
+                || offline_channel==4381 || offline_channel==4383 || offline_channel==5006 || offline_channel==9689) { continue; }
                 primitive_queue.emplace_back(timestamp, online_channel, hit_end[i], hit_charge[i], hit_tover[i]);
                 if(m_send_ptmp_msgs){
                     // hit_end is the end time of the hit in TPC clock

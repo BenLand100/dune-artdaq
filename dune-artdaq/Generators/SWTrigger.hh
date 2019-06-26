@@ -118,6 +118,9 @@ namespace dune {
     ptmp::TPReceiver receiver_1_;
     ptmp::TPReceiver receiver_2_;
 
+    // The maximum time in microseconds before we timeout for a TPReceiver call (ms)
+    int timeout_;
+
     int n_recvd_;
 
     unsigned int p_count_1_;
