@@ -11,6 +11,10 @@
 #include <sys/time.h>
 #include <sys/resource.h>
 
+#include "numa.h"
+#include "numaif.h"
+
+#include "sched.h" // for sched_getcpu()
 
 #include "tests/frames2array.h"
 
@@ -276,9 +280,7 @@ void TriggerPrimitiveFinder::processing_thread(uint8_t first_register, uint8_t l
         }
         pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpuset);
     }
-
-    // Wait a bit in the hope that the scheduler definitely moves us
-    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    dune::DAQLogger::LogInfo("TriggerPrimitiveFinder::processing_thread") << "processing thread running on cpu " << sched_getcpu();
 
     // We allocate the queue of items in this thread *after* pinning
     // with the hope of making sure the allocation is on NUMA1 not
@@ -292,10 +294,13 @@ void TriggerPrimitiveFinder::processing_thread(uint8_t first_register, uint8_t l
     for(size_t i=0; i<qsize-1; ++i){
         m_itemsToProcess->write(ProcessingTasks::ItemToProcess{ProcessingTasks::END_OF_MESSAGES, SUPERCHUNK_CHAR_STRUCT{}, 0});
     }
+    int node_counts[2]={0};
     for(size_t i=0; i<qsize-1; ++i){
+        ProcessingTasks::ItemToProcess* item=m_itemsToProcess->frontPtr();
+        node_counts[which_numa_node(item)]++;
         m_itemsToProcess->popFront();
     }
-
+    dune::DAQLogger::LogInfo("TriggerPrimitiveFinder::processing_thread") << "items on node 0: " << node_counts[0] << ", node 1: " << node_counts[1];
     uint64_t first_msg_us=0;
 
     // -------------------------------------------------------- 
@@ -341,7 +346,7 @@ void TriggerPrimitiveFinder::processing_thread(uint8_t first_register, uint8_t l
     m_readyForMessages.store(true);
 
     while(true){
-        ProcessingTasks::ItemToProcess* item;
+        ProcessingTasks::ItemToProcess* item=nullptr;
         while(!(item=m_itemsToProcess->frontPtr()) && !m_should_stop.load()){ 
             std::this_thread::sleep_for(std::chrono::microseconds(10));
         }
@@ -410,6 +415,14 @@ void TriggerPrimitiveFinder::print_latency_hist(const PowerTwoHist<24>& hist, co
     }
     dune::DAQLogger::LogInfo("TriggerPrimitiveFinder::print_latency_hist") << latency_hist_ss.str();
 
+}
+
+int TriggerPrimitiveFinder::which_numa_node(void* p) const
+{
+    int get_mempolicy_node = -1;
+    int ret=get_mempolicy(&get_mempolicy_node, NULL, 0, p, MPOL_F_NODE | MPOL_F_ADDR);
+    if(ret==-1) return -1;
+    return get_mempolicy_node;
 }
 
 /* Local Variables:  */
