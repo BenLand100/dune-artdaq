@@ -36,7 +36,7 @@ public:
   // Functionalities
   void StartDatataking();
   void StopDatataking();
-  bool FillFragment( std::unique_ptr<artdaq::Fragment>& frag, std::unique_ptr<artdaq::Fragment>& fraghits );
+  bool FillFragment( std::unique_ptr<artdaq::Fragment>& frag );
 
   // Info
   int SerialNumber() const;
@@ -52,18 +52,15 @@ public:
     std::string host_;
     unsigned short port_;
     unsigned short tag_;    
-    fhicl::ParameterSet tpf_params_;
 
     LinkParameters ( const unsigned short& id,
                      const std::string& host,
                      const unsigned short& port,
-                     const unsigned short& tag,
-                     fhicl::ParameterSet tpf_params):
+                     const unsigned short& tag ):
         id_( id ),
         host_( host ),
         port_( port ),
-        tag_( tag ),
-        tpf_params_(tpf_params)
+        tag_( tag )
     { }
   };
 
@@ -79,7 +76,6 @@ private:
   unsigned window_;
   unsigned window_offset_;
   bool reordering_;
-  bool trigger_primitive_finding_;
   bool compression_;
   int qat_engine_;
   std::string requester_address_;
@@ -103,7 +99,6 @@ private:
   // Fragment related
   dune::FragmentType fragment_type_;
   dune::FelixFragmentBase::Metadata fragment_meta_;
-  dune::FelixFragmentBase::Metadata fragment_hits_meta_;
 
   std::size_t usecs_between_sends_;
   

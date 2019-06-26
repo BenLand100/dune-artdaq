@@ -81,12 +81,6 @@ find_ups_product( messagefacility v1_10_00 )
 find_ups_product( cetlib v1_03_00 )
 find_ups_product( netio v0_8_0 )
 find_ups_product( ftd2xx v1_2_7 )
-# add a newer version of ZMQ for PTMP
-find_ups_product( zmq v4_3_1 )
-find_ups_product( czmq v4_2_0 -q e15)
-# add protobuf for PTMP
-find_ups_product( protobuf v3_3_1a )
-find_ups_product( ptmp v0_0_3 )
 find_ups_product( jsoncpp v1_8_0 )
 find_ups_root( v5_34_00 )
 find_ups_boost( v1_50_0 filesystem
@@ -96,9 +90,6 @@ find_ups_boost( v1_50_0 filesystem
 find_ups_product( libxml2 v2_9_1a )
 find_ups_product( TRACE v3_07_00 )
 find_ups_product( protodune_timing v4_1_3 )
-find_ups_product( zmq v4_3_1)
-find_ups_product( czmq v4_2_0)
-find_ups_product( protobuf v3_3_1a)
 
 find_ups_product( dune_artdaq_InhibitMaster v0_01_00 )
 
@@ -113,9 +104,6 @@ include_directories($ENV{UHAL_INC}/uhal)
 find_library( UHAL_UHAL NAMES cactus_uhal_uhal PATHS $ENV{UHAL_LIB})
 find_library( UHAL_LOG  NAMES cactus_uhal_log  PATHS $ENV{UHAL_LIB})
 find_library( PDT_CORE  NAMES protodune_pdt_core PATHS $ENV{PROTODUNE_TIMING_LIB})
-find_library( PROTOBUF  NAMES protobuf      PATHS $ENV{PROTOBUF_LIB})
-find_library( LIBPTMP NAMES ptmp PATHS $ENV{PTMP_LIB})
-find_library( LIBZMQ NAMES zmq PATHS $ENV{ZMQ_LIB} NO_DEFAULT_PATH)
 #####################
 
 # have to make sure cmake doesn't select the system libraries

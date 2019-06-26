@@ -395,9 +395,6 @@ class FelixFrame {
     return channel(block_num, ch / 8, ch % 8);
   }
   uint16_t channel(const uint8_t ch) const { return channel(ch / 64, ch % 64); }
-
-  const ColdataBlock& block(const uint8_t b) const { return blocks[b]; }
-  ColdataBlock& block(const uint8_t b) { return blocks[b]; }
   // Channel mutators
   void set_channel(const uint8_t block_num, const uint8_t adc, const uint8_t ch,
                    const uint16_t new_val) {

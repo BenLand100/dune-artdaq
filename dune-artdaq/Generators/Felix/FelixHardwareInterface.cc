@@ -42,7 +42,6 @@ FelixHardwareInterface::FelixHardwareInterface(fhicl::ParameterSet const& ps) :
   window_offset_ = hps.get<unsigned>("trigger_matching_offset_ticks");
   reordering_ = hps.get<bool>("reordering", false);
   compression_ = hps.get<bool>("compression", false);  
-  trigger_primitive_finding_ = hps.get<bool>("trigger_primitive_finding", false);
   qat_engine_ = hps.get<int>("qat_engine", -1);  
   requester_address_ = ps.get<std::string>("zmq_fragment_connection_out");
   
@@ -57,8 +56,7 @@ FelixHardwareInterface::FelixHardwareInterface(fhicl::ParameterSet const& ps) :
       LinkParameters(linkPs.get<unsigned short>("id"),
                      linkPs.get<std::string>("host"),
                      linkPs.get<unsigned short>("port"),
-                     linkPs.get<unsigned short>("tag"),
-                     linkPs.get<fhicl::ParameterSet>("TriggerPrimitiveFinding"))
+                     linkPs.get<unsigned short>("tag"))
     );
   }
 
@@ -77,11 +75,6 @@ FelixHardwareInterface::FelixHardwareInterface(fhicl::ParameterSet const& ps) :
   fragment_meta_.version = 1;
   fragment_meta_.reordered = 0;
   fragment_meta_.compressed = 0;
-
-  fragment_hits_meta_.control_word = 0xcba;
-  fragment_hits_meta_.version = 1;
-  fragment_hits_meta_.reordered = 0;
-  fragment_hits_meta_.compressed = 0;
 
   // Reordering
   if (reordering_) { // from config
@@ -109,9 +102,6 @@ FelixHardwareInterface::FelixHardwareInterface(fhicl::ParameterSet const& ps) :
     }
   }
 
-  // Trigger primitive finding
-  nioh_.doTPFinding(trigger_primitive_finding_);
-
   // metadata settings
   uint32_t framesPerMsg = message_size_/nioh_.getFrameSize(); // will be 12 for a looong time.
   fragment_meta_.num_frames = window_+(framesPerMsg*2); // + safety (should be a const?)
@@ -126,7 +116,7 @@ FelixHardwareInterface::FelixHardwareInterface(fhicl::ParameterSet const& ps) :
     << "Setting up NetioHandler (host, port, adding channels, starting subscribers, locking subs to CPUs.)";
   nioh_.setupContext( backend_ ); // posix or infiniband
   for ( auto const & link : link_parameters_ ){ // Add channels
-    nioh_.addChannel(link.id_, link.tag_, link.host_, link.port_, queue_size_, zerocopy_, link.tpf_params_); 
+    nioh_.addChannel(link.id_, link.tag_, link.host_, link.port_, queue_size_, zerocopy_); 
   }
 
   DAQLogger::LogInfo("dune::FelixHardwareInterface::FelixHardwareInterface")
@@ -136,7 +126,7 @@ FelixHardwareInterface::FelixHardwareInterface(fhicl::ParameterSet const& ps) :
 FelixHardwareInterface::~FelixHardwareInterface(){
   DAQLogger::LogInfo("dune::FelixHardwareInterface::FelixHardwareInterface")
     << "Destructing FelixHardwareInterface. Joining request thread.";
-
+// RS2019 -> Adding unsub func! Probably this is at a VERY VERY WRONG PLACE.
   nioh_.stopSubscribers();
 
   nioh_.stopContext();
@@ -149,6 +139,10 @@ FelixHardwareInterface::~FelixHardwareInterface(){
 void FelixHardwareInterface::StartDatataking() {
   DAQLogger::LogInfo("dune::FelixHardwareInterface::StartDatataking") << "Start datataking...";
 
+// RS2019 -> Adding unsub func!
+  //DAQLogger::LogInfo("dune::FelixHardwareInterface::FelixHardwareInterface")
+  //  << "Setting up NetioHandler (host, port, adding channels, starting subscribers, locking subs to CPUs.)";
+  //nioh_.setupContext( backend_ ); // posix or infiniband
 
   // GLM: start listening to trigger before data stream, else data stream fills up
   taking_data_.store( true );
@@ -190,19 +184,6 @@ void FelixHardwareInterface::StopDatataking() {
   request_receiver_->stop();
   DAQLogger::LogInfo("dune::FelixHardwareInterface::StopDatataking") << "Request thread joined...";
 
-  // (PAR 2019-03-22) This was in the destructor, but there were hangs
-  // at shutdown: the subscriber thread was waiting forever in netio
-  // socket recv(). Trying it here, before the unsubscribe, to see if that helps. It does not
-  // nioh_.stopSubscribers();
-
-// RS2019 -> Adding unsub func.
-  for ( auto const & link : link_parameters_ ){ // Add channels
-    //nioh_.addChannel(link.id_, link.tag_, link.host_, link.port_, queue_size_, zerocopy_); 
-    nioh_.unsubscribe(link.id_, link.tag_);
-  }
-  nioh_.flushQueues();
-  // GLM: stop listening to FELIX stream here
-  //nioh_.stopSubscribers();
 
 // RS2019 -> Adding unsub func.
   for ( auto const & link : link_parameters_ ){ // Add channels
@@ -229,7 +210,7 @@ void FelixHardwareInterface::StopDatataking() {
     << "Datataking stopped.";
 }
 
-bool FelixHardwareInterface::FillFragment( std::unique_ptr<artdaq::Fragment>& frag, std::unique_ptr<artdaq::Fragment>& fraghits ){
+bool FelixHardwareInterface::FillFragment( std::unique_ptr<artdaq::Fragment>& frag ){
   if (taking_data_) {
     //DAQLogger::LogInfo("dune::FelixHardwareInterface::FillFragment") << "Fill fragment at: " << &frag;
 
@@ -258,37 +239,25 @@ bool FelixHardwareInterface::FillFragment( std::unique_ptr<artdaq::Fragment>& fr
       uint64_t requestSeqId = request.seqID;
       uint64_t requestTimestamp = request.timestamp;
 
-      //Compare the TPHits TS with the current Felix TS (50MHz ticks)
-      std::chrono::time_point<std::chrono::system_clock> now = std::chrono::system_clock::now();
-
       //auto reqMap = artdaq_request_receiver_.GetRequests();
       //uint64_t requestSeqId = reqMap.cbegin()->first;
       //uint64_t requestTimestamp = reqMap.cbegin()->second;
 
-      bool success = nioh_.triggerWorkers(requestTimestamp, requestSeqId, frag, fraghits);
+      bool success = nioh_.triggerWorkers(requestTimestamp, requestSeqId, frag);
       if (success) {
-	//number of ticks per second for a 50MHz clock
-	auto ticks = std::chrono::duration_cast<std::chrono::duration<uint64_t, std::ratio<1,50000000>>>(now.time_since_epoch());
-
         frag->setSequenceID(requestSeqId);
         frag->setTimestamp(requestTimestamp);
         frag->updateMetadata(fragment_meta_);
-        fraghits->setSequenceID(requestSeqId);
-        fraghits->setTimestamp(requestTimestamp);
-        fraghits->updateMetadata(fragment_hits_meta_);
-
 	if (frag->dataSizeBytes() == 0) {
 	  DAQLogger::LogWarning("dune::FelixHardwareInterface::FillFragment")
 	    << "Returning empty fragment for TS = " << requestTimestamp << ", seqID = " << requestSeqId;
-	}
+	}  
 	else {
           std::ostringstream oss;
           frag->print(oss); 
 	  DAQLogger::LogInfo("dune::FelixHardwareInterface::FillFragment") 
 	    << " NIOH returned OK for trigger TS " << requestTimestamp << " and seqID " << requestSeqId <<"."
             << " Size:" << frag->dataSizeBytes() << " Brief:" << oss.str(); 
-	  DAQLogger::LogInfo("dune::FelixHardwareInterface::FillFragment") << "Difference between current TS and SWTrigger request TS "
-									   << ticks.count() - requestTimestamp;
 	}
         //artdaq_request_receiver_.RemoveRequest(requestSeqId);
       } else {

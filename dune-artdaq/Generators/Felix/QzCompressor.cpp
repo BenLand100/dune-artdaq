@@ -89,8 +89,6 @@ int QzCompressor::shutdown()
 
 	free(internal_buffer_);
 
-        init_ = false;
-
 	return rv;
 }
 

@@ -1,5 +1,3 @@
-# For ptmp
-# include_directories($ENV{PTMP_INCLUDE_DIR})
 
 simple_plugin(TPCMilliSliceSimulatorWithCopy "generator"
   dune-raw-data_Overlays
@@ -31,7 +29,6 @@ simple_plugin(SSP "generator"
   )
 
 add_subdirectory(Felix)
-
 simple_plugin(FelixReceiver "generator"
   dune-raw-data_Overlays
   dune-artdaq_Generators_Felix
@@ -46,51 +43,9 @@ simple_plugin(FelixReceiver "generator"
   ${CETLIB}
   ${CETLIB_EXCEPT}
   dune-artdaq_DAQLogger
-  )
-  
-
-
-simple_plugin(HitFinderCPUReceiver "generator"
-  dune-raw-data_Overlays
-  dune-artdaq_DAQLogger
-  artdaq_Application
-  artdaq_DAQdata
-  artdaq-core_Utilities
-  artdaq-core_Data
-  artdaq-utilities_Plugins
-  ${CANVAS}
-  ${FHICLCPP}
-  ${CETLIB}
-  ${CETLIB_EXCEPT}
-  ${LIBPTMP}
-  ${PROTOBUF}
-  dune-artdaq_DAQLogger
 )
 
-simple_plugin(SWTriggerReceiver "generator"
-  dune-raw-data_Overlays
-  dune-artdaq_DAQLogger
-  artdaq_Application
-  artdaq_DAQdata
-  artdaq-core_Utilities
-  artdaq-core_Data
-  artdaq-utilities_Plugins
-  ${CANVAS}
-  ${FHICLCPP}
-  ${CETLIB}
-  ${CETLIB_EXCEPT}
-  ${LIBPTMP}
-  ${PROTOBUF}
-  dune-artdaq_DAQLogger
-)
-# include_directories($ENV{PTMP_INC})
-
-# PAR 2018-12-03: Need these definitions to get my trigger primitive
-# code to work. They have to be target-specific otherwise they
-# interfere with the RCE receiver's use of boost, below
-target_compile_definitions(dune-artdaq_Generators_FelixReceiver_generator PRIVATE BOOST_THREAD_PROVIDES_FUTURE_WHEN_ALL_WHEN_ANY=1 BOOST_THREAD_VERSION=4)
-
-add_subdirectory(ToyHardwareInterface)
+  add_subdirectory(ToyHardwareInterface)
 simple_plugin(ToySimulator "generator"
   dune-artdaq_Generators_ToyHardwareInterface
   dune-raw-data_Overlays
@@ -191,24 +146,6 @@ simple_plugin(TimingReceiver "generator"
   ${PDT_CORE}
   )
 
-simple_plugin(SWTrigger "generator"
-  dune-raw-data_Overlays
-  dune-artdaq_Generators_timingBoard
-  artdaq_Application
-  artdaq_DAQdata
-  artdaq_DAQrate
-  artdaq-core_Utilities
-  artdaq-core_Data
-  artdaq-utilities_Plugins
-  ${CANVAS}
-  ${FHICLCPP}
-  ${CETLIB}
-  ${CETLIB_EXCEPT}
-  ${LIBPTMP}
-  ${PROTOBUF}
-  dune-artdaq_DAQLogger	  
-)
-
 if ( (DEFINED ENV{PROTODUNE_WIBSOFT_LIB}) AND (DEFINED ENV{PROTODUNE_WIBSOFT_INC}) )
 
 include_directories( $ENV{PROTODUNE_WIBSOFT_INC} )
@@ -251,4 +188,3 @@ simple_plugin(CRTFragGen "generator"
   )
  
 
-add_subdirectory(swTrigger)

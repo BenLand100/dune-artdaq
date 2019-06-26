@@ -20,8 +20,6 @@
 #include <mutex>
 #include <algorithm>
 
-#include "TriggerPrimitive/TriggerPrimitiveFinder.h"
-
 //#define MSGQ
 //#define QACHECK
 
@@ -78,7 +76,6 @@ public:
     if (ret!=0) { m_doCompress=false; }
     return ret;
   }
-  void doTPFinding(bool doIt) { m_doTPFinding=doIt; }
   void shutdownQAT() { m_compressionFacility->shutdown(); }
   void recalculateByteSizes();
   void recalculateFragmentSizes();
@@ -88,8 +85,8 @@ public:
   // Setup context:
   bool setupContext(std::string contextStr);
   bool stopContext();
-  // Enable an elink (prepare a queue, socket-pairs and sub to elink.
-  bool addChannel(uint64_t chn, uint16_t tag, std::string host, uint16_t port, size_t queueSize, bool zerocopy, fhicl::ParameterSet const& tpf_params);   
+  // Enable a channel/elink (prepare queue-socket pairs and map it.)
+  bool addChannel(uint64_t chn, uint16_t tag, std::string host, uint16_t port, size_t queueSize, bool zerocopy);
   bool subscribe(uint64_t chn, uint16_t tag); // Subscribe to given tag for elink/channel.
   bool unsubscribe(uint64_t chn, uint16_t tag); // Unsubscribe from a tag for elinkg/channel.
   bool busy(); // are trigger matchers busy
@@ -102,9 +99,7 @@ public:
  
   // ArtDAQ specific
   //void setReadoutBuffer(char* buffPtr, size_t* bytePtr) { m_bufferPtr=&buffPtr; m_bytesReadPtr=&bytePtr; };
-  bool triggerWorkers(uint64_t timestamp, uint64_t sequence_id,
-                      std::unique_ptr<artdaq::Fragment>& frag,
-                      std::unique_ptr<artdaq::Fragment>& fraghits);
+  bool triggerWorkers(uint64_t timestamp, uint64_t sequence_id, std::unique_ptr<artdaq::Fragment>& frag);
 
   bool flushQueues();
 
@@ -141,7 +136,6 @@ private:
   size_t m_windowOffset;
   bool m_doReorder;
   bool m_doCompress;
-  bool m_doTPFinding;
   bool m_qatReady;
   bool m_extract;
   bool m_verbose;
@@ -158,9 +152,6 @@ private:
 #else 
   std::map<uint64_t, UniqueFrameQueue> m_pcqs;
 #endif
-
-  // Queues for the collection channels only: to be used in the trigger primitive finding
-  std::map<uint64_t, std::unique_ptr<TriggerPrimitiveFinder>> m_tp_finders;
 
   // Threads
   std::vector<std::thread> m_netioSubscribers;
@@ -183,7 +174,6 @@ private:
   uint64_t m_triggerTimestamp;
   uint64_t m_triggerSequenceId;
   artdaq::Fragment* m_fragmentPtr;
-  artdaq::Fragment* m_fragmentPtrHits;
 
   // Thread control
   std::atomic<bool> m_stop_trigger;
