@@ -234,7 +234,7 @@ bool dune::SWTrigger::getNext_(artdaq::FragmentPtrs &frags)
   }
 
   if (!received_1/* && !received_2*/){
-    DAQLogger::LogInfo(instance_name_) << "No TPSet for either of the connections.";
+    //DAQLogger::LogInfo(instance_name_) << "No TPSet for either of the connections.";
   }
 
   unsigned int count_1 = SetReceived_1.count();

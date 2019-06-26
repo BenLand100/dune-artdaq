@@ -191,14 +191,14 @@ bool dune::Candidate::getNext_(artdaq::FragmentPtrs&)
   bool received = receiver_(SetReceived, timeout_);
 
   if (!received){
-    DAQLogger::LogInfo(instance_name_) << "No TPSet from the receiver.";
+    //DAQLogger::LogInfo(instance_name_) << "No TPSet from the receiver.";
     return true;
   }
 
   unsigned int count = SetReceived.count();  
 
   if (count != p_count_){
-    DAQLogger::LogInfo(instance_name_) << "New TPSet count " << count << " and tstart " << SetReceived.tstart() << " from the connection.";
+    //DAQLogger::LogInfo(instance_name_) << "New TPSet count " << count << " and tstart " << SetReceived.tstart() << " from the connection.";
 
     end_time_ = std::chrono::high_resolution_clock::now();
 
@@ -207,7 +207,7 @@ bool dune::Candidate::getNext_(artdaq::FragmentPtrs&)
     ++n_recvd_;
   }
   else {
-    DAQLogger::LogInfo(instance_name_) << "Received stale TPSet";
+    //DAQLogger::LogInfo(instance_name_) << "Received stale TPSet";
   }
 
   p_count_ = count;
