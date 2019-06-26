@@ -11,6 +11,10 @@
 #include <sys/time.h>
 #include <sys/resource.h>
 
+#include "numa.h"
+#include "numaif.h"
+
+#include "sched.h" // for sched_getcpu()
 
 #include "tests/frames2array.h"
 
@@ -276,16 +280,27 @@ void TriggerPrimitiveFinder::processing_thread(uint8_t first_register, uint8_t l
         }
         pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpuset);
     }
-
-    // NUMA allocation idea didn't see to work first time. Try a short sleep so the scheduler can move us?!?
-    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    dune::DAQLogger::LogInfo("TriggerPrimitiveFinder::processing_thread") << "processing thread running on cpu " << sched_getcpu();
 
     // We allocate the queue of items in this thread *after* pinning
     // with the hope of making sure the allocation is on NUMA1 not
     // NUMA0, to spread the memory bandwidth load across NUMA cores
     dune::DAQLogger::LogInfo("TriggerPrimitiveFinder::processing_thread") << "Allocating item queue of size " << qsize;
     m_itemsToProcess=std::make_unique<folly::ProducerConsumerQueue<ProcessingTasks::ItemToProcess>>(qsize);
-
+    // numa(3) says: "All numa memory allocation policy only takes
+    // effect when a page is actually faulted into the address space
+    // of a process by accessing it". So write to all the slots in the
+    // queue so the memory allocated definitely gets faulted in
+    for(size_t i=0; i<qsize-1; ++i){
+        m_itemsToProcess->write(ProcessingTasks::ItemToProcess{ProcessingTasks::END_OF_MESSAGES, SUPERCHUNK_CHAR_STRUCT{}, 0});
+    }
+    int node_counts[2]={0};
+    for(size_t i=0; i<qsize-1; ++i){
+        ProcessingTasks::ItemToProcess* item=m_itemsToProcess->frontPtr();
+        node_counts[which_numa_node(item)]++;
+        m_itemsToProcess->popFront();
+    }
+    dune::DAQLogger::LogInfo("TriggerPrimitiveFinder::processing_thread") << "items on node 0: " << node_counts[0] << ", node 1: " << node_counts[1];
     uint64_t first_msg_us=0;
 
     // -------------------------------------------------------- 
@@ -331,26 +346,27 @@ void TriggerPrimitiveFinder::processing_thread(uint8_t first_register, uint8_t l
     m_readyForMessages.store(true);
 
     while(true){
-        ProcessingTasks::ItemToProcess item;
-        while(!m_itemsToProcess->read(item) && !m_should_stop.load()){ 
+        ProcessingTasks::ItemToProcess* item=nullptr;
+        while(!(item=m_itemsToProcess->frontPtr()) && !m_should_stop.load()){ 
             std::this_thread::sleep_for(std::chrono::microseconds(10));
         }
         ++nmsg;
         if(first_msg_us==0) first_msg_us=ProcessingTasks::now_us();
-        if(item.timestamp==ProcessingTasks::END_OF_MESSAGES){
-            dune::DAQLogger::LogInfo("TriggerPrimitiveFinder::processing_thread") << "Got END_OF_MESSAGES. Exiting";
-            break;
-        }
         if(m_should_stop.load()){
             dune::DAQLogger::LogInfo("TriggerPrimitiveFinder::processing_thread") << "m_should_stop is true. Exiting";
             break;
         }
-        measure_latency(item);
-        RegisterArray<REGISTERS_PER_FRAME*FRAMES_PER_MSG> expanded=expand_message_adcs(item.scs);
+        if(item->timestamp==ProcessingTasks::END_OF_MESSAGES){
+            dune::DAQLogger::LogInfo("TriggerPrimitiveFinder::processing_thread") << "Got END_OF_MESSAGES. Exiting";
+            m_itemsToProcess->popFront();
+            break;
+        }
+        measure_latency(*item);
+        RegisterArray<REGISTERS_PER_FRAME*FRAMES_PER_MSG> expanded=expand_message_adcs(item->scs);
         MessageCollectionADCs* mcadc=reinterpret_cast<MessageCollectionADCs*>(expanded.data());
         if(first){
             pi.setState(mcadc);
-            dune::FelixFrame* frame=reinterpret_cast<dune::FelixFrame*>(&item.scs);
+            dune::FelixFrame* frame=reinterpret_cast<dune::FelixFrame*>(&item->scs);
             m_fiber_no=frame->fiber_no();
             m_crate_no=frame->crate_no();
             m_slot_no=frame->slot_no();
@@ -370,8 +386,9 @@ void TriggerPrimitiveFinder::processing_thread(uint8_t first_register, uint8_t l
         // Do the processing
         process_window_avx2(pi);
         // Create dune::TriggerPrimitives from the hits and put them in the queue for later retrieval
-        nhits+=addHitsToQueue(item.timestamp, primfind_dest, m_triggerPrimitives);
-        m_latestProcessedTimestamp.store(item.timestamp);
+        nhits+=addHitsToQueue(item->timestamp, primfind_dest, m_triggerPrimitives);
+        m_latestProcessedTimestamp.store(item->timestamp);
+        m_itemsToProcess->popFront();
     }
     uint64_t end_us=ProcessingTasks::now_us();
     int64_t walltime_us=end_us-first_msg_us;
@@ -398,6 +415,14 @@ void TriggerPrimitiveFinder::print_latency_hist(const PowerTwoHist<24>& hist, co
     }
     dune::DAQLogger::LogInfo("TriggerPrimitiveFinder::print_latency_hist") << latency_hist_ss.str();
 
+}
+
+int TriggerPrimitiveFinder::which_numa_node(void* p) const
+{
+    int get_mempolicy_node = -1;
+    int ret=get_mempolicy(&get_mempolicy_node, NULL, 0, p, MPOL_F_NODE | MPOL_F_ADDR);
+    if(ret==-1) return -1;
+    return get_mempolicy_node;
 }
 
 /* Local Variables:  */
