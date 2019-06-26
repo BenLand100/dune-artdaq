@@ -285,7 +285,7 @@ bool dune::SWTrigger::getNext_(artdaq::FragmentPtrs &frags)
   // Set the last spill/run timestamps in the fragment
 
   // There had better be enough space in the object. If not, something has gone horribly wrong
-  static_assert(TriggerFragment::Body::size >= 20ul);
+  static_assert(TriggerFragment::Body::size >= 19ul);
 
   // These must be kept in sync with the order declared in TriggerFragment::Body in TriggerFragment.hh
   triggerword[2]= previous_ts_&0xffffffff;
