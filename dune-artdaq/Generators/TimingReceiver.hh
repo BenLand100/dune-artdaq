@@ -203,6 +203,8 @@ class TimingReceiver : public artdaq::CommandableFragmentGenerator {
 
     std::atomic<bool> hwclock_publisher_stop_;
     std::thread hwclock_publisher_thread_;
+
+    bool send_fragments_; // Should we send fragments corresponding to hardware triggers to artdaq?
 };
 }
 
