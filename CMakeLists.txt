@@ -116,6 +116,7 @@ find_library( PDT_CORE  NAMES protodune_pdt_core PATHS $ENV{PROTODUNE_TIMING_LIB
 find_library( PROTOBUF  NAMES protobuf      PATHS $ENV{PROTOBUF_LIB})
 find_library( LIBPTMP NAMES ptmp PATHS $ENV{PTMP_LIB})
 find_library( LIBZMQ NAMES zmq PATHS $ENV{ZMQ_LIB} NO_DEFAULT_PATH)
+find_library( LIBCZMQ NAMES czmq PATHS $ENV{CZMQ_LIB} NO_DEFAULT_PATH)
 #####################
 
 # have to make sure cmake doesn't select the system libraries
