@@ -463,7 +463,8 @@ bool dune::TimingReceiver::getNext_(artdaq::FragmentPtrs &frags) {
 
   if(!send_fragments_){
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
-    return true;
+    if (stopping_flag_ != 0) return false;
+    else                     return true;
   }
   
   // GetNext can return in three ways:
