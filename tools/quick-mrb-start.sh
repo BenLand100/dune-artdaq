@@ -57,17 +57,20 @@ test -d products || mkdir products
 test -d download || mkdir download
 test -d log || mkdir log
 
+dune_artdaq_branch="develop"
+dune_raw_data_branch="for_dune-artdaq"
 
 env_opts_var=`basename $0 | sed 's/\.sh$//' | tr 'a-z-' 'A-Z_'`_OPTS
 USAGE="\
    usage: `basename $0` [options]
 examples: `basename $0` 
-          `basename $0` --dune-raw-data-developer --dune-raw-data-develop-branch
+          `basename $0` --dune-raw-data-developer 
           `basename $0` --debug --dune-raw-data-developer
 --debug       perform a debug build
 --include-artdaq-repos  use if you plan on developing the artdaq code (contact jcfree@fnal.gov or biery@fnal.gov before attempting this)
+--use-dune-artdaq-branch <branchname>  instead of checking out the $dune_artdaq_branch branch of dune-artdaq, check out <branchname>
+--use-dune-raw-data-branch <branchname>  instead of checking out the $dune_raw_data_branch branch of dune-raw-data, check out <branchname>
 --not-dune-artdaq-developer  use if you don't have write access to the dune-artdaq repository
---dune-raw-data-develop-branch     Install the current \"develop\" version of dune-raw-data (may be unstable!)
 --dune-raw-data-developer    use if you have (and want to use) write access to the dune-raw-data repository
 "
 
@@ -77,7 +80,9 @@ eval "set -- $env_opts \"\$@\""
 op1chr='rest=`expr "$op" : "[^-]\(.*\)"`   && set -- "-$rest" "$@"'
 op1arg='rest=`expr "$op" : "[^-]\(.*\)"`   && set --  "$rest" "$@"'
 reqarg="$op1arg;"'test -z "${1+1}" &&echo opt -$op requires arg. &&echo "$USAGE" &&exit'
-args= do_help= opt_v=0; opt_lrd_w=0; opt_lrd_develop=0; opt_la_nw=0; inc_artdaq_repos=0;
+args= do_help= opt_v=0; opt_lrd_w=0; opt_la_nw=0; inc_artdaq_repos=0; 
+
+
 while [ -n "${1-}" ];do
     if expr "x${1-}" : 'x-' >/dev/null;then
         op=`expr "x$1" : 'x-\(.*\)'`; shift   # done with $1
@@ -87,8 +92,9 @@ while [ -n "${1-}" ];do
             \?*|h*)     eval $op1chr; do_help=1;;
 	    -debug)     opt_debug=--debug;;
 	    -include-artdaq-repos) inc_artdaq_repos=1;;
+	    -use-dune-artdaq-branch) eval $reqarg; dune_artdaq_branch=$1; shift;;
+	    -use-dune-raw-data-branch) eval $reqarg; dune_raw_data_branch=$1; shift;;
 	    -not-dune-artdaq-developer) opt_la_nw=1;;
-	    -dune-raw-data-develop-branch) opt_lrd_develop=1;;
 	    -dune-raw-data-developer)  opt_lrd_w=1;;
             *)          echo "Unknown option -$op"; do_help=1;;
         esac
@@ -167,16 +173,53 @@ if [ -z "${tag:-}" ]; then
   tag=develop;
 fi
 
-wget https://cdcvs.fnal.gov/redmine/projects/dune-artdaq/repository/revisions/develop/raw/ups/product_deps
+if [[ $dune_artdaq_branch == "develop" ]]; then
+    wget https://cdcvs.fnal.gov/redmine/projects/dune-artdaq/repository/revisions/develop/raw/ups/product_deps
 
-if [[ ! -e $Base/download/product_deps ]]; then
-    echo "You need to have a product_deps file in $Base/download" >&2
-    exit 1
+    if [[ ! -e $Base/download/product_deps ]]; then
+	echo "You need to have a product_deps file in $Base/download" >&2
+	exit 1
+    fi
+
+    demo_version=`grep "parent dune_artdaq" $Base/download/product_deps|awk '{print $3}'`
+    artdaq_version=`grep -E "^artdaq\s+" $Base/download/product_deps | awk '{print $2}'`
+
+else
+    returndir=$PWD
+    clonedir=/tmp/${USER}_for_quick-mrb-start
+    mkdir -p $clonedir
+
+    if [[ "$?" != "0" ]]; then
+	echo "There was a problem running mkdir -p $clonedir; exiting..." >&2
+	exit 1
+    fi
+
+    cd $clonedir
+
+    cat <<EOF
+
+Cloning local copy of dune-artdaq repo into $clonedir so I can
+determine the stated dune-artdaq version in product_deps on
+dune-artdaq's $dune_artdaq_branch branch. When this is finished 
+you'll see "...done with clone"
+
+EOF
+
+    git clone http://cdcvs.fnal.gov/projects/dune-artdaq
+    echo "..done with clone"
+    cd dune-artdaq
+    git checkout $dune_artdaq_branch
+    if [[ "$?" != "0" ]]; then
+	echo "There was a problem running git checkout $dune_artdaq_branch; does this branch exist? Exiting..." >&2
+	exit 1
+    fi
+    demo_version=`grep "parent dune_artdaq" $clonedir/dune-artdaq/ups/product_deps|awk '{print $3}'`
+    artdaq_version=`grep -E "^artdaq\s+" $clonedir/dune-artdaq/ups/product_deps | awk '{print $2}'`
+
+    cd $returndir
 fi
 
-demo_version=`grep "parent dune_artdaq" $Base/download/product_deps|awk '{print $3}'`
-
-artdaq_version=`grep -E "^artdaq\s+" $Base/download/product_deps | awk '{print $2}'`
+echo "JCF: demo_version is $demo_version, artdaq_version is $artdaq_version"
 
 if [[ "$artdaq_version" == "v3_00_03a" ]]; then
     artdaq_manifest_version=v3_00_03
@@ -185,9 +228,6 @@ elif [[ "$artdaq_version" == "v3_03_00_beta" ]]; then
 else
     artdaq_manifest_version=$artdaq_version
 fi
-
-
-coredemo_version=`grep -E "^dune_raw_data\s+" $Base/download/product_deps | awk '{print $2}'`
 
 
 equalifier=e15
@@ -234,12 +274,7 @@ set -u
 
 cd $MRB_SOURCE
 
-if [[ $opt_lrd_develop -eq 1 ]]; then
-    dune_raw_data_checkout_arg="-d dune_raw_data"
-else
-    dune_raw_data_checkout_arg="-b for_dune-artdaq -d dune_raw_data"
-fi
-
+dune_raw_data_checkout_arg="-b $dune_raw_data_branch -d dune_raw_data"
 
 if [[ $opt_lrd_w -eq 1 ]]; then
     dune_raw_data_repo="ssh://p-dune-raw-data@cdcvs.fnal.gov/cvs/projects/dune-raw-data"
@@ -247,12 +282,7 @@ else
     dune_raw_data_repo="https://cdcvs.fnal.gov/projects/dune-raw-data"
 fi
 
-if [[ $tag == "develop" ]]; then
-    dune_artdaq_checkout_arg="-d dune_artdaq"
-else
-    dune_artdaq_checkout_arg="-b develop -d dune_artdaq"
-fi
-
+dune_artdaq_checkout_arg="-b $dune_artdaq_branch -d dune_artdaq"
 
 # Notice the default for write access to dune-artdaq is the opposite of that for dune-raw-data
 if [[ $opt_la_nw -eq 1 ]]; then
