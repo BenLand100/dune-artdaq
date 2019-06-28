@@ -1,5 +1,7 @@
 #include "json.hpp"
 
+#include <sstream>
+
 namespace ptmp_util
 {
 

@@ -100,7 +100,7 @@ dune::TimingReceiver::TimingReceiver(fhicl::ParameterSet const & ps):
   , last_spillend_tstamph_(0xffffffff)  // ...
   , last_runstart_tstampl_(0xffffffff)  // Timestamp of most recent start-of-run
   , last_runstart_tstamph_(0xffffffff)  // ...
-
+  , send_fragments_(ps.get<bool>("send_fragments", false))
 {
 
   // TODO:
@@ -460,9 +460,12 @@ bool dune::TimingReceiver::checkHWStatus_() {
 
 // ----------------------------------------------------------------------------
 bool dune::TimingReceiver::getNext_(artdaq::FragmentPtrs &frags) {
-  
-  std::this_thread::sleep_for(std::chrono::milliseconds(100));
-  return true;
+
+  if(!send_fragments_){
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    if (stopping_flag_ != 0) return false;
+    else                     return true;
+  }
   
   // GetNext can return in three ways:
   //  (1) We have some events [return true with events in the frags vector]
