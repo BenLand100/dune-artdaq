@@ -74,11 +74,11 @@ process_window_avx2(ProcessingInfo& info)
 
     int nhits=0;
 
-    uint16_t& absTimeModNTAPS=info.absTimeModNTAPS;
+
 
     for(uint16_t ireg = info.first_register; ireg < info.last_register; ++ireg){
 
-        // TODO: All these variables need to be saved at the end of the window for the next go-round
+        uint16_t absTimeModNTAPS=info.absTimeModNTAPS;
 
         // ------------------------------------
         // Variables for pedestal subtraction
@@ -297,6 +297,7 @@ process_window_avx2(ProcessingInfo& info)
         _mm256_storeu_si256(reinterpret_cast<__m256i*>(state.hit_tover)+ireg, hit_tover);
 
     } // end loop over ireg (the 8 registers in this frame)
+    info.absTimeModNTAPS=(info.absTimeModNTAPS+info.timeWindowNumFrames)%NTAPS;
     // Store the output
     for(int i=0; i<4; ++i) _mm256_storeu_si256(output_loc++, _mm256_set1_epi16(MAGIC));
     info.nhits=nhits;

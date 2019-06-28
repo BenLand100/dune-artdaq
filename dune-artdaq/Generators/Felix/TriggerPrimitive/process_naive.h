@@ -34,7 +34,7 @@ process_window_naive(ProcessingInfo& info)
     uint16_t* output_loc=info.output;
     uint16_t* input16=(uint16_t*)info.input;
     int nhits=0;
-    uint16_t& absTimeModNTAPS=info.absTimeModNTAPS;
+
 
     for(size_t ichan=0; ichan<REGISTERS_PER_FRAME*SAMPLES_PER_REGISTER; ++ichan){
         const size_t register_index=ichan/SAMPLES_PER_REGISTER;
@@ -59,6 +59,8 @@ process_window_naive(ProcessingInfo& info)
         int16_t& prev_was_over=state.prev_was_over[ichan]; // was the previous sample over threshold?
         int16_t& hit_charge=state.hit_charge[ichan];
         int16_t& hit_tover=state.hit_tover[ichan]; // time over threshold
+
+        uint16_t absTimeModNTAPS=info.absTimeModNTAPS;
 
         for(size_t itime=0; itime<info.timeWindowNumFrames; ++itime){
             const size_t msg_index=itime/12;
@@ -133,6 +135,7 @@ process_window_naive(ProcessingInfo& info)
     } // end loop over channels
     // printf("Found %d hits\n", nhits);
     info.nhits+=nhits;
+    info.absTimeModNTAPS=(info.absTimeModNTAPS+info.timeWindowNumFrames)%NTAPS;
     // Write a magic "end-of-hits" value into the list of hits
     for(int i=0; i<4; ++i) (*output_loc++) = MAGIC;
 }
