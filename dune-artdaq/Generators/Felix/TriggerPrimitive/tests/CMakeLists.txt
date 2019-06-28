@@ -17,6 +17,11 @@ set(TP_LIBS dune-artdaq_Generators_Felix_TriggerPrimitive_channelmap
   ${FHICLCPP}
 )
 
+cet_make_exec(numa-where
+  SOURCE numa-where.cpp
+  LIBRARIES ${TP_LIBS} numa
+)
+
 cet_make_exec(run_on_fragment 
   SOURCE run_on_fragment.cpp
   LIBRARIES ${TP_LIBS}

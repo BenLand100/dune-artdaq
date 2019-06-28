@@ -1,17 +1,27 @@
 #include <map>
 #include "../TriggerPrimitiveFinder.h"
 #include "FrameFile.h"
+#include "CLI11.hpp"
 
 int main(int argc, char** argv)
 {
     pthread_setname_np(pthread_self(), "main");
-    int n_repeats=10;
-    if(argc>=2)  sscanf(argv[1],"%d",&n_repeats);
 
-    mf::setStandAloneMessageThreshold({"INFO"});
+    CLI::App app{"Benchmark the TriggerPrimitiveFinder"};
+
+    int n_repeats=10;
+    app.add_option("-n", n_repeats, "Number of times to repeatedly run over the input data file");
+    bool show_output=false;
+    app.add_flag("-v", show_output, "Show DAQLogger output from TPF");
+    std::string input_file{"/nfs/sw/work_dirs/phrodrig/felixcosmics.dat"};
+    app.add_option("-f", input_file, "Input file", true);
+
+    CLI11_PARSE(app, argc, argv);
+
+    if(!show_output) mf::setStandAloneMessageThreshold({"ERROR"});
 
     // std::this_thread::sleep_for(std::chrono::seconds(1));
-    FrameFile f("/nfs/sw/work_dirs/phrodrig/felixcosmics.dat");
+    FrameFile f(input_file.c_str());
     char* fragment=reinterpret_cast<char*>(f.fragment(0));
     size_t length=FrameFile::frames_per_fragment*sizeof(dune::FelixFrame);
     size_t n_messages=length/NETIO_MSG_SIZE;
@@ -21,6 +31,7 @@ int main(int argc, char** argv)
 
     fhicl::ParameterSet ps;
     ps.put<std::string>("zmq_hit_send_connection", "tcp://*:54321");
+    ps.put<bool>("send_ptmp_messages", false);
     ps.put<uint32_t>("window_offset", 500);
     TriggerPrimitiveFinder* tpf=new TriggerPrimitiveFinder(ps);
     // Wait a bit so the processing thread has a chance to start up

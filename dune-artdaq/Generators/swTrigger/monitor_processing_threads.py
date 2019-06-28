@@ -61,7 +61,7 @@ if __name__=="__main__":
                 sys.exit(0)
             minflt=stat[9]
             utime=stat[13]
-            starttime=stat[20]
+            starttime=stat[21]
             cpu=stat[38]
             outstr="%s %s %s %s %s %s %s" % (t, boardno, minflt, utime, starttime, cpu, freqs[int(cpu)])
             print outstr,

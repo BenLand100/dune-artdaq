@@ -62,6 +62,8 @@ process_window_avx2(ProcessingInfo& info)
     //for(size_t i=0; i<std::min(NTAPS, info.tapsv.size()); ++i) taps[i]=info.tapsv[i];
 
     const __m256i adcMax=_mm256_set1_epi16(info.adcMax);
+    // The maximum value that sigma can have before the threshold overflows a 16-bit signed integer
+    const __m256i sigmaMax=_mm256_set1_epi16((1<<15)/(info.multiplier*5));
 
     __m256i tap_256[NTAPS];
     for(size_t i=0; i<NTAPS; ++i){
@@ -74,11 +76,11 @@ process_window_avx2(ProcessingInfo& info)
 
     int nhits=0;
 
-    uint16_t& absTimeModNTAPS=info.absTimeModNTAPS;
+
 
     for(uint16_t ireg = info.first_register; ireg < info.last_register; ++ireg){
 
-        // TODO: All these variables need to be saved at the end of the window for the next go-round
+        uint16_t absTimeModNTAPS=info.absTimeModNTAPS;
 
         // ------------------------------------
         // Variables for pedestal subtraction
@@ -153,6 +155,10 @@ process_window_avx2(ProcessingInfo& info)
 
             // Find the interquartile range
             __m256i sigma = _mm256_sub_epi16(quantile75, quantile25);
+            // Clamp sigma to a range where it won't overflow when
+            // multiplied by info.multiplier*5
+            sigma=_mm256_min_epi16(sigma, sigmaMax);
+
             // __m256i sigma = _mm256_set1_epi16(2000); // 20 ADC
             // --------------------------------------------------------------
             // Filtering
@@ -297,6 +303,7 @@ process_window_avx2(ProcessingInfo& info)
         _mm256_storeu_si256(reinterpret_cast<__m256i*>(state.hit_tover)+ireg, hit_tover);
 
     } // end loop over ireg (the 8 registers in this frame)
+    info.absTimeModNTAPS=(info.absTimeModNTAPS+info.timeWindowNumFrames)%NTAPS;
     // Store the output
     for(int i=0; i<4; ++i) _mm256_storeu_si256(output_loc++, _mm256_set1_epi16(MAGIC));
     info.nhits=nhits;
