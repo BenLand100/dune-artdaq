@@ -315,13 +315,6 @@ if [[ "$?" != "0" ]]; then
     exit 1
 fi
 
-mrb gitCheckout -b for_dune-artdaq -d artdaq_mpich_plugin https://cdcvs.fnal.gov/projects/artdaq-utilities-mpich-plugin
-
-if [[ "$?" != "0" ]]; then
-    echo "Unable to perform checkout of https://cdcvs.fnal.gov/projects/artdaq-utilities-mpich_plugin"
-    exit 1
-fi
-
 sed -i -r 's/^\s*defaultqual(\s+).*/defaultqual\1'$equalifier':'$squalifier'/' artdaq/ups/product_deps
 
 fi  # End "include artdaq repos"
@@ -353,7 +346,6 @@ ftd2xx_version=v1_2_7a
 dune_artdaq_InhibitMaster_version=$( sed -r -n "s/^\s*dune_artdaq_InhibitMaster\s+(\S+).*/\1/p" $ARTDAQ_DEMO_DIR/ups/product_deps )
 dim_version=v20r20
 artdaq_dim_plugin_version=v0_02_08a
-artdaq_mpich_plugin_version=v2019_06_19_for_dune-artdaq_A
 TRACE_version=v3_13_07
 pyzmq_version=v18_0_1a
 
@@ -438,8 +430,6 @@ EOF
        setup dim $dim_version -q e15
        setup artdaq_dim_plugin $artdaq_dim_plugin_version -q e15:prof:s64
 
-       setup artdaq_mpich_plugin $artdaq_mpich_plugin_version -q e15:eth:prof:s64
-        
        setup TRACE $TRACE_version
         export TRACE_FILE=/tmp/trace_$trace_file_label
         export TRACE_LIMIT_MS="500,1000,2000"
