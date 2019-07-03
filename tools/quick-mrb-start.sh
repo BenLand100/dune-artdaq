@@ -342,7 +342,6 @@ ARTDAQ_DEMO_DIR=$Base/srcs/dune_artdaq
 nprocessors=$( grep -E "processor\s+:" /proc/cpuinfo | wc -l )
 trace_file_label=$( basename $Base )
 
-ftd2xx_version=v1_2_7a
 dune_artdaq_InhibitMaster_version=$( sed -r -n "s/^\s*dune_artdaq_InhibitMaster\s+(\S+).*/\1/p" $ARTDAQ_DEMO_DIR/ups/product_deps )
 dim_version=v20r20
 artdaq_dim_plugin_version=v0_02_08a
@@ -375,8 +374,6 @@ t; }" || exit
         export ICP_ROOT=/nfs/sw/felix/QAT/QAT2.0
         export LD_LIBRARY_PATH=\$LD_LIBRARY_PATH:/nfs/sw/felix/QAT/QAT2.0/build
         export LD_LIBRARY_PATH=\$LD_LIBRARY_PATH:/nfs/sw/felix/QAT/QAT2.0/qatzip2/qatzip/src
-
-        setup ftd2xx $ftd2xx_version
 
         export DISABLE_DOXYGEN="defined"
 
@@ -425,7 +422,6 @@ EOF
         export LD_LIBRARY_PATH=\$LD_LIBRARY_PATH:/nfs/sw/sysadmin/QAT/QAT2.0/build
         export LD_LIBRARY_PATH=\$LD_LIBRARY_PATH:/nfs/sw/sysadmin/QAT/QAT2.0/qatzip2/qatzip/src
 
-       setup ftd2xx $ftd2xx_version
        setup pyzmq $pyzmq_version  -q p2714b
        setup dim $dim_version -q e15
        setup artdaq_dim_plugin $artdaq_dim_plugin_version -q e15:prof:s64
@@ -555,8 +551,6 @@ source /nfs/sw/artdaq/products_dev/setup
         export ICP_ROOT=/nfs/sw/felix/QAT/QAT2.0
         export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/nfs/sw/felix/QAT/QAT2.0/build
         export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/nfs/sw/felix/QAT/QAT2.0/qatzip2/qatzip/src
-
-        setup ftd2xx $ftd2xx_version
 
 export DISABLE_DOXYGEN="defined"
 set +u
