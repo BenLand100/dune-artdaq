@@ -342,14 +342,6 @@ ARTDAQ_DEMO_DIR=$Base/srcs/dune_artdaq
 nprocessors=$( grep -E "processor\s+:" /proc/cpuinfo | wc -l )
 trace_file_label=$( basename $Base )
 
-uhal_version=v2_6_0
-protodune_timing_version=v5_1_0
-rogue_version=v2_10_0_3_gfaeedd0
-protodune_wibsoft_version=v349_hack
-netio_version=v0_8_0
-ftd2xx_version=v1_2_7a
-dunepdsprce_version=v0_0_4
-jsoncpp_version=v1_8_0
 dune_artdaq_InhibitMaster_version=$( sed -r -n "s/^\s*dune_artdaq_InhibitMaster\s+(\S+).*/\1/p" $ARTDAQ_DEMO_DIR/ups/product_deps )
 dim_version=v20r20
 artdaq_dim_plugin_version=v0_02_08a
@@ -378,20 +370,10 @@ t; }" || exit
         export DUNEARTDAQ_REPO="$ARTDAQ_DEMO_DIR"                                                                        
         export FHICL_FILE_PATH=.:\$DUNEARTDAQ_REPO/tools/fcl:\$FHICL_FILE_PATH                                           
 
-        setup protodune_wibsoft $protodune_wibsoft_version -q e15:s64
-        setup uhal $uhal_version -q e15:prof:s64
-        setup netio $netio_version -q e15:prof:s64
-
         # RSIPOS 03/07/18 -> Infiniband workaround for FELIX BR build
         export ICP_ROOT=/nfs/sw/felix/QAT/QAT2.0
         export LD_LIBRARY_PATH=\$LD_LIBRARY_PATH:/nfs/sw/felix/QAT/QAT2.0/build
         export LD_LIBRARY_PATH=\$LD_LIBRARY_PATH:/nfs/sw/felix/QAT/QAT2.0/qatzip2/qatzip/src
-
-        setup ftd2xx $ftd2xx_version
-        setup dunepdsprce $dunepdsprce_version -q e15:gen:prof
-        setup rogue $rogue_version -q e15:prof
-        setup protodune_timing $protodune_timing_version -q e15:prof:s64
-        setup jsoncpp $jsoncpp_version -q e15
 
         export DISABLE_DOXYGEN="defined"
 
@@ -440,7 +422,6 @@ EOF
         export LD_LIBRARY_PATH=\$LD_LIBRARY_PATH:/nfs/sw/sysadmin/QAT/QAT2.0/build
         export LD_LIBRARY_PATH=\$LD_LIBRARY_PATH:/nfs/sw/sysadmin/QAT/QAT2.0/qatzip2/qatzip/src
 
-       setup ftd2xx $ftd2xx_version
        setup pyzmq $pyzmq_version  -q p2714b
        setup dim $dim_version -q e15
        setup artdaq_dim_plugin $artdaq_dim_plugin_version -q e15:prof:s64
@@ -565,20 +546,11 @@ export CETPKG_J=$nprocessors
 source /nfs/sw/artdaq/products/setup
 source /nfs/sw/artdaq/products_dev/setup                                      
 
-        setup protodune_wibsoft $protodune_wibsoft_version -q e15:s64
-        setup uhal $uhal_version -q e15:prof:s64
-        setup netio $netio_version -q e15:prof:s64
 # RSIPOS 03/07/18 -> Infiniband workaround for FELIX BR build
         #source /nfs/sw/felix/HACK-FELIX-BR-BUILD.sh
         export ICP_ROOT=/nfs/sw/felix/QAT/QAT2.0
         export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/nfs/sw/felix/QAT/QAT2.0/build
         export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/nfs/sw/felix/QAT/QAT2.0/qatzip2/qatzip/src
-
-        setup ftd2xx $ftd2xx_version
-        setup dunepdsprce $dunepdsprce_version -q e15:gen:prof
-        setup rogue $rogue_version -q e15:prof
-        setup protodune_timing $protodune_timing_version -q e15:prof:s64
-	setup jsoncpp $jsoncpp_version -q e15
 
 export DISABLE_DOXYGEN="defined"
 set +u
