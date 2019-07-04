@@ -97,7 +97,7 @@ void dune::Candidate::start(void)
   //TPWindow connection: Felix --> TPWindow --> TPSorted
   for(size_t i=0; i<tpwinsocks_.size(); ++i){
       std::string jsonconfig{ptmp_util::make_ptmp_tpwindow_string({tpwinsocks_.at(i)},{tpwoutsocks_.at(i)},tspan_,tbuf_)};
-      tpwindow_.push_back( std::make_unique<ptmp::TPWindow>(jsonconfig) );
+      tpwindows_.push_back( std::make_unique<ptmp::TPWindow>(jsonconfig) );
   }
 
   DAQLogger::LogInfo(instance_name_) << "TPsorted tardy is set to " << tardy_;
@@ -116,7 +116,7 @@ void dune::Candidate::stop(void)
   stopping_flag_ = true;
 
   // Should be able to call the destuctor like this
-  for(auto tpw: tpwindow_) tpw.reset();
+  for(auto& tpw: tpwindows_) tpw.reset();
   tpsorted_.reset(nullptr);
 
   DAQLogger::LogInfo(instance_name_) << "Destroyed PTMP windowing and sorting threads.";
