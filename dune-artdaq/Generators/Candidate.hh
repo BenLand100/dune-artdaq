@@ -92,20 +92,11 @@ namespace dune {
     ptmp::TPSender sender_;
 
     // TPwindows to window the TPSets, one for each Felix link
-    std::unique_ptr<ptmp::TPWindow> tpwindow_01_;
-    std::unique_ptr<ptmp::TPWindow> tpwindow_02_;
-    std::unique_ptr<ptmp::TPWindow> tpwindow_03_;
-    std::unique_ptr<ptmp::TPWindow> tpwindow_04_;
-    std::unique_ptr<ptmp::TPWindow> tpwindow_05_;
-    std::unique_ptr<ptmp::TPWindow> tpwindow_06_;
-    std::unique_ptr<ptmp::TPWindow> tpwindow_07_;
-    std::unique_ptr<ptmp::TPWindow> tpwindow_08_;
-    std::unique_ptr<ptmp::TPWindow> tpwindow_09_;
-    std::unique_ptr<ptmp::TPWindow> tpwindow_10_;
+    std::vector<std::unique_ptr<ptmp::TPWindow>> tpwindows_;
                                                                
     // The TPwindow input/output IP and port connections
-    std::string tpwinsock_;
-    std::string tpwoutsock_;
+    std::vector<std::string> tpwinsocks_;
+    std::vector<std::string> tpwoutsocks_;
 
     // TPwindow parameters
     // tspan - The width of the TP window
@@ -117,7 +108,7 @@ namespace dune {
     std::unique_ptr<ptmp::TPSorted> tpsorted_;
 
     // The inputs/output of TPsort
-    std::string tpsortinsock_;
+    std::vector<std::string> tpsortinsocks_;
     std::string tpsortout_;
 
     // The time TPsort will wait for a late TPSet

@@ -62,11 +62,11 @@ dune::Candidate::Candidate(fhicl::ParameterSet const & ps):
   sendsocket_({ps.get<std::string>("sendsocket")}),
   receiver_( ptmp_util::make_ptmp_socket_string("SUB","connect",recvsocket_) ),
   sender_( ptmp_util::make_ptmp_socket_string("PUB","bind",sendsocket_) ),
-  tpwinsock_(ps.get<std::string>("tpwindow_input")), 
-  tpwoutsock_(ps.get<std::string>("tpwindow_output")), 
+  tpwinsocks_(ps.get<std::vector<std::string>>("tpwindow_inputs")), 
+  tpwoutsocks_(ps.get<std::vector<std::string>>("tpwindow_outputs")), 
   tspan_(ps.get<uint64_t>("ptmp_tspan")),
   tbuf_(ps.get<uint64_t>("ptmp_tbuffer")),
-  tpsortinsock_(ps.get<std::string>("tpsorted_input")), 
+  tpsortinsocks_(ps.get<std::vector<std::string>>("tpsorted_inputs")), 
   tpsortout_(ps.get<std::string>("tpsorted_output")), 
   tardy_(ps.get<int>("ptmp_tardy")),
   nTPset_recvd_(0),
@@ -78,6 +78,9 @@ dune::Candidate::Candidate(fhicl::ParameterSet const & ps):
   p_count_(0)
 {
   DAQLogger::LogInfo(instance_name_) << "Initiated Candidate BoardReader\n";
+  if(tpwinsocks_.size()!=tpwoutsocks_.size()){
+      throw cet::exception("Size of TPWindow input and output socket configs do not match. Check tpwindow_inputs and tpwindow_outputs fhicl parameters");
+  }
 }
 
 
@@ -88,43 +91,19 @@ void dune::Candidate::start(void)
 
   DAQLogger::LogInfo(instance_name_) << "Setting up the PTMP sockets.";
 
-  int felix_links = 10;
-  std::vector<std::string> tpwin_;
-  std::vector<std::string> tpwout_;
-  std::vector<std::string> tpsortin_;
-  
-  for(int i=0; i<felix_links; i++) {
-    std::string tpwin_socket = tpwinsock_ + std::to_string(141+i);
-    std::string tpwout_socket = tpwoutsock_ + std::to_string(141+i);
-    std::string tpsortin_socket = tpsortinsock_ + std::to_string(141+i);
-    tpwin_.push_back(tpwin_socket);
-    tpwout_.push_back(tpwout_socket);
-    tpsortin_.push_back(tpsortin_socket);
-  }
-
-  for (auto sub : tpwin_) DAQLogger::LogInfo(instance_name_) << "TPWindow input sockets " << sub;
-  for (auto pub : tpwout_) DAQLogger::LogInfo(instance_name_) << "TPWindow output sockets " << pub;
   DAQLogger::LogInfo(instance_name_) << "TPWindow Tspan " << tspan_ << " and Tbuffer " << tbuf_;
   // tspan = 2500 = 50us / 20ns and tbuffer = 150000 = 60 tspan = 3ms / 20ns
 
   //TPWindow connection: Felix --> TPWindow --> TPSorted
-  tpwindow_01_.reset(new ptmp::TPWindow( ptmp_util::make_ptmp_tpwindow_string({tpwin_.at(0)},{tpwout_.at(0)},tspan_,tbuf_) ));
-  tpwindow_02_.reset(new ptmp::TPWindow( ptmp_util::make_ptmp_tpwindow_string({tpwin_.at(1)},{tpwout_.at(1)},tspan_,tbuf_) ));
-  tpwindow_03_.reset(new ptmp::TPWindow( ptmp_util::make_ptmp_tpwindow_string({tpwin_.at(2)},{tpwout_.at(2)},tspan_,tbuf_) ));
-  tpwindow_04_.reset(new ptmp::TPWindow( ptmp_util::make_ptmp_tpwindow_string({tpwin_.at(3)},{tpwout_.at(3)},tspan_,tbuf_) ));
-  tpwindow_05_.reset(new ptmp::TPWindow( ptmp_util::make_ptmp_tpwindow_string({tpwin_.at(4)},{tpwout_.at(4)},tspan_,tbuf_) ));
-  tpwindow_06_.reset(new ptmp::TPWindow( ptmp_util::make_ptmp_tpwindow_string({tpwin_.at(5)},{tpwout_.at(5)},tspan_,tbuf_) ));
-  tpwindow_07_.reset(new ptmp::TPWindow( ptmp_util::make_ptmp_tpwindow_string({tpwin_.at(6)},{tpwout_.at(6)},tspan_,tbuf_) ));
-  tpwindow_08_.reset(new ptmp::TPWindow( ptmp_util::make_ptmp_tpwindow_string({tpwin_.at(7)},{tpwout_.at(7)},tspan_,tbuf_) ));
-  tpwindow_09_.reset(new ptmp::TPWindow( ptmp_util::make_ptmp_tpwindow_string({tpwin_.at(8)},{tpwout_.at(8)},tspan_,tbuf_) ));
-  tpwindow_10_.reset(new ptmp::TPWindow( ptmp_util::make_ptmp_tpwindow_string({tpwin_.at(9)},{tpwout_.at(9)},tspan_,tbuf_) ));
+  for(size_t i=0; i<tpwinsocks_.size(); ++i){
+      std::string jsonconfig{ptmp_util::make_ptmp_tpwindow_string({tpwinsocks_.at(i)},{tpwoutsocks_.at(i)},tspan_,tbuf_)};
+      tpwindow_.push_back( std::make_unique<ptmp::TPWindow>(jsonconfig) );
+  }
 
-  for (auto sub : tpsortin_) DAQLogger::LogInfo(instance_name_) << "TPsorted input sockets " << sub;
-  DAQLogger::LogInfo(instance_name_) << "TPsorted output socket " << tpsortout_;
   DAQLogger::LogInfo(instance_name_) << "TPsorted tardy is set to " << tardy_;
 
   // TPSorted connection: TPWindow --> TPSorted --> Candidate BR (default policy is drop)
-  tpsorted_.reset(new ptmp::TPSorted( ptmp_util::make_ptmp_tpsorted_string(tpsortin_,{tpsortout_},tardy_) ));
+  tpsorted_.reset(new ptmp::TPSorted( ptmp_util::make_ptmp_tpsorted_string(tpsortinsocks_,{tpsortout_},tardy_) ));
 
   DAQLogger::LogInfo(instance_name_) << "Finished setting Finished setting up TPWindow and TPsorted.";
 
@@ -137,16 +116,7 @@ void dune::Candidate::stop(void)
   stopping_flag_ = true;
 
   // Should be able to call the destuctor like this
-  tpwindow_01_.reset(nullptr);
-  tpwindow_02_.reset(nullptr);
-  tpwindow_03_.reset(nullptr);
-  tpwindow_04_.reset(nullptr);
-  tpwindow_05_.reset(nullptr);
-  tpwindow_06_.reset(nullptr);
-  tpwindow_07_.reset(nullptr);
-  tpwindow_08_.reset(nullptr);
-  tpwindow_09_.reset(nullptr);
-  tpwindow_10_.reset(nullptr);
+  for(auto tpw: tpwindow_) tpw.reset();
   tpsorted_.reset(nullptr);
 
   DAQLogger::LogInfo(instance_name_) << "Destroyed PTMP windowing and sorting threads.";
