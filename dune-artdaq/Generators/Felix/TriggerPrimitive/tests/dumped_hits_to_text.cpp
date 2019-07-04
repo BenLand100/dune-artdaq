@@ -6,6 +6,7 @@
 #include "dune-artdaq/Generators/swTrigger/ptmp_util.hh"
 
 #include <cstdio>
+
 // Every message data is assumed to be prefixed by a 64 bit unsigned
 // int holding the size of the message data in bytes.
 zmsg_t* read_msg(FILE* fp)
@@ -30,6 +31,9 @@ int main(int argc, char** argv)
     std::string input_file{"/nfs/sw/work_dirs/phrodrig/hit-dumps/run8567/FELIX_BR_508.dump"};
     app.add_option("-f", input_file, "Input file", true);
 
+    int nhits=1000;
+    app.add_option("-n", nhits, "number of hits to print (-1 for no limit)", true);
+
     CLI11_PARSE(app, argc, argv);
     
     zsock_t* sender=zsock_new(ZMQ_PUB);
@@ -47,7 +51,7 @@ int main(int argc, char** argv)
             printf("0x%06x %d %ld %d %d\n", tpset.detid(), tp.channel(), tp.tstart(), tp.adcsum(), tp.tspan()); 
             ++counter;
         }
-        if(counter>1000) break;
+        if(nhits>0 && counter>nhits) break;
     }
 
     zsock_destroy(&sender);
