@@ -44,10 +44,22 @@ else
     exit 1
 fi
 
-git_status=`git status 2>/dev/null`
-git_sts=$?
-if [ $git_sts -eq 0 ];then
-    echo "This script is designed to be run in a fresh install directory!"
+num_existing_files=$( ls -a1 * | grep -v "^quick-mrb-start" | wc -l )
+
+if (( num_existing_files > 0 )); then
+    echo "This script is designed to be run in an empty directory!"
+    exit 1
+fi
+
+startdir=$PWD
+
+subdir=$( basename $startdir )
+localdiskdir=/tmp/$USER/$subdir
+if [[ ! -e $localdiskdir ]]; then
+    mkdir -p $localdiskdir
+    cd $localdiskdir
+else
+    echo "Error: this script wanted to build in $localdiskdir, but it appears that directory already exists! Exiting..." >&2
     exit 1
 fi
 
@@ -265,11 +277,12 @@ setup git
 setup gitflow
 
 export MRB_PROJECT=dune_artdaq
+export localproducts_subdir=localProducts_dune_artdaq_${demo_version}_${equalifier}_${build_type}
 cd $Base
 mrb newDev -f -v $demo_version -q ${equalifier}:${build_type}
 set +u
 
-source $Base/localProducts_dune_artdaq_${demo_version}_${equalifier}_${build_type}/setup
+source $Base/$localproducts_subdir/setup
 set -u
 
 cd $MRB_SOURCE
@@ -362,7 +375,7 @@ t; }" || exit
         source /nfs/sw/artdaq/products_dev/setup                                      
 
         setup mrb v1_14_00
-        source $Base/localProducts_dune_artdaq_${demo_version}_${equalifier}_${build_type}/setup
+        source $startdir/$localproducts_subdir/setup
                                                                                                                   
         export DAQ_INDATA_PATH=$ARTDAQ_DEMO_DIR/test/Generators:$ARTDAQ_DEMO_DIR/inputData                               
                                                                                                                          
@@ -381,12 +394,13 @@ t; }" || exit
         # setups so that we get the right env vars for the source repositories that
         # are part of the mrb build area.
         source mrbSetEnv
+        export MRB_INSTALL=$startdir/$localproducts_subdir
 
 echo "Only need to source this file once in the environment; now, to perform builds do the following:"
 echo ""
 echo "  mrb build -j32  # to build without 'installing' the built code"
 echo "  mrb install -j32  # to build and 'install' the built code"
-echo "    (where 'install' means copy-to-local-products-area and use in runtime environment)"
+echo "    (where 'install' means copy-to-products-area \"$startdir/$localproducts_subdir\" and use in runtime environment)"
 echo ""
 echo "*** PLEASE NOTE that we should now use 'mrb install -j32' to build the dune-artdaq software ***"
 echo ""
@@ -402,7 +416,7 @@ EOF
         export UPS_OVERRIDE="\${UPS_OVERRIDE:--B}"
         source /nfs/sw/artdaq/products/setup                                      
         source /nfs/sw/artdaq/products_dev/setup                                      
-        source $Base/localProducts_dune_artdaq_${demo_version}_${equalifier}_${build_type}/setupWithoutMRB
+        source $startdir/$localproducts_subdir/setupWithoutMRB
         setup dune_artdaq $dune_artdaq_version -q e15:prof
        
         alias RoutingMaster="routing_master"
@@ -464,7 +478,7 @@ echo "You have just sourced setupDUNEARTDAQ_forRunning."
 echo "Please use this script for all uses except building the software."
 echo ""
 echo "If, instead, you would like to build the software, please start with a fresh"
-echo "shell and 'source setupDUNEARTDAQ_forBuilding' and 'mrb install -j 32'".
+echo "shell and 'cd $Base' and 'source setupDUNEARTDAQ_forBuilding' and 'mrb install -j 32'".
 echo ""
 
 # 02-Aug-2018, KAB: only enable core dumps for certain hosts
@@ -511,7 +525,7 @@ echo # This script is intended to be sourced.
         export UPS_OVERRIDE="\${UPS_OVERRIDE:--B}"
         source /nfs/sw/artdaq/products/setup
         source /nfs/sw/artdaq/products_dev/setup                                      
-        source $Base/localProducts_dune_artdaq_${demo_version}_${equalifier}_${build_type}/setupWithoutMRB
+        source $startdir/$localproducts_subdir/setupWithoutMRB
 
         setup TRACE $TRACE_version
         export TRACE_FILE=/tmp/trace_$trace_file_label
@@ -532,7 +546,7 @@ echo # This script is intended to be sourced.
 EOF
 
 if [[ -e $Base/srcs/dune_artdaq/tools/setupWithoutMRB ]]; then
-    cp $Base/srcs/dune_artdaq/tools/setupWithoutMRB $Base/localProducts_dune_artdaq_${demo_version}_${equalifier}_${build_type}/setupWithoutMRB
+    cp $Base/srcs/dune_artdaq/tools/setupWithoutMRB $Base/$localproducts_subdir/setupWithoutMRB
 else
     echo "Problem: there's no setupWithoutMRB script in $Base/srcs/dune_artdaq; exiting..." >&2
     exit 10
@@ -553,9 +567,16 @@ source /nfs/sw/artdaq/products_dev/setup
         export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/nfs/sw/felix/QAT/QAT2.0/qatzip2/qatzip/src
 
 export DISABLE_DOXYGEN="defined"
+export MRB_INSTALL=$startdir/$localproducts_subdir
 set +u
 source mrbSetEnv
 set -u
+cp -rp $Base/$localproducts_subdir $startdir
+mv $Base/setupDUNEARTDAQ_forRunning $startdir
+mv $Base/setupDUNEARTDAQ_forInhibitMaster $startdir
+mv $Base/setupDUNEARTDAQ_forTRACE $startdir
+
+
 mrb install -j$nprocessors                              
 
 installStatus=$?
@@ -564,6 +585,7 @@ cd $Base
 find build_slf7.x86_64/ -type d | xargs -i chmod g+rwx {}              
 find build_slf7.x86_64/ -type f | xargs -i chmod g+rw {}               
 
+cd $startdir
 ln -s setupDUNEARTDAQ_forRunning setupDUNEARTDAQ
 
 if [ $installStatus -eq 0 ]; then
