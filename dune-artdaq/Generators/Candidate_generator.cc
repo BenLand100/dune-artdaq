@@ -75,6 +75,11 @@ dune::Candidate::Candidate(fhicl::ParameterSet const & ps):
   start_time_(),
   end_time_(),
   n_recvd_(0),
+  norecvd_(0),
+  stale_set_(0),
+  loops_(0),
+  fqueue_(0),
+  qtpsets_(0),
   p_count_(0)
 {
   DAQLogger::LogInfo(instance_name_) << "Initiated Candidate BoardReader\n";
@@ -86,13 +91,17 @@ void dune::Candidate::start(void)
 {
   stopping_flag_ = false;
 
+  // TODO set qsize from fhicl
+  size_t qsize = 100000;
+  DAQLogger::LogInfo(instance_name_) << "Allocating FIFO memory, size " << qsize;
+
   DAQLogger::LogInfo(instance_name_) << "Setting up the PTMP sockets.";
 
   int felix_links = 10;
   std::vector<std::string> tpwin_;
   std::vector<std::string> tpwout_;
   std::vector<std::string> tpsortin_;
-  
+
   for(int i=0; i<felix_links; i++) {
     std::string tpwin_socket = tpwinsock_ + std::to_string(141+i);
     std::string tpwout_socket = tpwoutsock_ + std::to_string(141+i);
@@ -105,8 +114,8 @@ void dune::Candidate::start(void)
   for (auto sub : tpwin_) DAQLogger::LogInfo(instance_name_) << "TPWindow input sockets " << sub;
   for (auto pub : tpwout_) DAQLogger::LogInfo(instance_name_) << "TPWindow output sockets " << pub;
   DAQLogger::LogInfo(instance_name_) << "TPWindow Tspan " << tspan_ << " and Tbuffer " << tbuf_;
-  // tspan = 2500 = 50us / 20ns and tbuffer = 150000 = 60 tspan = 3ms / 20ns
 
+  // tspan = 2500 = 50us / 20ns and tbuffer = 150000 = 60 tspan = 3ms / 20ns
   //TPWindow connection: Felix --> TPWindow --> TPSorted
   tpwindow_01_.reset(new ptmp::TPWindow( ptmp_util::make_ptmp_tpwindow_string({tpwin_.at(0)},{tpwout_.at(0)},tspan_,tbuf_) ));
   tpwindow_02_.reset(new ptmp::TPWindow( ptmp_util::make_ptmp_tpwindow_string({tpwin_.at(1)},{tpwout_.at(1)},tspan_,tbuf_) ));
@@ -126,7 +135,51 @@ void dune::Candidate::start(void)
   // TPSorted connection: TPWindow --> TPSorted --> Candidate BR (default policy is drop)
   tpsorted_.reset(new ptmp::TPSorted( ptmp_util::make_ptmp_tpsorted_string(tpsortin_,{tpsortout_},tardy_) ));
 
-  DAQLogger::LogInfo(instance_name_) << "Finished setting Finished setting up TPWindow and TPsorted.";
+  DAQLogger::LogInfo(instance_name_) << "Finished setting up TPWindow and TPsorted.";
+
+  // Start a TPSet recieving/sending thread
+  tpset_handler = std::thread(&dune::Candidate::tpsetHandler,this);
+}
+
+// tpsetHandler() routine ------------------------------------------------------------------
+void dune::Candidate::tpsetHandler() {
+
+  DAQLogger::LogInfo(instance_name_) << "Starting TPSet handler thread.";
+
+  while(!stopping_flag_) { 
+
+    ptmp::data::TPSet SetReceived;
+
+    bool received = receiver_(SetReceived, timeout_);
+     
+    if (!received) { ++norecvd_; continue; }
+
+    unsigned int count = SetReceived.count();
+
+    if (count == p_count_){
+      ++stale_set_; 
+      continue;
+    } else {
+      nTPhits_ += SetReceived.tps_size();
+      ++nTPset_recvd_;
+    }
+
+    p_count_ = count;
+
+    // TODO 
+    // Pass TPSet to TC algorithm
+    // Use SQCS queue to pass TCs to the getNext() loop
+    // TCset_ = dune::Candidate::candFinder(SetReceived);
+
+    // sender_(TCset_);
+    sender_(SetReceived);
+    ++nTPset_sent_;
+
+    if (!queue_.isFull()) queue_.write(SetReceived);
+    if (queue_.isFull()) ++fqueue_;
+  }
+
+  DAQLogger::LogInfo(instance_name_) << "Stop called, ending TPSet handler thread.";
 
 }
 
@@ -135,6 +188,11 @@ void dune::Candidate::stop(void)
 {
   DAQLogger::LogInfo(instance_name_) << "stop() called";
   stopping_flag_ = true;
+
+  // Not sure if this is needed not in original SWTrigger
+  // also causes the BR to crash at run STOP
+  //Try this, it should be more graceful
+  //tpset_handler.join();
 
   // Should be able to call the destuctor like this
   tpwindow_01_.reset(nullptr);
@@ -152,9 +210,11 @@ void dune::Candidate::stop(void)
   DAQLogger::LogInfo(instance_name_) << "Destroyed PTMP windowing and sorting threads.";
 
   // Write to log some end of run stats here
-  DAQLogger::LogInfo(instance_name_) << "Number of hits " << nTPhits_ << " in " << nTPset_recvd_ << " TPsets";
+  DAQLogger::LogInfo(instance_name_) << "Received " << nTPhits_ << " hits in " << nTPset_recvd_ << " TPsets with " 
+                                     << stale_set_ << " stale TPSets and " << norecvd_ << " TPsets not received";
   DAQLogger::LogInfo(instance_name_) << "Received " << nTPset_recvd_ << " TSets and sent " << nTPset_sent_ << " TPsets";
   DAQLogger::LogInfo(instance_name_) << "Elapsed time receiving TPsets (s) " << std::chrono::duration_cast<std::chrono::duration<double>>(end_time_ - start_time_).count();
+  DAQLogger::LogInfo(instance_name_) << "Number of non-nullptr " << qtpsets_ << " in " << loops_ << " getNext() loops and number of full queue loops " << fqueue_; 
 
 }
 
@@ -178,49 +238,23 @@ bool dune::Candidate::checkHWStatus_()
 bool dune::Candidate::getNext_(artdaq::FragmentPtrs&)
 {
 
+  start_time_ = std::chrono::high_resolution_clock::now(); 
+
   // Catch the stop flag at beginning of getNext loop
   if (stopping_flag_) return false;
 
-  if (nTPset_recvd_ == 0) start_time_ = std::chrono::high_resolution_clock::now(); 
-
-  // The hits that are going to be received and sent..
-  // for first tests.. Change to TPsets of trigger candidates
-  // Regardless, the received and sent TPsets should be already TPWindowed and TPSorted
-  ptmp::data::TPSet SetReceived;
-
-  bool received = receiver_(SetReceived, timeout_);
-
-  if (!received){
-    //DAQLogger::LogInfo(instance_name_) << "No TPSet from the receiver.";
-    return true;
+  tpset_ = queue_.frontPtr();
+  ++loops_;
+  if (tpset_) {
+    ++qtpsets_;
+    //DAQLogger::LogInfo(instance_name_) << "Received TPset count " << tpset_->count() << "  " << tpset_; 
+    queue_.popFront();
   }
 
-  unsigned int count = SetReceived.count();  
-
-  if (count != p_count_){
-    //DAQLogger::LogInfo(instance_name_) << "New TPSet count " << count << " and tstart " << SetReceived.tstart() << " from the connection.";
-
-    end_time_ = std::chrono::high_resolution_clock::now();
-
-    nTPhits_ += SetReceived.tps_size();
-    ++nTPset_recvd_;
-    ++n_recvd_;
-  }
-  else {
-    //DAQLogger::LogInfo(instance_name_) << "Received stale TPSet";
-  }
-
-  p_count_ = count;
-
-  if (n_recvd_ == 0){
-    return true;
-  }
 
   // If it made it here, assume the prescale has been met so,
   // 1. Send the TPSet onward
   // 2. Fill and buffer an artDAQ fragment TODO
-
-  n_recvd_ = 0;
 
   // Not quite ready for this! Need to finalize an artDAQ "Candidate" fragment type for the 
   /*
@@ -250,13 +284,10 @@ bool dune::Candidate::getNext_(artdaq::FragmentPtrs&)
   frags.emplace_back(std::move(f));
   */
   
-  // Send out the received TPSet
-  sender_(SetReceived);
-
-  ++nTPset_sent_;
-
   // We only increment the event counter for events we send out
   ev_counter_inc();
+
+  end_time_ = std::chrono::high_resolution_clock::now(); 
 
   return true;
 

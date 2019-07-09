@@ -34,6 +34,7 @@ TriggerPrimitiveFinder::TriggerPrimitiveFinder(fhicl::ParameterSet const & ps)
       m_msgs_per_tpset(ps.get<unsigned int>("messages_per_tpset", 20)),
       m_should_stop(false),
       m_windowOffset(ps.get<uint32_t>("window_offset")),
+      m_channels_to_suppress(ps.get<std::vector<uint32_t>>("channels_to_suppress", std::vector<uint32_t>())),
       m_offline_channel_base(0),
       m_n_tpsets_sent(0)
 {
@@ -185,20 +186,26 @@ TriggerPrimitiveFinder::addHitsToQueue(uint64_t timestamp,
                 const uint16_t online_channel=collection_index_to_channel(chan[i]);
                 const uint32_t offline_channel=m_offline_channel_base+collection_index_to_offline(chan[i]);
                 // Hack for now, to exclude high TP rate (>10kHz) channels. -JLS June 2019
-                if (offline_channel==9691 || offline_channel==5296 || offline_channel==5010 || offline_channel==4387
-                || offline_channel==4381 || offline_channel==4383 || offline_channel==5006 || offline_channel==9689) { continue; }
+                // if (offline_channel==9691 || offline_channel==5296 || offline_channel==5010 || offline_channel==4387
+                // || offline_channel==4381 || offline_channel==4383 || offline_channel==5006 || offline_channel==9689) { continue; }
                 primitive_queue.emplace_back(timestamp, online_channel, hit_end[i], hit_charge[i], hit_tover[i]);
                 if(m_send_ptmp_msgs){
-                    // hit_end is the end time of the hit in TPC clock
-                    // ticks after the start of the netio message in which
-                    // the hit ended
-                    uint64_t hit_start=timestamp+clocksPerTPCTick*(int64_t(hit_end[i])-hit_tover[i]);
-                    ptmp::data::TrigPrim* ptmp_prim=tpset.add_tps();
-                    ptmp_prim->set_channel(offline_channel);
-                    ptmp_prim->set_tstart(hit_start);
-                    // Convert time-over-threshold to 50MHz clock ticks, so all the ptmp quantities are in the same units
-                    ptmp_prim->set_tspan(clocksPerTPCTick*hit_tover[i]);
-                    ptmp_prim->set_adcsum(hit_charge[i]);
+                    bool should_send_this=true;
+                    for(auto const bad_ch: m_channels_to_suppress){
+                        if(offline_channel==bad_ch) should_send_this=false;
+                    }
+                    if(should_send_this){
+                        // hit_end is the end time of the hit in TPC clock
+                        // ticks after the start of the netio message in which
+                        // the hit ended
+                        uint64_t hit_start=timestamp+clocksPerTPCTick*(int64_t(hit_end[i])-hit_tover[i]);
+                        ptmp::data::TrigPrim* ptmp_prim=tpset.add_tps();
+                        ptmp_prim->set_channel(offline_channel);
+                        ptmp_prim->set_tstart(hit_start);
+                        // Convert time-over-threshold to 50MHz clock ticks, so all the ptmp quantities are in the same units
+                        ptmp_prim->set_tspan(clocksPerTPCTick*hit_tover[i]);
+                        ptmp_prim->set_adcsum(hit_charge[i]);
+                    }
                 }
                 ++nhits;
             }

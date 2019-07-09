@@ -100,6 +100,7 @@ private:
     unsigned int m_msgs_per_tpset;
     std::atomic<bool> m_should_stop;
     uint32_t m_windowOffset;
+    std::vector<uint32_t> m_channels_to_suppress; // Channels for which hits shouldn't be sent out (eg because they're bad in some way)
     uint32_t m_offline_channel_base;
     size_t m_n_tpsets_sent;
     PowerTwoHist<24> m_full_latency_hist; // Latencies calculated from time processed - data timestamp

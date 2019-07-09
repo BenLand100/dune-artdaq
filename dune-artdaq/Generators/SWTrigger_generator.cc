@@ -58,7 +58,7 @@ dune::SWTrigger::SWTrigger(fhicl::ParameterSet const & ps):
   ,instance_name_("SWTrigger")
   ,stopping_flag_(0)
   ,throttling_state_(true)
-  ,inhibitget_timer_(ps.get<uint32_t>("inhibit_get_timer",5000000))    // 3 secs TODO: Should make this a ps.get()
+  ,inhibitget_timer_(ps.get<uint32_t>("inhibit_get_timer",5000000)) 
   ,partition_number_(ps.get<uint32_t>("partition_number",0))
   ,debugprint_(ps.get<uint32_t>("debug_print",0))
   ,zmq_conn_(ps.get<std::string>("zmq_connection","tcp://pddaq-gen05-daq0:5566"))
@@ -75,6 +75,15 @@ dune::SWTrigger::SWTrigger(fhicl::ParameterSet const & ps):
   ,n_recvd_(0)
   ,p_count_1_(0)
   ,p_count_2_(0)
+  ,ntriggers_(0)
+  ,norecvd_(0)
+  ,n_recvd_1_(0)
+  ,n_recvd_2_(0)
+  ,nTPhits_(0)
+  ,nTPset_recvd_(0)
+  ,fqueue_(0)
+  ,loops_(0)
+  ,qtpsets_(0)
   ,count_(0)
 {
 
@@ -127,6 +136,10 @@ void dune::SWTrigger::start(void)
   InhibitGet_retime(inhibitget_timer_);
 
   ts_subscriber_.reset(new std::thread(&dune::SWTrigger::readTS, this));
+
+  // Start a TPSet recieving/sending thread
+  tpset_handler = std::thread(&dune::SWTrigger::tpsetHandler, this);
+
 }
 
 void dune::SWTrigger::readTS() {
@@ -135,15 +148,74 @@ void dune::SWTrigger::readTS() {
   }
 }
 
+// tpsetHandler() routine ------------------------------------------------------------------
+
+void dune::SWTrigger::tpsetHandler() {
+
+  DAQLogger::LogInfo(instance_name_) << "Starting TPSet handler thread.";
+
+  while(!stopping_flag_) {
+
+    ptmp::data::TPSet SetReceived_1;
+    ptmp::data::TPSet SetReceived_2;
+
+    bool received_1 = receiver_1_(SetReceived_1, timeout_);
+    bool received_2 = receiver_2_(SetReceived_2, timeout_);
+
+    if (!received_1 && !received_2) { ++norecvd_; continue; }
+
+    unsigned int count_1 = SetReceived_1.count();
+    unsigned int count_2 = SetReceived_2.count();
+
+    if (count_1 != p_count_1_){
+      ++n_recvd_1_;
+      nTPhits_ += SetReceived_2.tps_size();
+      ++n_recvd_;
+    }
+
+    if (count_2 != p_count_2_){
+      ++n_recvd_2_; 
+      nTPhits_ += SetReceived_2.tps_size();
+      ++n_recvd_;
+    }
+
+    p_count_1_ = count_1;
+    p_count_2_ = count_2;
+
+    // 4400 gives about 5Hz triggers
+    if (n_recvd_ < 4400) continue;
+
+    n_recvd_ = 0;
+    ++ntriggers_;
+
+    // Add the TPsets to the queue to allow access from getNext
+    // TODO add in receiver 2
+    if (!queue_.isFull()) queue_.write(SetReceived_1);
+    if (queue_.isFull()) ++fqueue_;
+
+  }
+
+  DAQLogger::LogInfo(instance_name_) << "Stop called, ending TPSet handler thread.";
+
+}
+
 void dune::SWTrigger::stop(void)
 {
   DAQLogger::LogInfo(instance_name_) << "stop() called";
 
   stopping_flag_ = true;   // We do want this here, if we don't use an
-  // atomic<int> for stopping_flag_ (see header
-  // file comments)
-}
+  // atomic<int> for stopping_flag_ (see header file comments)
 
+  DAQLogger::LogInfo(instance_name_) << "Number of TP(TC)Sets not received " << norecvd_; 
+  DAQLogger::LogInfo(instance_name_) << "Number of TP(TC)Sets received APA5 " << n_recvd_1_ << " APA6 " << n_recvd_2_ << " total " << n_recvd_;
+  DAQLogger::LogInfo(instance_name_) << "Number of triggers " << ntriggers_;
+  DAQLogger::LogInfo(instance_name_) << "Final TP(TC)Set count APA5 " << p_count_1_ << " APA6 " << p_count_2_;
+  DAQLogger::LogInfo(instance_name_) << "Number of TPsets received in getNext " << qtpsets_ << " in loops " << loops_;
+  //Avg & Max time diff now() - tstart
+  //DAQLogger::LogInfo(instance_name_) << "Number of triggers " << ntriggers_;
+  //Avg & Max time diff now() - creation
+  //DAQLogger::LogInfo(instance_name_) << "Number of triggers " << ntriggers_;
+}
 
 void dune::SWTrigger::stopNoMutex(void)
 {
@@ -210,17 +282,24 @@ bool dune::SWTrigger::getNext_(artdaq::FragmentPtrs &frags)
 
   auto start = std::chrono::high_resolution_clock::now();
 
+  tpset_ = queue_.frontPtr();
+  ++loops_;
+
+  if (!tpset_) {
+    return true;
+  } else {
+    ++qtpsets_;
+    DAQLogger::LogInfo(instance_name_) << "Received TPset count " << tpset_->count() << "  " << tpset_;
+    //previous_ts_ = std::max(SetReceived_1.tstart(),SetReceived_2.tstart());
+    previous_ts_ = tpset_->tstart();
+    queue_.popFront();
+  } 
+
   // Check for stop run
   if (stopping_flag_) {
     DAQLogger::LogInfo(instance_name_) << "getNext_ stopping ";
     return false;
   }
-
-  ptmp::data::TPSet SetReceived_1;
-  //  ptmp::data::TPSet SetReceived_2;
-
-  bool received_1 = receiver_1_(SetReceived_1, timeout_);
-  //bool received_2 = receiver_2_(SetReceived_2, timeout_);
 
   uint32_t tf = InhibitGet_get();  
   if (tf==1) {
@@ -233,40 +312,12 @@ bool dune::SWTrigger::getNext_(artdaq::FragmentPtrs &frags)
     return true;
   }
 
-  if (!received_1/* && !received_2*/){
-    //DAQLogger::LogInfo(instance_name_) << "No TPSet for either of the connections.";
-  }
-
-  unsigned int count_1 = SetReceived_1.count();
-  //unsigned int count_2 = SetReceived_2.count();
-
-  //DAQLogger::LogInfo(instance_name_) << "TPSet count for connection 1 is: " << count_1;
-  //DAQLogger::LogInfo(instance_name_) << "TPSet count for connection 2 is: " << count_2;
-
-  if (count_1 != p_count_1_){
-    ++n_recvd_;
-  }
-
-  /*
-  if (count_2 != p_count_2_){
-    DAQLogger::LogInfo(instance_name_) << "Received New TPSet from connection 2.";
-    ++n_recvd_;
-  }
-  */
-  p_count_1_=count_1;
-  //p_count_2_=count_2;
-
-  if (n_recvd_ < 9000){
-    return true;
-  }
-
-  previous_ts_ = SetReceived_1.tstart();
-  //previous_ts_ = std::max(SetReceived_1.tstart(),SetReceived_2.tstart());
-
-  n_recvd_ = 0;
-
+  
+  auto ticks = std::chrono::duration_cast<std::chrono::duration<uint64_t, std::ratio<1,50000000>>>(std::chrono::system_clock::now().time_since_epoch());
+  uint64_t now = ticks.count();
+                                                                                                                                                         
+  DAQLogger::LogInfo(instance_name_) << "Time difference between now and previous_ts " << now-previous_ts_;
   DAQLogger::LogInfo(instance_name_) << "Timestamp going to triggered fragment should be: " << previous_ts_;
-
 
 
 //------------ Trigger Fragment -------------//

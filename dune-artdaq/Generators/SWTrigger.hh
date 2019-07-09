@@ -17,6 +17,7 @@
 #include "artdaq-core/Data/Fragment.hh" 
 #include "artdaq/Application/CommandableFragmentGenerator.hh"
 #include "dune-raw-data/Overlays/FragmentType.hh"
+#include "dune-artdaq/Generators/Felix/ProducerConsumerQueue.hh"
 
 #include <vector>
 #include <atomic>
@@ -57,6 +58,8 @@ namespace dune {
     // The "getNext_" function is used to implement user-specific
     // functionality; it's a mandatory override of the pure virtual
     // getNext_ function declared in CommandableFragmentGenerator
+    
+    void tpsetHandler();
 
     bool getNext_(artdaq::FragmentPtrs & output) override;
 
@@ -115,8 +118,14 @@ namespace dune {
     std::atomic<uint64_t> latest_ts_; // needs to be atomic as shared between threads
     uint64_t previous_ts_; // only used within getNext
 
+    // TPset receving and sending thread
+    std::thread tpset_handler;
+
     ptmp::TPReceiver receiver_1_;
     ptmp::TPReceiver receiver_2_;
+
+    folly::ProducerConsumerQueue<ptmp::data::TPSet> queue_{100000};
+    ptmp::data::TPSet* tpset_;
 
     // The maximum time in microseconds before we timeout for a TPReceiver call (ms)
     int timeout_;
@@ -125,6 +134,15 @@ namespace dune {
 
     unsigned int p_count_1_;
     unsigned int p_count_2_;
+    unsigned int ntriggers_;
+    unsigned int norecvd_;
+    unsigned int n_recvd_1_;
+    unsigned int n_recvd_2_;
+    unsigned int nTPhits_;
+    unsigned int nTPset_recvd_;
+    unsigned int fqueue_;
+    unsigned int loops_;
+    unsigned int qtpsets_;
 
     unsigned int count_;
 
