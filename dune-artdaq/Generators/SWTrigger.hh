@@ -124,6 +124,9 @@ namespace dune {
     ptmp::TPReceiver receiver_1_;
     ptmp::TPReceiver receiver_2_;
 
+    ptmp::TPSender sender_1_;
+    ptmp::TPSender sender_2_;
+
     folly::ProducerConsumerQueue<ptmp::data::TPSet> queue_{100000};
     ptmp::data::TPSet* tpset_;
 

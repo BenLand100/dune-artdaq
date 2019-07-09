@@ -103,9 +103,9 @@ void dune::Candidate::start(void)
   std::vector<std::string> tpsortin_;
 
   for(int i=0; i<felix_links; i++) {
-    std::string tpwin_socket = tpwinsock_ + std::to_string(141+i);
-    std::string tpwout_socket = tpwoutsock_ + std::to_string(141+i);
-    std::string tpsortin_socket = tpsortinsock_ + std::to_string(141+i);
+    std::string tpwin_socket = tpwinsock_ + std::to_string(151+i);
+    std::string tpwout_socket = tpwoutsock_ + std::to_string(151+i);
+    std::string tpsortin_socket = tpsortinsock_ + std::to_string(151+i);
     tpwin_.push_back(tpwin_socket);
     tpwout_.push_back(tpwout_socket);
     tpsortin_.push_back(tpsortin_socket);

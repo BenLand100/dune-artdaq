@@ -71,6 +71,8 @@ dune::SWTrigger::SWTrigger(fhicl::ParameterSet const & ps):
   ,last_runstart_tstamph_(0xffffffff)   // ...
   ,receiver_1_( ptmp_util::make_ptmp_socket_string("SUB","connect",{ps.get<std::string>("receiver_1")}) ) //Corresponds to trigcand500
   ,receiver_2_( ptmp_util::make_ptmp_socket_string("SUB","connect",{ps.get<std::string>("receiver_2")}) ) //Corresponds to trigcand600
+  ,sender_1_( ptmp_util::make_ptmp_socket_string("PUB","bind",{"tcp://10.73.136.32:50501"}) ) // 2 temp. senders for latency measurements
+  ,sender_2_( ptmp_util::make_ptmp_socket_string("PUB","bind",{"tcp://10.73.136.32:50502"}) )
   ,timeout_(ps.get<int>("timeout"))
   ,n_recvd_(0)
   ,p_count_1_(0)
@@ -156,30 +158,32 @@ void dune::SWTrigger::tpsetHandler() {
 
   while(!stopping_flag_) {
 
-    ptmp::data::TPSet SetReceived_1;
+    //TODO very hacky only listening to one APA link for now
+
+    //ptmp::data::TPSet SetReceived_1;
     ptmp::data::TPSet SetReceived_2;
 
-    bool received_1 = receiver_1_(SetReceived_1, timeout_);
+    //bool received_1 = receiver_1_(SetReceived_1, timeout_);
     bool received_2 = receiver_2_(SetReceived_2, timeout_);
 
-    if (!received_1 && !received_2) { ++norecvd_; continue; }
+    if (/*!received_1 &&*/ !received_2) { ++norecvd_; continue; }
 
-    unsigned int count_1 = SetReceived_1.count();
+    //unsigned int count_1 = SetReceived_1.count();
     unsigned int count_2 = SetReceived_2.count();
-
+/*
     if (count_1 != p_count_1_){
       ++n_recvd_1_;
       nTPhits_ += SetReceived_2.tps_size();
       ++n_recvd_;
     }
-
+*/
     if (count_2 != p_count_2_){
       ++n_recvd_2_; 
       nTPhits_ += SetReceived_2.tps_size();
       ++n_recvd_;
     }
 
-    p_count_1_ = count_1;
+    //p_count_1_ = count_1;
     p_count_2_ = count_2;
 
     // 4400 gives about 5Hz triggers
@@ -190,9 +194,13 @@ void dune::SWTrigger::tpsetHandler() {
 
     // Add the TPsets to the queue to allow access from getNext
     // TODO add in receiver 2
-    if (!queue_.isFull()) queue_.write(SetReceived_1);
-    if (queue_.isFull()) ++fqueue_;
+    if (!queue_.isFull()) queue_.write(SetReceived_2);
 
+    //--for latency measurement--//
+    sender_1_(SetReceived_2);
+    if (queue_.isFull()) ++fqueue_;
+    
+    
   }
 
   DAQLogger::LogInfo(instance_name_) << "Stop called, ending TPSet handler thread.";
@@ -292,6 +300,10 @@ bool dune::SWTrigger::getNext_(artdaq::FragmentPtrs &frags)
     DAQLogger::LogInfo(instance_name_) << "Received TPset count " << tpset_->count() << "  " << tpset_;
     //previous_ts_ = std::max(SetReceived_1.tstart(),SetReceived_2.tstart());
     previous_ts_ = tpset_->tstart();
+
+    //--for latency measurement--//
+    sender_2_(*tpset_);
+
     queue_.popFront();
   } 
 
@@ -311,7 +323,6 @@ bool dune::SWTrigger::getNext_(artdaq::FragmentPtrs &frags)
   if (throttling_state_) {
     return true;
   }
-
   
   auto ticks = std::chrono::duration_cast<std::chrono::duration<uint64_t, std::ratio<1,50000000>>>(std::chrono::system_clock::now().time_since_epoch());
   uint64_t now = ticks.count();
