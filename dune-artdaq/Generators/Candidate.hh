@@ -9,6 +9,7 @@
 #include "artdaq/Application/CommandableFragmentGenerator.hh"
 
 #include "dune-raw-data/Overlays/FragmentType.hh"
+#include "dune-artdaq/Generators/Felix/ProducerConsumerQueue.hh"
 
 #include <random>
 #include <vector>
@@ -33,6 +34,12 @@ namespace dune {
     explicit Candidate(fhicl::ParameterSet const & ps);
 
   private:
+
+    // The tpsetHandler function is used to process the TPSets 
+    // and associated TPs. This means it is resonsible for receiving
+    // TPSets, via zeromq, passing them to TC algorithms and sending the resulting
+    // TCs onnward, via zeromq.
+    void tpsetHandler();
 
     // The "getNext_" function is used to implement user-specific
     // functionality; it's a mandatory override of the pure virtual
@@ -87,10 +94,17 @@ namespace dune {
     // SocketReceiver
     std::vector<std::string> sendsocket_;
 
+    // TPset receving and sending thread
+    std::thread tpset_handler;
+
     // The TPSet receivers/senders
     ptmp::TPReceiver receiver_;
     ptmp::TPSender sender_;
 
+    //std::unique_ptr<folly::ProducerConsumerQueue<ptmp::data::TPSet>> tpsetToFrag;
+    folly::ProducerConsumerQueue<ptmp::data::TPSet> queue_{100000};
+    ptmp::data::TPSet* tpset_;
+ 
     // TPwindows to window the TPSets, one for each Felix link
     std::vector<std::unique_ptr<ptmp::TPWindow>> tpwindows_;
                                                                
@@ -124,6 +138,11 @@ namespace dune {
     std::chrono::high_resolution_clock::time_point end_time_;
     
     int n_recvd_;
+    unsigned int norecvd_;
+    unsigned int stale_set_;
+    unsigned int loops_;
+    unsigned int fqueue_;
+    unsigned int qtpsets_;
     unsigned int p_count_;
     
 
