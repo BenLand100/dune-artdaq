@@ -121,8 +121,7 @@ namespace dune {
     // TPset receving and sending thread
     std::thread tpset_handler;
 
-    ptmp::TPReceiver receiver_1_;
-    ptmp::TPReceiver receiver_2_;
+    std::vector<std::unique_ptr<ptmp::TPReceiver>> receivers_;
 
     ptmp::TPSender sender_1_;
     ptmp::TPSender sender_2_;
@@ -134,20 +133,19 @@ namespace dune {
     int timeout_;
 
     int n_recvd_;
-
-    unsigned int p_count_1_;
-    unsigned int p_count_2_;
-    unsigned int ntriggers_;
-    unsigned int norecvd_;
-    unsigned int n_recvd_1_;
-    unsigned int n_recvd_2_;
-    unsigned int nTPhits_;
-    unsigned int nTPset_recvd_;
-    unsigned int fqueue_;
-    unsigned int loops_;
-    unsigned int qtpsets_;
-
-    unsigned int count_;
+    // How many trigger candidate inputs we're listening to
+    size_t n_inputs_;
+    // Per-input counts:
+    std::vector<size_t> prev_counts_; // The value of TPSet::count() for each input in the previous go-round
+    std::vector<size_t> norecvds_;    // How many times each input has timed out
+    std::vector<size_t> n_recvds_;    // How many TPSets have been received on each input
+    std::vector<size_t> nTPhits_;     // How many TrigPrims have been received on each input
+    size_t ntriggers_;
+    size_t fqueue_;
+    size_t loops_;
+    size_t qtpsets_;
+    
+    size_t count_;
 
   };
 }

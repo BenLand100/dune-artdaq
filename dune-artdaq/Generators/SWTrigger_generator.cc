@@ -69,20 +69,18 @@ dune::SWTrigger::SWTrigger(fhicl::ParameterSet const & ps):
   ,last_spillend_tstamph_(0xffffffff)   // ...
   ,last_runstart_tstampl_(0xffffffff)   // Timestamp of most recent start-of-run
   ,last_runstart_tstamph_(0xffffffff)   // ...
-  ,receiver_1_( ptmp_util::make_ptmp_socket_string("SUB","connect",{ps.get<std::string>("receiver_1")}) ) //Corresponds to trigcand500
-  ,receiver_2_( ptmp_util::make_ptmp_socket_string("SUB","connect",{ps.get<std::string>("receiver_2")}) ) //Corresponds to trigcand600
+//  ,receiver_1_( ptmp_util::make_ptmp_socket_string("SUB","connect",{ps.get<std::string>("receiver_1")}) ) //Corresponds to trigcand500
+//  ,receiver_2_( ptmp_util::make_ptmp_socket_string("SUB","connect",{ps.get<std::string>("receiver_2")}) ) //Corresponds to trigcand600
   ,sender_1_( ptmp_util::make_ptmp_socket_string("PUB","bind",{"tcp://10.73.136.32:50501"}) ) // 2 temp. senders for latency measurements
   ,sender_2_( ptmp_util::make_ptmp_socket_string("PUB","bind",{"tcp://10.73.136.32:50502"}) )
   ,timeout_(ps.get<int>("timeout"))
   ,n_recvd_(0)
-  ,p_count_1_(0)
-  ,p_count_2_(0)
+  ,n_inputs_(ps.get<std::vector<std::string>>("tc_inputs").size())
+  ,prev_counts_(std::vector<size_t>(n_inputs_, 0))
+  ,norecvds_(std::vector<size_t>(n_inputs_, 0))
+  ,n_recvds_(std::vector<size_t>(n_inputs_, 0))
+  ,nTPhits_(std::vector<size_t>(n_inputs_, 0))
   ,ntriggers_(0)
-  ,norecvd_(0)
-  ,n_recvd_1_(0)
-  ,n_recvd_2_(0)
-  ,nTPhits_(0)
-  ,nTPset_recvd_(0)
   ,fqueue_(0)
   ,loops_(0)
   ,qtpsets_(0)
@@ -103,6 +101,11 @@ dune::SWTrigger::SWTrigger(fhicl::ParameterSet const & ps):
   // the InhibitMaster
   InhibitGet_init(inhibitget_timer_);
 
+  std::vector<std::string> tc_inputs=ps.get<std::vector<std::string>>("tc_inputs");
+  for(auto const& tc_input: tc_inputs){
+      std::string sock_str(ptmp_util::make_ptmp_socket_string("SUB","connect",{tc_input}));
+      receivers_.push_back(std::make_unique<ptmp::TPReceiver>(sock_str));
+  }
   // Set up outgoing connection to InhibitMaster: this is where we
   // broadcast whether we're happy to take triggers
   status_publisher_.reset(new artdaq::StatusPublisher(instance_name_, ps.get<std::string>("zmq_connection_out","tcp://*:5599")));
@@ -156,49 +159,51 @@ void dune::SWTrigger::tpsetHandler() {
 
   DAQLogger::LogInfo(instance_name_) << "Starting TPSet handler thread.";
 
+  std::vector<bool> received(n_inputs_, false);
+
   while(!stopping_flag_) {
 
-    //TODO very hacky only listening to one APA link for now
+    // TODO: the inputs should probably go through TPSorted/TPZipper instead
+    std::vector<ptmp::data::TPSet> SetsReceived(n_inputs_);
 
-    //ptmp::data::TPSet SetReceived_1;
-    ptmp::data::TPSet SetReceived_2;
-
-    //bool received_1 = receiver_1_(SetReceived_1, timeout_);
-    bool received_2 = receiver_2_(SetReceived_2, timeout_);
-
-    if (/*!received_1 &&*/ !received_2) { ++norecvd_; continue; }
-
-    //unsigned int count_1 = SetReceived_1.count();
-    unsigned int count_2 = SetReceived_2.count();
-/*
-    if (count_1 != p_count_1_){
-      ++n_recvd_1_;
-      nTPhits_ += SetReceived_2.tps_size();
-      ++n_recvd_;
-    }
-*/
-    if (count_2 != p_count_2_){
-      ++n_recvd_2_; 
-      nTPhits_ += SetReceived_2.tps_size();
-      ++n_recvd_;
+    // Attempt to receive a trigger candidate on each input
+    for(size_t i=0; i<n_inputs_; ++i){
+      received[i] = (*receivers_[i])(SetsReceived[i], timeout_);
     }
 
-    //p_count_1_ = count_1;
-    p_count_2_ = count_2;
+    for(size_t i=0; i<receivers_.size(); ++i){
+      if(received[i])  ++norecvds_[i];
+      else             ++n_recvds_[i];
 
-    // 4400 gives about 5Hz triggers
+      nTPhits_[i]+=SetsReceived[i].tps_size();
+
+      if(prev_counts_[i]!=0 && (SetsReceived[i].count()!=prev_counts_[i]+1)){
+        // Somehow signal that we missed an item on this input
+      }
+      prev_counts_[i]=SetsReceived[i].count();
+    }
+
+    // If we didn't get a set on every link, don't do any more this round
+    if(!std::all_of(received.begin(), received.end(), [](bool p) {return p;})){
+      continue;
+    }
+
+    ++n_recvd_;
+
     if (n_recvd_ < 4400) continue;
 
     n_recvd_ = 0;
     ++ntriggers_;
 
     // Add the TPsets to the queue to allow access from getNext
-    // TODO add in receiver 2
-    if (!queue_.isFull()) queue_.write(SetReceived_2);
+    bool write_success=true;
+    for(auto const& set: SetsReceived){
+      write_success = write_success && queue_.write(set);
+    }
 
     //--for latency measurement--//
-    sender_1_(SetReceived_2);
-    if (queue_.isFull()) ++fqueue_;
+    sender_1_(SetsReceived[0]);
+    if(!write_success) ++fqueue_;
     
     
   }
@@ -214,15 +219,35 @@ void dune::SWTrigger::stop(void)
   stopping_flag_ = true;   // We do want this here, if we don't use an
   // atomic<int> for stopping_flag_ (see header file comments)
 
-  DAQLogger::LogInfo(instance_name_) << "Number of TP(TC)Sets not received " << norecvd_; 
-  DAQLogger::LogInfo(instance_name_) << "Number of TP(TC)Sets received APA5 " << n_recvd_1_ << " APA6 " << n_recvd_2_ << " total " << n_recvd_;
-  DAQLogger::LogInfo(instance_name_) << "Number of triggers " << ntriggers_;
-  DAQLogger::LogInfo(instance_name_) << "Final TP(TC)Set count APA5 " << p_count_1_ << " APA6 " << p_count_2_;
-  DAQLogger::LogInfo(instance_name_) << "Number of TPsets received in getNext " << qtpsets_ << " in loops " << loops_;
-  //Avg & Max time diff now() - tstart
-  //DAQLogger::LogInfo(instance_name_) << "Number of triggers " << ntriggers_;
-  //Avg & Max time diff now() - creation
-  //DAQLogger::LogInfo(instance_name_) << "Number of triggers " << ntriggers_;
+  std::ostringstream ss_stats;
+  ss_stats << "Statistics by input link:" << std::endl;
+
+  ss_stats << "Number of TP(TC)Sets not received ";
+  for(auto const& norecvd: norecvds_) ss_stats << std::setw(7) << norecvd;
+  ss_stats << std::endl;
+
+  ss_stats << "Number of TP(TC)Sets received     ";
+  for(auto const& n_recvd: n_recvds_) ss_stats << std::setw(7) << n_recvd;
+  ss_stats << std::endl;
+
+  ss_stats << "Number of TrigPrims received      ";
+  for(auto const& nTPhit: nTPhits_) ss_stats << std::setw(7) << nTPhit;
+  ss_stats << std::endl;
+
+  ss_stats << "Final TP(TC)Set count()           ";
+  for(auto const& prev_count: prev_counts_) ss_stats << std::setw(7) << prev_count;
+  ss_stats << std::endl;
+
+  ss_stats << std::endl;
+
+  ss_stats << "Number of triggers " << ntriggers_ << std::endl;
+  ss_stats << "Number of TPsets received in getNext " << qtpsets_ << " in loops " << loops_ << std::endl;
+  ss_stats << "Number of triggers " << ntriggers_ << std::endl;
+
+  DAQLogger::LogInfo(instance_name_) << ss_stats.str();
+
+  // Make sure the TPReceiver dtors get called
+  for(auto & recv: receivers_) recv.reset();
 }
 
 void dune::SWTrigger::stopNoMutex(void)
