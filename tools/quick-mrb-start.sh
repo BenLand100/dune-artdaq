@@ -229,23 +229,38 @@ else
 
     cd $clonedir
 
+    if [[ -d dune-artdaq ]]; then
+
+	cat<<EOF
+Found a pre-existing dune-artdaq repository in $clonedir/dune-artdaq, will use it to determine the stated dune-artdaq version in product_deps on dune-artdaq's $dune_artdaq_branch branch.
+EOF
+
+    else
+
     cat <<EOF
 
 Cloning local copy of dune-artdaq repo into $clonedir so I can
 determine the stated dune-artdaq version in product_deps on
-dune-artdaq's $dune_artdaq_branch branch. When this is finished 
-you'll see "...done with clone"
+dune-artdaq's $dune_artdaq_branch branch. This may take a couple of
+minutes; when it's finished you'll see "...done with clone"
 
 EOF
+	git clone http://cdcvs.fnal.gov/projects/dune-artdaq
+	echo "..done with clone"
+    fi
 
-    git clone http://cdcvs.fnal.gov/projects/dune-artdaq
-    echo "..done with clone"
     cd dune-artdaq
     git checkout $dune_artdaq_branch
     if [[ "$?" != "0" ]]; then
 	echo "There was a problem running git checkout $dune_artdaq_branch; does this branch exist? Exiting..." >&2
 	exit 1
     fi
+    git pull origin $dune_artdaq_branch
+    if [[ "$?" != "0" ]]; then
+	echo "There was a problem bringing $dune_artdaq_branch in $PWD up to date via git pull; exiting..." >&2
+	exit 1
+    fi
+
     demo_version=`grep "parent dune_artdaq" $clonedir/dune-artdaq/ups/product_deps|awk '{print $3}'`
     artdaq_version=`grep -E "^artdaq\s+" $clonedir/dune-artdaq/ups/product_deps | awk '{print $2}'`
 
