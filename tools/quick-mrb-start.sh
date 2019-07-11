@@ -65,7 +65,7 @@ mkdir $tmpdir
 cd $tmpdir
 wget https://cdcvs.fnal.gov/redmine/projects/dune-artdaq/repository/revisions/develop/raw/tools/quick-mrb-start.sh
 
-if [[ -n $( diff $Base/quick-mrb-start.sh $tmpdir/quick-mrb-start.sh ) ]]; then
+if [[ -n $( diff $Base/quick-mrb-start.sh $Base/$tmpdir/quick-mrb-start.sh ) ]]; then
     
     cat<<EOF >&2
 
