@@ -44,27 +44,41 @@ else
     exit 1
 fi
 
-num_existing_files=$( ls -a1 * | grep -v "^quick-mrb-start" | wc -l )
+Base=$PWD
 
-if (( num_existing_files > 0 )); then
-    echo "This script is designed to be run in an empty directory!"
+git_status=`git status 2>/dev/null`
+git_sts=$?
+if [ $git_sts -eq 0 ];then
+    echo "This script is designed to be run in a fresh install directory!"
     exit 1
 fi
 
-startdir=$PWD
+tmpdir=.tmp_quick_mrb_start
+mkdir $tmpdir
+cd $tmpdir
+wget https://cdcvs.fnal.gov/redmine/projects/dune-artdaq/repository/revisions/develop/raw/tools/quick-mrb-start.sh
 
-subdir=$( basename $startdir )
-localdiskdir=/tmp/$USER/$subdir
-if [[ ! -e $localdiskdir ]]; then
-    mkdir -p $localdiskdir
-    cd $localdiskdir
-else
-    echo "Error: this script wanted to build in $localdiskdir, but it appears that directory already exists! Exiting..." >&2
+if [[ -n $( diff $Base/quick-mrb-start.sh $tmpdir/quick-mrb-start.sh ) ]]; then
+    
+    cat<<EOF
+
+Error: this script you're trying to run doesn't match with the version
+of the script at the head of the develop branch in the dune-artdaq's
+central repository. This may mean that this script makes obsolete
+assumptions, etc., which could compromise your working
+environment. Please delete this script and install your dune-artdaq
+area according to the instructions at
+https://twiki.cern.ch/twiki/bin/view/CENF/Installation
+
+EOF
+
     exit 1
 fi
+
+cd ..
+rm -rf .tmp_quick_mrb_start # The name of the deleted directory should match $tmpdir
 
 starttime=`date`
-Base=$PWD
 test -d products || mkdir products
 test -d download || mkdir download
 test -d log || mkdir log
