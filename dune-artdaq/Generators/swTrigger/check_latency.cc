@@ -150,6 +150,7 @@ int main(int argc, char* argv[])
                 }
             }
         }
+        if(seconds-start_seconds > total_time) DumpFileAndClose(0);
     }
 
     

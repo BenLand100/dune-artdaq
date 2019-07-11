@@ -5,7 +5,7 @@ function run_one(){
     port="$2"
     outfile="$3"
     total_time="$4"
-    ./check_latency --time "$total_time" --socket-attachment connect --socket-pattern SUB --socket-endpoints "tcp://${machine}:${port}" -f ${outfile} &
+    check_latency --time "$total_time" --socket-attachment connect --socket-pattern SUB --socket-endpoints "tcp://${machine}:${port}" -f ${outfile} --timeout-ms 1000 &
     echo Started PID $! listening to "tcp://${machine}:${port}"
 }
 
