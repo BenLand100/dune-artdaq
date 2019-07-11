@@ -46,11 +46,18 @@ fi
 
 Base=$PWD
 
-git_status=`git status 2>/dev/null`
-git_sts=$?
-if [ $git_sts -eq 0 ];then
-    echo "This script is designed to be run in a fresh install directory!"
+if [[ -n $( find . -maxdepth 1 -not -name "quick-mrb-start*" -not -name ".") ]]; then
+
+    cat<<EOF >&2
+
+There appear to be files and/or subdirectories in this directory
+besides this script; this script should only be run in a clean
+directory. Exiting...
+
+EOF
+
     exit 1
+    
 fi
 
 tmpdir=.tmp_quick_mrb_start
@@ -60,7 +67,7 @@ wget https://cdcvs.fnal.gov/redmine/projects/dune-artdaq/repository/revisions/de
 
 if [[ -n $( diff $Base/quick-mrb-start.sh $tmpdir/quick-mrb-start.sh ) ]]; then
     
-    cat<<EOF
+    cat<<EOF >&2
 
 Error: this script you're trying to run doesn't match with the version
 of the script at the head of the develop branch in the dune-artdaq's
