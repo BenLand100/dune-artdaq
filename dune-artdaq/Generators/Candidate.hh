@@ -35,6 +35,8 @@ namespace dune {
 
   private:
 
+      virtual ~Candidate();
+
     // The tpsetHandler function is used to process the TPSets 
     // and associated TPs. This means it is resonsible for receiving
     // TPSets, via zeromq, passing them to TC algorithms and sending the resulting

@@ -88,6 +88,10 @@ dune::Candidate::Candidate(fhicl::ParameterSet const & ps):
   }
 }
 
+dune::Candidate::~Candidate()
+{
+    DAQLogger::LogInfo(instance_name_) << "dtor";
+}
 
 // start() routine --------------------------------------------------------------------------
 void dune::Candidate::start(void)
@@ -189,6 +193,10 @@ void dune::Candidate::stop(void)
   DAQLogger::LogInfo(instance_name_) << "Received " << nTPset_recvd_ << " TSets and sent " << nTPset_sent_ << " TPsets";
   DAQLogger::LogInfo(instance_name_) << "Elapsed time receiving TPsets (s) " << std::chrono::duration_cast<std::chrono::duration<double>>(end_time_ - start_time_).count();
   DAQLogger::LogInfo(instance_name_) << "Number of non-nullptr " << qtpsets_ << " in " << loops_ << " getNext() loops and number of full queue loops " << fqueue_; 
+
+  DAQLogger::LogInfo(instance_name_) << "Joining tpset_handler thread...";
+  tpset_handler.join();
+  DAQLogger::LogInfo(instance_name_) << "tpset_handler thread joined";
 
 }
 

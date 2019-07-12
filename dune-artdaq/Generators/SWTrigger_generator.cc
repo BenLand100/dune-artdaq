@@ -248,6 +248,11 @@ void dune::SWTrigger::stop(void)
 
   // Make sure the TPReceiver dtors get called
   for(auto & recv: receivers_) recv.reset();
+
+  DAQLogger::LogInfo(instance_name_) << "Joining tpset_handler thread...";
+  tpset_handler.join();
+  DAQLogger::LogInfo(instance_name_) << "tpset_handler thread joined";
+
 }
 
 void dune::SWTrigger::stopNoMutex(void)
