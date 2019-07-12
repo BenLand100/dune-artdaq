@@ -60,12 +60,30 @@ EOF
     
 fi
 
-tmpdir=.tmp_quick_mrb_start
-mkdir $tmpdir
-cd $tmpdir
+if [[ -z $USER ]]; then
+
+echo "Error: this script only works if you've got the \$USER environment variable set and pointing to your username. Please set this." >&2
+
+    exit 1
+fi
+
+qms_tmpdir=/tmp/${USER}_for_quick-mrb-start
+mkdir -p $qms_tmpdir
+    
+if [[ "$?" != "0" ]]; then
+    echo "There was a problem running mkdir -p $qms_tmpdir; exiting..." >&2
+    exit 1
+fi
+
+returndir=$PWD
+cd $qms_tmpdir
+rm -f quick-mrb-start.sh
 wget https://cdcvs.fnal.gov/redmine/projects/dune-artdaq/repository/revisions/develop/raw/tools/quick-mrb-start.sh
 
-if [[ -n $( diff $Base/quick-mrb-start.sh $Base/$tmpdir/quick-mrb-start.sh ) ]]; then
+quick_mrb_start_edits=$( diff $Base/quick-mrb-start.sh $qms_tmpdir/quick-mrb-start.sh ) 
+cd $returndir
+
+if [[ -n $quick_mrb_start_edits ]]; then
     
     cat<<EOF >&2
 
@@ -81,9 +99,6 @@ EOF
 
     exit 1
 fi
-
-cd ..
-rm -rf .tmp_quick_mrb_start # The name of the deleted directory should match $tmpdir
 
 starttime=`date`
 test -d products || mkdir products
@@ -206,68 +221,21 @@ if [ -z "${tag:-}" ]; then
   tag=develop;
 fi
 
-if [[ $dune_artdaq_branch == "develop" ]]; then
-    wget https://cdcvs.fnal.gov/redmine/projects/dune-artdaq/repository/revisions/develop/raw/ups/product_deps
+returndir=$PWD
+cd $qms_tmpdir
+rm -f product_deps
+wget -O product_deps https://cdcvs.fnal.gov/redmine/projects/dune-artdaq/repository/raw/ups/product_deps?rev=$( echo $dune_artdaq_branch | sed -r 's!/!%2F!g' )
 
-    if [[ ! -e $Base/download/product_deps ]]; then
-	echo "You need to have a product_deps file in $Base/download" >&2
-	exit 1
-    fi
-
-    demo_version=`grep "parent dune_artdaq" $Base/download/product_deps|awk '{print $3}'`
-    artdaq_version=`grep -E "^artdaq\s+" $Base/download/product_deps | awk '{print $2}'`
-
-else
-    returndir=$PWD
-    clonedir=/tmp/${USER}_for_quick-mrb-start
-    mkdir -p $clonedir
-
-    if [[ "$?" != "0" ]]; then
-	echo "There was a problem running mkdir -p $clonedir; exiting..." >&2
-	exit 1
-    fi
-
-    cd $clonedir
-
-    if [[ -d dune-artdaq ]]; then
-
-	cat<<EOF
-Found a pre-existing dune-artdaq repository in $clonedir/dune-artdaq, will use it to determine the stated dune-artdaq version in product_deps on dune-artdaq's $dune_artdaq_branch branch.
-EOF
-
-    else
-
-    cat <<EOF
-
-Cloning local copy of dune-artdaq repo into $clonedir so I can
-determine the stated dune-artdaq version in product_deps on
-dune-artdaq's $dune_artdaq_branch branch. This may take a couple of
-minutes; when it's finished you'll see "...done with clone"
-
-EOF
-	git clone http://cdcvs.fnal.gov/projects/dune-artdaq
-	echo "..done with clone"
-    fi
-
-    cd dune-artdaq
-    git checkout $dune_artdaq_branch
-    if [[ "$?" != "0" ]]; then
-	echo "There was a problem running git checkout $dune_artdaq_branch; does this branch exist? Exiting..." >&2
-	exit 1
-    fi
-    git pull origin $dune_artdaq_branch
-    if [[ "$?" != "0" ]]; then
-	echo "There was a problem bringing $dune_artdaq_branch in $PWD up to date via git pull; exiting..." >&2
-	exit 1
-    fi
-
-    demo_version=`grep "parent dune_artdaq" $clonedir/dune-artdaq/ups/product_deps|awk '{print $3}'`
-    artdaq_version=`grep -E "^artdaq\s+" $clonedir/dune-artdaq/ups/product_deps | awk '{print $2}'`
-
-    cd $returndir
+if [[ "$?" != "0" ]]; then
+    echo "Problem trying to get product_deps file for branch $dune_artdaq_branch off the web; exiting..." >&2
+    exit 1
 fi
 
-echo "JCF: demo_version is $demo_version, artdaq_version is $artdaq_version"
+demo_version=$( grep "parent dune_artdaq" ./product_deps|awk '{print $3}' )
+artdaq_version=$( grep -E "^artdaq\s+" ./product_deps | awk '{print $2}' )
+
+cd $returndir
+
 
 if [[ "$artdaq_version" == "v3_00_03a" ]]; then
     artdaq_manifest_version=v3_00_03
