@@ -1,5 +1,7 @@
 #include "json.hpp"
 
+#include "fhiclcpp/ParameterSet.h"
+
 #include <sstream>
 
 namespace ptmp_util
@@ -61,6 +63,39 @@ namespace ptmp_util
         root["tardy"]=tardy;
         return root.dump();
     }
-    
-    
+
+
+    // Make a vector of endpoints which are specified in the parameter
+    // set via two indirections: The key `key` has a string value
+    // which is itself the name of a key in the "ptmp_connections"
+    // table. *That* key has a value which is a list of key names
+    // whose values are the actual endpoints we want. Worked out:
+    //
+    // fragment_receiver: {
+    //     ptmp_connections: {
+    //         felix501: "tcp://ip:port1"
+    //         felix502: "tcp://ip:port2"
+    //         # DAQInterface/RC set the following based on active components
+    //         trigcand500_tpwindow_inputs_keys: ["felix501","felix502"]
+    //     }
+    //     tpwindow_input_connections_key: "trigcand500_tpwindow_inputs_keys"
+    // 
+    //
+    // This horribly
+    // complex scheme is the only way I (with help from Kurt) could
+    // come up with to enable just the endpoints for the components
+    // that are active in the partition, and have trigcand500 and
+    // trigcand600 listen to different inputs.
+    std::vector<std::string> endpoints_for_key(fhicl::ParameterSet const& ps,
+                                               std::string key)
+    {
+        fhicl::ParameterSet const& conns_table=ps.get<fhicl::ParameterSet>("ptmp_connections");
+        std::string val1=ps.get<std::string>(key);
+        std::vector<std::string> vals=conns_table.get<std::vector<std::string>>(val1);
+        std::vector<std::string> ret;
+        for(auto const& val: vals){
+            ret.push_back(conns_table.get<std::string>(val));
+        }
+        return ret;
+    }
 } //ptmp_util

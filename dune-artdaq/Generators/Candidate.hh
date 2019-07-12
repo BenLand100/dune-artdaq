@@ -80,26 +80,7 @@ namespace dune {
     // The maximum time in microseconds before we timeout for a TPReceiver call (ms)
     int timeout_;
 
-    // Skip the retry timeout for now JLS June 2019
-    // The amount of time the BR should wait before the next call to the TPReceiver (ms)
-    //int waitretry_;
-
-    // The maximum  number of time the BR should try to call the TPReceiver
-    //size_t ntimes_retry_;
-
     bool stopping_flag_;
-
-    // Socket sender
-    std::vector<std::string> recvsocket_;
-    // SocketReceiver
-    std::vector<std::string> sendsocket_;
-
-    // TPset receving and sending thread
-    std::thread tpset_handler;
-
-    // The TPSet receivers/senders
-    ptmp::TPReceiver receiver_;
-    ptmp::TPSender sender_;
 
     //std::unique_ptr<folly::ProducerConsumerQueue<ptmp::data::TPSet>> tpsetToFrag;
     folly::ProducerConsumerQueue<ptmp::data::TPSet> queue_{100000};
@@ -128,6 +109,20 @@ namespace dune {
     // The time TPsort will wait for a late TPSet
     int tardy_;
 
+    // Socket sender
+    std::string recvsocket_;
+    ptmp::TPReceiver receiver_;
+    // SocketReceiver
+    std::string sendsocket_;
+    ptmp::TPSender sender_;
+
+    // TPset receving and sending thread
+    std::thread tpset_handler;
+
+    // The TPSet receivers/senders
+
+
+
     // Counters
     size_t nTPset_recvd_;
     size_t nTPset_sent_;
@@ -137,13 +132,13 @@ namespace dune {
     std::chrono::high_resolution_clock::time_point start_time_;
     std::chrono::high_resolution_clock::time_point end_time_;
     
-    int n_recvd_;
-    unsigned int norecvd_;
-    unsigned int stale_set_;
-    unsigned int loops_;
-    unsigned int fqueue_;
-    unsigned int qtpsets_;
-    unsigned int p_count_;
+    size_t n_recvd_;
+    size_t norecvd_;
+    size_t stale_set_;
+    size_t loops_;
+    size_t fqueue_;
+    size_t qtpsets_;
+    size_t prev_count_;
     
 
   };

@@ -58,17 +58,17 @@ dune::Candidate::Candidate(fhicl::ParameterSet const & ps):
   instance_name_("Candidate"),
   timeout_(ps.get<int>("timeout")), 
   stopping_flag_(0),
-  recvsocket_({ps.get<std::string>("recvsocket")}),
-  sendsocket_({ps.get<std::string>("sendsocket")}),
-  receiver_( ptmp_util::make_ptmp_socket_string("SUB","connect",recvsocket_) ),
-  sender_( ptmp_util::make_ptmp_socket_string("PUB","bind",sendsocket_) ),
-  tpwinsocks_(ps.get<std::vector<std::string>>("tpwindow_inputs")), 
-  tpwoutsocks_(ps.get<std::vector<std::string>>("tpwindow_outputs")), 
+  tpwinsocks_(ptmp_util::endpoints_for_key(ps, "tpwindow_input_connections_key")), 
+  tpwoutsocks_(ptmp_util::endpoints_for_key(ps, "tpwindow_output_connections_key")), 
   tspan_(ps.get<uint64_t>("ptmp_tspan")),
   tbuf_(ps.get<uint64_t>("ptmp_tbuffer")),
-  tpsortinsocks_(ps.get<std::vector<std::string>>("tpsorted_inputs")), 
+  tpsortinsocks_(tpwoutsocks_), 
   tpsortout_(ps.get<std::string>("tpsorted_output")), 
   tardy_(ps.get<int>("ptmp_tardy")),
+  recvsocket_(tpsortout_),
+  receiver_( ptmp_util::make_ptmp_socket_string("SUB","connect",{recvsocket_}) ),
+  sendsocket_({ps.get<std::string>("tc_output")}),
+  sender_( ptmp_util::make_ptmp_socket_string("PUB","bind",{sendsocket_}) ),
   nTPset_recvd_(0),
   nTPset_sent_(0),
   nTPhits_(0),
@@ -80,7 +80,7 @@ dune::Candidate::Candidate(fhicl::ParameterSet const & ps):
   loops_(0),
   fqueue_(0),
   qtpsets_(0),
-  p_count_(0)
+  prev_count_(0)
 {
   DAQLogger::LogInfo(instance_name_) << "Initiated Candidate BoardReader\n";
   if(tpwinsocks_.size()!=tpwoutsocks_.size()){
@@ -104,7 +104,11 @@ void dune::Candidate::start(void)
 
   // tspan = 2500 = 50us / 20ns and tbuffer = 150000 = 60 tspan = 3ms / 20ns
   //TPWindow connection: Felix --> TPWindow --> TPSorted
+  if(tpwinsocks_.size()!=tpwoutsocks_.size()){
+      DAQLogger::LogError(instance_name_) << "TPWindow input and output lists are different lengths!";
+  }
   for(size_t i=0; i<tpwinsocks_.size(); ++i){
+      DAQLogger::LogInfo(instance_name_) << "Creating TPWindow from " << tpwinsocks_.at(i) << " to " << tpwoutsocks_.at(i);
       std::string jsonconfig{ptmp_util::make_ptmp_tpwindow_string({tpwinsocks_.at(i)},{tpwoutsocks_.at(i)},tspan_,tbuf_)};
       tpwindows_.push_back( std::make_unique<ptmp::TPWindow>(jsonconfig) );
   }
@@ -133,9 +137,9 @@ void dune::Candidate::tpsetHandler() {
      
     if (!received) { ++norecvd_; continue; }
 
-    unsigned int count = SetReceived.count();
+    size_t count = SetReceived.count();
 
-    if (count == p_count_){
+    if (count == prev_count_){
       ++stale_set_; 
       continue;
     } else {
@@ -143,7 +147,7 @@ void dune::Candidate::tpsetHandler() {
       ++nTPset_recvd_;
     }
 
-    p_count_ = count;
+    prev_count_ = count;
 
     // TODO 
     // Pass TPSet to TC algorithm

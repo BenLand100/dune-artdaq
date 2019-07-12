@@ -101,7 +101,7 @@ dune::SWTrigger::SWTrigger(fhicl::ParameterSet const & ps):
   // the InhibitMaster
   InhibitGet_init(inhibitget_timer_);
 
-  std::vector<std::string> tc_inputs=ps.get<std::vector<std::string>>("tc_inputs");
+  std::vector<std::string> tc_inputs=ptmp_util::endpoints_for_key(ps, "tc_inputs_key");
   for(auto const& tc_input: tc_inputs){
       std::string sock_str(ptmp_util::make_ptmp_socket_string("SUB","connect",{tc_input}));
       receivers_.push_back(std::make_unique<ptmp::TPReceiver>(sock_str));
