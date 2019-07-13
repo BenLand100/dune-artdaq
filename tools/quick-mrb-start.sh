@@ -596,8 +596,21 @@ if [ $installStatus -eq 0 ]; then
      echo "dune-artdaq has been installed correctly."
      echo
 else
-     echo "Build error. If all else fails, try (A) logging into a new terminal and (B) creating a new directory out of which to run this script."
-     echo
+    cat <<EOF >&2
+
+Build error. Possible reasons for this include:
+
+-Lack of agreement between dune-artdaq and dune-raw-data package
+ dependencies due to out-of-sync branches
+
+-Running this script in an unclean environment (i.e., one with
+ products already set up, scripts sourced, etc.)
+
+Look in the record of this installation attempt, found in
+$localdiskdir/log, for further details.
+
+EOF
+
 fi
 
 echo                                                               
