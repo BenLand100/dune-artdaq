@@ -6,6 +6,10 @@ from glob import glob
 from os.path import basename
 import sys
 import argparse
+import os
+
+clock_tick=os.sysconf(os.sysconf_names["SC_CLK_TCK"])
+assert clock_tick==100
 
 def cat(fname):
     return open(fname).readlines()

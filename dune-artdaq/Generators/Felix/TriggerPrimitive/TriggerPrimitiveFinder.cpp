@@ -184,7 +184,11 @@ TriggerPrimitiveFinder::addHitsToQueue(uint64_t timestamp,
         for(int i=0; i<16; ++i){
             if(hit_charge[i] && chan[i]!=MAGIC){
                 const uint16_t online_channel=collection_index_to_channel(chan[i]);
-                const uint32_t offline_channel=m_offline_channel_base+collection_index_to_offline(chan[i]);
+                // It looks like the collection channel -> offline
+                // mapping has the same pattern, but is the other way
+                // round for fiber 2, so deal with that
+                int multiplier=(m_fiber_no==1) ? 1 : -1;
+                const uint32_t offline_channel=m_offline_channel_base+multiplier*collection_index_to_offline(chan[i]);
                 // Hack for now, to exclude high TP rate (>10kHz) channels. -JLS June 2019
                 // if (offline_channel==9691 || offline_channel==5296 || offline_channel==5010 || offline_channel==4387
                 // || offline_channel==4381 || offline_channel==4383 || offline_channel==5006 || offline_channel==9689) { continue; }
