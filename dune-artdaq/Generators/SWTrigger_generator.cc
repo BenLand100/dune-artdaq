@@ -186,8 +186,9 @@ void dune::SWTrigger::tpsetHandler() {
     p_count_1_ = count_1;
     //p_count_2_ = count_2;
 
-    // 4400 gives about 5Hz triggers
-    if (n_recvd_ < 4400) continue;
+    // 4400 gives about 14Hz triggers for TPs
+    // 220 gives about 6Hz triggers for TCs
+    if (n_recvd_ < 220) continue;
 
     n_recvd_ = 0;
     ++ntriggers_;
