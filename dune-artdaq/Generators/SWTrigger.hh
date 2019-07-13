@@ -123,7 +123,6 @@ namespace dune {
 
     ptmp::TPReceiver receiver_1_;
     ptmp::TPReceiver receiver_2_;
-
     ptmp::TPSender sender_1_;
     ptmp::TPSender sender_2_;
 

@@ -71,8 +71,8 @@ dune::SWTrigger::SWTrigger(fhicl::ParameterSet const & ps):
   ,last_runstart_tstamph_(0xffffffff)   // ...
   ,receiver_1_( ptmp_util::make_ptmp_socket_string("SUB","connect",{ps.get<std::string>("receiver_1")}) ) //Corresponds to trigcand500
   ,receiver_2_( ptmp_util::make_ptmp_socket_string("SUB","connect",{ps.get<std::string>("receiver_2")}) ) //Corresponds to trigcand600
-  ,sender_1_( ptmp_util::make_ptmp_socket_string("PUB","bind",{"tcp://10.73.136.32:50501"}) ) // 2 temp. senders for latency measurements
-  ,sender_2_( ptmp_util::make_ptmp_socket_string("PUB","bind",{"tcp://10.73.136.32:50502"}) )
+  ,sender_1_( ptmp_util::make_ptmp_socket_string("PUB","bind",{"tcp://10.73.136.32:50501"}) ) // temp. sender for latency measurements
+  ,sender_2_( ptmp_util::make_ptmp_socket_string("PUB","bind",{"tcp://10.73.136.32:50502"}) ) // temp. sender for latency measurements
   ,timeout_(ps.get<int>("timeout"))
   ,n_recvd_(0)
   ,p_count_1_(0)
@@ -160,31 +160,31 @@ void dune::SWTrigger::tpsetHandler() {
 
     //TODO very hacky only listening to one APA link for now
 
-    //ptmp::data::TPSet SetReceived_1;
-    ptmp::data::TPSet SetReceived_2;
+    ptmp::data::TPSet SetReceived_1;
+    //ptmp::data::TPSet SetReceived_2;
 
-    //bool received_1 = receiver_1_(SetReceived_1, timeout_);
-    bool received_2 = receiver_2_(SetReceived_2, timeout_);
+    bool received_1 = receiver_1_(SetReceived_1, timeout_);
+    //bool received_2 = receiver_2_(SetReceived_2, timeout_);
 
-    if (/*!received_1 &&*/ !received_2) { ++norecvd_; continue; }
+    if (!received_1 /*&& !received_2*/) { ++norecvd_; continue; }
 
-    //unsigned int count_1 = SetReceived_1.count();
-    unsigned int count_2 = SetReceived_2.count();
-/*
+    unsigned int count_1 = SetReceived_1.count();
+    //unsigned int count_2 = SetReceived_2.count();
+
     if (count_1 != p_count_1_){
       ++n_recvd_1_;
-      nTPhits_ += SetReceived_2.tps_size();
+      nTPhits_ += SetReceived_1.tps_size();
       ++n_recvd_;
     }
-*/
+/*
     if (count_2 != p_count_2_){
       ++n_recvd_2_; 
       nTPhits_ += SetReceived_2.tps_size();
       ++n_recvd_;
     }
-
-    //p_count_1_ = count_1;
-    p_count_2_ = count_2;
+*/
+    p_count_1_ = count_1;
+    //p_count_2_ = count_2;
 
     // 4400 gives about 5Hz triggers
     if (n_recvd_ < 4400) continue;
@@ -194,10 +194,9 @@ void dune::SWTrigger::tpsetHandler() {
 
     // Add the TPsets to the queue to allow access from getNext
     // TODO add in receiver 2
-    if (!queue_.isFull()) queue_.write(SetReceived_2);
+    sender_1_(SetReceived_1);
+    if (!queue_.isFull()) queue_.write(SetReceived_1);
 
-    //--for latency measurement--//
-    sender_1_(SetReceived_2);
     if (queue_.isFull()) ++fqueue_;
     
     
@@ -297,12 +296,16 @@ bool dune::SWTrigger::getNext_(artdaq::FragmentPtrs &frags)
     return true;
   } else {
     ++qtpsets_;
-    DAQLogger::LogInfo(instance_name_) << "Received TPset count " << tpset_->count() << "  " << tpset_;
+    //DAQLogger::LogInfo(instance_name_) << "Received TPset count " << tpset_->count() << "  " << tpset_;
     //previous_ts_ = std::max(SetReceived_1.tstart(),SetReceived_2.tstart());
-    previous_ts_ = tpset_->tstart();
+    previous_ts_ = tpset_->tps()[0].tstart();
 
     //--for latency measurement--//
     sender_2_(*tpset_);
+    //Log the TC details
+    DAQLogger::LogInfo(instance_name_) << "TC count " << tpset_->count() << " First Ch Adj " << tpset_->chanend()
+                                       << " Last Ch Adj " << tpset_->chanbeg() << " Tick w/ 1st Ch Adj " << tpset_->tstart()
+                                       << " Tick diff last-first Ch Adj " << tpset_->tspan();
 
     queue_.popFront();
   } 
