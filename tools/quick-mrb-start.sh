@@ -627,7 +627,7 @@ Build error. Possible reasons for this include:
  products already set up, scripts sourced, etc.)
 
 Look in the record of this installation attempt, found in
-$startdir/log, for further details.
+$localdiskdir/log, for further details.
 
 EOF
 
