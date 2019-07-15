@@ -69,13 +69,11 @@ dune::SWTrigger::SWTrigger(fhicl::ParameterSet const & ps):
   ,last_spillend_tstamph_(0xffffffff)   // ...
   ,last_runstart_tstampl_(0xffffffff)   // Timestamp of most recent start-of-run
   ,last_runstart_tstamph_(0xffffffff)   // ...
-//  ,receiver_1_( ptmp_util::make_ptmp_socket_string("SUB","connect",{ps.get<std::string>("receiver_1")}) ) //Corresponds to trigcand500
-//  ,receiver_2_( ptmp_util::make_ptmp_socket_string("SUB","connect",{ps.get<std::string>("receiver_2")}) ) //Corresponds to trigcand600
   ,sender_1_( ptmp_util::make_ptmp_socket_string("PUB","bind",{"tcp://10.73.136.32:50501"}) ) // 2 temp. senders for latency measurements
   ,sender_2_( ptmp_util::make_ptmp_socket_string("PUB","bind",{"tcp://10.73.136.32:50502"}) )
   ,timeout_(ps.get<int>("timeout"))
   ,n_recvd_(0)
-  ,n_inputs_(ps.get<std::vector<std::string>>("tc_inputs").size())
+  ,n_inputs_(ptmp_util::endpoints_for_key(ps, "tc_inputs_key").size())
   ,prev_counts_(std::vector<size_t>(n_inputs_, 0))
   ,norecvds_(std::vector<size_t>(n_inputs_, 0))
   ,n_recvds_(std::vector<size_t>(n_inputs_, 0))
