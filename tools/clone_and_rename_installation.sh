@@ -5,6 +5,29 @@ if [[ "$#" != "2"  ]]; then
     exit 1
 fi
 
+cat<<EOF
+
+JCF, Jun-6-2019
+
+This script has been deprecated, as we're trying to move to a model in
+which developers set up a new development area by installing code
+which has been committed to the central repository at Fermilab. If
+you're cloning because you want to get your hands on someone else's
+code, ask that person to commit the code to the central repository
+first it this hasn't happened already, and then pull it from the
+central repository after installing your new development area.
+
+Instructions on how to get set up so you can push code to the central
+repository can be found at
+https://twiki.cern.ch/twiki/bin/view/CENF/Deployment .
+
+Instructions how how to set up a new area can be found at
+https://twiki.cern.ch/twiki/bin/view/CENF/Installation .
+
+EOF
+
+exit 1
+
 orig_installation=$1
 new_installation=$2
 
@@ -12,11 +35,7 @@ new_installation=$2
 orig_installation=$(echo $orig_installation | awk '{ gsub("/$", ""); print }' )
 new_installation=$(echo $new_installation | awk '{ gsub("/$", ""); print }' )
 
-
-node_number=$( echo $HOSTNAME | awk -F- '{print $NF}' )
-
 processors=32
-
 
 if [[ ! -e $orig_installation ]]; then
     echo "Original dune-artdaq installation $orig_installation doesn't appear to exist; exiting..." >&2
@@ -45,9 +64,9 @@ if (( $num_local_products_dirs == 1 )); then
     local_products_dir=$( find $orig_installation -maxdepth 1 -type d -regex ".*localProducts.*prof\|debug" )
 
     project=$( echo $local_products_dir | sed -r 's/.*localProducts_(.*)_v[0-9]+_.*/\1/' )
-    version=$( echo $local_products_dir | sed -r 's/.*localProducts_.*_(v[0-9]+_[0-9]+_[^_]+).*/\1/' )
-    qualifiers=$(  echo $local_products_dir | sed -r 's/.*localProducts_.*_v[0-9]+_[0-9]+_[^_]+_(.*)_prof|debug/\1/'  )
-    buildtype=$( echo $local_products_dir | sed -r 's/.*localProducts_.*_v[0-9]+_[0-9]+_[^_]+_.*_(prof|debug)/\1/' )
+    version=$( echo $local_products_dir | sed -r 's/.*localProducts_.*_(v[0-9]+.*)_e[0-9]+.*/\1/' )
+    qualifiers=$(  echo $local_products_dir | sed -r 's/.*localProducts_.*_.*_(e[0-9]+)_prof|debug/\1/'  )
+    buildtype=$( echo $local_products_dir | sed -r 's/.*localProducts_.*_(prof|debug)/\1/' )
 
     echo "Project: $project"
     echo "Version: $version"
@@ -64,7 +83,7 @@ orig_installation_size=$( du $orig_installation -s | awk '{print $1}' )
 cat<<EOF
 
 Will now copy $orig_installation to $new_installation; size of
-$orig_installation is $orig_installation_size bytes
+$orig_installation is $orig_installation_size kilobytes
 
 EOF
 
