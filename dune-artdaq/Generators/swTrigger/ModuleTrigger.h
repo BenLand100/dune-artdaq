@@ -6,6 +6,5 @@
 #include <algorithm>
 #include <cmath>
 
-using namespace std;
 
-int ModuleTrigger(vector<vector<int>> candidates);
+int ModuleTrigger(std::vector<std::vector<int>> candidates);
