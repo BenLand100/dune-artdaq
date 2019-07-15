@@ -119,6 +119,7 @@ void dune::Candidate::start(void)
 
   DAQLogger::LogInfo(instance_name_) << "TPsorted tardy is set to " << tardy_;
 
+  // FIXME replace with TPZipper. Equivalent except replace parameter "tardy" --> "sync_time"
   // TPSorted connection: TPWindow --> TPSorted --> Candidate BR (default policy is drop)
   tpsorted_.reset(new ptmp::TPSorted( ptmp_util::make_ptmp_tpsorted_string(tpsortinsocks_,{tpsortout_},tardy_) ));
 
@@ -132,42 +133,168 @@ void dune::Candidate::start(void)
 void dune::Candidate::tpsetHandler() {
 
   DAQLogger::LogInfo(instance_name_) << "Starting TPSet handler thread.";
+  
+  std::vector<ptmp::data::TPSet> aggrSets;
+  int max_adj = 0;
+  int min_adj = 0;
+  unsigned int handlerloop = 0;
+  unsigned int aggrloop = 0;
+  unsigned int aggr_size = 0;
+  unsigned int tc_sorted_size = 0;
+  unsigned int tc_count = 0;
+  unsigned int avg_adj = 0;
+  uint64_t prev_tstart = 0;
+  uint64_t timetot = 0;
+  // TODO fhicl param to send TPs or TCs
+  bool sendTC = true;
+  auto start_run = std::chrono::high_resolution_clock::now();
 
   while(!stopping_flag_) { 
-
-    ptmp::data::TPSet SetReceived;
-
-    bool received = receiver_(SetReceived, timeout_);
-     
-    if (!received) { ++norecvd_; continue; }
-
-    size_t count = SetReceived.count();
-
-    if (count == prev_count_){
-      ++stale_set_; 
-      continue;
-    } else {
+    
+    bool aggregate = true;
+    
+    while(aggregate && !stopping_flag_) { 
+      
+      ptmp::data::TPSet SetReceived;
+      bool received = receiver_(SetReceived, timeout_);
+      
+      if (!received) { ++norecvd_; continue; }
+    
       nTPhits_ += SetReceived.tps_size();
-      ++nTPset_recvd_;
+
+      aggrSets.push_back(SetReceived);
+
+      // Aggregate TPSets from same time window
+      if (prev_tstart != SetReceived.tstart() || !sendTC) aggregate = false;
+      prev_tstart = SetReceived.tstart();
+      ++aggrloop;
+    } 
+
+    if (!sendTC) {
+      sender_(aggrSets.at(0)); 
+      ++nTPset_sent_;
+      if (!queue_.isFull()) queue_.write(aggrSets.at(0)); else ++fqueue_;
+    } else {
+      // Channel sort and map ptmp::TrigPrim to TP
+      auto start_sort = std::chrono::high_resolution_clock::now();
+      std::vector<TP> sortedTPs = TPChannelSort(aggrSets);
+      
+      // Pass the TPs to the Candidate Alg (2nd arg:  0=adjacency, 1=clustering)
+      std::vector<int> trigcands = TriggerCandidate(sortedTPs, 0);
+      
+      if (trigcands.size() > 0) { 
+        ++tc_count; tc_sorted_size += sortedTPs.size(); avg_adj += trigcands[0];
+        max_adj = std::max(max_adj, trigcands[0]); min_adj = std::min(max_adj, trigcands[0]);
+        // Map TC to TPSet
+        ptmp::data::TPSet SetToSend;
+        SetToSend.set_count(tc_count);
+        SetToSend.set_chanend(trigcands[4]);
+        SetToSend.set_chanbeg(trigcands[5]);
+        SetToSend.set_tstart(trigcands[6]);
+        SetToSend.set_tspan(trigcands[7] - trigcands[6]);
+        // APA5=0 APA6=1 APA4=2 TODO make this number fhicl param.
+        SetToSend.set_detid(0);
+        uint64_t tpsetcreate = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
+        SetToSend.set_created(tpsetcreate);
+        for (size_t it=0; it<sortedTPs.size(); ++it) { 
+          ptmp::data::TrigPrim* ptmp_prim=SetToSend.add_tps();
+          // Note: sortedTPs is vector of TP struct NOT ptmp::TrigPrim
+          ptmp_prim->set_channel(sortedTPs[it].channel);
+          ptmp_prim->set_tstart (sortedTPs[it].tstart );
+          ptmp_prim->set_tspan  (sortedTPs[it].tspan  );
+          ptmp_prim->set_adcsum (sortedTPs[it].adcsum );
+        }
+        sender_(SetToSend);
+        auto sent_time = std::chrono::high_resolution_clock::now();
+        timetot = std::chrono::duration_cast< std::chrono::microseconds >( sent_time - start_sort ).count();
+      }
     }
-
-    prev_count_ = count;
-
-    // TODO 
-    // Pass TPSet to TC algorithm
-    // Use SQCS queue to pass TCs to the getNext() loop
-    // TCset_ = dune::Candidate::candFinder(SetReceived);
-
-    // sender_(TCset_);
-    sender_(SetReceived);
-    ++nTPset_sent_;
-
-    if (!queue_.isFull()) queue_.write(SetReceived);
-    if (queue_.isFull()) ++fqueue_;
+    ++handlerloop;
+    aggr_size += aggrSets.size();
+    aggrSets.clear();
   }
-
+  auto end_run = std::chrono::high_resolution_clock::now();
+  uint64_t runtime = std::chrono::duration_cast< std::chrono::microseconds >( end_run - start_run ).count();
+    
   DAQLogger::LogInfo(instance_name_) << "Stop called, ending TPSet handler thread.";
+  DAQLogger::LogInfo(instance_name_) << "Avg. number of TPsets aggregated " << (aggr_size / handlerloop);
+  DAQLogger::LogInfo(instance_name_) << "Avg. number of TPs per triggered sorted vector " << (tc_sorted_size / tc_count);
+  DAQLogger::LogInfo(instance_name_) << "Avg. time from start sort to TC sent " << (timetot / tc_count);
+  DAQLogger::LogInfo(instance_name_) << "Generated " << tc_count << " TCs with avg adjacency " << (avg_adj / tc_count)
+                                     << " with run time " << runtime << "us with avg TC rate " << (tc_count / runtime)*1e6 << "Hz";
+  DAQLogger::LogInfo(instance_name_) << "Adjacency: min " << min_adj << " max " << max_adj << " avg " << (avg_adj / tc_count);
 
+}
+
+// TPChannelSort() routine --------------------------------------------------------------------------
+/** 
+ *  
+ * The sorting function assumes, 
+ *  - input:  aggregated vector of time-ordered TPSets (TPsorted takes care of time ordering TPSets)
+ *  - output: vector<TP> channel-sorted and time sub-ordered for a single time window with 
+ *            ptmp::TrigPrim mapped to TP struct
+ * Note: see AdjacencyAlgorithms.h for definition of TP struct
+ *
+ **/
+
+std::vector<TP>
+dune::Candidate::TPChannelSort(std::vector<ptmp::data::TPSet> HitSets) {
+  
+  // - All the aggregated TPsets are disassembled into their TPs
+  // - These are sorted such that ALL the aggregated TPs are in one vector
+  // - This single vector is passed as the input to the adjacency alg
+  // - This assumes sorting within a single time window
+
+  std::vector<TP> new_TPs;
+  TP trigprim;
+
+  for (auto const& HitSet : HitSets) { //loop over aggregated TPsets
+    for (int it=0; it<HitSet.tps_size(); ++it) { //Loop over TPs
+      //If we have to loop anyway.. map ptmp::TrigPrim to Candidate TP struct
+      trigprim.channel = HitSet.tps()[it].channel();
+      trigprim.tstart  = HitSet.tps()[it].tstart();
+      trigprim.tspan   = HitSet.tps()[it].tspan();
+      trigprim.adcsum  = HitSet.tps()[it].adcsum();
+      trigprim.adcpeak = HitSet.tps()[it].adcpeak();
+      trigprim.flags   = HitSet.tps()[it].flags();
+
+      if (new_TPs.size() == 0){  
+        new_TPs.push_back(trigprim);
+      } else if (trigprim.channel > new_TPs.back().channel) {
+        new_TPs.push_back(trigprim);
+      } else if (trigprim.channel == new_TPs.back().channel) { 
+        if (trigprim.tstart >=  new_TPs.back().tstart) { 
+          new_TPs.push_back(trigprim);
+        } else { //sub-order in time
+          for (unsigned int j=1; j < new_TPs.size(); ++j) {
+            if (trigprim.tstart > new_TPs[new_TPs.size()-(j+1)].tstart){
+              new_TPs.insert(new_TPs.end()-j,trigprim);
+              break;
+            }
+          }
+        }
+      } else { //otherwise loop through vec and find TP place wrt channel
+        for (unsigned int j=0; j < new_TPs.size(); ++j) {
+        if (trigprim.channel == new_TPs.back().channel) { 
+          if (trigprim.tstart >=  new_TPs.back().tstart) {
+            new_TPs.push_back(trigprim);
+          } else { //sub-order in time
+            for (unsigned int j=1; j < new_TPs.size(); ++j) {
+              if (trigprim.tstart > new_TPs[new_TPs.size()-(j+1)].tstart){
+                new_TPs.insert(new_TPs.end()-j,trigprim);
+                break;
+              }
+            }
+          }
+        } else if (trigprim.channel < new_TPs[j].channel) {
+            new_TPs.insert(new_TPs.begin()+j,trigprim);
+            break;
+          }
+        }
+      }
+    }
+  }
+  return new_TPs;
 }
 
 // stop() routine --------------------------------------------------------------------------
@@ -175,11 +302,6 @@ void dune::Candidate::stop(void)
 {
   DAQLogger::LogInfo(instance_name_) << "stop() called";
   stopping_flag_ = true;
-
-  // Not sure if this is needed not in original SWTrigger
-  // also causes the BR to crash at run STOP
-  //Try this, it should be more graceful
-  //tpset_handler.join();
 
   // Should be able to call the destuctor like this
   for(auto& tpw: tpwindows_) tpw.reset();

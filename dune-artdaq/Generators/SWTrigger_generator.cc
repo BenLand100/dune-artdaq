@@ -103,8 +103,8 @@ dune::SWTrigger::SWTrigger(fhicl::ParameterSet const & ps):
 
   std::vector<std::string> tc_inputs=ptmp_util::endpoints_for_key(ps, "tc_inputs_key");
   for(auto const& tc_input: tc_inputs){
-      std::string sock_str(ptmp_util::make_ptmp_socket_string("SUB","connect",{tc_input}));
-      receivers_.push_back(std::make_unique<ptmp::TPReceiver>(sock_str));
+    std::string sock_str(ptmp_util::make_ptmp_socket_string("SUB","connect",{tc_input}));
+    receivers_.push_back(std::make_unique<ptmp::TPReceiver>(sock_str));
   }
   // Set up outgoing connection to InhibitMaster: this is where we
   // broadcast whether we're happy to take triggers
@@ -283,7 +283,7 @@ bool dune::SWTrigger::checkHWStatus_()
   int n_remaining_table_entries = dsmptr? dsmptr->GetRemainingRoutingTableEntries() : -1;
   int n_table_count = dsmptr? dsmptr->GetRoutingTableEntryCount() : -1;
   TLOG(TLVL_HWSTATUS)	<< " table_count=" << n_table_count
-    << " table_entries_remaining=" << n_remaining_table_entries;
+                        << " table_entries_remaining=" << n_remaining_table_entries;
 
   bool new_want_inhibit=false;
   std::string status_msg="";
@@ -327,12 +327,16 @@ bool dune::SWTrigger::getNext_(artdaq::FragmentPtrs &frags)
     return true;
   } else {
     ++qtpsets_;
-    DAQLogger::LogInfo(instance_name_) << "Received TPset count " << tpset_->count() << "  " << tpset_;
+    //DAQLogger::LogInfo(instance_name_) << "Received TPset count " << tpset_->count() << "  " << tpset_;
     //previous_ts_ = std::max(SetReceived_1.tstart(),SetReceived_2.tstart());
-    previous_ts_ = tpset_->tstart();
+    previous_ts_ = tpset_->tps()[0].tstart();
 
     //--for latency measurement--//
     sender_2_(*tpset_);
+    //Log the TC details
+    DAQLogger::LogInfo(instance_name_) << "TC count " << tpset_->count() << " First Ch Adj " << tpset_->chanend()
+                                       << " Last Ch Adj " << tpset_->chanbeg() << " Tick w/ 1st Ch Adj " << tpset_->tstart()
+                                       << " Tick diff last-first Ch Adj " << tpset_->tspan();
 
     queue_.popFront();
   } 
@@ -363,10 +367,10 @@ bool dune::SWTrigger::getNext_(artdaq::FragmentPtrs &frags)
 
 //------------ Trigger Fragment -------------//
   std::unique_ptr<artdaq::Fragment> f = artdaq::Fragment::FragmentBytes( TriggerFragment::size()*sizeof(uint32_t),
-      artdaq::Fragment::InvalidSequenceID,
-      artdaq::Fragment::InvalidFragmentID,
-      artdaq::Fragment::InvalidFragmentType,
-      dune::TriggerFragment::Metadata(TriggerFragment::VERSION));
+                                                                         artdaq::Fragment::InvalidSequenceID,
+                                                                         artdaq::Fragment::InvalidFragmentID,
+                                                                         artdaq::Fragment::InvalidFragmentType,
+                                                                         dune::TriggerFragment::Metadata(TriggerFragment::VERSION));
   // It's unclear to me whether the constructor above actually sets the metadata, so let's do it here too to be sure
   f->updateMetadata(TriggerFragment::Metadata(TriggerFragment::VERSION));
 

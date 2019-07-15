@@ -8,5 +8,5 @@
 
 using namespace std;
 
-vector<int> TriggerCandidate(vector<TP>, int clustering=0);
-vector<int> TriggerCandidateHits(vector<unsigned int> channels, vector<unsigned int> times, vector<unsigned int> tots, vector<unsigned int> adcs, int clustering=0);
+vector<int> TriggerCandidate(vector<TP>, int clustering);
+vector<int> TriggerCandidateHits(vector<unsigned int> channels, vector<unsigned int> times, vector<unsigned int> tots, vector<unsigned int> adcs, int clustering);

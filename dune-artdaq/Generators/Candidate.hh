@@ -10,6 +10,8 @@
 
 #include "dune-raw-data/Overlays/FragmentType.hh"
 #include "dune-artdaq/Generators/Felix/ProducerConsumerQueue.hh"
+#include "swTrigger/AdjacencyAlgorithms.h"
+#include "swTrigger/TriggerCandidate.h"
 
 #include <random>
 #include <vector>
@@ -42,6 +44,9 @@ namespace dune {
     // TPSets, via zeromq, passing them to TC algorithms and sending the resulting
     // TCs onnward, via zeromq.
     void tpsetHandler();
+
+     // Routine to re-order the TPs by channel and sub-orer by time
+     std::vector<TP> TPChannelSort(std::vector<ptmp::data::TPSet> HitSets); 
 
     // The "getNext_" function is used to implement user-specific
     // functionality; it's a mandatory override of the pure virtual
