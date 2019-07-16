@@ -312,14 +312,8 @@ void dune::Candidate::stop(void)
   tpset_handler.join();
   DAQLogger::LogInfo(instance_name_) << "tpset_handler thread joined";
 
-  // Should be able to call the destuctor like this
-  int i=0;
-  for(auto& tpw: tpwindows_){
-      DAQLogger::LogInfo(instance_name_) << "Calling dtor for " << i << "th TPWindow @0x" << std::hex << tpw.get();
-      tpw.reset(nullptr);
-      DAQLogger::LogInfo(instance_name_) << "Done calling dtor for " << i << "th TPWindow @0x" << std::hex << tpw.get();
-      i++;
-  }
+  // Destruct all the TPWindow instances
+  tpwindows_.clear(); 
   tpsorted_.reset(nullptr);
 
   DAQLogger::LogInfo(instance_name_) << "Destroyed PTMP windowing and sorting threads.";
