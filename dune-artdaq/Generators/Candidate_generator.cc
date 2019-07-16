@@ -217,12 +217,17 @@ void dune::Candidate::tpsetHandler() {
   uint64_t runtime = std::chrono::duration_cast< std::chrono::microseconds >( end_run - start_run ).count();
     
   DAQLogger::LogInfo(instance_name_) << "Stop called, ending TPSet handler thread.";
-  DAQLogger::LogInfo(instance_name_) << "Avg. number of TPsets aggregated " << (aggr_size / handlerloop);
-  DAQLogger::LogInfo(instance_name_) << "Avg. number of TPs per triggered sorted vector " << (tc_sorted_size / tc_count);
-  DAQLogger::LogInfo(instance_name_) << "Avg. time from start sort to TC sent " << (timetot / tc_count);
-  DAQLogger::LogInfo(instance_name_) << "Generated " << tc_count << " TCs with avg adjacency " << (avg_adj / tc_count)
+  if(handlerloop>0) DAQLogger::LogInfo(instance_name_) << "Avg. number of TPsets aggregated " << (aggr_size / handlerloop);
+  if(tc_count>0){
+      DAQLogger::LogInfo(instance_name_) << "Avg. number of TPs per triggered sorted vector " << (tc_sorted_size / tc_count);
+      DAQLogger::LogInfo(instance_name_) << "Avg. time from start sort to TC sent " << (timetot / tc_count);
+      DAQLogger::LogInfo(instance_name_) << "Generated " << tc_count << " TCs with avg adjacency " << (avg_adj / tc_count)
                                      << " with run time " << runtime << "us with avg TC rate " << (tc_count / runtime)*1e6 << "Hz";
-  DAQLogger::LogInfo(instance_name_) << "Adjacency: min " << min_adj << " max " << max_adj << " avg " << (avg_adj / tc_count);
+      DAQLogger::LogInfo(instance_name_) << "Adjacency: min " << min_adj << " max " << max_adj << " avg " << (avg_adj / tc_count);
+  }
+  else{
+      DAQLogger::LogInfo(instance_name_) << "tc_count was zero";
+  }
 
 }
 
@@ -303,8 +308,18 @@ void dune::Candidate::stop(void)
   DAQLogger::LogInfo(instance_name_) << "stop() called";
   stopping_flag_ = true;
 
+  DAQLogger::LogInfo(instance_name_) << "Joining tpset_handler thread...";
+  tpset_handler.join();
+  DAQLogger::LogInfo(instance_name_) << "tpset_handler thread joined";
+
   // Should be able to call the destuctor like this
-  for(auto& tpw: tpwindows_) tpw.reset();
+  int i=0;
+  for(auto& tpw: tpwindows_){
+      DAQLogger::LogInfo(instance_name_) << "Calling dtor for " << i << "th TPWindow @0x" << std::hex << tpw.get();
+      tpw.reset(nullptr);
+      DAQLogger::LogInfo(instance_name_) << "Done calling dtor for " << i << "th TPWindow @0x" << std::hex << tpw.get();
+      i++;
+  }
   tpsorted_.reset(nullptr);
 
   DAQLogger::LogInfo(instance_name_) << "Destroyed PTMP windowing and sorting threads.";
@@ -316,9 +331,6 @@ void dune::Candidate::stop(void)
   DAQLogger::LogInfo(instance_name_) << "Elapsed time receiving TPsets (s) " << std::chrono::duration_cast<std::chrono::duration<double>>(end_time_ - start_time_).count();
   DAQLogger::LogInfo(instance_name_) << "Number of non-nullptr " << qtpsets_ << " in " << loops_ << " getNext() loops and number of full queue loops " << fqueue_; 
 
-  DAQLogger::LogInfo(instance_name_) << "Joining tpset_handler thread...";
-  tpset_handler.join();
-  DAQLogger::LogInfo(instance_name_) << "tpset_handler thread joined";
 
 }
 
