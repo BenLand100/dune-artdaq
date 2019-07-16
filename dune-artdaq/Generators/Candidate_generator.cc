@@ -66,8 +66,8 @@ dune::Candidate::Candidate(fhicl::ParameterSet const & ps):
   tpwoutsock_(ps.get<std::string>("tpwindow_output")), 
   tspan_(ps.get<uint64_t>("ptmp_tspan")),
   tbuf_(ps.get<uint64_t>("ptmp_tbuffer")),
-  tpsortinsock_(ps.get<std::string>("tpsorted_input")), 
-  tpsortout_(ps.get<std::string>("tpsorted_output")), 
+  tpzipinsock_(ps.get<std::string>("tpsorted_input")), 
+  tpzipout_(ps.get<std::string>("tpsorted_output")), 
   tardy_(ps.get<int>("ptmp_tardy")),
   nTPset_recvd_(0),
   nTPset_sent_(0),
@@ -100,15 +100,15 @@ void dune::Candidate::start(void)
   int felix_links = 10;
   std::vector<std::string> tpwin_;
   std::vector<std::string> tpwout_;
-  std::vector<std::string> tpsortin_;
+  std::vector<std::string> tpzipin_;
 
   for(int i=0; i<felix_links; i++) {
     std::string tpwin_socket = tpwinsock_ + std::to_string(141+i);
     std::string tpwout_socket = tpwoutsock_ + std::to_string(141+i);
-    std::string tpsortin_socket = tpsortinsock_ + std::to_string(141+i);
+    std::string tpzipin_socket = tpzipinsock_ + std::to_string(141+i);
     tpwin_.push_back(tpwin_socket);
     tpwout_.push_back(tpwout_socket);
-    tpsortin_.push_back(tpsortin_socket);
+    tpzipin_.push_back(tpzipin_socket);
   }
 
   for (auto sub : tpwin_) DAQLogger::LogInfo(instance_name_) << "TPWindow input sockets " << sub;
@@ -116,7 +116,7 @@ void dune::Candidate::start(void)
   DAQLogger::LogInfo(instance_name_) << "TPWindow Tspan " << tspan_ << " and Tbuffer " << tbuf_;
 
   // tspan = 2500 = 50us / 20ns and tbuffer = 150000 = 60 tspan = 3ms / 20ns
-  //TPWindow connection: Felix --> TPWindow --> TPSorted
+  //TPWindow connection: Felix --> TPWindow --> TPZipper
   tpwindow_01_.reset(new ptmp::TPWindow( ptmp_util::make_ptmp_tpwindow_string({tpwin_.at(0)},{tpwout_.at(0)},tspan_,tbuf_) ));
   tpwindow_02_.reset(new ptmp::TPWindow( ptmp_util::make_ptmp_tpwindow_string({tpwin_.at(1)},{tpwout_.at(1)},tspan_,tbuf_) ));
   tpwindow_03_.reset(new ptmp::TPWindow( ptmp_util::make_ptmp_tpwindow_string({tpwin_.at(2)},{tpwout_.at(2)},tspan_,tbuf_) ));
@@ -128,13 +128,13 @@ void dune::Candidate::start(void)
   tpwindow_09_.reset(new ptmp::TPWindow( ptmp_util::make_ptmp_tpwindow_string({tpwin_.at(8)},{tpwout_.at(8)},tspan_,tbuf_) ));
   tpwindow_10_.reset(new ptmp::TPWindow( ptmp_util::make_ptmp_tpwindow_string({tpwin_.at(9)},{tpwout_.at(9)},tspan_,tbuf_) ));
 
-  for (auto sub : tpsortin_) DAQLogger::LogInfo(instance_name_) << "TPsorted input sockets " << sub;
-  DAQLogger::LogInfo(instance_name_) << "TPsorted output socket " << tpsortout_;
-  DAQLogger::LogInfo(instance_name_) << "TPsorted tardy is set to " << tardy_;
+  for (auto sub : tpzipin_) DAQLogger::LogInfo(instance_name_) << "TPZipper input sockets " << sub;
+  DAQLogger::LogInfo(instance_name_) << "TPZipper output socket " << tpzipout_;
+  DAQLogger::LogInfo(instance_name_) << "TPZipper tardy is set to " << tardy_;
 
   // FIXME replace with TPZipper. Equivalent except replace parameter "tardy" --> "sync_time"
-  // TPSorted connection: TPWindow --> TPSorted --> Candidate BR (default policy is drop)
-  tpsorted_.reset(new ptmp::TPSorted( ptmp_util::make_ptmp_tpsorted_string(tpsortin_,{tpsortout_},tardy_) ));
+  // TPZipper connection: TPWindow --> TPZipper --> Candidate BR (default policy is drop)
+  tpzipper_.reset(new ptmp::TPZipper( ptmp_util::make_ptmp_tpsorted_string(tpzipin_,{tpzipout_},tardy_) ));
 
   DAQLogger::LogInfo(instance_name_) << "Finished setting up TPWindow and TPsorted.";
 
@@ -249,7 +249,7 @@ void dune::Candidate::tpsetHandler() {
  /** 
  *  
  * The sorting function assumes, 
- *  - input:  aggregated vector of time-ordered TPSets (TPsorted takes care of time ordering TPSets)
+ *  - input:  aggregated vector of time-ordered TPSets (TPZipper takes care of time ordering TPSets)
  *  - output: vector<TP> channel-sorted and time sub-ordered for a single time window with 
  *            ptmp::TrigPrim mapped to TP struct
  * Note: see AdjacencyAlgorithms.h for definition of TP struct
@@ -332,7 +332,7 @@ void dune::Candidate::stop(void)
   tpwindow_08_.reset(nullptr);
   tpwindow_09_.reset(nullptr);
   tpwindow_10_.reset(nullptr);
-  tpsorted_.reset(nullptr);
+  tpzipper_.reset(nullptr);
   DAQLogger::LogInfo(instance_name_) << "Joining threads.";
   tpset_handler.join();
   DAQLogger::LogInfo(instance_name_) << "Threads joined.";

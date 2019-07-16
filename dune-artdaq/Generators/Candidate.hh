@@ -134,13 +134,13 @@ namespace dune {
     uint64_t tspan_;
     uint64_t tbuf_;
 
-    // TPSorted serializes the data from the 10 links
-    std::unique_ptr<ptmp::TPSorted> tpsorted_;
+    // TPZipper serializes the data from the 10 links
+    std::unique_ptr<ptmp::TPZipper> tpzipper_;
 
     // The inputs/output of TPsort
-    std::string tpsortinsock_;
+    std::string tpzipinsock_;
     // int tpsortin_port_;
-    std::string tpsortout_;
+    std::string tpzipout_;
 
     // The time TPsort will wait for a late TPSet
     int tardy_;
