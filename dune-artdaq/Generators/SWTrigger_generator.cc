@@ -214,6 +214,10 @@ void dune::SWTrigger::stop(void)
   stopping_flag_ = true;   // We do want this here, if we don't use an
   // atomic<int> for stopping_flag_ (see header file comments)
 
+  DAQLogger::LogInfo(instance_name_) << "Joining threads.";
+  tpset_handler.join();
+  DAQLogger::LogInfo(instance_name_) << "Threads joined.";
+
   DAQLogger::LogInfo(instance_name_) << "Number of TP(TC)Sets not received " << norecvd_; 
   DAQLogger::LogInfo(instance_name_) << "Number of TP(TC)Sets received APA5 " << n_recvd_1_ << " APA6 " << n_recvd_2_ << " total " << n_recvd_;
   DAQLogger::LogInfo(instance_name_) << "Number of triggers " << ntriggers_;

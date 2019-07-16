@@ -200,7 +200,7 @@ void dune::Candidate::tpsetHandler() {
                                                                                                              
       // Pass the TPs to the Candidate Alg (2nd arg:  0=adjacency, 1=clustering)
       std::vector<int> trigcands = TriggerCandidate(sortedTPs, 0);
-                                                                                                             
+      if (!(trigcands.size() > 0)) continue;                                                                                                             
       if (trigcands.size() > 0) { 
         ++tc_count; tc_sorted_size += sortedTPs.size(); avg_adj += trigcands[0];
         max_adj = std::max(max_adj, trigcands[0]); min_adj = std::min(max_adj, trigcands[0]);
@@ -333,7 +333,9 @@ void dune::Candidate::stop(void)
   tpwindow_09_.reset(nullptr);
   tpwindow_10_.reset(nullptr);
   tpsorted_.reset(nullptr);
-
+  DAQLogger::LogInfo(instance_name_) << "Joining threads.";
+  tpset_handler.join();
+  DAQLogger::LogInfo(instance_name_) << "Threads joined.";
   DAQLogger::LogInfo(instance_name_) << "Destroyed PTMP windowing and sorting threads.";
 
   // Write to log some end of run stats here
