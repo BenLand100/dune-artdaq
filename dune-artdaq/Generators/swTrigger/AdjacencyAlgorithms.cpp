@@ -353,6 +353,7 @@ Same as PDUNEAdjacencyWithEverything, but handles the TP struct as opposed to th
 ***/
 vector<int> PDUNEAdjacency(vector<TP> TPs){
   vector<int> max(8,0);
+  if(TPs.empty()) return max;
   int adj = 1;
   int tpc_1_sum = 0;
   int tpc_2_sum = 0;
