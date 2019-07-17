@@ -306,9 +306,10 @@ void dune::Candidate::stop(void)
   tpset_handler.join();
   DAQLogger::LogInfo(instance_name_) << "tpset_handler thread joined";
 
-  // Destruct all the TPWindow instances
-  tpwindows_.clear(); 
+  // Destruct all the TPWindow instances and the TPZipper
   tpzipper_.reset(nullptr);
+  tpwindows_.clear(); 
+
 
   DAQLogger::LogInfo(instance_name_) << "Destroyed PTMP windowing and sorting threads.";
 
