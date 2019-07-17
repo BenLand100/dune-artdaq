@@ -217,6 +217,13 @@ void dune::SWTrigger::stop(void)
   stopping_flag_ = true;   // We do want this here, if we don't use an
   // atomic<int> for stopping_flag_ (see header file comments)
 
+  // Make sure the TPReceiver dtors get called
+  for(auto & recv: receivers_) recv.reset();
+
+  DAQLogger::LogInfo(instance_name_) << "Joining threads.";
+  tpset_handler.join();
+  DAQLogger::LogInfo(instance_name_) << "Threads joined.";
+
   std::ostringstream ss_stats;
   ss_stats << "Statistics by input link:" << std::endl;
 
@@ -243,13 +250,6 @@ void dune::SWTrigger::stop(void)
   ss_stats << "Number of triggers " << ntriggers_ << std::endl;
 
   DAQLogger::LogInfo(instance_name_) << ss_stats.str();
-
-  // Make sure the TPReceiver dtors get called
-  for(auto & recv: receivers_) recv.reset();
-
-  DAQLogger::LogInfo(instance_name_) << "Joining tpset_handler thread...";
-  tpset_handler.join();
-  DAQLogger::LogInfo(instance_name_) << "tpset_handler thread joined";
 
 }
 

@@ -47,14 +47,9 @@
 
 using namespace dune;
 
-dune::SetZMQSigHandler::SetZMQSigHandler() {
-  setenv("ZSYS_SIGHANDLER", "false", true);
-}
-
 // Constructor ------------------------------------------------------------------------------
 dune::Candidate::Candidate(fhicl::ParameterSet const & ps):
   CommandableFragmentGenerator(ps),
-  zmq_sig_handler_(),
   instance_name_("Candidate"),
   timeout_(ps.get<int>("timeout")), 
   stopping_flag_(0),
@@ -62,13 +57,11 @@ dune::Candidate::Candidate(fhicl::ParameterSet const & ps):
   tpwoutsocks_(ptmp_util::endpoints_for_key(ps, "tpwindow_output_connections_key")), 
   tspan_(ps.get<uint64_t>("ptmp_tspan")),
   tbuf_(ps.get<uint64_t>("ptmp_tbuffer")),
-  tpsortinsocks_(tpwoutsocks_), 
-  tpsortout_(ps.get<std::string>("tpsorted_output")), 
+  tpzipinsocks_(tpwoutsocks_), 
+  tpzipout_(ps.get<std::string>("tpsorted_output")), 
   tardy_(ps.get<int>("ptmp_tardy")),
-  recvsocket_(tpsortout_),
-  receiver_( ptmp_util::make_ptmp_socket_string("SUB","connect",{recvsocket_}) ),
+  recvsocket_(tpzipout_),
   sendsocket_({ps.get<std::string>("tc_output")}),
-  sender_( ptmp_util::make_ptmp_socket_string("PUB","bind",{sendsocket_}) ),
   nTPset_recvd_(0),
   nTPset_sent_(0),
   nTPhits_(0),
@@ -106,8 +99,6 @@ void dune::Candidate::start(void)
 
   DAQLogger::LogInfo(instance_name_) << "TPWindow Tspan " << tspan_ << " and Tbuffer " << tbuf_;
 
-  // tspan = 2500 = 50us / 20ns and tbuffer = 150000 = 60 tspan = 3ms / 20ns
-  //TPWindow connection: Felix --> TPWindow --> TPSorted
   if(tpwinsocks_.size()!=tpwoutsocks_.size()){
       DAQLogger::LogError(instance_name_) << "TPWindow input and output lists are different lengths!";
   }
@@ -117,11 +108,11 @@ void dune::Candidate::start(void)
       tpwindows_.push_back( std::make_unique<ptmp::TPWindow>(jsonconfig) );
   }
 
-  DAQLogger::LogInfo(instance_name_) << "TPsorted tardy is set to " << tardy_;
+  DAQLogger::LogInfo(instance_name_) << "TPZipper tardy is set to " << tardy_;
 
   // FIXME replace with TPZipper. Equivalent except replace parameter "tardy" --> "sync_time"
   // TPSorted connection: TPWindow --> TPSorted --> Candidate BR (default policy is drop)
-  tpsorted_.reset(new ptmp::TPSorted( ptmp_util::make_ptmp_tpsorted_string(tpsortinsocks_,{tpsortout_},tardy_) ));
+  tpzipper_.reset(new ptmp::TPZipper( ptmp_util::make_ptmp_tpsorted_string(tpzipinsocks_,{tpzipout_},tardy_) ));
 
   DAQLogger::LogInfo(instance_name_) << "Finished setting up TPWindow and TPsorted.";
 
@@ -133,7 +124,10 @@ void dune::Candidate::start(void)
 void dune::Candidate::tpsetHandler() {
 
   DAQLogger::LogInfo(instance_name_) << "Starting TPSet handler thread.";
-  
+
+  ptmp::TPReceiver receiver( ptmp_util::make_ptmp_socket_string("SUB","connect",{recvsocket_}) );
+  ptmp::TPSender sender( ptmp_util::make_ptmp_socket_string("PUB","bind",{sendsocket_}) );
+
   std::vector<ptmp::data::TPSet> aggrSets;
   int max_adj = 0;
   int min_adj = 0;
@@ -156,7 +150,7 @@ void dune::Candidate::tpsetHandler() {
     while(aggregate && !stopping_flag_) { 
       
       ptmp::data::TPSet SetReceived;
-      bool received = receiver_(SetReceived, timeout_);
+      bool received = receiver(SetReceived, timeout_);
       
       if (!received) { ++norecvd_; continue; }
     
@@ -171,7 +165,7 @@ void dune::Candidate::tpsetHandler() {
     } 
 
     if (!sendTC) {
-      sender_(aggrSets.at(0)); 
+      sender(aggrSets.at(0)); 
       ++nTPset_sent_;
       if (!queue_.isFull()) queue_.write(aggrSets.at(0)); else ++fqueue_;
     } else {
@@ -181,7 +175,9 @@ void dune::Candidate::tpsetHandler() {
       
       // Pass the TPs to the Candidate Alg (2nd arg:  0=adjacency, 1=clustering)
       std::vector<int> trigcands = TriggerCandidate(sortedTPs, 0);
-      
+
+      if (!(trigcands.size() > 0)) continue;
+
       if (trigcands.size() > 0) { 
         ++tc_count; tc_sorted_size += sortedTPs.size(); avg_adj += trigcands[0];
         max_adj = std::max(max_adj, trigcands[0]); min_adj = std::min(max_adj, trigcands[0]);
@@ -204,7 +200,7 @@ void dune::Candidate::tpsetHandler() {
           ptmp_prim->set_tspan  (sortedTPs[it].tspan  );
           ptmp_prim->set_adcsum (sortedTPs[it].adcsum );
         }
-        sender_(SetToSend);
+        sender(SetToSend);
         auto sent_time = std::chrono::high_resolution_clock::now();
         timetot = std::chrono::duration_cast< std::chrono::microseconds >( sent_time - start_sort ).count();
       }
@@ -217,25 +213,23 @@ void dune::Candidate::tpsetHandler() {
   uint64_t runtime = std::chrono::duration_cast< std::chrono::microseconds >( end_run - start_run ).count();
     
   DAQLogger::LogInfo(instance_name_) << "Stop called, ending TPSet handler thread.";
-  if(handlerloop>0) DAQLogger::LogInfo(instance_name_) << "Avg. number of TPsets aggregated " << (aggr_size / handlerloop);
-  if(tc_count>0){
-      DAQLogger::LogInfo(instance_name_) << "Avg. number of TPs per triggered sorted vector " << (tc_sorted_size / tc_count);
-      DAQLogger::LogInfo(instance_name_) << "Avg. time from start sort to TC sent " << (timetot / tc_count);
-      DAQLogger::LogInfo(instance_name_) << "Generated " << tc_count << " TCs with avg adjacency " << (avg_adj / tc_count)
-                                     << " with run time " << runtime << "us with avg TC rate " << (tc_count / runtime)*1e6 << "Hz";
-      DAQLogger::LogInfo(instance_name_) << "Adjacency: min " << min_adj << " max " << max_adj << " avg " << (avg_adj / tc_count);
+  if (tc_count != 0) {
+	  DAQLogger::LogInfo(instance_name_) << "Avg. number of TPsets aggregated " << (aggr_size / handlerloop);
+	  DAQLogger::LogInfo(instance_name_) << "Avg. number of TPs per triggered sorted vector " << (tc_sorted_size / tc_count);
+	  DAQLogger::LogInfo(instance_name_) << "Avg. time from start sort to TC sent " << (timetot / tc_count);
+	  DAQLogger::LogInfo(instance_name_) << "Generated " << tc_count << " TCs with avg adjacency " << (avg_adj / tc_count)
+					     << " with run time " << runtime << "us with avg TC rate " << (tc_count / runtime)*1e6 << "Hz";
+	  DAQLogger::LogInfo(instance_name_) << "Adjacency: min " << min_adj << " max " << max_adj << " avg " << (avg_adj / tc_count);
+  } else {
+	  DAQLogger::LogInfo(instance_name_) << "TC count is 0";
   }
-  else{
-      DAQLogger::LogInfo(instance_name_) << "tc_count was zero";
-  }
-
 }
 
 // TPChannelSort() routine --------------------------------------------------------------------------
 /** 
  *  
  * The sorting function assumes, 
- *  - input:  aggregated vector of time-ordered TPSets (TPsorted takes care of time ordering TPSets)
+ *  - input:  aggregated vector of time-ordered TPSets (TPZipper takes care of time ordering TPSets)
  *  - output: vector<TP> channel-sorted and time sub-ordered for a single time window with 
  *            ptmp::TrigPrim mapped to TP struct
  * Note: see AdjacencyAlgorithms.h for definition of TP struct
@@ -314,7 +308,7 @@ void dune::Candidate::stop(void)
 
   // Destruct all the TPWindow instances
   tpwindows_.clear(); 
-  tpsorted_.reset(nullptr);
+  tpzipper_.reset(nullptr);
 
   DAQLogger::LogInfo(instance_name_) << "Destroyed PTMP windowing and sorting threads.";
 

@@ -46,7 +46,7 @@ namespace ptmp_util
         root["input"]=make_ptmp_socket_json("SUB", "connect", inendpoints);
         root["output"]=make_ptmp_socket_json("PUB", "bind", outendpoints);
         root["tspan"]=tspan;
-        root["tbuffer"]=tbuf;
+        root["tbuf"]=tbuf;
         return root.dump();
     }
     

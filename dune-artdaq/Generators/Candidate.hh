@@ -25,11 +25,6 @@
 
 
 namespace dune {
-  class SetZMQSigHandler {
-    public:
-      SetZMQSigHandler();   // Constructor
-  };
-  
 
   class Candidate : public artdaq::CommandableFragmentGenerator {
   public:
@@ -79,8 +74,6 @@ namespace dune {
     // Reporting functionality, for future use, if/when needed
     std::string report() override { return ""; }
     
-    dune::SetZMQSigHandler zmq_sig_handler_;  // See explanation of this fiddle in 
-
     // An name for what we want to log to.
     std::string instance_name_;
 
@@ -106,22 +99,18 @@ namespace dune {
     uint64_t tspan_;
     uint64_t tbuf_;
 
-    // TPSorted serializes the data from the 10 links
-    std::unique_ptr<ptmp::TPSorted> tpsorted_;
+    // TPZipper serializes the data from the 10 links
+    std::unique_ptr<ptmp::TPZipper> tpzipper_;
 
     // The inputs/output of TPsort
-    std::vector<std::string> tpsortinsocks_;
-    std::string tpsortout_;
+    std::vector<std::string> tpzipinsocks_;
+    std::string tpzipout_;
 
     // The time TPsort will wait for a late TPSet
     int tardy_;
 
-    // Socket sender
     std::string recvsocket_;
-    ptmp::TPReceiver receiver_;
-    // SocketReceiver
     std::string sendsocket_;
-    ptmp::TPSender sender_;
 
     // TPset receving and sending thread
     std::thread tpset_handler;
