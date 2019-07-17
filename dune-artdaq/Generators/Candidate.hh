@@ -103,8 +103,8 @@ namespace dune {
     std::thread tpset_handler;
 
     // The TPSet receivers/senders
-    ptmp::TPReceiver receiver_;
-    ptmp::TPSender sender_;
+    //ptmp::TPReceiver receiver_;
+    //ptmp::TPSender sender_;
 
     //std::unique_ptr<folly::ProducerConsumerQueue<ptmp::data::TPSet>> tpsetToFrag;
     folly::ProducerConsumerQueue<ptmp::data::TPSet> queue_{100000};

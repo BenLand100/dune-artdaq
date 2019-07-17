@@ -47,9 +47,9 @@
 
 using namespace dune;
 
-dune::SetZMQSigHandler::SetZMQSigHandler() {
-  setenv("ZSYS_SIGHANDLER", "false", true);
-}
+//dune::SetZMQSigHandler::SetZMQSigHandler() {
+//  setenv("ZSYS_SIGHANDLER", "false", true);
+//}
 
 // Constructor ------------------------------------------------------------------------------
 dune::Candidate::Candidate(fhicl::ParameterSet const & ps):
@@ -60,8 +60,6 @@ dune::Candidate::Candidate(fhicl::ParameterSet const & ps):
   stopping_flag_(0),
   recvsocket_({ps.get<std::string>("recvsocket")}),
   sendsocket_({ps.get<std::string>("sendsocket")}),
-  receiver_( ptmp_util::make_ptmp_socket_string("SUB","connect",recvsocket_) ),
-  sender_( ptmp_util::make_ptmp_socket_string("PUB","bind",sendsocket_) ),
   tpwinsock_(ps.get<std::string>("tpwindow_input")), 
   tpwoutsock_(ps.get<std::string>("tpwindow_output")), 
   tspan_(ps.get<uint64_t>("ptmp_tspan")),
@@ -146,7 +144,8 @@ void dune::Candidate::start(void)
 void dune::Candidate::tpsetHandler() {
 
   DAQLogger::LogInfo(instance_name_) << "Starting TPSet handler thread.";
-
+  ptmp::TPReceiver receiver_( ptmp_util::make_ptmp_socket_string("SUB","connect",recvsocket_) );
+  ptmp::TPSender sender_( ptmp_util::make_ptmp_socket_string("PUB","bind",sendsocket_) );
   std::vector<ptmp::data::TPSet> aggrSets;
   int max_adj = 0;
   int min_adj = 0;
@@ -236,13 +235,16 @@ void dune::Candidate::tpsetHandler() {
   uint64_t runtime = std::chrono::duration_cast< std::chrono::microseconds >( end_run - start_run ).count();
 
   DAQLogger::LogInfo(instance_name_) << "Stop called, ending TPSet handler thread.";
-  DAQLogger::LogInfo(instance_name_) << "Avg. number of TPsets aggregated " << (aggr_size / handlerloop);
-  DAQLogger::LogInfo(instance_name_) << "Avg. number of TPs per triggered sorted vector " << (tc_sorted_size / tc_count);
-  DAQLogger::LogInfo(instance_name_) << "Avg. time from start sort to TC sent " << (timetot / tc_count);
-  DAQLogger::LogInfo(instance_name_) << "Generated " << tc_count << " TCs with avg adjacency " << (avg_adj / tc_count)
-                                     << " with run time " << runtime << "us with avg TC rate " << (tc_count / runtime)*1e6 << "Hz";
-  DAQLogger::LogInfo(instance_name_) << "Adjacency: min " << min_adj << " max " << max_adj << " avg " << (avg_adj / tc_count);
-
+  if (tc_count != 0) {
+	  DAQLogger::LogInfo(instance_name_) << "Avg. number of TPsets aggregated " << (aggr_size / handlerloop);
+	  DAQLogger::LogInfo(instance_name_) << "Avg. number of TPs per triggered sorted vector " << (tc_sorted_size / tc_count);
+	  DAQLogger::LogInfo(instance_name_) << "Avg. time from start sort to TC sent " << (timetot / tc_count);
+	  DAQLogger::LogInfo(instance_name_) << "Generated " << tc_count << " TCs with avg adjacency " << (avg_adj / tc_count)
+					     << " with run time " << runtime << "us with avg TC rate " << (tc_count / runtime)*1e6 << "Hz";
+	  DAQLogger::LogInfo(instance_name_) << "Adjacency: min " << min_adj << " max " << max_adj << " avg " << (avg_adj / tc_count);
+  } else {
+	  DAQLogger::LogInfo(instance_name_) << "TC count is 0";
+  }
 }
 
  // TPChannelSort() routine --------------------------------------------------------------------------
