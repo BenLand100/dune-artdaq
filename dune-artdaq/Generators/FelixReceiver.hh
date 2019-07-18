@@ -21,7 +21,7 @@
 #include "fhiclcpp/fwd.h"
 //#include "artdaq-core/Data/Fragments.hh"
 #include "artdaq-core/Data/Fragment.hh"
-#include "artdaq/Application/CommandableFragmentGenerator.hh"
+#include "artdaq/Generators/CommandableFragmentGenerator.hh"
 #include "dune-raw-data/Overlays/FelixFragment.hh"
 #include "dune-raw-data/Overlays/FragmentType.hh"
 
