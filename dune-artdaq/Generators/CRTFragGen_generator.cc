@@ -8,7 +8,7 @@
 
 #include "dune-raw-data/Overlays/FragmentType.hh"
 
-#include "artdaq/Application/GeneratorMacros.hh"
+#include "artdaq/Generators/GeneratorMacros.hh"
 #include "artdaq-core/Utilities/SimpleLookupPolicy.hh"
 
 #include "fhiclcpp/ParameterSet.h"

@@ -5,7 +5,7 @@
 #include "artdaq/DAQdata/Globals.hh"
 #include "dune-artdaq/Generators/TpcRceReceiver.hh"
 #include "dune-artdaq/DAQLogger/DAQLogger.hh"
-#include "artdaq/Application/GeneratorMacros.hh"
+#include "artdaq/Generators/GeneratorMacros.hh"
 #include "dune-raw-data/Overlays/FragmentType.hh"
 #include "fhiclcpp/ParameterSet.h"
 #include "messagefacility/MessageLogger/MessageLogger.h"

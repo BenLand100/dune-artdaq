@@ -6,7 +6,7 @@
 #include "dune-raw-data/Overlays/FragmentType.hh"
 
 #include "canvas/Utilities/Exception.h"
-#include "artdaq/Application/GeneratorMacros.hh"
+#include "artdaq/Generators/GeneratorMacros.hh"
 #include "cetlib/exception.h"
 #include "fhiclcpp/ParameterSet.h"
 #include "artdaq-core/Utilities/SimpleLookupPolicy.hh"
