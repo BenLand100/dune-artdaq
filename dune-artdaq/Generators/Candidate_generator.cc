@@ -123,6 +123,8 @@ void dune::Candidate::start(void)
 // tpsetHandler() routine ------------------------------------------------------------------
 void dune::Candidate::tpsetHandler() {
 
+  pthread_setname_np(pthread_self(), "tpsethandler");
+
   DAQLogger::LogInfo(instance_name_) << "Starting TPSet handler thread.";
 
   ptmp::TPReceiver receiver( ptmp_util::make_ptmp_socket_string("SUB","connect",{recvsocket_}) );

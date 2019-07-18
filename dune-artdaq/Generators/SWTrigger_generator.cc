@@ -155,6 +155,8 @@ void dune::SWTrigger::readTS() {
 
 void dune::SWTrigger::tpsetHandler() {
 
+  pthread_setname_np(pthread_self(), "tpsethandler");
+
   DAQLogger::LogInfo(instance_name_) << "Starting TPSet handler thread.";
 
   std::vector<bool> received(n_inputs_, false);
