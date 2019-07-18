@@ -396,6 +396,9 @@ bool dune::Candidate::getNext_(artdaq::FragmentPtrs&)
 
   end_time_ = std::chrono::high_resolution_clock::now(); 
 
+  // Sleep a bit so we don't spin the CPU
+  std::this_thread::sleep_for(std::chrono::milliseconds(1));
+
   return true;
 
 }

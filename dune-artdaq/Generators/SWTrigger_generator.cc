@@ -324,6 +324,9 @@ bool dune::SWTrigger::getNext_(artdaq::FragmentPtrs &frags)
   ++loops_;
 
   if (!tpset_) {
+    // Sleep a bit so we don't spin the CPU
+    std::this_thread::sleep_for(std::chrono::milliseconds(1));
+
     return true;
   } else {
     ++qtpsets_;
@@ -458,6 +461,9 @@ bool dune::SWTrigger::getNext_(artdaq::FragmentPtrs &frags)
   frags.emplace_back(std::move(f));
   // We only increment the event counter for events we send out
   ev_counter_inc();
+
+  // Sleep a bit so we don't spin the CPU
+  std::this_thread::sleep_for(std::chrono::milliseconds(1));
 
   return true;
 
