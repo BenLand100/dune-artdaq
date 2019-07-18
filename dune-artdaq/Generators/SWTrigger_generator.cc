@@ -122,7 +122,7 @@ void dune::SWTrigger::start(void)
   DAQLogger::LogDebug(instance_name_) << "start() called\n";
 
   // See header file for meanings of these variables
-  stopping_flag_    = false;
+  stopping_flag_.store(false);
   throttling_state_ = true;    // 0 Causes it to start triggers immediately, 1 means wait for InhibitMaster to release
   previous_ts_ = 0;
   latest_ts_ = 0;
@@ -146,7 +146,7 @@ void dune::SWTrigger::start(void)
 }
 
 void dune::SWTrigger::readTS() {
-  while (!stopping_flag_) {
+  while (!stopping_flag_.load()) {
     latest_ts_ = ts_receiver_->receiveHardwareTimeStamp();
   }
 }
@@ -161,7 +161,7 @@ void dune::SWTrigger::tpsetHandler() {
 
   std::vector<bool> received(n_inputs_, false);
 
-  while(!stopping_flag_) {
+  while(!stopping_flag_.load()) {
 
     // TODO: the inputs should probably go through TPSorted/TPZipper instead
     std::vector<ptmp::data::TPSet> SetsReceived(n_inputs_);
@@ -216,7 +216,7 @@ void dune::SWTrigger::stop(void)
 {
   DAQLogger::LogInfo(instance_name_) << "stop() called";
 
-  stopping_flag_ = true;   // We do want this here, if we don't use an
+  stopping_flag_.store(true);   // We do want this here, if we don't use an
   // atomic<int> for stopping_flag_ (see header file comments)
 
   // Make sure the TPReceiver dtors get called
@@ -345,7 +345,7 @@ bool dune::SWTrigger::getNext_(artdaq::FragmentPtrs &frags)
   } 
 
   // Check for stop run
-  if (stopping_flag_) {
+  if (stopping_flag_.load()) {
     DAQLogger::LogInfo(instance_name_) << "getNext_ stopping ";
     return false;
   }

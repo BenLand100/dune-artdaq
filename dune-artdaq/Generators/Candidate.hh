@@ -80,7 +80,9 @@ namespace dune {
     // The maximum time in microseconds before we timeout for a TPReceiver call (ms)
     int timeout_;
 
-    bool stopping_flag_;
+    // This gets set in the main thread by stop() and read in the
+    // tpsethandler thread, so we make it atomic just in case
+    std::atomic<bool> stopping_flag_;
 
     //std::unique_ptr<folly::ProducerConsumerQueue<ptmp::data::TPSet>> tpsetToFrag;
     folly::ProducerConsumerQueue<ptmp::data::TPSet> queue_{100000};

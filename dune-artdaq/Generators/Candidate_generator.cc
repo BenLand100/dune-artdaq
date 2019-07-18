@@ -89,7 +89,7 @@ dune::Candidate::~Candidate()
 // start() routine --------------------------------------------------------------------------
 void dune::Candidate::start(void)
 {
-  stopping_flag_ = false;
+  stopping_flag_.store(false);
 
   // TODO set qsize from fhicl
   size_t qsize = 100000;
@@ -145,11 +145,11 @@ void dune::Candidate::tpsetHandler() {
   bool sendTC = true;
   auto start_run = std::chrono::high_resolution_clock::now();
 
-  while(!stopping_flag_) { 
+  while(!stopping_flag_.load()) { 
     
     bool aggregate = true;
     
-    while(aggregate && !stopping_flag_) { 
+    while(aggregate && !stopping_flag_.load()) { 
       
       ptmp::data::TPSet SetReceived;
       bool received = receiver(SetReceived, timeout_);
@@ -302,7 +302,7 @@ dune::Candidate::TPChannelSort(std::vector<ptmp::data::TPSet> HitSets) {
 void dune::Candidate::stop(void)
 {
   DAQLogger::LogInfo(instance_name_) << "stop() called";
-  stopping_flag_ = true;
+  stopping_flag_.store(true);
 
   DAQLogger::LogInfo(instance_name_) << "Joining tpset_handler thread...";
   tpset_handler.join();
@@ -348,7 +348,7 @@ bool dune::Candidate::getNext_(artdaq::FragmentPtrs&)
   start_time_ = std::chrono::high_resolution_clock::now(); 
 
   // Catch the stop flag at beginning of getNext loop
-  if (stopping_flag_) return false;
+  if (stopping_flag_.load()) return false;
 
   tpset_ = queue_.frontPtr();
   ++loops_;

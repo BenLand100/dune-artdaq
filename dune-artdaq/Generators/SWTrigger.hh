@@ -79,7 +79,9 @@ namespace dune {
 
     std::string instance_name_;
 
-    bool stopping_flag_;
+    // This gets set in the main thread by stop() and read in the
+    // tpsethandler thread, so we make it atomic just in case
+    std::atomic<bool> stopping_flag_;
 
     bool throttling_state_;
 
