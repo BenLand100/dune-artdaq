@@ -361,7 +361,7 @@ trace_file_label=$( basename $Base )
 
 dune_artdaq_InhibitMaster_version=$( sed -r -n "s/^\s*dune_artdaq_InhibitMaster\s+(\S+).*/\1/p" $ARTDAQ_DEMO_DIR/ups/product_deps )
 dim_version=v20r20
-artdaq_dim_plugin_version=v0_02_08a
+artdaq_dim_plugin_version=v0_02_08d
 TRACE_version=v3_13_07
 pyzmq_version=v18_0_1a
 
