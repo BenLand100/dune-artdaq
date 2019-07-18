@@ -17,7 +17,7 @@
 #include "dune-artdaq/Generators/TimingReceiver.hh"
 #include "dune-artdaq/DAQLogger/DAQLogger.hh"
 
-#include "artdaq/Application/GeneratorMacros.hh"
+#include "artdaq/Generators/GeneratorMacros.hh"
 #include "cetlib/exception.h"
 #include "dune-raw-data/Overlays/FragmentType.hh"
 #include "dune-raw-data/Overlays/TimingFragment.hh"
@@ -105,6 +105,10 @@ dune::TimingReceiver::TimingReceiver(fhicl::ParameterSet const & ps):
     instance_name_ = instance_name_ss.str();
 
     if (inhibitget_timer_ == 0) inhibitget_timer_ = 2000000000;  // Zero inhibitget_timer waits infinite.
+
+    auto rmConfig = ps.get<fhicl::ParameterSet>("routing_table_config", fhicl::ParameterSet());
+    use_routing_master_ = rmConfig.get<bool>("use_routing_master", false);
+    TLOG(TLVL_DEBUG) << "use_routing_master = " << use_routing_master_;
 
     // PAR 2018-03-09: We don't do any pre-partition-setup steps in
     // the board reader any more. They're done by the butler. I'm
@@ -359,7 +363,7 @@ bool dune::TimingReceiver::checkHWStatus_()
         new_want_inhibit=true;
     }
     //check if there are available routing tokens, and if not inhibit
-    else if(n_remaining_table_entries==0){
+    else if (use_routing_master_ && n_remaining_table_entries == 0) {
       new_want_inhibit=true;
       status_msg="NoAvailableTokens";
     }

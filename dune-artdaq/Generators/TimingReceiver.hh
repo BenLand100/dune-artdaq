@@ -15,7 +15,7 @@
 
 #include "fhiclcpp/fwd.h"
 #include "artdaq-core/Data/Fragment.hh" 
-#include "artdaq/Application/CommandableFragmentGenerator.hh"
+#include "artdaq/Generators/CommandableFragmentGenerator.hh"
 
 #include "dune-raw-data/Overlays/FragmentType.hh"
 
@@ -193,6 +193,8 @@ namespace dune {
     void fiddle_trigger_mask();  // Modify the trigger mask so we only see triggers in our partition
     // TODO: Should this be const?
     const pdt::PartitionNode& master_partition();
+
+    bool use_routing_master_;
   };
 }
 
