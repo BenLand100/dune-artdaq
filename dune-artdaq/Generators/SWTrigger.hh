@@ -125,8 +125,7 @@ namespace dune {
 
     std::vector<std::unique_ptr<ptmp::TPReceiver>> receivers_;
 
-    ptmp::TPSender sender_1_;
-    ptmp::TPSender sender_2_;
+    ptmp::TPSender sender_;
 
     folly::ProducerConsumerQueue<ptmp::data::TPSet> queue_{100000};
     ptmp::data::TPSet* tpset_;
