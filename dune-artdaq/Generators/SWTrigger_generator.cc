@@ -69,8 +69,7 @@ dune::SWTrigger::SWTrigger(fhicl::ParameterSet const & ps):
   ,last_spillend_tstamph_(0xffffffff)   // ...
   ,last_runstart_tstampl_(0xffffffff)   // Timestamp of most recent start-of-run
   ,last_runstart_tstamph_(0xffffffff)   // ...
-  ,sender_1_( ptmp_util::make_ptmp_socket_string("PUB","bind",{"tcp://10.73.136.32:50501"}) ) // 2 temp. senders for latency measurements
-  ,sender_2_( ptmp_util::make_ptmp_socket_string("PUB","bind",{"tcp://10.73.136.32:50502"}) )
+  ,sender_( ptmp_util::make_ptmp_socket_string("PUB","bind",{"tcp://10.73.136.32:50502"}) )
   ,timeout_(ps.get<int>("timeout"))
   ,n_recvd_(0)
   ,n_inputs_(ptmp_util::endpoints_for_key(ps, "tc_inputs_key").size())
@@ -200,7 +199,6 @@ void dune::SWTrigger::tpsetHandler() {
     }
 
     //--for latency measurement--//
-    sender_1_(SetsReceived[0]);
     if(!write_success) ++fqueue_;
     
     
@@ -330,7 +328,7 @@ bool dune::SWTrigger::getNext_(artdaq::FragmentPtrs &frags)
     previous_ts_ = tpset_->tps()[0].tstart();
 
     //--for latency measurement--//
-    sender_2_(*tpset_);
+    sender_(*tpset_);
     //Log the TC details
     DAQLogger::LogInfo(instance_name_) << "TC count " << tpset_->count() << " First Ch Adj " << tpset_->chanend()
                                        << " Last Ch Adj " << tpset_->chanbeg() << " Tick w/ 1st Ch Adj " << tpset_->tstart()
