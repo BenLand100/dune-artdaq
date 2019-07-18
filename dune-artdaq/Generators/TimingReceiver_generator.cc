@@ -17,7 +17,7 @@
 #include "dune-artdaq/Generators/TimingReceiver.hh"
 #include "dune-artdaq/DAQLogger/DAQLogger.hh"
 
-#include "artdaq/Application/GeneratorMacros.hh"
+#include "artdaq/Generators/GeneratorMacros.hh"
 #include "cetlib/exception.h"
 #include "dune-raw-data/Overlays/FragmentType.hh"
 #include "dune-raw-data/Overlays/TimingFragment.hh"
@@ -106,7 +106,22 @@ dune::TimingReceiver::TimingReceiver(fhicl::ParameterSet const & ps):
   // TODO:
   // AT: Move hardware interface creation in here, for better exception handling
 
-  instance_name_ += std::to_string(partition_number_);
+    auto rmConfig = ps.get<fhicl::ParameterSet>("routing_table_config", fhicl::ParameterSet());
+    use_routing_master_ = rmConfig.get<bool>("use_routing_master", false);
+    TLOG(TLVL_DEBUG) << "use_routing_master = " << use_routing_master_;
+
+    // PAR 2018-03-09: We don't do any pre-partition-setup steps in
+    // the board reader any more. They're done by the butler. I'm
+    // leaving the comment below for posterity though
+    //
+    // Dave N's message part 1:
+    // The pre-partition-setup status needs to be:
+    //
+    // - Board set up (clocks running and checked, etc)  [in hw_init, with initsoftness_=0]
+    // - Timestamp set (if we ever do time-of-day stuff) [not done yet]
+    // - Triggers from trigger enabled and gaps set      [not done yet]
+    // - Command generators set up                       [done here]
+    // - Spills or fake spills enabled                   [wait for firmware upgrade]
 
   if (inhibitget_timer_ == 0) inhibitget_timer_ = 2000000000;  // Zero inhibitget_timer waits infinite.
 
@@ -376,6 +391,37 @@ void dune::TimingReceiver::stopNoMutex(void) {
   // stopping_flag_ = 1;    // Tells the getNext_() while loop to stop the run
 }
 
+bool dune::TimingReceiver::checkHWStatus_()
+{
+    auto dsmptr = artdaq::BoardReaderCore::GetDataSenderManagerPtr();
+    if(!dsmptr)
+      TLOG(TLVL_HWSTATUS) << "DataSenderManagerPtr not valid.";
+
+    auto mp_ovrflw = master_partition().readROBWarningOverflow();
+    int n_remaining_table_entries = dsmptr? dsmptr->GetRemainingRoutingTableEntries() : -1;
+    int n_table_count = dsmptr? dsmptr->GetRoutingTableEntryCount() : -1;
+    TLOG(TLVL_HWSTATUS) << "hwstatus: buf_warn=" << mp_ovrflw
+			<< " table_count=" << n_table_count
+			<< " table_entries_remaining=" << n_remaining_table_entries;
+
+    bool new_want_inhibit=false;
+    std::string status_msg="";
+
+    if(mp_ovrflw){
+        // Tell the InhibitMaster that we want to stop triggers, then
+        // carry on with this iteration of the loop
+        DAQLogger::LogInfo(instance_name_) << "buf_warn is high, with " << master_partition().numEventsInBuffer() << " events in buffer. Requesting InhibitMaster to stop triggers";
+        status_msg="ROBWarningOverflow";
+        new_want_inhibit=true;
+    }
+    //check if there are available routing tokens, and if not inhibit
+    else if (use_routing_master_ && n_remaining_table_entries == 0) {
+      new_want_inhibit=true;
+      status_msg="NoAvailableTokens";
+    }
+    else{
+      new_want_inhibit=false;
+    }
 
 // ----------------------------------------------------------------------------
 bool dune::TimingReceiver::checkHWStatus_() {
