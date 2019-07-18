@@ -47,7 +47,7 @@ dune::TimingReceiver* trgp = 0;
 
 void data_take(int) {     // Main program of data taking thread
   printf("data_take: Started thread for GetNext\n");
-  artdaq::FragmentPtrs frags;
+  artdaq::PostmarkedFragmentPtrs frags;
 
   int seen_stop = 0;
   int nemptycalls = 0;
