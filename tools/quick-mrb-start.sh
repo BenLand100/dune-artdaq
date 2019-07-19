@@ -183,7 +183,7 @@ else
 fi
 
 starttime=`date`
-echo "In $PWD, about to check for products/, etc."
+
 test -d products || mkdir products
 test -d download || mkdir download
 test -d log || mkdir log
@@ -393,11 +393,8 @@ t; }" || exit
 
 echo "Only need to source this file once in the environment; now, to perform builds do the following:"
 echo ""
-echo "  mrb build -j32  # to build without 'installing' the built code"
 echo "  mrb install -j32  # to build and 'install' the built code"
-echo "    (where 'install' means copy-to-products-area \"$startdir/$localproducts_subdir\" and use in runtime environment)"
-echo ""
-echo "*** PLEASE NOTE that we should now use 'mrb install -j32' to build the dune-artdaq software ***"
+echo " (where 'install' means copy-to-products-area \"$startdir/$localproducts_subdir\" and use in runtime environment)"
 echo ""
 
 EOF
@@ -458,19 +455,10 @@ cd $startdir
 toffS 20 -n TriggerBoardReader
 #tonS  20 -n TriggerBoardReader
 
-
-# JCF, 11/25/14
-# Make it easy for users to take a quick look at their output file via "rawEventDump"
-
-alias rawEventDump="if [[ -n \\\$SETUP_TRACE ]]; then unsetup TRACE ; echo Disabling TRACE ; sleep 1; fi; art -c \$DUNEARTDAQ_REPO/tools/fcl/rawEventDump.fcl "                                                    
-
 echo ""
-echo "*** PLEASE NOTE that there are now TWO setup scripts:"
-echo "    - setupDUNEARTDAQ_forBuilding (found in $localdiskdir)"
-echo "    - setupDUNEARTDAQ_forRunning (found in $startdir)"
-echo ""
-echo "You have just sourced setupDUNEARTDAQ_forRunning."
-echo "Please use this script for all uses except building the software."
+echo "You have just sourced setupDUNEARTDAQ_forRunning. This is probably "
+echo "not what you want, since this script is meant to be sourced by JCOP, "
+echo "rather than a human, in order to set up the running environment "
 echo ""
 echo "If, instead, you would like to build the software, please start with a fresh"
 echo "shell and 'cd $localdiskdir' and 'source setupDUNEARTDAQ_forBuilding' and 'mrb install -j 32'".
@@ -572,10 +560,6 @@ cp -rp $localdiskdir/$localproducts_subdir $startdir
 mrb install -j$nprocessors                              
 
 installStatus=$?
-
-#cd $Base
-#find build_slf7.x86_64/ -type d | xargs -i chmod g+rwx {}              
-#find build_slf7.x86_64/ -type f | xargs -i chmod g+rw {}               
 
 cd $startdir
 ln -s setupDUNEARTDAQ_forRunning setupDUNEARTDAQ
