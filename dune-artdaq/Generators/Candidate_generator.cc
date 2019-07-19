@@ -91,11 +91,7 @@ void dune::Candidate::start(void)
 {
   stopping_flag_.store(false);
 
-  // TODO set qsize from fhicl
-  size_t qsize = 100000;
-  DAQLogger::LogInfo(instance_name_) << "Allocating FIFO memory, size " << qsize;
-
-  DAQLogger::LogInfo(instance_name_) << "Setting up the PTMP sockets.";
+  DAQLogger::LogInfo(instance_name_) << "Setting up the PTMP sockets in thread " << pthread_self();
 
   DAQLogger::LogInfo(instance_name_) << "TPWindow Tspan " << tspan_ << " and Tbuffer " << tbuf_;
 
@@ -127,8 +123,8 @@ void dune::Candidate::tpsetHandler() {
 
   DAQLogger::LogInfo(instance_name_) << "Starting TPSet handler thread.";
 
-  ptmp::TPReceiver receiver( ptmp_util::make_ptmp_socket_string("SUB","connect",{recvsocket_}) );
-  ptmp::TPSender sender( ptmp_util::make_ptmp_socket_string("PUB","bind",{sendsocket_}) );
+  ptmp::TPReceiver* receiver=new ptmp::TPReceiver( ptmp_util::make_ptmp_socket_string("SUB","connect",{recvsocket_}) );
+  ptmp::TPSender* sender=new ptmp::TPSender( ptmp_util::make_ptmp_socket_string("PUB","bind",{sendsocket_}) );
 
   std::vector<ptmp::data::TPSet> aggrSets;
   int max_adj = 0;
@@ -152,7 +148,7 @@ void dune::Candidate::tpsetHandler() {
     while(aggregate && !stopping_flag_.load()) { 
       
       ptmp::data::TPSet SetReceived;
-      bool received = receiver(SetReceived, timeout_);
+      bool received = (*receiver)(SetReceived, timeout_);
       
       if (!received) { ++norecvd_; continue; }
     
@@ -167,7 +163,7 @@ void dune::Candidate::tpsetHandler() {
     } 
 
     if (!sendTC) {
-      sender(aggrSets.at(0)); 
+      (*sender)(aggrSets.at(0)); 
       ++nTPset_sent_;
       if (!queue_.isFull()) queue_.write(aggrSets.at(0)); else ++fqueue_;
     } else {
@@ -202,7 +198,7 @@ void dune::Candidate::tpsetHandler() {
           ptmp_prim->set_tspan  (sortedTPs[it].tspan  );
           ptmp_prim->set_adcsum (sortedTPs[it].adcsum );
         }
-        sender(SetToSend);
+        (*sender)(SetToSend);
         auto sent_time = std::chrono::high_resolution_clock::now();
         timetot = std::chrono::duration_cast< std::chrono::microseconds >( sent_time - start_sort ).count();
       }
@@ -214,6 +210,11 @@ void dune::Candidate::tpsetHandler() {
   auto end_run = std::chrono::high_resolution_clock::now();
   uint64_t runtime = std::chrono::duration_cast< std::chrono::microseconds >( end_run - start_run ).count();
     
+  delete receiver;
+  std::this_thread::sleep_for(std::chrono::milliseconds(100));
+  delete sender;
+  std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
   DAQLogger::LogInfo(instance_name_) << "Stop called, ending TPSet handler thread.";
   if (tc_count != 0) {
 	  DAQLogger::LogInfo(instance_name_) << "Avg. number of TPsets aggregated " << (aggr_size / handlerloop);
@@ -307,9 +308,12 @@ void dune::Candidate::stop(void)
   DAQLogger::LogInfo(instance_name_) << "Joining tpset_handler thread...";
   tpset_handler.join();
   DAQLogger::LogInfo(instance_name_) << "tpset_handler thread joined";
+  std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
   // Destruct all the TPWindow instances and the TPZipper
+  DAQLogger::LogInfo(instance_name_) << "Destructing the PTMP sockets in thread " << pthread_self();
   tpzipper_.reset(nullptr);
+  std::this_thread::sleep_for(std::chrono::milliseconds(100));
   tpwindows_.clear(); 
 
 
