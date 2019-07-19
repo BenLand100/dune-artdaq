@@ -219,16 +219,6 @@ artdaq_version=$( grep -E "^artdaq\s+" ./product_deps | awk '{print $2}' )
 
 cd $returndir
 
-
-if [[ "$artdaq_version" == "v3_00_03a" ]]; then
-    artdaq_manifest_version=v3_00_03
-elif [[ "$artdaq_version" == "v3_03_00_beta" ]]; then
-    artdaq_manifest_version=v3_03_00
-else
-    artdaq_manifest_version=$artdaq_version
-fi
-
-
 equalifier=e15
 squalifier=s64
 
@@ -342,8 +332,35 @@ pyzmq_version=v18_0_1a
 
 cd $localdiskdir
     cat >setupDUNEARTDAQ_forBuilding <<-EOF
-       echo # This script is intended to be sourced.                                                                    
-                                                                                                                         
+
+        basedir=\$PWD                                                                                  
+        
+        if [[ -d \$basedir/srcs ]]; then
+          cd \$basedir/srcs/dune_artdaq
+          dune_artdaq_branch=\$( git branch | sed -r -n 's/^\*\s+(.*)/\1/p' )
+          cd \$basedir/srcs/dune_raw_data
+          dune_raw_data_branch=\$( git branch | sed -r -n 's/^\*\s+(.*)/\1/p' )
+          cd \$basedir
+          
+          if [[ "\$dune_artdaq_branch" == "develop" && "\$dune_raw_data_branch" == "for_dune-artdaq" ]]; then
+           echo "Both git repositories: " 
+           echo "\$basedir/srcs/dune_artdaq"
+           echo "and" 
+           echo "\$basedir/srcs/dune_raw_data "
+           echo "...are currently set to the *release* branches (\"develop\" and \"for_dune-artdaq\", respectively)."
+           echo "Code development should be performed on non-release branches; please switch to a different "
+           echo "branch for the repo(s) you're developing in. Returning without setting up the build environment..."
+           echo
+           return
+          fi
+
+        else
+          echo "Unable to find the subdirectory containing git repos, ./srcs"
+          echo "This script is meant to be sourced from the base of an mrb area; returning..." >&2
+          echo
+          return
+        fi
+                               
         sh -c "[ \`ps \$\$ | grep bash | wc -l\` -gt 0 ] || { echo 'Please switch to the bash shell before running dune-artdaq.'; exi
 t; }" || exit                                                                                           
 
