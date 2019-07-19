@@ -85,7 +85,7 @@ find_ups_product( zmq v4_3_1 )
 find_ups_product( czmq v4_2_0 -q e15)
 # add protobuf for PTMP
 find_ups_product( protobuf v3_3_1a )
-find_ups_product( ptmp v0_0_3 )
+find_ups_product( ptmp v0_1_0a )
 find_ups_product( jsoncpp v1_8_0 )
 find_ups_root( v5_34_00 )
 find_ups_boost( v1_50_0 filesystem
