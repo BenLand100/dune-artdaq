@@ -197,47 +197,6 @@ stderr_file=$( date | awk -v "SCRIPTNAME=$(basename $0)" '{print SCRIPTNAME"_"$1
 exec  > >(tee "$localdiskdir/log/$alloutput_file")
 exec 2> >(tee "$localdiskdir/log/$stderr_file")
 
-function detectAndPull() {
-    local startDir=$PWD
-    cd $localdiskdir/download
-    local packageName=$1
-    local packageOs=$2
-
-    if [ $# -gt 2 ];then
-	local qualifiers=$3
-    fi
-    if [ $# -gt 3 ];then
-	local packageVersion=$4
-    else
-	local packageVersion=`curl http://scisoft.fnal.gov/scisoft/packages/${packageName}/ 2>/dev/null|grep ${packageName}|grep "id=\"v"|tail -1|sed 's/.* id="\(v.*\)".*/\1/'`
-    fi
-    local packageDotVersion=`echo $packageVersion|sed 's/_/\./g'|sed 's/v//'`
-
-    if [[ "$packageOs" != "noarch" ]]; then
-        local upsflavor=`ups flavor`
-	local packageQualifiers="-`echo $qualifiers|sed 's/:/-/g'`"
-	local packageUPSString="-f $upsflavor -q$qualifiers"
-    fi
-    local packageInstalled=`ups list -aK+ $packageName $packageVersion ${packageUPSString-}|grep -c "$packageName"`
-    if [ $packageInstalled -eq 0 ]; then
-	local packagePath="$packageName/$packageVersion/$packageName-$packageDotVersion-${packageOs}${packageQualifiers-}.tar.bz2"
-	echo wget http://scisoft.fnal.gov/scisoft/packages/$packagePath
-	wget http://scisoft.fnal.gov/scisoft/packages/$packagePath >/dev/null 2>&1
-	local packageFile=$( echo $packagePath | awk 'BEGIN { FS="/" } { print $NF }' )
-
-	if [[ ! -e $packageFile ]]; then
-	    echo "Unable to download $packageName"
-	    exit 1
-	fi
-
-	local returndir=$PWD
-	cd $localdiskdir/products
-	tar -xjf $localdiskdir/download/$packageFile
-	cd $returndir
-    fi
-    cd $startDir
-}
-
 # Get all the information we'll need to decide which exact flavor of the software to install
 if [ -z "${tag:-}" ]; then 
   tag=develop;
@@ -276,15 +235,6 @@ if [[ -n "${opt_debug:-}" ]] ; then
 else
     build_type="prof"
 fi
-
-echo >&2
-echo "Skipping pullProducts, products needed for artdaq already assumed to be available. If this is wrong, then from $PWD, execute:" >&2
-echo "wget http://scisoft.fnal.gov/scisoft/bundles/tools/pullProducts" >&2
-echo "chmod +x pullProducts" >&2
-echo "./pullProducts $localdiskdir/products <OS name - e.g., slf7> artdaq-${artdaq_manifest_version} ${squalifier}-${equalifier} ${build_type}" >&2
-echo >&2
-
-detectAndPull mrb noarch
 
 # JCF, Apr-26-2018: Kurt discovered that it's necessary for the products area to be based on ups v6_0_7
 upsfile=/nfs/sw/control_files/misc/ups-6.0.7-Linux64bit+3.10-2.17.tar.bz2
