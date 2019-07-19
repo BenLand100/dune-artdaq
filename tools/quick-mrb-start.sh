@@ -111,24 +111,6 @@ EOF
     exit 1
 fi
 
-localdiskdir=$( echo $startdir | sed -r 's!/nfs/sw/work_dirs!/scratch!' )
-if [[ ! -e $localdiskdir ]]; then
-    mkdir -p $localdiskdir
-    if [[ ! -e $localdiskdir ]]; then
-	echo "Error! Problem calling mkdir -p ${localdiskdir}. Exiting..." >&2
-	exit 1
-    fi
-    cd $localdiskdir
-else
-    echo "Error: this script wanted to install a dune-artdaq area called $localdiskdir, but it appears that directory already exists! Exiting..." >&2
-    exit 1
-fi
-
-starttime=`date`
-test -d products || mkdir products
-test -d download || mkdir download
-test -d log || mkdir log
-
 dune_artdaq_branch="develop"
 dune_raw_data_branch="for_dune-artdaq"
 
@@ -186,6 +168,26 @@ fi
 set -u   # complain about uninitialed shell variables - helps development
 
 test -n "${do_help-}" -o $# -ge 3 && echo "$USAGE" && exit
+
+localdiskdir=$( echo $startdir | sed -r 's!/nfs/sw/work_dirs!/scratch!' )
+if [[ ! -e $localdiskdir ]]; then
+    mkdir -p $localdiskdir
+    if [[ ! -e $localdiskdir ]]; then
+	echo "Error! Problem calling mkdir -p ${localdiskdir}. Exiting..." >&2
+	exit 1
+    fi
+    cd $localdiskdir
+else
+    echo "Error: this script wanted to install a dune-artdaq area called $localdiskdir, but it appears that directory already exists! Exiting..." >&2
+    exit 1
+fi
+
+starttime=`date`
+echo "In $PWD, about to check for products/, etc."
+test -d products || mkdir products
+test -d download || mkdir download
+test -d log || mkdir log
+
 
 # JCF, 1/16/15
 # Save all output from this script (stdout + stderr) in a file with a
