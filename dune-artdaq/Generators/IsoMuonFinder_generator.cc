@@ -112,7 +112,7 @@ void dune::IsoMuonFinder::tpsetHandler() {
     size_t n_sets_wall=0;
     size_t n_sets_tpc=0;
     size_t max_n_chan_hit=0;
-
+    size_t n_triggers=0;
 
     uint64_t last_tstart=0;
     size_t n_sources=0;
@@ -153,6 +153,7 @@ void dune::IsoMuonFinder::tpsetHandler() {
                 if(n_chan_hit>=hit_per_link_threshold_*n_sources){
                     // Trigger!
                     timestamp_queue_.write(last_tstart);
+                    ++n_triggers;
                 }
                 last_tstart=in_set.tstart();
                 memset(has_hit, 0, 2*channels_per_apa*sizeof(uint8_t));
@@ -169,7 +170,7 @@ void dune::IsoMuonFinder::tpsetHandler() {
     std::stringstream ss;
     for(size_t i=0; i<10; ++i) ss << n_n_sources[i] << " ";
     DAQLogger::LogInfo(instance_name_) << "n_n_sources[]: " << ss.str();
-
+    DAQLogger::LogInfo(instance_name_) << "Issued " << n_triggers << " triggers";
     delete receiver;
 }
  
