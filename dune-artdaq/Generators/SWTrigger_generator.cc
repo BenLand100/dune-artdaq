@@ -69,7 +69,7 @@ dune::SWTrigger::SWTrigger(fhicl::ParameterSet const & ps):
   ,last_spillend_tstamph_(0xffffffff)   // ...
   ,last_runstart_tstampl_(0xffffffff)   // Timestamp of most recent start-of-run
   ,last_runstart_tstamph_(0xffffffff)   // ...
-  ,sender_( ptmp_util::make_ptmp_socket_string("PUB","bind",{"tcp://10.73.136.32:50502"}) )
+  ,sender_( ptmp_util::make_ptmp_socket_string("PUB","bind",{"tcp://*:50502"}) )
   ,timeout_(ps.get<int>("timeout"))
   ,n_recvd_(0)
   ,n_inputs_(ptmp_util::endpoints_for_key(ps, "tc_inputs_key").size())
