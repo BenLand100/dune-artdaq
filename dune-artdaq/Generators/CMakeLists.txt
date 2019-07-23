@@ -211,7 +211,6 @@ simple_plugin(SWTrigger "generator"
   ${CETLIB}
   ${CETLIB_EXCEPT}
   ${LIBPTMP}
-  ${LIBPTMP_TCS}
   ${PROTOBUF}
   $ENV{JSONCPP_LIB}/libjsoncpp.so
   ${JSONCPP}
