@@ -82,7 +82,7 @@ void dune::IsoMuonFinder::start(void)
     }
     for(size_t i=0; i<tpwinsocks_.size(); ++i){
         DAQLogger::LogInfo(instance_name_) << "Creating TPWindow from " << tpwinsocks_.at(i) << " to " << tpwoutsocks_.at(i);
-        std::string jsonconfig{ptmp_util::make_ptmp_tpwindow_string({tpwinsocks_.at(i)},{tpwoutsocks_.at(i)},tspan_,tbuf_),"PULL", "PUSH"};
+        std::string jsonconfig{ptmp_util::make_ptmp_tpwindow_string({tpwinsocks_.at(i)},{tpwoutsocks_.at(i)},tspan_,tbuf_,"PULL", "PUSH")};
         tpwindows_.push_back( std::make_unique<ptmp::TPWindow>(jsonconfig) );
     }
 
