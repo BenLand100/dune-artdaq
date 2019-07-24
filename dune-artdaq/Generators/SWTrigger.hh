@@ -27,6 +27,7 @@
 #include <chrono>
 
 #include "ptmp/api.h"
+#include "ptmp-tcs/api.h"
 
 #include "timingBoard/StatusPublisher.hh"
 #include "timingBoard/FragmentPublisher.hh"
@@ -129,6 +130,12 @@ namespace dune {
 
     folly::ProducerConsumerQueue<ptmp::data::TPSet> queue_{100000};
     ptmp::data::TPSet* tpset_;
+
+    // TPZipper serializes the data from multiple links
+    std::unique_ptr<ptmp::TPZipper> tpzipper_;
+
+    // Interface to TC algorithm
+    std::unique_ptr<ptmp::tcs::TPFilter> tcGen_;
 
     // The maximum time in microseconds before we timeout for a TPReceiver call (ms)
     int timeout_;
