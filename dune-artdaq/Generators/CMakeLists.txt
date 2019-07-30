@@ -57,6 +57,7 @@ simple_plugin(HitFinderCPUReceiver "generator"
   dune-raw-data_Overlays
   dune-artdaq_DAQLogger
   artdaq_Application
+  artdaq_Generators
   artdaq_DAQdata
   artdaq-core_Utilities
   artdaq-core_Data
@@ -189,6 +190,7 @@ simple_plugin(Candidate "generator"
   dune-raw-data_Overlays
   dune-artdaq_Generators_swTrigger
   artdaq_Application
+  artdaq_Generators
   artdaq_DAQdata
   artdaq-core_Utilities
   artdaq-core_Data
@@ -209,6 +211,7 @@ simple_plugin(SWTrigger "generator"
   dune-raw-data_Overlays
   dune-artdaq_Generators_timingBoard
   artdaq_Application
+  artdaq_Generators
   artdaq_DAQdata
   artdaq_DAQrate
   artdaq-core_Utilities
