@@ -8,6 +8,9 @@
 # JCF, Mar-2-2017
 # Modified it again to work with the brand new dune-artdaq package
 
+export USER=${USER:-$(whoami)}
+export HOSTNAME=${HOSTNAME:-$(hostname)}
+
 if [[ "$USER" == "np04daq" ]]; then
     
     cat<<EOF >&2
@@ -20,14 +23,19 @@ if [[ "$USER" == "np04daq" ]]; then
 EOF
 
 exit 1
-
 fi
 
-if ! [[ "$HOSTNAME" =~ ^np04-srv ]]; then 
-    echo "This script will only work on the CERN protoDUNE teststand computers, np04-srv-*" >&2
+if [[ $HOSTNAME != np04-srv-023 ]]; then
+    
+    cat<<EOF >&2
+
+As of Jul-13-2019, this script is designed to only be run on
+np04-srv-023, since that's the node that has the local /scratch disk
+where your source code and local build area will be placed. You appear
+to be on host $HOSTNAME. Exiting...
+
+EOF
     exit 1
-else
-    :  # Note to myself (JCF): should consider putting a cvmfs source in here if I formalize this script for non-ProtoDUNE cluster installation
 fi
 
 if [[ -e /nfs/sw/artdaq/products/setup ]]; then
@@ -44,26 +52,29 @@ else
     exit 1
 fi
 
-Base=$PWD
+startdir=$PWD
 
-if [[ -n $( find . -maxdepth 1 -not -name "quick-mrb-start*" -not -name ".") ]]; then
+if ! [[ "$startdir" =~ ^/nfs/sw/work_dirs ]]; then
 
     cat<<EOF >&2
 
-There appear to be files and/or subdirectories in this directory
-besides this script; this script should only be run in a clean
-directory. Exiting...
+Installation needs to be performed in a subdirectory of
+/nfs/sw/work_dirs (and preferably in a subdirectory of
+/nfs/sw/work_dirs/$USER). Exiting...
 
 EOF
 
     exit 1
-    
 fi
 
-if [[ -z $USER ]]; then
+if [[ -n $( ls -a1 | grep -E -v "^quick-mrb-start.*" | grep -E -v "^\.\.?$" ) ]]; then
 
-echo "Error: this script only works if you've got the \$USER environment variable set and pointing to your username. Please set this." >&2
+    cat<<EOF >&2
 
+There appear to be files in $startdir besides this script; this script
+should only be run in a clean directory. Exiting...
+
+EOF
     exit 1
 fi
 
@@ -71,7 +82,7 @@ qms_tmpdir=/tmp/${USER}_for_quick-mrb-start
 mkdir -p $qms_tmpdir
     
 if [[ "$?" != "0" ]]; then
-    echo "There was a problem running mkdir -p $qms_tmpdir; exiting..." >&2
+    echo "There was a problem running mkdir -p ${qms_tmpdir}, needed by this script for stashing temporary files; exiting..." >&2
     exit 1
 fi
 
@@ -80,7 +91,7 @@ cd $qms_tmpdir
 rm -f quick-mrb-start.sh
 wget https://cdcvs.fnal.gov/redmine/projects/dune-artdaq/repository/revisions/develop/raw/tools/quick-mrb-start.sh
 
-quick_mrb_start_edits=$( diff $Base/quick-mrb-start.sh $qms_tmpdir/quick-mrb-start.sh ) 
+quick_mrb_start_edits=$( diff $startdir/quick-mrb-start.sh $qms_tmpdir/quick-mrb-start.sh ) 
 cd $returndir
 
 if [[ -n $quick_mrb_start_edits ]]; then
@@ -185,8 +196,8 @@ test -d log || mkdir log
 # "quick-start.sh_Fri_Jan_16_13:58:27_stderr.script"
 alloutput_file=$( date | awk -v "SCRIPTNAME=$(basename $0)" '{print SCRIPTNAME"_"$1"_"$2"_"$3"_"$4".script"}' )
 stderr_file=$( date | awk -v "SCRIPTNAME=$(basename $0)" '{print SCRIPTNAME"_"$1"_"$2"_"$3"_"$4"_stderr.script"}' )
-exec  > >(tee "$Base/log/$alloutput_file")
-exec 2> >(tee "$Base/log/$stderr_file")
+exec  > >(tee "$localdiskdir/log/$alloutput_file")
+exec 2> >(tee "$localdiskdir/log/$stderr_file")
 
 # Get all the information we'll need to decide which exact flavor of the software to install
 if [ -z "${tag:-}" ]; then 
@@ -199,7 +210,7 @@ rm -f product_deps
 wget -O product_deps https://cdcvs.fnal.gov/redmine/projects/dune-artdaq/repository/raw/ups/product_deps?rev=$( echo $dune_artdaq_branch | sed -r 's!/!%2F!g' )
 
 if [[ "$?" != "0" ]]; then
-    echo "Problem trying to get product_deps file for branch $dune_artdaq_branch off the web; exiting..." >&2
+    echo "Problem trying to get product_deps file for branch $dune_artdaq_branch off the web, needed to determine package versions; exiting..." >&2
     exit 1
 fi
 
@@ -225,21 +236,21 @@ if [[ ! -e $upsfile ]]; then
     exit 1
 fi
 
-cd $Base/products
+cd $localdiskdir/products
 cp -p $upsfile .
 tar xjf $upsfile
-source $Base/products/setup
+source $localdiskdir/products/setup
 setup mrb v1_14_00
 setup git
 setup gitflow
 
 export MRB_PROJECT=dune_artdaq
 export localproducts_subdir=localProducts_dune_artdaq_${demo_version}_${equalifier}_${build_type}
-cd $Base
+cd $localdiskdir
 mrb newDev -f -v $demo_version -q ${equalifier}:${build_type}
 set +u
 
-source $Base/$localproducts_subdir/setup
+source $localdiskdir/$localproducts_subdir/setup
 set -u
 
 cd $MRB_SOURCE
@@ -306,11 +317,11 @@ fi
 sed -i -r 's/^\s*defaultqual(\s+).*/defaultqual\1'$equalifier':online:'$squalifier'/' dune_raw_data/ups/product_deps
 dune_artdaq_version=$( sed -r -n 's/^\s*parent\s+\S+\s+(\S+).*/\1/p' dune_artdaq/ups/product_deps )
 
-ARTDAQ_DEMO_DIR=$Base/srcs/dune_artdaq
+ARTDAQ_DEMO_DIR=$localdiskdir/srcs/dune_artdaq
 
 
 nprocessors=$( grep -E "processor\s+:" /proc/cpuinfo | wc -l )
-trace_file_label=$( basename $Base )
+trace_file_label=$( basename $localdiskdir )
 
 dune_artdaq_InhibitMaster_version=$( sed -r -n "s/^\s*dune_artdaq_InhibitMaster\s+(\S+).*/\1/p" $ARTDAQ_DEMO_DIR/ups/product_deps )
 dim_version=v20r20
@@ -319,7 +330,7 @@ TRACE_version=v3_13_07
 pyzmq_version=v18_0_1a
 
 
-cd $Base
+cd $localdiskdir
     cat >setupDUNEARTDAQ_forBuilding <<-EOF
 
         basedir=\$PWD                                                                                  
@@ -388,7 +399,7 @@ echo ""
 
 EOF
 
-
+cd $startdir
     cat >setupDUNEARTDAQ_forRunning <<-EOF
        echo # This script is intended to be sourced.                                                                    
                                                                                                                          
@@ -450,7 +461,8 @@ echo "not what you want, since this script is meant to be sourced by JCOP, "
 echo "rather than a human, in order to set up the running environment "
 echo ""
 echo "If, instead, you would like to build the software, please start with a fresh"
-echo "shell and 'cd $Base' and 'source setupDUNEARTDAQ_forBuilding' and 'mrb install -j 32'".
+echo "shell and 'cd $localdiskdir' and 'source setupDUNEARTDAQ_forBuilding' and 'mrb install -j 32'".
+echo "Also see https://twiki.cern.ch/twiki/bin/view/CENF/Building for more details on building"
 echo ""
 
 # 02-Aug-2018, KAB: only enable core dumps for certain hosts
@@ -517,10 +529,10 @@ echo # This script is intended to be sourced.
 
 EOF
 
-if [[ -e $Base/srcs/dune_artdaq/tools/setupWithoutMRB ]]; then
-    cp $Base/srcs/dune_artdaq/tools/setupWithoutMRB $Base/$localproducts_subdir/setupWithoutMRB
+if [[ -e $localdiskdir/srcs/dune_artdaq/tools/setupWithoutMRB ]]; then
+    cp $localdiskdir/srcs/dune_artdaq/tools/setupWithoutMRB $localdiskdir/$localproducts_subdir/setupWithoutMRB
 else
-    echo "Problem: there's no setupWithoutMRB script in $Base/srcs/dune_artdaq; exiting..." >&2
+    echo "Problem: there's no setupWithoutMRB script in $localdiskdir/srcs/dune_artdaq; exiting..." >&2
     exit 10
 fi
 
@@ -543,11 +555,7 @@ export MRB_INSTALL=$startdir/$localproducts_subdir
 set +u
 source mrbSetEnv
 set -u
-cp -rp $Base/$localproducts_subdir $startdir
-mv $Base/setupDUNEARTDAQ_forRunning $startdir
-mv $Base/setupDUNEARTDAQ_forInhibitMaster $startdir
-mv $Base/setupDUNEARTDAQ_forTRACE $startdir
-
+cp -rp $localdiskdir/$localproducts_subdir $startdir
 
 mrb install -j$nprocessors                              
 
@@ -557,8 +565,9 @@ cd $startdir
 ln -s setupDUNEARTDAQ_forRunning setupDUNEARTDAQ
 
 if [ $installStatus -eq 0 ]; then
-     echo "dune-artdaq has been installed correctly."
-     echo
+
+    echo "dune-artdaq has been installed correctly."
+
 else
     cat <<EOF >&2
 
@@ -576,6 +585,17 @@ $localdiskdir/log, for further details.
 EOF
 
 fi
+
+cat<<EOF
+
+To rebuild, go to $localdiskdir and then follow the instructions
+at https://twiki.cern.ch/twiki/bin/view/CENF/Building. Note the
+products you build (dune-artdaq, etc.) will be installed in
+$startdir on the NFS disk so they can be used on all np04 nodes
+during running.
+
+EOF
+
 
 echo                                                               
 
