@@ -30,7 +30,7 @@ rogue           v2_10_0_3_gfaeedd0
 protodune_timing v5_1_0
 jsoncpp         v1_8_0
 ptmp            v0_2_3
-ptmp_tcs        v0_0_2
+ptmp_tcs        v0_0_2a
 end_product_list
 
 # e10 - with gcc 4.9.3a and -std=c++14
