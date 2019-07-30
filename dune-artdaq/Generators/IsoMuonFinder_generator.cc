@@ -82,7 +82,11 @@ void dune::IsoMuonFinder::start(void)
     }
     for(size_t i=0; i<tpwinsocks_.size(); ++i){
         DAQLogger::LogInfo(instance_name_) << "Creating TPWindow from " << tpwinsocks_.at(i) << " to " << tpwoutsocks_.at(i);
-        std::string jsonconfig{ptmp_util::make_ptmp_tpwindow_string({tpwinsocks_.at(i)},{tpwoutsocks_.at(i)},tspan_,tbuf_,"PULL", "PUSH")};
+        std::string jsonconfig{ptmp_util::make_ptmp_tpwindow_string({tpwinsocks_.at(i)},
+                                                                    {tpwoutsocks_.at(i)},
+                                                                    tspan_,tbuf_,
+                                                                    "PULL",
+                                                                    "PUSH")};
         tpwindows_.push_back( std::make_unique<ptmp::TPWindow>(jsonconfig) );
     }
 
@@ -138,7 +142,7 @@ void dune::IsoMuonFinder::tpsetHandler() {
             // (slot_no << 8) | m_crate_no
             size_t fiber_no=(in_set.detid() >> 16) & 0xff;
             if(fiber_no==2){
-                if(n_sets_total<10000) DAQLogger::LogInfo(instance_name_) << "Ignoring set with detid 0x" << std::hex << in_set.detid()
+                if(n_sets_total<10000) DAQLogger::LogInfo(instance_name_) << "Ignoring set with count " << in_set.count() << " detid 0x" << std::hex << in_set.detid()
                                                                          << ", tstart=0x" << in_set.tstart() << std::dec << ", fiber_no " << fiber_no; 
                 ++n_sets_wall;
                 continue;
@@ -154,12 +158,18 @@ void dune::IsoMuonFinder::tpsetHandler() {
                 size_t n_chan_hit=0;
                 for(size_t i=0; i<2*channels_per_apa; ++i) n_chan_hit+=has_hit[i];
                 if(n_sets_total<10000){
-                    DAQLogger::LogInfo(instance_name_) << "New window: detid=0x" << std::hex << in_set.detid() << ", tstart=0x" << in_set.tstart() << " (last_tstart+tspan)=" << (last_tstart+tspan_)
-                                                       << std::dec << " n_sources=" << n_sources << ", max_n_sources=" << max_n_sources << " n_chan_hit=" << n_chan_hit;
+                    DAQLogger::LogInfo(instance_name_) << "New window: count " << in_set.count()
+                                                       << " detid=0x" << std::hex << in_set.detid()
+                                                       << ", tstart=0x" << in_set.tstart()
+                                                       << " (last_tstart+tspan)=0x" << (last_tstart+tspan_)
+                                                       << std::dec << " n_sources=" << n_sources
+                                                       << ", max_n_sources=" << max_n_sources << " n_chan_hit=" << n_chan_hit;
                 }
                 max_n_chan_hit=std::max(max_n_chan_hit, n_chan_hit);
                 if(n_chan_hit>=hit_per_link_threshold_*max_n_sources){
                     // Trigger!
+                    DAQLogger::LogInfo(instance_name_) << "Requesting trigger at 0x" << std::hex << last_tstart << std::dec << " with " << n_chan_hit
+                                                       << " (threshold " << (hit_per_link_threshold_*max_n_sources) << ")";
                     timestamp_queue_.write(last_tstart);
                     ++n_triggers;
                 }
@@ -169,7 +179,7 @@ void dune::IsoMuonFinder::tpsetHandler() {
             }
             ++n_sources;
             if(n_sets_total<10000){
-                DAQLogger::LogInfo(instance_name_) << "Filling has_hit for TPSet with detid=0x" << std::hex << in_set.detid() << ", tstart=0x" << in_set.tstart() << std::dec << " tps().size()=" << in_set.tps().size() << " when n_sources=" << n_sources;
+                DAQLogger::LogInfo(instance_name_) << "Filling has_hit for TPSet with detid=0x" << std::hex << in_set.detid() << ", tstart=0x" << in_set.tstart() << std::dec << " count=" << in_set.count() << " tps().size()=" << in_set.tps().size() << " when n_sources=" << n_sources;
             }
 
             for(auto const& tp: in_set.tps()) has_hit[tp.channel()-min_channel]=1;
@@ -224,7 +234,7 @@ bool dune::IsoMuonFinder::getNext_(artdaq::FragmentPtrs&)
 
     uint64_t* trigger_timestamp = timestamp_queue_.frontPtr();
     if (trigger_timestamp) {
-        DAQLogger::LogInfo(instance_name_) << "Trigger requested for " << (*trigger_timestamp);
+        DAQLogger::LogInfo(instance_name_) << "Trigger requested for 0x" << std::hex << (*trigger_timestamp) << std::dec;
         // TDOD: Make the timing fragment....
         timestamp_queue_.popFront();
     }
