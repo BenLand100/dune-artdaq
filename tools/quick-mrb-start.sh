@@ -343,15 +343,18 @@ cd $localdiskdir
           cd \$basedir
           
           if [[ "\$dune_artdaq_branch" == "develop" && "\$dune_raw_data_branch" == "for_dune-artdaq" ]]; then
-           echo "Both git repositories: " 
-           echo "\$basedir/srcs/dune_artdaq"
-           echo "and" 
-           echo "\$basedir/srcs/dune_raw_data "
-           echo "...are currently set to the *release* branches (\"develop\" and \"for_dune-artdaq\", respectively)."
-           echo "Code development should be performed on non-release branches; please switch to a different "
-           echo "branch for the repo(s) you're developing in. Returning without setting up the build environment..."
-           echo
-           return
+           
+           if [[ "\$USER" != "biery" && "\$USER" != "jofreeman" ]]; then
+            echo "Both git repositories: " 
+            echo "\$basedir/srcs/dune_artdaq"
+            echo "and" 
+            echo "\$basedir/srcs/dune_raw_data "
+            echo "...are currently set to the *release* branches (\"develop\" and \"for_dune-artdaq\", respectively)."
+            echo "Code development should be performed on non-release branches; please switch to a different "
+            echo "branch for the repo(s) you're developing in. Returning without setting up the build environment..."
+            echo
+            return
+           fi
           fi
 
         else
