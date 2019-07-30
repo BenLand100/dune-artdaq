@@ -18,6 +18,7 @@ namespace ptmp_util
     {
         json root;
         root["socket"]["type"]=pattern;
+        root["socket"]["hwm"]=100000;
         for(auto const& ep: endpoints){
             root["socket"][bind_or_connect].push_back(ep);
         }
@@ -64,7 +65,7 @@ namespace ptmp_util
         json root;
         root["input"]=make_ptmp_socket_json(insocktype, "connect", inendpoints);
         root["output"]=make_ptmp_socket_json(outsocktype, "bind", outendpoints);
-        root["tardy"]=tardy;
+        root["sync_time"]=tardy;
         return root.dump();
     }
 
