@@ -344,7 +344,7 @@ cd $localdiskdir
           
           if [[ "\$dune_artdaq_branch" == "develop" && "\$dune_raw_data_branch" == "for_dune-artdaq" ]]; then
            
-           if [[ "\$USER" != "biery" && "\$USER" != "jofreeman" ]]; then
+           if [[ "\$USER" != "biery" && "\$USER" != "jofreema" ]]; then
             echo "Both git repositories: " 
             echo "\$basedir/srcs/dune_artdaq"
             echo "and" 
