@@ -393,65 +393,34 @@ void dune::TimingReceiver::stopNoMutex(void) {
 
 bool dune::TimingReceiver::checkHWStatus_()
 {
-    auto dsmptr = artdaq::BoardReaderCore::GetDataSenderManagerPtr();
-    if(!dsmptr)
-      TLOG(TLVL_HWSTATUS) << "DataSenderManagerPtr not valid.";
-
-    auto mp_ovrflw = master_partition().readROBWarningOverflow();
-    int n_remaining_table_entries = dsmptr? dsmptr->GetRemainingRoutingTableEntries() : -1;
-    int n_table_count = dsmptr? dsmptr->GetRoutingTableEntryCount() : -1;
-    TLOG(TLVL_HWSTATUS) << "hwstatus: buf_warn=" << mp_ovrflw
-			<< " table_count=" << n_table_count
-			<< " table_entries_remaining=" << n_remaining_table_entries;
-
-    bool new_want_inhibit=false;
-    std::string status_msg="";
-
-    if(mp_ovrflw){
-        // Tell the InhibitMaster that we want to stop triggers, then
-        // carry on with this iteration of the loop
-        DAQLogger::LogInfo(instance_name_) << "buf_warn is high, with " << master_partition().numEventsInBuffer() << " events in buffer. Requesting InhibitMaster to stop triggers";
-        status_msg="ROBWarningOverflow";
-        new_want_inhibit=true;
-    }
-    //check if there are available routing tokens, and if not inhibit
-    else if (use_routing_master_ && n_remaining_table_entries == 0) {
-      new_want_inhibit=true;
-      status_msg="NoAvailableTokens";
-    }
-    else{
-      new_want_inhibit=false;
-    }
-
-// ----------------------------------------------------------------------------
-bool dune::TimingReceiver::checkHWStatus_() {
   auto dsmptr = artdaq::BoardReaderCore::GetDataSenderManagerPtr();
-  if (!dsmptr)
+  if(!dsmptr)
     TLOG(TLVL_HWSTATUS) << "DataSenderManagerPtr not valid.";
 
   auto mp_ovrflw = master_partition().readROBWarningOverflow();
-  int n_remaining_table_entries = dsmptr ? dsmptr->GetRemainingRoutingTableEntries() : -1;
-  int n_table_count = dsmptr ? dsmptr->GetRoutingTableEntryCount() : -1;
+  int n_remaining_table_entries = dsmptr? dsmptr->GetRemainingRoutingTableEntries() : -1;
+  int n_table_count = dsmptr? dsmptr->GetRoutingTableEntryCount() : -1;
   TLOG(TLVL_HWSTATUS) << "hwstatus: buf_warn=" << mp_ovrflw
                       << " table_count=" << n_table_count
                       << " table_entries_remaining=" << n_remaining_table_entries;
 
-  bool new_want_inhibit = false;
-  std::string status_msg = "";
+  bool new_want_inhibit=false;
+  std::string status_msg="";
 
-  if (mp_ovrflw) {
+  if(mp_ovrflw){
     // Tell the InhibitMaster that we want to stop triggers, then
     // carry on with this iteration of the loop
     DAQLogger::LogInfo(instance_name_) << "buf_warn is high, with " << master_partition().numEventsInBuffer() << " events in buffer. Requesting InhibitMaster to stop triggers";
-    status_msg = "ROBWarningOverflow";
-    new_want_inhibit = true;
+    status_msg="ROBWarningOverflow";
+    new_want_inhibit=true;
   }
   //check if there are available routing tokens, and if not inhibit
-  else if (n_remaining_table_entries == 0) {
-    new_want_inhibit = true;
-    status_msg = "NoAvailableTokens";
-  } else {
-    new_want_inhibit = false;
+  else if (use_routing_master_ && n_remaining_table_entries == 0) {
+    new_want_inhibit=true;
+    status_msg="NoAvailableTokens";
+  }
+  else{
+    new_want_inhibit=false;
   }
 
   if (new_want_inhibit && !want_inhibit_) {
