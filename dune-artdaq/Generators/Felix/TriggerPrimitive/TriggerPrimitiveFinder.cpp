@@ -3,7 +3,7 @@
 #include "dune-artdaq/DAQLogger/DAQLogger.hh"
 #include "dune-artdaq/Generators/swTrigger/ptmp_util.hh"
 #include "artdaq-core/Data/Fragment.hh"
-#include "dune-raw-data/Overlays/FelixFragment.hh"
+#include "dune-raw-data/Overlays/CPUHitsFragment.hh"
 
 #include <cstddef> // For offsetof
 #include <sstream>
@@ -95,11 +95,10 @@ void TriggerPrimitiveFinder::hitsToFragment(uint64_t timestamp, uint32_t window_
     dune::DAQLogger::LogInfo("TriggerPrimitiveFinder::hitsToFragment") << "Got " << tps.size() << " hits for timestamp 0x" << std::hex << timestamp << std::dec;
 
     // The data payload of the fragment will be:
-    // uint64_t timestamp
-    // uint32_t nhits
+    // dune::CPUHitsFragment::Body
     // N*TriggerPrimitive
-    fragPtr->resizeBytes(sizeof(dune::FelixFragmentHits::Body)+tps.size()*sizeof(dune::TriggerPrimitive));
-    dune::FelixFragmentHits hitFrag(*fragPtr);
+    fragPtr->resizeBytes(sizeof(dune::CPUHitsFragment::Body)+tps.size()*sizeof(dune::TriggerPrimitive));
+    dune::CPUHitsFragment hitFrag(*fragPtr);
 
     hitFrag.set_timestamp(timestamp);
     hitFrag.set_nhits(tps.size());

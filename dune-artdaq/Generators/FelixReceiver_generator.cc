@@ -29,9 +29,10 @@ dune::FelixReceiver::FelixReceiver(fhicl::ParameterSet const & ps)
   CommandableFragmentGenerator(ps),
   timestamp_(0),
   timestampScale_(ps.get<int>("timestamp_scale_factor", 1)),
+  metadata_hits_(1), // Version number for hits metadata
   frame_size_(ps.get<size_t>("frame_size")),
-  //readout_buffer_(nullptr),
-  fragment_type_(static_cast<decltype(fragment_type_)>( artdaq::Fragment::InvalidFragmentType ))
+  fragment_type_(toFragmentType("FELIX")),
+  fragment_type_hits_(toFragmentType("FELIXHITS"))
 {
   DAQLogger::LogInfo("dune::FelixReceiver::FelixReceiver")<< "Preparing HardwareInterface for FELIX.";
   netio_hardware_interface_ = std::unique_ptr<FelixHardwareInterface>( new FelixHardwareInterface(ps) );
@@ -43,7 +44,7 @@ dune::FelixReceiver::FelixReceiver(fhicl::ParameterSet const & ps)
   metadata_.num_frames = 0;
   metadata_.reordered = 0;
   metadata_.compressed = 0;
-  fragment_type_ = toFragmentType("FELIX");
+
 
   // Metrics
   instance_name_for_metrics_ = "FelixReceiver";
@@ -76,7 +77,7 @@ bool dune::FelixReceiver::getNext_(artdaq::FragmentPtrs & frags) {
     );
     std::unique_ptr<artdaq::Fragment> fragptrhits(
       artdaq::Fragment::FragmentBytes(0, ev_no, fragment_id(),
-                                      fragment_type_, metadata_, timestamp_)
+                                      fragment_type_hits_, metadata_hits_, timestamp_)
     );
 
     //std::unique_ptr<artdaq::Fragment> fragptr(ev_counter(), fragment_id(),fragment_type_);
