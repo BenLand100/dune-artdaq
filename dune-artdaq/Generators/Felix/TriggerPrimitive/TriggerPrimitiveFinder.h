@@ -107,7 +107,10 @@ private:
     size_t m_n_tpsets_sent;
     PowerTwoHist<24> m_full_latency_hist; // Latencies calculated from time processed - data timestamp
     PowerTwoHist<24> m_tpf_latency_hist;  // Latencies calculated from time processed - time queued
+
+    // Variables for metrics
     std::atomic<size_t> m_nhits_for_metric;
+    std::atomic<size_t> m_adcsum_for_metric;
     size_t m_metric_reporting_interval_seconds;
 };
 

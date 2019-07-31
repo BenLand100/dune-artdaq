@@ -39,6 +39,7 @@ TriggerPrimitiveFinder::TriggerPrimitiveFinder(fhicl::ParameterSet const & ps)
       m_offline_channel_base(0),
       m_n_tpsets_sent(0),
       m_nhits_for_metric(0),
+      m_adcsum_for_metric(0),
       m_metric_reporting_interval_seconds(ps.get<size_t>("metric_reporting_interval_seconds", 10))
 {
     std::vector<int32_t> cpus_to_pin=ps.get<std::vector<int32_t>>("cpus_to_pin", std::vector<int32_t>());
@@ -218,6 +219,7 @@ TriggerPrimitiveFinder::addHitsToQueue(uint64_t timestamp,
                     }
                 }
                 ++nhits;
+                m_adcsum_for_metric.fetch_add(hit_charge[i]);
             }
         }
     }
@@ -297,12 +299,15 @@ void TriggerPrimitiveFinder::metrics_thread()
     while(!m_should_stop.load()){
         // Get the number of hits, then reset it to zero
         size_t nhits=m_nhits_for_metric.exchange(0);
+        size_t adcsum=m_adcsum_for_metric.exchange(0);
+
+        artdaq::Globals::metricMan_->sendMetric("Hit Rate",     double(nhits)/m_metric_reporting_interval_seconds,  "Hz", 1, artdaq::MetricMode::LastPoint);
+        artdaq::Globals::metricMan_->sendMetric("ADC sum rate", double(adcsum)/m_metric_reporting_interval_seconds, "ADC/s", 1, artdaq::MetricMode::LastPoint);
         // Wait for m_metric_reporting_interval_seconds total, but check every second to see whether we should stop
         for(size_t i=0; i<m_metric_reporting_interval_seconds; ++i){
             std::this_thread::sleep_for(std::chrono::seconds(1));
             if(m_should_stop.load()) break;
         }
-        artdaq::Globals::metricMan_->sendMetric("Hit Rate",  double(nhits)/m_metric_reporting_interval_seconds, "Hz", 1, artdaq::MetricMode::LastPoint);
     }
     dune::DAQLogger::LogInfo("TriggerPrimitiveFinder::metrics_thread") << "Metrics thread shutting down";
 }
