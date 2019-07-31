@@ -77,6 +77,7 @@ private:
 
     void print_latency_hist(const PowerTwoHist<24>& hist, const std::string name) const;
 
+    void metrics_thread();
     // Which numa node is the memory pointed to by `p` allocated on?
     int which_numa_node(void *p) const;
 
@@ -86,6 +87,7 @@ private:
 
     std::atomic<uint64_t> m_latestProcessedTimestamp;
     std::thread m_processingThread;
+    std::thread m_metricsThread;
     std::atomic<bool> m_readyForMessages;
     std::unique_ptr<folly::ProducerConsumerQueue<ProcessingTasks::ItemToProcess>> m_itemsToProcess;
     // The electronics co-ordinates of the link we're getting data
@@ -105,6 +107,8 @@ private:
     size_t m_n_tpsets_sent;
     PowerTwoHist<24> m_full_latency_hist; // Latencies calculated from time processed - data timestamp
     PowerTwoHist<24> m_tpf_latency_hist;  // Latencies calculated from time processed - time queued
+    std::atomic<size_t> m_nhits_for_metric;
+    size_t m_metric_reporting_interval_seconds;
 };
 
 #endif

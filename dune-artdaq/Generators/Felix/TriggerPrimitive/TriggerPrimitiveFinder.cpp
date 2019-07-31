@@ -4,6 +4,7 @@
 #include "dune-artdaq/Generators/swTrigger/ptmp_util.hh"
 #include "artdaq-core/Data/Fragment.hh"
 #include "dune-raw-data/Overlays/CPUHitsFragment.hh"
+#include "artdaq/DAQdata/Globals.hh"
 
 #include <cstddef> // For offsetof
 #include <sstream>
@@ -36,11 +37,14 @@ TriggerPrimitiveFinder::TriggerPrimitiveFinder(fhicl::ParameterSet const & ps)
       m_windowOffset(ps.get<uint32_t>("window_offset")),
       m_channels_to_suppress(ps.get<std::vector<uint32_t>>("channels_to_suppress", std::vector<uint32_t>())),
       m_offline_channel_base(0),
-      m_n_tpsets_sent(0)
+      m_n_tpsets_sent(0),
+      m_nhits_for_metric(0),
+      m_metric_reporting_interval_seconds(ps.get<size_t>("metric_reporting_interval_seconds", 10))
 {
     std::vector<int32_t> cpus_to_pin=ps.get<std::vector<int32_t>>("cpus_to_pin", std::vector<int32_t>());
     size_t qsize=ps.get<size_t>("item_queue_size", 100000);
     m_processingThread=std::thread(&TriggerPrimitiveFinder::processing_thread, this, 0, REGISTERS_PER_FRAME, qsize, cpus_to_pin);
+    m_metricsThread=std::thread(&TriggerPrimitiveFinder::metrics_thread, this);
 }
 
 //======================================================================
@@ -55,6 +59,9 @@ TriggerPrimitiveFinder::~TriggerPrimitiveFinder()
     dune::DAQLogger::LogInfo("TriggerPrimitiveFinder::~TriggerPrimitiveFinder") << "Joining processing thread";
     m_processingThread.join(); // Wait for it to actually stop
     dune::DAQLogger::LogInfo("TriggerPrimitiveFinder::~TriggerPrimitiveFinder") << "Processing thread joined";
+
+    m_metricsThread.join();
+
     dune::DAQLogger::LogInfo("TriggerPrimitiveFinder::~TriggerPrimitiveFinder") << "Sent a total of " << m_n_tpsets_sent << " TPSets";
 }
 
@@ -280,6 +287,28 @@ void TriggerPrimitiveFinder::measure_latency(const ProcessingTasks::ItemToProces
 }
 
 //======================================================================
+void TriggerPrimitiveFinder::metrics_thread()
+{
+    // When running in standalone mode, there's no metric manager, so just skip this bit
+    if (!artdaq::Globals::metricMan_) {
+        return;
+    }
+    
+    while(!m_should_stop.load()){
+        // Get the number of hits, then reset it to zero
+        size_t nhits=m_nhits_for_metric.exchange(0);
+        // Wait for m_metric_reporting_interval_seconds total, but check every second to see whether we should stop
+        for(size_t i=0; i<m_metric_reporting_interval_seconds; ++i){
+            std::this_thread::sleep_for(std::chrono::seconds(1));
+            if(m_should_stop.load()) break;
+        }
+        artdaq::Globals::metricMan_->sendMetric("Hit Rate",  double(nhits)/m_metric_reporting_interval_seconds, "Hz", 1, artdaq::MetricMode::LastPoint);
+    }
+    dune::DAQLogger::LogInfo("TriggerPrimitiveFinder::metrics_thread") << "Metrics thread shutting down";
+}
+
+
+//======================================================================
 void TriggerPrimitiveFinder::processing_thread(uint8_t first_register, uint8_t last_register,
                                                size_t qsize, std::vector<int32_t> cpus_to_pin)
 {
@@ -399,7 +428,9 @@ void TriggerPrimitiveFinder::processing_thread(uint8_t first_register, uint8_t l
         // Do the processing
         process_window_avx2(pi);
         // Create dune::TriggerPrimitives from the hits and put them in the queue for later retrieval
-        nhits+=addHitsToQueue(item->timestamp, primfind_dest, m_triggerPrimitives);
+        size_t this_nhits=addHitsToQueue(item->timestamp, primfind_dest, m_triggerPrimitives);
+        nhits+=this_nhits;
+        m_nhits_for_metric.fetch_add(this_nhits);
         m_latestProcessedTimestamp.store(item->timestamp);
         m_itemsToProcess->popFront();
     }
