@@ -32,7 +32,7 @@ dune::FelixReceiver::FelixReceiver(fhicl::ParameterSet const & ps)
   metadata_hits_(CPUHitsFragment::VERSION),
   frame_size_(ps.get<size_t>("frame_size")),
   fragment_type_(toFragmentType("FELIX")),
-  fragment_type_hits_(toFragmentType("FELIXHITS"))
+  fragment_type_hits_(toFragmentType("CPUHITS"))
 {
   DAQLogger::LogInfo("dune::FelixReceiver::FelixReceiver")<< "Preparing HardwareInterface for FELIX.";
   netio_hardware_interface_ = std::unique_ptr<FelixHardwareInterface>( new FelixHardwareInterface(ps) );
