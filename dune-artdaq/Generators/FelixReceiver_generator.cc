@@ -29,7 +29,7 @@ dune::FelixReceiver::FelixReceiver(fhicl::ParameterSet const & ps)
   CommandableFragmentGenerator(ps),
   timestamp_(0),
   timestampScale_(ps.get<int>("timestamp_scale_factor", 1)),
-  metadata_hits_(1), // Version number for hits metadata
+  metadata_hits_(CPUHitsFragment::VERSION),
   frame_size_(ps.get<size_t>("frame_size")),
   fragment_type_(toFragmentType("FELIX")),
   fragment_type_hits_(toFragmentType("FELIXHITS"))
