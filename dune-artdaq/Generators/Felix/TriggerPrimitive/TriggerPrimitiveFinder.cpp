@@ -182,7 +182,9 @@ TriggerPrimitiveFinder::addHitsToQueue(uint64_t timestamp,
         auto ticks = std::chrono::duration_cast<std::chrono::microseconds>(now.time_since_epoch());
         tpset.set_created(ticks.count());
     }
-    
+
+    size_t n_sent_hits=0; // The number of hits we actually sent (ie, that weren't suppressed as bad/noisy)
+    size_t sent_adcsum=0;
     while(*input_loc!=MAGIC){
         for(int i=0; i<16; ++i) chan[i]       = *input_loc++;
         for(int i=0; i<16; ++i) hit_end[i]    = *input_loc++;
@@ -217,13 +219,18 @@ TriggerPrimitiveFinder::addHitsToQueue(uint64_t timestamp,
                         // Convert time-over-threshold to 50MHz clock ticks, so all the ptmp quantities are in the same units
                         ptmp_prim->set_tspan(clocksPerTPCTick*hit_tover[i]);
                         ptmp_prim->set_adcsum(hit_charge[i]);
+                        ++n_sent_hits;
+                        sent_adcsum+=hit_charge[i];
                     }
                 }
                 ++nhits;
-                m_adcsum_for_metric.fetch_add(hit_charge[i]);
+
             }
         }
     }
+
+    m_nhits_for_metric.fetch_add(n_sent_hits);
+    m_adcsum_for_metric.fetch_add(sent_adcsum);
 
     ++msgs_in_tpset;
 
@@ -441,7 +448,6 @@ void TriggerPrimitiveFinder::processing_thread(uint8_t first_register, uint8_t l
         // Create dune::TriggerPrimitives from the hits and put them in the queue for later retrieval
         size_t this_nhits=addHitsToQueue(item->timestamp, primfind_dest, m_triggerPrimitives);
         nhits+=this_nhits;
-        m_nhits_for_metric.fetch_add(this_nhits);
         m_latestProcessedTimestamp.store(item->timestamp);
         m_itemsToProcess->popFront();
     }
