@@ -45,6 +45,7 @@ TriggerPrimitiveFinder::TriggerPrimitiveFinder(fhicl::ParameterSet const & ps)
     std::vector<int32_t> cpus_to_pin=ps.get<std::vector<int32_t>>("cpus_to_pin", std::vector<int32_t>());
     size_t qsize=ps.get<size_t>("item_queue_size", 100000);
     m_processingThread=std::thread(&TriggerPrimitiveFinder::processing_thread, this, 0, REGISTERS_PER_FRAME, qsize, cpus_to_pin);
+    dune::DAQLogger::LogInfo("TriggerPrimitiveFinder::metrics_thread") << "Creating metrics thread";
     m_metricsThread=std::thread(&TriggerPrimitiveFinder::metrics_thread, this);
 }
 
@@ -291,18 +292,23 @@ void TriggerPrimitiveFinder::measure_latency(const ProcessingTasks::ItemToProces
 //======================================================================
 void TriggerPrimitiveFinder::metrics_thread()
 {
-    // When running in standalone mode, there's no metric manager, so just skip this bit
-    if (!artdaq::Globals::metricMan_) {
-        return;
-    }
+    dune::DAQLogger::LogInfo("TriggerPrimitiveFinder::metrics_thread") << "metrics thread starting";
     
     while(!m_should_stop.load()){
         // Get the number of hits, then reset it to zero
         size_t nhits=m_nhits_for_metric.exchange(0);
         size_t adcsum=m_adcsum_for_metric.exchange(0);
+        double hitrate=double(nhits)/m_metric_reporting_interval_seconds;
+        double adcsumrate=double(adcsum)/m_metric_reporting_interval_seconds;
 
-        artdaq::Globals::metricMan_->sendMetric("Hit Rate",     double(nhits)/m_metric_reporting_interval_seconds,  "Hz", 1, artdaq::MetricMode::LastPoint);
-        artdaq::Globals::metricMan_->sendMetric("ADC sum rate", double(adcsum)/m_metric_reporting_interval_seconds, "ADC/s", 1, artdaq::MetricMode::LastPoint);
+        if(artdaq::Globals::metricMan_) {
+            dune::DAQLogger::LogInfo("TriggerPrimitiveFinder::metrics_thread") << "Publishing metrics hitrate: " << hitrate << " adcsumrate: " << adcsumrate;
+            artdaq::Globals::metricMan_->sendMetric("Hit Rate",  hitrate   ,  "Hz", 1, artdaq::MetricMode::LastPoint);
+            artdaq::Globals::metricMan_->sendMetric("ADC sum rate", adcsumrate, "ADC/s", 1, artdaq::MetricMode::LastPoint);
+        }
+        else{
+            dune::DAQLogger::LogInfo("TriggerPrimitiveFinder::metrics_thread") << "metricMan is null, so not publishing this go-round";
+        }
         // Wait for m_metric_reporting_interval_seconds total, but check every second to see whether we should stop
         for(size_t i=0; i<m_metric_reporting_interval_seconds; ++i){
             std::this_thread::sleep_for(std::chrono::seconds(1));
