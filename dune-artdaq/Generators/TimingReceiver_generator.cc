@@ -391,8 +391,15 @@ void dune::TimingReceiver::stopNoMutex(void) {
   // stopping_flag_ = 1;    // Tells the getNext_() while loop to stop the run
 }
 
+// ----------------------------------------------------------------------------
 bool dune::TimingReceiver::checkHWStatus_()
 {
+  static bool first=true;
+  if(first){
+    DAQLogger::LogInfo(instance_name_) << "First call of checkHWStatus_()";
+    first=false;
+  }
+
   auto dsmptr = artdaq::BoardReaderCore::GetDataSenderManagerPtr();
   if(!dsmptr)
     TLOG(TLVL_HWSTATUS) << "DataSenderManagerPtr not valid.";
