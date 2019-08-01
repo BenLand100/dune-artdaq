@@ -3,6 +3,7 @@
 
 #include "dune-raw-data/Overlays/FragmentType.hh"
 #include "dune-raw-data/Overlays/FelixFragment.hh"
+#include "dune-raw-data/Overlays/CPUHitsFragment.hh"
 #include "artdaq/DAQrate/RequestReceiver.hh"
 #include "fhiclcpp/fwd.h"
 
@@ -102,8 +103,9 @@ private:
 
   // Fragment related
   dune::FragmentType fragment_type_;
+  dune::FragmentType fragment_hits_type_;
   dune::FelixFragmentBase::Metadata fragment_meta_;
-  dune::FelixFragmentBase::Metadata fragment_hits_meta_;
+  dune::CPUHitsFragment::Metadata fragment_hits_meta_;
 
   std::size_t usecs_between_sends_;
   

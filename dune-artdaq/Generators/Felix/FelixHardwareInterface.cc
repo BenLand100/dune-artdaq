@@ -23,6 +23,8 @@ FelixHardwareInterface::FelixHardwareInterface(fhicl::ParameterSet const& ps) :
   taking_data_(false),
   first_datataking_(true),
   fragment_type_(dune::toFragmentType("FELIX")), 
+  fragment_hits_type_(dune::toFragmentType("CPUHITS")),
+  fragment_hits_meta_(dune::CPUHitsFragment::VERSION),
   usecs_between_sends_(0), //ps.get<size_t>("usecs_between_sends", 0)),
   start_time_(fake_time_),
   stop_time_(fake_time_),
@@ -77,11 +79,6 @@ FelixHardwareInterface::FelixHardwareInterface(fhicl::ParameterSet const& ps) :
   fragment_meta_.version = 1;
   fragment_meta_.reordered = 0;
   fragment_meta_.compressed = 0;
-
-  fragment_hits_meta_.control_word = 0xcba;
-  fragment_hits_meta_.version = 1;
-  fragment_hits_meta_.reordered = 0;
-  fragment_hits_meta_.compressed = 0;
 
   // Reordering
   if (reordering_) { // from config
@@ -273,6 +270,7 @@ bool FelixHardwareInterface::FillFragment( std::unique_ptr<artdaq::Fragment>& fr
         frag->setSequenceID(requestSeqId);
         frag->setTimestamp(requestTimestamp);
         frag->updateMetadata(fragment_meta_);
+
         fraghits->setSequenceID(requestSeqId);
         fraghits->setTimestamp(requestTimestamp);
         fraghits->updateMetadata(fragment_hits_meta_);
