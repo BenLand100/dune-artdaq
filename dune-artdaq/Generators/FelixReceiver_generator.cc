@@ -39,6 +39,10 @@ dune::FelixReceiver::FelixReceiver(fhicl::ParameterSet const & ps)
   message_size_ = netio_hardware_interface_->MessageSize();
   trigger_window_size_ = netio_hardware_interface_->TriggerWindowSize();
 
+  if(fragmentIDs().size()!=2){
+      DAQLogger::LogError("dune::FelixReceiver::FelixReceiver")<< "The fragmentIDs vector has size " << fragmentIDs().size() << ", but it should be 2. Make sure the fragment_ids fhicl parameter is set and has two items";
+  }
+
   /* ADDITIONAL METADATA IF NEEDED */
   // RS -> These metadata will be cleared out!
   metadata_.num_frames = 0;
@@ -72,11 +76,11 @@ bool dune::FelixReceiver::getNext_(artdaq::FragmentPtrs & frags) {
     //GLM: create empty fragment!
     auto ev_no=ev_counter();
     std::unique_ptr<artdaq::Fragment> fragptr(
-      artdaq::Fragment::FragmentBytes(0, ev_no, fragment_id(),
+      artdaq::Fragment::FragmentBytes(0, ev_no, fragmentIDs()[0],
                                       fragment_type_, metadata_, timestamp_)
     );
     std::unique_ptr<artdaq::Fragment> fragptrhits(
-      artdaq::Fragment::FragmentBytes(0, ev_no, fragment_id(),
+        artdaq::Fragment::FragmentBytes(0, ev_no, fragmentIDs()[1],
                                       fragment_type_hits_, metadata_hits_, timestamp_)
     );
 
