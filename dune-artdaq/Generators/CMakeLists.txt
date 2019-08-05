@@ -210,6 +210,7 @@ simple_plugin(Candidate "generator"
 simple_plugin(IsoMuonFinder "generator"
   dune-raw-data_Overlays
   artdaq_Application
+  artdaq_Generators
   artdaq_DAQdata
   artdaq-core_Utilities
   artdaq-core_Data
