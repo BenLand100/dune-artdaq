@@ -40,6 +40,8 @@
 
 #include "artdaq/Application/BoardReaderCore.hh"
 
+#include "timingBoard/FragmentPublisher.hh"
+
 using namespace dune;
 
 // Constructor ------------------------------------------------------------------------------
@@ -48,6 +50,7 @@ dune::IsoMuonFinder::IsoMuonFinder(fhicl::ParameterSet const & ps):
     instance_name_("IsoMuonFinder"),
     timeout_(ps.get<int>("timeout")), 
     stopping_flag_(0),
+    fragment_publisher_(new artdaq::FragmentPublisher(ps.get<std::string>("zmq_fragment_connection_out"))),
     tpwinsocks_(ptmp_util::endpoints_for_key(ps, "tpwindow_input_connections_key")), 
     tpwoutsocks_(ptmp_util::endpoints_for_key(ps, "tpwindow_output_connections_key")), 
     tspan_(ps.get<uint64_t>("ptmp_tspan")),
@@ -55,12 +58,17 @@ dune::IsoMuonFinder::IsoMuonFinder(fhicl::ParameterSet const & ps):
     tpzipinsocks_(tpwoutsocks_), 
     tpzipout_(ps.get<std::string>("tpsorted_output")), 
     tardy_(ps.get<int>("ptmp_tardy")),
-    hit_per_link_threshold_(ps.get<size_t>("hit_per_link_threshold"))
+    hit_per_link_threshold_(ps.get<size_t>("hit_per_link_threshold")),
+    trigger_holdoff_time_(ps.get<uint64_t>("trigger_holdoff_time"))
 {
     DAQLogger::LogInfo(instance_name_) << "Initiated IsoMuonFinder BoardReader\n";
     if(tpwinsocks_.size()!=tpwoutsocks_.size()){
         throw cet::exception("Size of TPWindow input and output socket configs do not match. Check tpwindow_inputs and tpwindow_outputs fhicl parameters");
     }
+
+
+    fragment_publisher_->BindPublisher();
+
 }
 
 dune::IsoMuonFinder::~IsoMuonFinder()
@@ -219,23 +227,71 @@ void dune::IsoMuonFinder::stop(void)
 }
 
 
-// No mutex stoproutine -----------------------------------------------------------------------
+//-----------------------------------------------------------------------
 void dune::IsoMuonFinder::stopNoMutex(void)
 {
     DAQLogger::LogInfo(instance_name_) << "stopNoMutex called";
 }
 
-
-// getNext() routine --------------------------------------------------------------------------
-bool dune::IsoMuonFinder::getNext_(artdaq::FragmentPtrs&)
+//-----------------------------------------------------------------------
+std::unique_ptr<artdaq::Fragment> IsoMuonFinder::makeFragment(uint64_t timestamp)
 {
+    std::unique_ptr<artdaq::Fragment> f = artdaq::Fragment::FragmentBytes( TimingFragment::size() * sizeof(uint32_t),
+                                                                           artdaq::Fragment::InvalidSequenceID,
+                                                                           artdaq::Fragment::InvalidFragmentID,
+                                                                           artdaq::Fragment::InvalidFragmentType,
+                                                                           dune::TimingFragment::Metadata(TimingFragment::VERSION));
+    // It's unclear to me whether the constructor above actually sets the metadata, so let's do it here too to be sure
+    f->updateMetadata(TimingFragment::Metadata(TimingFragment::VERSION));
+    f->setSequenceID( ev_counter() );  // ev_counter is in our base class  // or f->setSequenceID(fo.get_evtctr())
+    f->setFragmentID( fragment_id() ); // fragment_id is in our base class, fhicl sets it
+    f->setUserType( dune::detail::TIMING );
+    f->setTimestamp(timestamp);  // 64-bit number
+
+    // The real fragment from the timing board reader has 6 32-bit
+    // words from the actual timing board, plus 6 more 32-bit words
+    // for some run- and spill-related timestamps used for beam
+    // matching. We'll just zero them all out except the timestamp, for now
+    uint32_t* word = reinterpret_cast<uint32_t*>(f->dataBeginBytes());
+    for(size_t i=0; i<TimingFragment::size(); ++i){
+        word[i]=0;
+    }
+    // Word 2 is the low 32 bits of the timestamp
+    word[2]=timestamp & 0xffffffff;
+    // Word 3 is the high 32 bits of the timestamp
+    word[3]=(timestamp >> 32) & 0xffffffff;
+
+    return f;
+}
+
+//--------------------------------------------------------------------------
+bool dune::IsoMuonFinder::getNext_(artdaq::FragmentPtrs& frags)
+{
+    static uint64_t prev_timestamp=0;
+
     // TODO: Change the check here to "if stopping_flag && we've got all of the fragments in the queue"
     if (stopping_flag_.load()) return false;
 
     uint64_t* trigger_timestamp = timestamp_queue_.frontPtr();
     if (trigger_timestamp) {
         DAQLogger::LogInfo(instance_name_) << "Trigger requested for 0x" << std::hex << (*trigger_timestamp) << std::dec;
-        // TDOD: Make the timing fragment....
+        if(*trigger_timestamp < prev_timestamp+trigger_holdoff_time_){
+            DAQLogger::LogInfo(instance_name_) << "Trigger too close to previous trigger time of " << prev_timestamp << ". Not sending";
+        }
+        else{
+            std::unique_ptr<artdaq::Fragment> frag=makeFragment(*trigger_timestamp);
+            dune::TimingFragment timingFrag(*frag);    // Overlay class
+            
+            int pubSuccess = fragment_publisher_->PublishFragment(frag.get(), &timingFrag);
+            if (!pubSuccess)
+                DAQLogger::LogInfo(instance_name_) << "Publishing fragment to ZeroMQ failed";
+            
+            frags.emplace_back(std::move(frag));
+            // We only increment the event counter for events we send out
+            ev_counter_inc();
+            
+            prev_timestamp=*trigger_timestamp;
+        }
         timestamp_queue_.popFront();
     }
     // Sleep a bit so we don't spin the CPU

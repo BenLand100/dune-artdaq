@@ -212,6 +212,7 @@ simple_plugin(IsoMuonFinder "generator"
   artdaq_Application
   artdaq_Generators
   artdaq_DAQdata
+  dune-artdaq_Generators_timingBoard
   artdaq-core_Utilities
   artdaq-core_Data
   artdaq-utilities_Plugins

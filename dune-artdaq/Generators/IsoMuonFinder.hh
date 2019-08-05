@@ -21,6 +21,9 @@
 
 #include "ptmp/api.h"
 
+namespace artdaq {
+    class FragmentPublisher;
+}
 
 namespace dune {
 
@@ -38,10 +41,13 @@ namespace dune {
         // TCs onnward, via zeromq.
         void tpsetHandler();
 
+        std::unique_ptr<artdaq::Fragment> makeFragment(uint64_t timestamp);
+
         // The "getNext_" function is used to implement user-specific
         // functionality; it's a mandatory override of the pure virtual
         // getNext_ function declared in CommandableFragmentGenerator
         bool getNext_(artdaq::FragmentPtrs & output) override;
+
 
         // JCF, Dec-11-2015
 // startOfDatataking will determine whether or not we've begun
@@ -74,6 +80,7 @@ namespace dune {
         std::atomic<bool> stopping_flag_;
 
         folly::ProducerConsumerQueue<uint64_t> timestamp_queue_{10000};
+        std::unique_ptr<artdaq::FragmentPublisher> fragment_publisher_;
                                                                
         // The TPwindow input/output IP and port connections
         std::vector<std::string> tpwinsocks_;
@@ -102,7 +109,12 @@ namespace dune {
         // TPset receving and sending thread
         std::thread tpset_handler;
 
+        // Threshold on number of hits is
+        // hit_per_link_threshold_*(maximum number of links seen so
+        // far)
         size_t hit_per_link_threshold_;
+        // Minimum time between triggers, in PDTS ticks
+        uint64_t trigger_holdoff_time_;
     };
 }
 
