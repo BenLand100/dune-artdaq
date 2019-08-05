@@ -18,6 +18,7 @@ namespace ptmp_util
     {
         json root;
         root["socket"]["type"]=pattern;
+        root["socket"]["hwm"]=100000;
         for(auto const& ep: endpoints){
             root["socket"][bind_or_connect].push_back(ep);
         }
@@ -38,13 +39,15 @@ namespace ptmp_util
     // tbuf      - The width of the TP buffer in 50MHz ticks
     // (in/out)endpoints - A list of strings representing endpoints to bind/connect to, eg "tcp://*:12345"
     std::string make_ptmp_tpwindow_string(std::vector<std::string> inendpoints,
-                                         std::vector<std::string> outendpoints,
-                                         uint64_t tspan,
-                                         uint64_t tbuf)
+                                          std::vector<std::string> outendpoints,
+                                          uint64_t tspan,
+                                          uint64_t tbuf,
+                                          std::string insocktype="SUB",
+                                          std::string outsocktype="PUB")
     {
         json root;
-        root["input"]=make_ptmp_socket_json("SUB", "connect", inendpoints);
-        root["output"]=make_ptmp_socket_json("PUB", "bind", outendpoints);
+        root["input"]=make_ptmp_socket_json(insocktype, "connect", inendpoints);
+        root["output"]=make_ptmp_socket_json(outsocktype, "bind", outendpoints);
         root["tspan"]=tspan;
         root["tbuf"]=tbuf;
         return root.dump();
@@ -54,13 +57,15 @@ namespace ptmp_util
     // tardy     - The time (millisec) which it will wait for a TPSet before marking it tardy 
     // (in/out)endpoints - A list of strings representing endpoints to bind/connect to, eg "tcp://*:12345"
     std::string make_ptmp_tpsorted_string(std::vector<std::string> inendpoints,
-                                        std::vector<std::string> outendpoints,
-                                        int tardy)
+                                          std::vector<std::string> outendpoints,
+                                          int tardy,
+                                          std::string insocktype="SUB",
+                                          std::string outsocktype="PUB")
     {
         json root;
-        root["input"]=make_ptmp_socket_json("SUB", "connect", inendpoints);
-        root["output"]=make_ptmp_socket_json("PUB", "bind", outendpoints);
-        root["tardy"]=tardy;
+        root["input"]=make_ptmp_socket_json(insocktype, "connect", inendpoints);
+        root["output"]=make_ptmp_socket_json(outsocktype, "bind", outendpoints);
+        root["sync_time"]=tardy;
         return root.dump();
     }
 

@@ -207,6 +207,22 @@ simple_plugin(Candidate "generator"
   dune-artdaq_DAQLogger   
 )
 
+simple_plugin(IsoMuonFinder "generator"
+  dune-raw-data_Overlays
+  artdaq_Application
+  artdaq_DAQdata
+  artdaq-core_Utilities
+  artdaq-core_Data
+  artdaq-utilities_Plugins
+  ${CANVAS}
+  ${FHICLCPP}
+  ${CETLIB}
+  ${CETLIB_EXCEPT}
+  ${LIBPTMP}
+  ${PROTOBUF}
+  dune-artdaq_DAQLogger   
+)
+
 simple_plugin(SWTrigger "generator"
   dune-raw-data_Overlays
   dune-artdaq_Generators_timingBoard
