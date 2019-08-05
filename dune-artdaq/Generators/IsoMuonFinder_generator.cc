@@ -59,7 +59,7 @@ dune::IsoMuonFinder::IsoMuonFinder(fhicl::ParameterSet const & ps):
     tpzipout_(ps.get<std::string>("tpsorted_output")), 
     tardy_(ps.get<int>("ptmp_tardy")),
     hit_per_link_threshold_(ps.get<size_t>("hit_per_link_threshold")),
-    trigger_holdoff_time_(ps.get<uint64_t>("trigger_holdoff_time"))
+    trigger_holdoff_time_(ps.get<uint64_t>("trigger_holdoff_time_pdts_ticks"))
 {
     DAQLogger::LogInfo(instance_name_) << "Initiated IsoMuonFinder BoardReader\n";
     if(tpwinsocks_.size()!=tpwoutsocks_.size()){
