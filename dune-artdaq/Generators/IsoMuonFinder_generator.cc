@@ -85,7 +85,7 @@ void dune::IsoMuonFinder::start(void)
         std::string jsonconfig{ptmp_util::make_ptmp_tpwindow_string({tpwinsocks_.at(i)},
                                                                     {tpwoutsocks_.at(i)},
                                                                     tspan_,tbuf_,
-                                                                    "PULL",
+                                                                    "SUB",
                                                                     "PUSH")};
         tpwindows_.push_back( std::make_unique<ptmp::TPWindow>(jsonconfig) );
     }
