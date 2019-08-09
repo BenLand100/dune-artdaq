@@ -421,7 +421,6 @@ void TriggerPrimitiveFinder::processing_thread(uint8_t first_register, uint8_t l
             m_itemsToProcess->popFront();
             break;
         }
-        measure_latency(*item);
         RegisterArray<REGISTERS_PER_FRAME*FRAMES_PER_MSG> expanded=expand_message_adcs(item->scs);
         MessageCollectionADCs* mcadc=reinterpret_cast<MessageCollectionADCs*>(expanded.data());
         if(first){
@@ -449,6 +448,7 @@ void TriggerPrimitiveFinder::processing_thread(uint8_t first_register, uint8_t l
         size_t this_nhits=addHitsToQueue(item->timestamp, primfind_dest, m_triggerPrimitives);
         nhits+=this_nhits;
         m_latestProcessedTimestamp.store(item->timestamp);
+        measure_latency(*item);
         m_itemsToProcess->popFront();
     }
     uint64_t end_us=ProcessingTasks::now_us();
