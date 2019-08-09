@@ -7,46 +7,29 @@
 //################################################################################
 
 #include "artdaq/DAQdata/Globals.hh"
+
 #define TRACE_NAME (app_name + "_SWTrigger").c_str()
 #define TLVL_HWSTATUS 20
 #define TLVL_TIMING 10
 
+#include "artdaq/Application/BoardReaderCore.hh"
+#include "artdaq/Generators/GeneratorMacros.hh"
+
+
 #include "dune-artdaq/Generators/SWTrigger.hh"
+
 #include "dune-artdaq/DAQLogger/DAQLogger.hh"
 #include "dune-artdaq/Generators/swTrigger/ptmp_util.hh"
 #include "dune-artdaq/Generators/swTrigger/trigger_util.hh"
 
-#include "artdaq/Generators/GeneratorMacros.hh"
-#include "cetlib/exception.h"
-// #include "dune-raw-data/Overlays/FragmentType.hh"
-// #include "dune-raw-data/Overlays/TimingFragment.hh"
-// #include "dune-raw-data/Overlays/TriggerFragment.hh"
-
 #include "fhiclcpp/ParameterSet.h"
 #include "timingBoard/InhibitGet.h" // The interface to the ZeroMQ trigger inhibit master
 
-#include <fstream>
-#include <iomanip>
-#include <iterator>
 #include <iostream>
 #include <sstream>
 #include <thread>
 #include <chrono>
-#include <set>
 #include <random>
-
-#include <unistd.h>
-
-#include <cstdio>
-
-#pragma GCC diagnostic ignored "-Wpedantic"
-#pragma GCC diagnostic ignored "-Woverloaded-virtual"
-#pragma GCC diagnostic push
-#pragma GCC diagnostic pop
-
-#include "artdaq/Application/BoardReaderCore.hh"
-
-using namespace dune;
 
 dune::SetZMQSigHandler::SetZMQSigHandler() {
   setenv("ZSYS_SIGHANDLER", "false", true);
@@ -61,15 +44,8 @@ dune::SWTrigger::SWTrigger(fhicl::ParameterSet const & ps):
   ,throttling_state_(true)
   ,inhibitget_timer_(ps.get<uint32_t>("inhibit_get_timer",5000000)) 
   ,partition_number_(ps.get<uint32_t>("partition_number",0))
-  ,debugprint_(ps.get<uint32_t>("debug_print",0))
   ,zmq_conn_(ps.get<std::string>("zmq_connection","tcp://pddaq-gen05-daq0:5566"))
   ,want_inhibit_(false)
-  ,last_spillstart_tstampl_(0xffffffff) // Timestamp of most recent start-of-spill
-  ,last_spillstart_tstamph_(0xffffffff) // ...
-  ,last_spillend_tstampl_(0xffffffff)   // Timestamp of most recent end-of-spill
-  ,last_spillend_tstamph_(0xffffffff)   // ...
-  ,last_runstart_tstampl_(0xffffffff)   // Timestamp of most recent start-of-run
-  ,last_runstart_tstamph_(0xffffffff)   // ...
   ,sender_( ptmp_util::make_ptmp_socket_string("PUB","bind",{"tcp://*:50502"}) )
   ,timeout_(ps.get<int>("timeout"))
   ,n_recvd_(0)
@@ -125,7 +101,6 @@ void dune::SWTrigger::start(void)
   // See header file for meanings of these variables
   stopping_flag_.store(false);
   throttling_state_ = true;    // 0 Causes it to start triggers immediately, 1 means wait for InhibitMaster to release
-  previous_ts_ = 0;
   latest_ts_ = 0;
   int isConnected = ts_receiver_->connect(100);    
 

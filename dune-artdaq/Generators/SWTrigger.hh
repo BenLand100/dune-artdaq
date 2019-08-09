@@ -93,11 +93,6 @@ namespace dune {
     
 
     uint32_t partition_number_; // The partition number we're talking to
-    uint32_t debugprint_;  // Controls the printing of stuff as info messages. 
-                           // 0=minimal, 
-                           // 1=Also reports throttling changes that go to hardware, 
-                           // 2=calls the bufstatus and hwstatus during init, 
-                           // 3=Debug message for each trigger and all throttling data
 
     std::string zmq_conn_;  // String specifying the zmq connection to subscribe for inhibit information
 
@@ -108,18 +103,7 @@ namespace dune {
 
     bool want_inhibit_; // Do we want to request a trigger inhibit?
 
-    // Some timestamps of the most recent of each type of event. We
-    // fill these by reading events from the event buffer, and add
-    // their values to the subsequent event fragments, so that the
-    // information is in the data stream
-    uint32_t last_spillstart_tstampl_; // Timestamp of most recent start-of-spill (low 32 bits)
-    uint32_t last_spillstart_tstamph_; //                                         (high 32 bits)
-    uint32_t last_spillend_tstampl_;   // Timestamp of most recent end-of-spill (low 32 bits)
-    uint32_t last_spillend_tstamph_;   //                                       (high 32 bits)
-    uint32_t last_runstart_tstampl_;   // Timestamp of most recent start-of-run (low 32 bits)
-    uint32_t last_runstart_tstamph_;   //                                       (high 32 bits)
     std::atomic<uint64_t> latest_ts_; // needs to be atomic as shared between threads
-    uint64_t previous_ts_; // only used within getNext
 
     // TPset receving and sending thread
     std::thread tpset_handler;
@@ -130,9 +114,6 @@ namespace dune {
 
     folly::ProducerConsumerQueue<uint64_t> timestamp_queue_{100000};
     ptmp::data::TPSet* tpset_;
-
-    // TPZipper serializes the data from multiple links
-    std::unique_ptr<ptmp::TPZipper> tpzipper_;
 
     // Interface to TC algorithm
     std::unique_ptr<ptmp::tcs::TPFilter> tcGen_;
