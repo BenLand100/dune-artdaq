@@ -16,6 +16,7 @@
 #include "dune-artdaq/Generators/IsoMuonFinder.hh"
 #include "dune-artdaq/DAQLogger/DAQLogger.hh"
 #include "dune-artdaq/Generators/swTrigger/ptmp_util.hh"
+#include "dune-artdaq/Generators/swTrigger/trigger_util.hh"
 
 #include "artdaq/Generators/GeneratorMacros.hh"
 #include "cetlib/exception.h"
@@ -81,8 +82,6 @@ void dune::IsoMuonFinder::start(void)
 {
     stopping_flag_.store(false);
 
-    DAQLogger::LogInfo(instance_name_) << "Setting up the PTMP sockets in thread " << pthread_self();
-
     DAQLogger::LogInfo(instance_name_) << "TPWindow Tspan " << tspan_ << " and Tbuffer " << tbuf_;
 
     if(tpwinsocks_.size()!=tpwoutsocks_.size()){
@@ -102,8 +101,6 @@ void dune::IsoMuonFinder::start(void)
 
     // TPSorted connection: TPWindow --> TPSorted --> IsoMuonFinder BR (default policy is drop)
     tpzipper_.reset(new ptmp::TPZipper( ptmp_util::make_ptmp_tpsorted_string(tpzipinsocks_,{tpzipout_},tardy_,"PULL", "PUSH") ));
-
-    DAQLogger::LogInfo(instance_name_) << "Finished setting up TPWindow and TPsorted.";
 
     // Start a TPSet receiving/sending thread
     tpset_handler = std::thread(&dune::IsoMuonFinder::tpsetHandler,this);
@@ -150,8 +147,6 @@ void dune::IsoMuonFinder::tpsetHandler() {
             // (slot_no << 8) | m_crate_no
             size_t fiber_no=(in_set.detid() >> 16) & 0xff;
             if(fiber_no==2){
-                if(n_sets_total<10000) DAQLogger::LogInfo(instance_name_) << "Ignoring set with count " << in_set.count() << " detid 0x" << std::hex << in_set.detid()
-                                                                         << ", tstart=0x" << in_set.tstart() << std::dec << ", fiber_no " << fiber_no; 
                 ++n_sets_wall;
                 continue;
             }
@@ -165,14 +160,6 @@ void dune::IsoMuonFinder::tpsetHandler() {
                 if(n_sources<10) n_n_sources[n_sources]++;
                 size_t n_chan_hit=0;
                 for(size_t i=0; i<2*channels_per_apa; ++i) n_chan_hit+=has_hit[i];
-                if(n_sets_total<10000){
-                    DAQLogger::LogInfo(instance_name_) << "New window: count " << in_set.count()
-                                                       << " detid=0x" << std::hex << in_set.detid()
-                                                       << ", tstart=0x" << in_set.tstart()
-                                                       << " (last_tstart+tspan)=0x" << (last_tstart+tspan_)
-                                                       << std::dec << " n_sources=" << n_sources
-                                                       << ", max_n_sources=" << max_n_sources << " n_chan_hit=" << n_chan_hit;
-                }
                 max_n_chan_hit=std::max(max_n_chan_hit, n_chan_hit);
                 if(n_chan_hit>=hit_per_link_threshold_*max_n_sources){
                     // Trigger!
@@ -186,9 +173,6 @@ void dune::IsoMuonFinder::tpsetHandler() {
                 n_sources=0;
             }
             ++n_sources;
-            if(n_sets_total<10000){
-                DAQLogger::LogInfo(instance_name_) << "Filling has_hit for TPSet with detid=0x" << std::hex << in_set.detid() << ", tstart=0x" << in_set.tstart() << std::dec << " count=" << in_set.count() << " tps().size()=" << in_set.tps().size() << " when n_sources=" << n_sources;
-            }
 
             for(auto const& tp: in_set.tps()) has_hit[tp.channel()-min_channel]=1;
         }
@@ -221,9 +205,7 @@ void dune::IsoMuonFinder::stop(void)
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
     tpwindows_.clear(); 
 
-
     DAQLogger::LogInfo(instance_name_) << "Destroyed PTMP windowing and sorting threads.";
-
 }
 
 
@@ -236,32 +218,7 @@ void dune::IsoMuonFinder::stopNoMutex(void)
 //-----------------------------------------------------------------------
 std::unique_ptr<artdaq::Fragment> IsoMuonFinder::makeFragment(uint64_t timestamp)
 {
-    std::unique_ptr<artdaq::Fragment> f = artdaq::Fragment::FragmentBytes( TimingFragment::size() * sizeof(uint32_t),
-                                                                           artdaq::Fragment::InvalidSequenceID,
-                                                                           artdaq::Fragment::InvalidFragmentID,
-                                                                           artdaq::Fragment::InvalidFragmentType,
-                                                                           dune::TimingFragment::Metadata(TimingFragment::VERSION));
-    // It's unclear to me whether the constructor above actually sets the metadata, so let's do it here too to be sure
-    f->updateMetadata(TimingFragment::Metadata(TimingFragment::VERSION));
-    f->setSequenceID( ev_counter() );  // ev_counter is in our base class  // or f->setSequenceID(fo.get_evtctr())
-    f->setFragmentID( fragment_id() ); // fragment_id is in our base class, fhicl sets it
-    f->setUserType( dune::detail::TIMING );
-    f->setTimestamp(timestamp);  // 64-bit number
-
-    // The real fragment from the timing board reader has 6 32-bit
-    // words from the actual timing board, plus 6 more 32-bit words
-    // for some run- and spill-related timestamps used for beam
-    // matching. We'll just zero them all out except the timestamp, for now
-    uint32_t* word = reinterpret_cast<uint32_t*>(f->dataBeginBytes());
-    for(size_t i=0; i<TimingFragment::size(); ++i){
-        word[i]=0;
-    }
-    // Word 2 is the low 32 bits of the timestamp
-    word[2]=timestamp & 0xffffffff;
-    // Word 3 is the high 32 bits of the timestamp
-    word[3]=(timestamp >> 32) & 0xffffffff;
-
-    return f;
+    return trigger_util::makeTriggeringFragment(timestamp, ev_counter(), fragment_id());
 }
 
 //--------------------------------------------------------------------------
