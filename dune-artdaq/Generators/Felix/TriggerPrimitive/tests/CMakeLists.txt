@@ -22,6 +22,11 @@ cet_make_exec(numa-where
   LIBRARIES ${TP_LIBS} numa
 )
 
+cet_make_exec(synced_replayer
+  SOURCE synced_replayer.cpp
+  LIBRARIES ${TP_LIBS} ptmp ${LIBCZMQ}
+)
+
 cet_make_exec(dumped_hits_to_text
   SOURCE dumped_hits_to_text.cpp
   LIBRARIES ${TP_LIBS} ptmp ${LIBCZMQ}

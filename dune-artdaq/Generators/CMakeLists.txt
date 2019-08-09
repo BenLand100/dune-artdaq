@@ -179,7 +179,7 @@ add_subdirectory(swTrigger)
 
 simple_plugin(Candidate "generator"
   dune-raw-data_Overlays
-  dune-artdaq_Generators_swTrigger
+  #dune-artdaq_Generators_swTrigger
   artdaq_Application
   artdaq_DAQdata
   artdaq-core_Utilities

@@ -9,9 +9,8 @@
 #include "artdaq/Application/CommandableFragmentGenerator.hh"
 
 #include "dune-raw-data/Overlays/FragmentType.hh"
-#include "dune-artdaq/Generators/Felix/ProducerConsumerQueue.hh"
-#include "swTrigger/AdjacencyAlgorithms.h"
-#include "swTrigger/TriggerCandidate.h"
+//#include "swTrigger/AdjacencyAlgorithms.h"
+//#include "swTrigger/TriggerCandidate.h"
 
 #include <random>
 #include <vector>
@@ -22,7 +21,7 @@
 #include <chrono>
 
 #include "ptmp/api.h"
-
+#include "ptmp-tcs/api.h"
 
 namespace dune {
 
@@ -33,15 +32,6 @@ namespace dune {
   private:
 
       virtual ~Candidate();
-
-    // The tpsetHandler function is used to process the TPSets 
-    // and associated TPs. This means it is resonsible for receiving
-    // TPSets, via zeromq, passing them to TC algorithms and sending the resulting
-    // TCs onnward, via zeromq.
-    void tpsetHandler();
-
-     // Routine to re-order the TPs by channel and sub-orer by time
-     std::vector<TP> TPChannelSort(std::vector<ptmp::data::TPSet> HitSets); 
 
     // The "getNext_" function is used to implement user-specific
     // functionality; it's a mandatory override of the pure virtual
@@ -84,10 +74,6 @@ namespace dune {
     // tpsethandler thread, so we make it atomic just in case
     std::atomic<bool> stopping_flag_;
 
-    //std::unique_ptr<folly::ProducerConsumerQueue<ptmp::data::TPSet>> tpsetToFrag;
-    folly::ProducerConsumerQueue<ptmp::data::TPSet> queue_{100000};
-    ptmp::data::TPSet* tpset_;
- 
     // TPwindows to window the TPSets, one for each Felix link
     std::vector<std::unique_ptr<ptmp::TPWindow>> tpwindows_;
                                                                
@@ -104,6 +90,9 @@ namespace dune {
     // TPZipper serializes the data from the 10 links
     std::unique_ptr<ptmp::TPZipper> tpzipper_;
 
+    // Interface to TC algorithm
+    std::unique_ptr<ptmp::tcs::TPFilter> tcGen_;
+
     // The inputs/output of TPsort
     std::vector<std::string> tpzipinsocks_;
     std::string tpzipout_;
@@ -114,29 +103,19 @@ namespace dune {
     std::string recvsocket_;
     std::string sendsocket_;
 
-    // TPset receving and sending thread
-    std::thread tpset_handler;
-
-    // The TPSet receivers/senders
-
+    // The TC algorithm used in TPFilter
+    std::string tc_alg_;
 
 
     // Counters
     size_t nTPset_recvd_;
-    size_t nTPset_sent_;
-    size_t nTPhits_;
 
     // Time counters
     std::chrono::high_resolution_clock::time_point start_time_;
     std::chrono::high_resolution_clock::time_point end_time_;
     
     size_t n_recvd_;
-    size_t norecvd_;
-    size_t stale_set_;
     size_t loops_;
-    size_t fqueue_;
-    size_t qtpsets_;
-    size_t prev_count_;
     
 
   };

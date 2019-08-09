@@ -124,7 +124,12 @@ namespace dune {
     // TPset receving and sending thread
     std::thread tpset_handler;
 
-    std::vector<std::unique_ptr<ptmp::TPReceiver>> receivers_;
+    // TPZipper serializes the TPSets from the APAs
+    std::vector<std::string> tc_inputs_;
+    std::unique_ptr<ptmp::TPZipper> tczipper_;
+
+    // Interface to TD algorithm
+    std::unique_ptr<ptmp::tcs::TPFilter> tdGen_;
 
     ptmp::TPSender sender_;
 
@@ -143,11 +148,28 @@ namespace dune {
     int n_recvd_;
     // How many trigger candidate inputs we're listening to
     size_t n_inputs_;
+    
+    // Use TC prescale for trigger
+    bool faketrigger_;
+    // TC prescale
+    int prescale_;
+
+    // Output of TPZipper for TC inputs
+    std::string tczipout_;
+    // TPZipper link tardy time
+    int tardy_;
+
+    // Output of TD algorithm
+    std::string tdout_;
+
+    // The Module Level algorithm
+    std::string td_alg_;
+
     // Per-input counts:
-    std::vector<size_t> prev_counts_; // The value of TPSet::count() for each input in the previous go-round
-    std::vector<size_t> norecvds_;    // How many times each input has timed out
-    std::vector<size_t> n_recvds_;    // How many TPSets have been received on each input
-    std::vector<size_t> nTPhits_;     // How many TrigPrims have been received on each input
+    size_t prev_counts_; // The value of TPSet::count() for TPZipper output in the previous go-round
+    size_t norecvds_;    // How many times the input has timed out
+    size_t n_recvds_;    // How many TPSets have been received on the input
+    size_t nTPhits_;     // How many TrigPrims have been received on the input
     size_t ntriggers_;
     size_t fqueue_;
     size_t loops_;

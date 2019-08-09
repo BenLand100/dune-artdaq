@@ -37,7 +37,7 @@ namespace ptmp_util
     // tspan     - The width of the window (in 50MHz ticks) which the TPs are windowed 
     // tbuf      - The width of the TP buffer in 50MHz ticks
     // (in/out)endpoints - A list of strings representing endpoints to bind/connect to, eg "tcp://*:12345"
-    std::string make_ptmp_tpwindow_string(std::vector<std::string> inendpoints,
+   /* std::string make_ptmp_tpwindow_string(std::vector<std::string> inendpoints,
                                          std::vector<std::string> outendpoints,
                                          uint64_t tspan,
                                          uint64_t tbuf)
@@ -45,6 +45,25 @@ namespace ptmp_util
         json root;
         root["input"]=make_ptmp_socket_json("SUB", "connect", inendpoints);
         root["output"]=make_ptmp_socket_json("PUB", "bind", outendpoints);
+        root["tspan"]=tspan;
+        root["tbuf"]=tbuf;
+        return root.dump();
+    } */
+
+    // Utility function to setup the TPWindow 
+    // tspan     - The width of the window (in 50MHz ticks) which the TPs are windowed 
+    // tbuf      - The width of the TP buffer in 50MHz ticks
+    // (in/out)endpoints - A list of strings representing endpoints to bind/connect to, eg "tcp://*:12345"
+    std::string make_ptmp_tpwindow_string(std::vector<std::string> inendpoints,
+                                          std::vector<std::string> outendpoints,
+                                          uint64_t tspan,
+                                          uint64_t tbuf,
+                                          std::string insocktype="SUB",
+                                          std::string outsocktype="PUB")
+    {
+        json root;
+        root["input"]=make_ptmp_socket_json(insocktype, "connect", inendpoints);
+        root["output"]=make_ptmp_socket_json(outsocktype, "bind", outendpoints);
         root["tspan"]=tspan;
         root["tbuf"]=tbuf;
         return root.dump();
@@ -64,6 +83,22 @@ namespace ptmp_util
         return root.dump();
     }
 
+    // Utility function to setup TPFilter, the nterface to the the trigger algorithms
+    // (in/out)endpoints - A list of strings representing endpoints to bind/connect to, eg "tcp://*:12345"
+    // method - The trigger candidate or decision algorithm name.
+    // name - The thread name where TPFilter is running.
+    std::string make_ptmp_tpfilter_string(std::vector<std::string> inendpoints,
+                                        std::vector<std::string> outendpoints,
+                                        std::string algorithm,
+                                        std::string thread)
+    {
+        json root;
+        root["input"]=make_ptmp_socket_json("SUB", "connect", inendpoints);
+        root["output"]=make_ptmp_socket_json("PUB", "bind", outendpoints);
+        root["method"]=algorithm;
+        root["name"]=thread;
+        return root.dump();
+    }
 
     // Make a vector of endpoints which are specified in the parameter
     // set via two indirections: The key `key` has a string value
