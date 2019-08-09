@@ -128,7 +128,7 @@ namespace dune {
 
     ptmp::TPSender sender_;
 
-    folly::ProducerConsumerQueue<ptmp::data::TPSet> queue_{100000};
+    folly::ProducerConsumerQueue<uint64_t> timestamp_queue_{100000};
     ptmp::data::TPSet* tpset_;
 
     // TPZipper serializes the data from multiple links
@@ -155,6 +155,7 @@ namespace dune {
     
     size_t count_;
 
+    uint64_t trigger_holdoff_time_;
   };
 }
 
