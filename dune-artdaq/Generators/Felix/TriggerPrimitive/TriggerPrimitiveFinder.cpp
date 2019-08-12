@@ -3,7 +3,8 @@
 #include "dune-artdaq/DAQLogger/DAQLogger.hh"
 #include "dune-artdaq/Generators/swTrigger/ptmp_util.hh"
 #include "artdaq-core/Data/Fragment.hh"
-#include "dune-raw-data/Overlays/FelixFragment.hh"
+#include "dune-raw-data/Overlays/CPUHitsFragment.hh"
+#include "artdaq/DAQdata/Globals.hh"
 
 #include <cstddef> // For offsetof
 #include <sstream>
@@ -36,11 +37,16 @@ TriggerPrimitiveFinder::TriggerPrimitiveFinder(fhicl::ParameterSet const & ps)
       m_windowOffset(ps.get<uint32_t>("window_offset")),
       m_channels_to_suppress(ps.get<std::vector<uint32_t>>("channels_to_suppress", std::vector<uint32_t>())),
       m_offline_channel_base(0),
-      m_n_tpsets_sent(0)
+      m_n_tpsets_sent(0),
+      m_nhits_for_metric(0),
+      m_adcsum_for_metric(0),
+      m_metric_reporting_interval_seconds(ps.get<size_t>("metric_reporting_interval_seconds", 10))
 {
     std::vector<int32_t> cpus_to_pin=ps.get<std::vector<int32_t>>("cpus_to_pin", std::vector<int32_t>());
     size_t qsize=ps.get<size_t>("item_queue_size", 100000);
     m_processingThread=std::thread(&TriggerPrimitiveFinder::processing_thread, this, 0, REGISTERS_PER_FRAME, qsize, cpus_to_pin);
+    dune::DAQLogger::LogInfo("TriggerPrimitiveFinder::metrics_thread") << "Creating metrics thread";
+    m_metricsThread=std::thread(&TriggerPrimitiveFinder::metrics_thread, this);
 }
 
 //======================================================================
@@ -55,6 +61,9 @@ TriggerPrimitiveFinder::~TriggerPrimitiveFinder()
     dune::DAQLogger::LogInfo("TriggerPrimitiveFinder::~TriggerPrimitiveFinder") << "Joining processing thread";
     m_processingThread.join(); // Wait for it to actually stop
     dune::DAQLogger::LogInfo("TriggerPrimitiveFinder::~TriggerPrimitiveFinder") << "Processing thread joined";
+
+    m_metricsThread.join();
+
     dune::DAQLogger::LogInfo("TriggerPrimitiveFinder::~TriggerPrimitiveFinder") << "Sent a total of " << m_n_tpsets_sent << " TPSets";
 }
 
@@ -95,11 +104,10 @@ void TriggerPrimitiveFinder::hitsToFragment(uint64_t timestamp, uint32_t window_
     dune::DAQLogger::LogInfo("TriggerPrimitiveFinder::hitsToFragment") << "Got " << tps.size() << " hits for timestamp 0x" << std::hex << timestamp << std::dec;
 
     // The data payload of the fragment will be:
-    // uint64_t timestamp
-    // uint32_t nhits
+    // dune::CPUHitsFragment::Body
     // N*TriggerPrimitive
-    fragPtr->resizeBytes(sizeof(dune::FelixFragmentHits::Body)+tps.size()*sizeof(dune::TriggerPrimitive));
-    dune::FelixFragmentHits hitFrag(*fragPtr);
+    fragPtr->resizeBytes(sizeof(dune::CPUHitsFragment::Body)+tps.size()*sizeof(dune::TriggerPrimitive));
+    dune::CPUHitsFragment hitFrag(*fragPtr);
 
     hitFrag.set_timestamp(timestamp);
     hitFrag.set_nhits(tps.size());
@@ -174,7 +182,9 @@ TriggerPrimitiveFinder::addHitsToQueue(uint64_t timestamp,
         auto ticks = std::chrono::duration_cast<std::chrono::microseconds>(now.time_since_epoch());
         tpset.set_created(ticks.count());
     }
-    
+
+    size_t n_sent_hits=0; // The number of hits we actually sent (ie, that weren't suppressed as bad/noisy)
+    size_t sent_adcsum=0;
     while(*input_loc!=MAGIC){
         for(int i=0; i<16; ++i) chan[i]       = *input_loc++;
         for(int i=0; i<16; ++i) hit_end[i]    = *input_loc++;
@@ -209,12 +219,18 @@ TriggerPrimitiveFinder::addHitsToQueue(uint64_t timestamp,
                         // Convert time-over-threshold to 50MHz clock ticks, so all the ptmp quantities are in the same units
                         ptmp_prim->set_tspan(clocksPerTPCTick*hit_tover[i]);
                         ptmp_prim->set_adcsum(hit_charge[i]);
+                        ++n_sent_hits;
+                        sent_adcsum+=hit_charge[i];
                     }
                 }
                 ++nhits;
+
             }
         }
     }
+
+    m_nhits_for_metric.fetch_add(n_sent_hits);
+    m_adcsum_for_metric.fetch_add(sent_adcsum);
 
     ++msgs_in_tpset;
 
@@ -279,6 +295,36 @@ void TriggerPrimitiveFinder::measure_latency(const ProcessingTasks::ItemToProces
         last_printed_latency+=latencyThresholdEnter;
     }
 }
+
+//======================================================================
+void TriggerPrimitiveFinder::metrics_thread()
+{
+    dune::DAQLogger::LogInfo("TriggerPrimitiveFinder::metrics_thread") << "metrics thread starting";
+    
+    while(!m_should_stop.load()){
+        // Get the number of hits, then reset it to zero
+        size_t nhits=m_nhits_for_metric.exchange(0);
+        size_t adcsum=m_adcsum_for_metric.exchange(0);
+        double hitrate=double(nhits)/m_metric_reporting_interval_seconds;
+        double adcsumrate=double(adcsum)/m_metric_reporting_interval_seconds;
+
+        if(artdaq::Globals::metricMan_) {
+            dune::DAQLogger::LogInfo("TriggerPrimitiveFinder::metrics_thread") << "Publishing metrics hitrate: " << hitrate << " adcsumrate: " << adcsumrate;
+            artdaq::Globals::metricMan_->sendMetric("Hit Rate",  hitrate   ,  "Hz", 1, artdaq::MetricMode::LastPoint);
+            artdaq::Globals::metricMan_->sendMetric("ADC sum rate", adcsumrate, "ADC/s", 1, artdaq::MetricMode::LastPoint);
+        }
+        else{
+            dune::DAQLogger::LogInfo("TriggerPrimitiveFinder::metrics_thread") << "metricMan is null, so not publishing this go-round";
+        }
+        // Wait for m_metric_reporting_interval_seconds total, but check every second to see whether we should stop
+        for(size_t i=0; i<m_metric_reporting_interval_seconds; ++i){
+            std::this_thread::sleep_for(std::chrono::seconds(1));
+            if(m_should_stop.load()) break;
+        }
+    }
+    dune::DAQLogger::LogInfo("TriggerPrimitiveFinder::metrics_thread") << "Metrics thread shutting down";
+}
+
 
 //======================================================================
 void TriggerPrimitiveFinder::processing_thread(uint8_t first_register, uint8_t last_register,
@@ -375,7 +421,6 @@ void TriggerPrimitiveFinder::processing_thread(uint8_t first_register, uint8_t l
             m_itemsToProcess->popFront();
             break;
         }
-        measure_latency(*item);
         RegisterArray<REGISTERS_PER_FRAME*FRAMES_PER_MSG> expanded=expand_message_adcs(item->scs);
         MessageCollectionADCs* mcadc=reinterpret_cast<MessageCollectionADCs*>(expanded.data());
         if(first){
@@ -400,8 +445,10 @@ void TriggerPrimitiveFinder::processing_thread(uint8_t first_register, uint8_t l
         // Do the processing
         process_window_avx2(pi);
         // Create dune::TriggerPrimitives from the hits and put them in the queue for later retrieval
-        nhits+=addHitsToQueue(item->timestamp, primfind_dest, m_triggerPrimitives);
+        size_t this_nhits=addHitsToQueue(item->timestamp, primfind_dest, m_triggerPrimitives);
+        nhits+=this_nhits;
         m_latestProcessedTimestamp.store(item->timestamp);
+        measure_latency(*item);
         m_itemsToProcess->popFront();
     }
     uint64_t end_us=ProcessingTasks::now_us();

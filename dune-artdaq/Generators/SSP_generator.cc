@@ -3,7 +3,7 @@
 #include "dune-artdaq/DAQLogger/DAQLogger.hh"
 
 #include "canvas/Utilities/Exception.h"
-#include "artdaq/Application/GeneratorMacros.hh"
+#include "artdaq/Generators/GeneratorMacros.hh"
 #include "cetlib/exception.h"
 #include "dune-raw-data/Overlays/SSPFragment.hh"
 #include "dune-raw-data/Overlays/SSPFragmentWriter.hh"

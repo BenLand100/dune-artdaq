@@ -21,8 +21,9 @@
 #include "fhiclcpp/fwd.h"
 //#include "artdaq-core/Data/Fragments.hh"
 #include "artdaq-core/Data/Fragment.hh"
-#include "artdaq/Application/CommandableFragmentGenerator.hh"
+#include "artdaq/Generators/CommandableFragmentGenerator.hh"
 #include "dune-raw-data/Overlays/FelixFragment.hh"
+#include "dune-raw-data/Overlays/CPUHitsFragment.hh"
 #include "dune-raw-data/Overlays/FragmentType.hh"
 
 #include "Felix/FelixHardwareInterface.hh"
@@ -69,6 +70,7 @@ namespace dune {
     int timestampScale_;
 
     FelixFragmentBase::Metadata metadata_;
+    CPUHitsFragment::Metadata metadata_hits_;
 
     // buffer_ points to the buffer which the hardware interface will
     // fill. Notice that it's a raw pointer rather than a smart
@@ -78,7 +80,8 @@ namespace dune {
     size_t frame_size_;
     //char* readout_buffer_;
 
-    FragmentType fragment_type_;
+    FragmentType fragment_type_;       // The fragment type of the raw data fragment
+    FragmentType fragment_type_hits_;  // The fragment type of the hits fragment
 
     // Metrics
     std::string instance_name_for_metrics_;

@@ -7,7 +7,7 @@
 
 //#include "canvas/Utilities/Exception.h"
 
-#include "artdaq/Application/GeneratorMacros.hh"
+#include "artdaq/Generators/GeneratorMacros.hh"
 
 #include "dune-raw-data/Overlays/FelixFragment.hh"
 #include "dune-raw-data/Overlays/FragmentType.hh"
@@ -29,21 +29,26 @@ dune::FelixReceiver::FelixReceiver(fhicl::ParameterSet const & ps)
   CommandableFragmentGenerator(ps),
   timestamp_(0),
   timestampScale_(ps.get<int>("timestamp_scale_factor", 1)),
+  metadata_hits_(CPUHitsFragment::VERSION),
   frame_size_(ps.get<size_t>("frame_size")),
-  //readout_buffer_(nullptr),
-  fragment_type_(static_cast<decltype(fragment_type_)>( artdaq::Fragment::InvalidFragmentType ))
+  fragment_type_(toFragmentType("FELIX")),
+  fragment_type_hits_(toFragmentType("CPUHITS"))
 {
   DAQLogger::LogInfo("dune::FelixReceiver::FelixReceiver")<< "Preparing HardwareInterface for FELIX.";
   netio_hardware_interface_ = std::unique_ptr<FelixHardwareInterface>( new FelixHardwareInterface(ps) );
   message_size_ = netio_hardware_interface_->MessageSize();
   trigger_window_size_ = netio_hardware_interface_->TriggerWindowSize();
 
+  if(fragmentIDs().size()!=2){
+      DAQLogger::LogError("dune::FelixReceiver::FelixReceiver")<< "The fragmentIDs vector has size " << fragmentIDs().size() << ", but it should be 2. Make sure the fragment_ids fhicl parameter is set and has two items";
+  }
+
   /* ADDITIONAL METADATA IF NEEDED */
   // RS -> These metadata will be cleared out!
   metadata_.num_frames = 0;
   metadata_.reordered = 0;
   metadata_.compressed = 0;
-  fragment_type_ = toFragmentType("FELIX");
+
 
   // Metrics
   instance_name_for_metrics_ = "FelixReceiver";
@@ -71,12 +76,12 @@ bool dune::FelixReceiver::getNext_(artdaq::FragmentPtrs & frags) {
     //GLM: create empty fragment!
     auto ev_no=ev_counter();
     std::unique_ptr<artdaq::Fragment> fragptr(
-      artdaq::Fragment::FragmentBytes(0, ev_no, fragment_id(),
+      artdaq::Fragment::FragmentBytes(0, ev_no, fragmentIDs()[0],
                                       fragment_type_, metadata_, timestamp_)
     );
     std::unique_ptr<artdaq::Fragment> fragptrhits(
-      artdaq::Fragment::FragmentBytes(0, ev_no, fragment_id(),
-                                      fragment_type_, metadata_, timestamp_)
+        artdaq::Fragment::FragmentBytes(0, ev_no, fragmentIDs()[1],
+                                      fragment_type_hits_, metadata_hits_, timestamp_)
     );
 
     //std::unique_ptr<artdaq::Fragment> fragptr(ev_counter(), fragment_id(),fragment_type_);

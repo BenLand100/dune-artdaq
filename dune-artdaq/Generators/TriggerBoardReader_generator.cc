@@ -4,7 +4,7 @@
 #include "json/reader.h"
 
 #include "dune-artdaq/Generators/TriggerBoardReader.hh"
-#include "artdaq/Application/GeneratorMacros.hh"
+#include "artdaq/Generators/GeneratorMacros.hh"
 #include "dune-artdaq/DAQLogger/DAQLogger.hh"
 #include "artdaq/DAQdata/Globals.hh"
 #include "dune-raw-data/Overlays/FragmentType.hh"
@@ -12,7 +12,7 @@
 #include "dune-raw-data/Overlays/CTB_content.h"
 #include "dune-raw-data/Overlays/CTBFragment.hh"
 
-#include "artdaq/Application/GeneratorMacros.hh"
+#include "artdaq/Generators/GeneratorMacros.hh"
 #include "artdaq-core/Utilities/SimpleLookupPolicy.hh"
 
 #include "canvas/Utilities/Exception.h"

@@ -4,6 +4,7 @@
 simple_plugin(TPCMilliSliceSimulatorWithCopy "generator"
   dune-raw-data_Overlays
   artdaq_Application
+  artdaq_Generators
   artdaq_DAQdata
   artdaq-core_Data
   artdaq-core_Utilities
@@ -20,6 +21,7 @@ simple_plugin(SSP "generator"
   dune-raw-data_Overlays
   dune-artdaq_Generators_anlBoard
   artdaq_Application
+  artdaq_Generators
   artdaq_DAQdata
   artdaq-core_Utilities
   artdaq-utilities_Plugins
@@ -37,6 +39,7 @@ simple_plugin(FelixReceiver "generator"
   dune-artdaq_Generators_Felix
   dune-artdaq_DAQLogger
   artdaq_Application
+  artdaq_Generators
   artdaq_DAQdata
   artdaq-core_Utilities
   artdaq-core_Data
@@ -54,6 +57,7 @@ simple_plugin(HitFinderCPUReceiver "generator"
   dune-raw-data_Overlays
   dune-artdaq_DAQLogger
   artdaq_Application
+  artdaq_Generators
   artdaq_DAQdata
   artdaq-core_Utilities
   artdaq-core_Data
@@ -81,6 +85,7 @@ simple_plugin(ToySimulator "generator"
   dune-artdaq_DAQLogger
   InhibitMaster_CommonTools
   artdaq_Application
+  artdaq_Generators
   artdaq_DAQdata
   artdaq-core_Utilities
   artdaq-core_Data
@@ -104,6 +109,7 @@ simple_plugin(TpcRceReceiver "generator"
   dune-artdaq_Generators_rce
   artdaq-core_Data
   artdaq_Application
+  artdaq_Generators
   artdaq_DAQdata
   artdaq-core_Utilities
   dune-artdaq_DAQLogger
@@ -124,6 +130,7 @@ simple_plugin(PennReceiver "generator"
   dune-artdaq_Generators_pennBoard
   artdaq-core_Data
   artdaq_Application
+  artdaq_Generators
   artdaq_DAQdata
   artdaq-core_Utilities
   artdaq-utilities_Plugins
@@ -141,6 +148,7 @@ simple_plugin(TriggerBoardReader "generator"
   dune-artdaq_Generators_TriggerBoard
   artdaq-core_Data
   artdaq_Application
+  artdaq_Generators
   artdaq_DAQdata
   artdaq-core_Utilities
   artdaq-utilities_Plugins
@@ -160,6 +168,7 @@ simple_plugin(TimingReceiver "generator"
   dune-artdaq_Generators_timingBoard
   artdaq-core_Data
   artdaq_Application
+  artdaq_Generators
   artdaq_DAQdata
   artdaq_DAQrate
   artdaq-core_Utilities
@@ -181,6 +190,7 @@ simple_plugin(Candidate "generator"
   dune-raw-data_Overlays
   #dune-artdaq_Generators_swTrigger
   artdaq_Application
+  artdaq_Generators
   artdaq_DAQdata
   artdaq-core_Utilities
   artdaq-core_Data
@@ -197,10 +207,29 @@ simple_plugin(Candidate "generator"
   dune-artdaq_DAQLogger   
 )
 
+simple_plugin(IsoMuonFinder "generator"
+  dune-raw-data_Overlays
+  artdaq_Application
+  artdaq_Generators
+  artdaq_DAQdata
+  dune-artdaq_Generators_timingBoard
+  artdaq-core_Utilities
+  artdaq-core_Data
+  artdaq-utilities_Plugins
+  ${CANVAS}
+  ${FHICLCPP}
+  ${CETLIB}
+  ${CETLIB_EXCEPT}
+  ${LIBPTMP}
+  ${PROTOBUF}
+  dune-artdaq_DAQLogger   
+)
+
 simple_plugin(SWTrigger "generator"
   dune-raw-data_Overlays
   dune-artdaq_Generators_timingBoard
   artdaq_Application
+  artdaq_Generators
   artdaq_DAQdata
   artdaq_DAQrate
   artdaq-core_Utilities
@@ -226,6 +255,7 @@ simple_plugin(WIBReader "generator"
          $ENV{PROTODUNE_WIBSOFT_LIB}/libWIB.so
          $ENV{PROTODUNE_WIBSOFT_LIB}/libToolException.so
          artdaq_Application
+         artdaq_Generators
 	 dune-artdaq_DAQLogger
   	 ${CETLIB_EXCEPT}
   	 ${CETLIB}
@@ -245,6 +275,7 @@ simple_plugin(CRTFragGen "generator"
   dune-artdaq_Generators_CRTInterface
   dune-raw-data_Overlays
   artdaq_Application
+  artdaq_Generators
   artdaq_DAQdata
   artdaq-core_Utilities
   artdaq-core_Data

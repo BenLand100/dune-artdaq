@@ -7,45 +7,29 @@
 //################################################################################
 
 #include "artdaq/DAQdata/Globals.hh"
+
 #define TRACE_NAME (app_name + "_SWTrigger").c_str()
 #define TLVL_HWSTATUS 20
 #define TLVL_TIMING 10
 
+#include "artdaq/Application/BoardReaderCore.hh"
+#include "artdaq/Generators/GeneratorMacros.hh"
+
+
 #include "dune-artdaq/Generators/SWTrigger.hh"
+
 #include "dune-artdaq/DAQLogger/DAQLogger.hh"
 #include "dune-artdaq/Generators/swTrigger/ptmp_util.hh"
-
-#include "artdaq/Application/GeneratorMacros.hh"
-#include "cetlib/exception.h"
-#include "dune-raw-data/Overlays/FragmentType.hh"
-#include "dune-raw-data/Overlays/TimingFragment.hh"
-#include "dune-raw-data/Overlays/TriggerFragment.hh"
+#include "dune-artdaq/Generators/swTrigger/trigger_util.hh"
 
 #include "fhiclcpp/ParameterSet.h"
 #include "timingBoard/InhibitGet.h" // The interface to the ZeroMQ trigger inhibit master
 
-#include <fstream>
-#include <iomanip>
-#include <iterator>
 #include <iostream>
 #include <sstream>
 #include <thread>
 #include <chrono>
-#include <set>
 #include <random>
-
-#include <unistd.h>
-
-#include <cstdio>
-
-#pragma GCC diagnostic ignored "-Wpedantic"
-#pragma GCC diagnostic ignored "-Woverloaded-virtual"
-#pragma GCC diagnostic push
-#pragma GCC diagnostic pop
-
-#include "artdaq/Application/BoardReaderCore.hh"
-
-using namespace dune;
 
 dune::SetZMQSigHandler::SetZMQSigHandler() {
   setenv("ZSYS_SIGHANDLER", "false", true);
@@ -60,15 +44,8 @@ dune::SWTrigger::SWTrigger(fhicl::ParameterSet const & ps):
   ,throttling_state_(true)
   ,inhibitget_timer_(ps.get<uint32_t>("inhibit_get_timer",5000000)) 
   ,partition_number_(ps.get<uint32_t>("partition_number",0))
-  ,debugprint_(ps.get<uint32_t>("debug_print",0))
   ,zmq_conn_(ps.get<std::string>("zmq_connection","tcp://pddaq-gen05-daq0:5566"))
   ,want_inhibit_(false)
-  ,last_spillstart_tstampl_(0xffffffff) // Timestamp of most recent start-of-spill
-  ,last_spillstart_tstamph_(0xffffffff) // ...
-  ,last_spillend_tstampl_(0xffffffff)   // Timestamp of most recent end-of-spill
-  ,last_spillend_tstamph_(0xffffffff)   // ...
-  ,last_runstart_tstampl_(0xffffffff)   // Timestamp of most recent start-of-run
-  ,last_runstart_tstamph_(0xffffffff)   // ...
   ,sender_( ptmp_util::make_ptmp_socket_string("PUB","bind",{"tcp://*:50502"}) )
   ,timeout_(ps.get<int>("timeout"))
   ,n_recvd_(0)
@@ -88,6 +65,7 @@ dune::SWTrigger::SWTrigger(fhicl::ParameterSet const & ps):
   ,loops_(0)
   ,qtpsets_(0)
   ,count_(0)
+  ,trigger_holdoff_time_(ps.get<uint64_t>("trigger_holdoff_time_pdts_ticks", 6000*25))
 {
 
   std::stringstream instance_name_ss;
@@ -126,7 +104,6 @@ void dune::SWTrigger::start(void)
   // See header file for meanings of these variables
   stopping_flag_.store(false);
   throttling_state_ = true;    // 0 Causes it to start triggers immediately, 1 means wait for InhibitMaster to release
-  previous_ts_ = 0;
   latest_ts_ = 0;
   int isConnected = ts_receiver_->connect(100);    
 
@@ -202,8 +179,14 @@ void dune::SWTrigger::tpsetHandler() {
     ++ntriggers_;
                                                                 
     // Add the TPsets to the queue to allow access from getNext
-    if(!queue_.write(SetReceived)) ++fqueue_;
+    bool write_success=true;
+    for(auto const& set: SetsReceived){
+      write_success = write_success && timestamp_queue_.write(set.tstart());
+    }
 
+    if(!write_success) ++fqueue_;
+    
+    
   }
     
   DAQLogger::LogInfo(instance_name_) << "Stop called, ending TPSet handler thread.";
@@ -323,35 +306,10 @@ bool dune::SWTrigger::checkHWStatus_()
 bool dune::SWTrigger::getNext_(artdaq::FragmentPtrs &frags)
 {
 
-  auto start = std::chrono::high_resolution_clock::now();
+  static uint64_t prev_timestamp=0;
 
-  tpset_ = queue_.frontPtr();
-  ++loops_;
-
-  if (!tpset_) {
-    // Sleep a bit so we don't spin the CPU
-    std::this_thread::sleep_for(std::chrono::milliseconds(1));
-
-    return true;
-  } else {
-    ++qtpsets_;
-    previous_ts_ = tpset_->tps()[0].tstart();
-
-    //--for latency measurement--//
-    sender_(*tpset_);
-    //Log the TC details
-    DAQLogger::LogInfo(instance_name_) << "TC count " << tpset_->count() << " First Ch Adj " << tpset_->chanend()
-                                       << " Last Ch Adj " << tpset_->chanbeg() << " Tick w/ 1st Ch Adj " << tpset_->tstart()
-                                       << " Tick diff last-first Ch Adj " << tpset_->tspan();
-
-    queue_.popFront();
-  } 
-
-  // Check for stop run
-  if (stopping_flag_.load()) {
-    DAQLogger::LogInfo(instance_name_) << "getNext_ stopping ";
-    return false;
-  }
+  // TODO: Change the check here to "if stopping_flag && we've got all of the fragments in the queue"
+  if (stopping_flag_.load()) return false;
 
   uint32_t tf = InhibitGet_get();  
   if (tf==1) {
@@ -360,116 +318,38 @@ bool dune::SWTrigger::getNext_(artdaq::FragmentPtrs &frags)
   else if (tf ==2) {
     throttling_state_= true;
   }
-  if (throttling_state_) {
-    return true;
+
+  uint64_t* trigger_timestamp = timestamp_queue_.frontPtr();
+  if (trigger_timestamp) {
+    DAQLogger::LogInfo(instance_name_) << "Trigger requested for 0x" << std::hex << (*trigger_timestamp) << std::dec;
+    if(*trigger_timestamp < prev_timestamp+trigger_holdoff_time_){
+      DAQLogger::LogInfo(instance_name_) << "Trigger too close to previous trigger time of " << prev_timestamp << ". Not sending";
+    }
+    else{
+      // Only send a fragment if the inhibit master hasn't inhibited us
+      if(!throttling_state_){
+        std::unique_ptr<artdaq::Fragment> frag=trigger_util::makeTriggeringFragment(*trigger_timestamp, ev_counter(), fragment_id());
+        dune::TimingFragment timingFrag(*frag);    // Overlay class
+        
+        int pubSuccess = fragment_publisher_->PublishFragment(frag.get(), &timingFrag);
+        if (!pubSuccess)
+          DAQLogger::LogInfo(instance_name_) << "Publishing fragment to ZeroMQ failed";
+        
+        frags.emplace_back(std::move(frag));
+        // We only increment the event counter for events we send out
+        ev_counter_inc();
+            
+        prev_timestamp=*trigger_timestamp;
+      }
+    }
+    // We always pop the item off the queue, even if we didn't send it
+    // out, otherwise the queue will just back up
+    timestamp_queue_.popFront();
   }
-  
-  auto ticks = std::chrono::duration_cast<std::chrono::duration<uint64_t, std::ratio<1,50000000>>>(std::chrono::system_clock::now().time_since_epoch());
-  uint64_t now = ticks.count();
-                                                                                                                                                         
-  DAQLogger::LogInfo(instance_name_) << "Time difference between now and previous_ts " << now-previous_ts_;
-  DAQLogger::LogInfo(instance_name_) << "Timestamp going to triggered fragment should be: " << previous_ts_;
-
-
-//------------ Trigger Fragment -------------//
-  std::unique_ptr<artdaq::Fragment> f = artdaq::Fragment::FragmentBytes( TriggerFragment::size()*sizeof(uint32_t),
-                                                                         artdaq::Fragment::InvalidSequenceID,
-                                                                         artdaq::Fragment::InvalidFragmentID,
-                                                                         artdaq::Fragment::InvalidFragmentType,
-                                                                         dune::TriggerFragment::Metadata(TriggerFragment::VERSION));
-  // It's unclear to me whether the constructor above actually sets the metadata, so let's do it here too to be sure
-  f->updateMetadata(TriggerFragment::Metadata(TriggerFragment::VERSION));
-
-  // GLM: here get the trigger decisions based on hits
-
-  uint32_t* triggerword = reinterpret_cast<uint32_t *> (f->dataBeginBytes());    // dataBeginBytes returns a byte_t pointer
-
-  // Set the last spill/run timestamps in the fragment
-
-  // There had better be enough space in the object. If not, something has gone horribly wrong
-  static_assert(TriggerFragment::Body::size >= 19ul);
-
-  // These must be kept in sync with the order declared in TriggerFragment::Body in TriggerFragment.hh
-  triggerword[2]= previous_ts_&0xffffffff;
-  triggerword[3]= (previous_ts_>>32);
-
-  triggerword[6]=last_runstart_tstampl_;
-  triggerword[7]=last_runstart_tstamph_;
-
-  triggerword[8]=last_spillstart_tstampl_;
-  triggerword[9]=last_spillstart_tstamph_;
-
-  triggerword[10]=last_spillend_tstampl_;
-  triggerword[11]=last_spillend_tstamph_;
-
-  // Appended for trigger decision information
-  triggerword[12]=count_;
-  triggerword[13]=partition_number_;
-
-  triggerword[14]=0;
-  triggerword[15]=last_spillstart_tstampl_; // dummy
-  triggerword[16]=last_spillstart_tstamph_; // dummy
-
-  triggerword[17]=last_spillstart_tstampl_; // dummy
-  triggerword[18]=last_spillend_tstamph_;   // dummy
-  triggerword[19]=last_spillend_tstamph_;   // dummy
-
-
-
-
-//---------- Timing Fragment -----------//
-  
-  uint32_t* timingword = reinterpret_cast<uint32_t *> (f->dataBeginBytes());    // dataBeginBytes returns a byte_t pointer
-
-  // Set the last spill/run timestamps in the fragment
-
-  // There had better be enough space in the object. If not, something has gone horribly wrong
-  static_assert(TimingFragment::Body::size >= 12ul);
-
-  // These must be kept in sync with the order declared in TimingFragment::Body in TimingFragment.hh
-  timingword[2]= previous_ts_&0xffffffff;
-  timingword[3]= (previous_ts_>>32);
-
-  timingword[6]=last_runstart_tstampl_;
-  timingword[7]=last_runstart_tstamph_;
-
-  timingword[8]=last_spillstart_tstampl_;
-  timingword[9]=last_spillstart_tstamph_;
-
-  timingword[10]=last_spillend_tstampl_;
-  timingword[11]=last_spillend_tstamph_;
-
-  // Fill in the fragment header fields (not some other fragment generators may put these in the
-  // constructor for the fragment, but here we push them in one at a time.
-  f->setSequenceID( ev_counter() );  // ev_counter is in our base class  // or f->setSequenceID(fo.get_evtctr())
-  f->setFragmentID( fragment_id() ); // fragment_id is in our base class, fhicl sets it
-  f->setUserType( dune::detail::TIMING );
-  //  No metadata in this block
-
-  DAQLogger::LogInfo(instance_name_) << "For timing fragment with sequence ID " << ev_counter() << ", setting the timestamp to " << f->timestamp();
-  f->setTimestamp(previous_ts_);  // 64-bit number
-
-  // Send the fragment out on ZeroMQ for FELIX and whoever else wants to listen for it
-  dune::TimingFragment fo(*f); 
-  DAQLogger::LogInfo(instance_name_) << "Fragment timestamp: artdaq " << f->timestamp() << " timing : " << fo.get_tstamp();
-  int pubSuccess = fragment_publisher_->PublishFragment(f.get(), &fo);
-  if(!pubSuccess)
-    DAQLogger::LogError(instance_name_) << "Publishing fragment to ZeroMQ failed";
-
-  //Check how long is the time between receive/send of the PTMP message
-  auto elapsed = std::chrono::high_resolution_clock::now() - start;
-  long long microseconds = std::chrono::duration_cast<std::chrono::microseconds>(elapsed).count();
-  DAQLogger::LogInfo(instance_name_) << "Time from beginning of getNext until TPset published (usec): " << microseconds;
-
-  frags.emplace_back(std::move(f));
-  // We only increment the event counter for events we send out
-  ev_counter_inc();
-
   // Sleep a bit so we don't spin the CPU
   std::this_thread::sleep_for(std::chrono::milliseconds(1));
 
   return true;
-
 }
 
 // The following macro is defined in artdaq's GeneratorMacros.hh header

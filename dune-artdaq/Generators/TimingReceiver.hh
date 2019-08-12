@@ -14,8 +14,8 @@
 // -Append a "_" to every private member function and variable
 
 #include "fhiclcpp/fwd.h"
-#include "artdaq-core/Data/Fragment.hh"
-#include "artdaq/Application/CommandableFragmentGenerator.hh"
+#include "artdaq-core/Data/Fragment.hh" 
+#include "artdaq/Generators/CommandableFragmentGenerator.hh"
 
 #include "dune-raw-data/Overlays/FragmentType.hh"
 
@@ -200,12 +200,13 @@ class TimingReceiver : public artdaq::CommandableFragmentGenerator {
     void fiddle_trigger_mask();  // Modify the trigger mask so we only see triggers in our partition
     // TODO: Should this be const?
     const pdt::PartitionNode& master_partition();
-
     std::atomic<bool> hwclock_publisher_stop_;
     std::thread hwclock_publisher_thread_;
 
     bool send_fragments_; // Should we send fragments corresponding to hardware triggers to artdaq?
-};
+
+    bool use_routing_master_;
+  };
 }
 
 #endif /* dune_artdaq_Generators_TimingReceiver_hh */

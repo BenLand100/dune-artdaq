@@ -235,7 +235,7 @@ echo "Finished checking dependent packages"
 cd srcs/$packagedir
 git diff HEAD
 git add ups/product_deps
-git commit -m "Automatic update of product_deps done by "$(basename $0)" executed under user account $USER, based on code tested in run $run_tested"
+git commit -m "New dev-version $tagname, based on code tested in run ${run_tested}. This automatic update of product_deps has been done by "$(basename $0)" executed under user account \"$USER\""
 
 if [[ -z $( git tag | grep -E "^$tagname\s*$" ) ]]; then
 
