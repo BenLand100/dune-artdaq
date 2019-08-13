@@ -22,10 +22,6 @@
 #include "cetlib/exception.h"
 #include "dune-raw-data/Overlays/FragmentType.hh"
 #include "dune-raw-data/Overlays/TimingFragment.hh"
-#include "dune-raw-data/Overlays/HitFragment.hh"
-
-//#include "swTrigger/AdjacencyAlgorithms.h"
-//#include "swTrigger/TriggerCandidate.h"
 
 #include "fhiclcpp/ParameterSet.h"
 

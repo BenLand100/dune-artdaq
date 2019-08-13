@@ -178,14 +178,7 @@ void dune::SWTrigger::tpsetHandler() {
     n_recvd_ = 0;
     ++ntriggers_;
                                                                 
-    // Add the TPsets to the queue to allow access from getNext
-    bool write_success=true;
-    for(auto const& set: SetsReceived){
-      write_success = write_success && timestamp_queue_.write(set.tstart());
-    }
-
-    if(!write_success) ++fqueue_;
-    
+    if(!timestamp_queue_.write(SetReceived.tstart())) ++fqueue_;
     
   }
     
