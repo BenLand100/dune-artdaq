@@ -27,7 +27,6 @@
 #include <chrono>
 
 #include "ptmp/api.h"
-#include "ptmp-tcs/api.h"
 
 #include "timingBoard/StatusPublisher.hh"
 #include "timingBoard/FragmentPublisher.hh"
@@ -113,7 +112,7 @@ namespace dune {
     std::unique_ptr<ptmp::TPZipper> tczipper_;
 
     // Interface to TD algorithm
-    std::unique_ptr<ptmp::tcs::TPFilter> tdGen_;
+    std::unique_ptr<ptmp::TPFilter> tdGen_;
 
     ptmp::TPSender sender_;
 
@@ -121,7 +120,7 @@ namespace dune {
     ptmp::data::TPSet* tpset_;
 
     // Interface to TC algorithm
-    std::unique_ptr<ptmp::tcs::TPFilter> tcGen_;
+    std::unique_ptr<ptmp::TPFilter> tcGen_;
 
     // The maximum time in microseconds before we timeout for a TPReceiver call (ms)
     int timeout_;

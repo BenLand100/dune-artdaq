@@ -104,7 +104,7 @@ void dune::Candidate::start(void)
   //                                         --> to MLT
   // TPWindow --> TPZipper --> TPFilter --> |
   //                                         --> to getNext()
-  tcGen_.reset(new ptmp::tcs::TPFilter( ptmp_util::make_ptmp_tpfilter_string({recvsocket_}, {sendsocket_}, tc_alg_, "tpfilter") ));
+  tcGen_.reset(new ptmp::TPFilter( ptmp_util::make_ptmp_tpfilter_string({recvsocket_}, {sendsocket_}, tc_alg_, "tpfilter") ));
 
   start_time_ = std::chrono::high_resolution_clock::now(); 
   DAQLogger::LogInfo(instance_name_) << "Finished starting Candidate algorithm thread.";

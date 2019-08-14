@@ -21,7 +21,6 @@
 #include <chrono>
 
 #include "ptmp/api.h"
-#include "ptmp-tcs/api.h"
 
 namespace dune {
 
@@ -91,7 +90,7 @@ namespace dune {
     std::unique_ptr<ptmp::TPZipper> tpzipper_;
 
     // Interface to TC algorithm
-    std::unique_ptr<ptmp::tcs::TPFilter> tcGen_;
+    std::unique_ptr<ptmp::TPFilter> tcGen_;
 
     // The inputs/output of TPsort
     std::vector<std::string> tpzipinsocks_;

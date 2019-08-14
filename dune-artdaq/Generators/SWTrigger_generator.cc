@@ -123,7 +123,7 @@ void dune::SWTrigger::start(void)
   tczipper_.reset(new ptmp::TPZipper( ptmp_util::make_ptmp_tpsorted_string(tc_inputs_,{tczipout_},tardy_) ));
 
   // TPFilter to run module algorithm
-  if(!faketrigger_) tdGen_.reset(new ptmp::tcs::TPFilter( ptmp_util::make_ptmp_tpfilter_string({tczipout_}, {tdout_}, td_alg_, "td_gen") ));
+  if(!faketrigger_) tdGen_.reset(new ptmp::TPFilter( ptmp_util::make_ptmp_tpfilter_string({tczipout_}, {tdout_}, td_alg_, "td_gen") ));
   DAQLogger::LogInfo(instance_name_) << "Started TPZipper and TPFilter with algorithm " << td_alg_;
 
   // Start a TPSet recieving/sending thread
