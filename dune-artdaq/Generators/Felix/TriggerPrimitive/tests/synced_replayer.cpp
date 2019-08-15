@@ -91,9 +91,9 @@ public:
     // is whether there is another TPSet
     bool send_tpset()
     {
-        if(m_n_sent<100){
-            std::cout << "Link " << m_index << "sending count=" << m_tpset->count() << " detid=0x" << std::hex << m_tpset->detid() << " tstart 0x" << std::hex << m_tpset->tstart() << std::dec << std::endl;
-        }
+        // if(m_n_sent<100){
+        //     std::cout << "Link " << m_index << "sending count=" << m_tpset->count() << " detid=0x" << std::hex << m_tpset->detid() << " tstart 0x" << std::hex << m_tpset->tstart() << std::dec << std::endl;
+        // }
         m_sender(*m_tpset);
         ++m_n_sent;
         return read_one_msg();
