@@ -1,6 +1,3 @@
-# For ptmp
-# include_directories($ENV{PTMP_INCLUDE_DIR})
-
 simple_plugin(TPCMilliSliceSimulatorWithCopy "generator"
   dune-raw-data_Overlays
   artdaq_Application
@@ -66,17 +63,9 @@ simple_plugin(HitFinderCPUReceiver "generator"
   ${FHICLCPP}
   ${CETLIB}
   ${CETLIB_EXCEPT}
-  ${LIBPTMP}
-  ${PROTOBUF}
+  ${PTMP_LIBRARIES}
   dune-artdaq_DAQLogger
 )
-
-# include_directories($ENV{PTMP_INC})
-
-# PAR 2018-12-03: Need these definitions to get my trigger primitive
-# code to work. They have to be target-specific otherwise they
-# interfere with the RCE receiver's use of boost, below
-target_compile_definitions(dune-artdaq_Generators_FelixReceiver_generator PRIVATE BOOST_THREAD_PROVIDES_FUTURE_WHEN_ALL_WHEN_ANY=1 BOOST_THREAD_VERSION=4)
 
 add_subdirectory(ToyHardwareInterface)
 simple_plugin(ToySimulator "generator"
@@ -188,7 +177,6 @@ add_subdirectory(swTrigger)
 
 simple_plugin(Candidate "generator"
   dune-raw-data_Overlays
-  #dune-artdaq_Generators_swTrigger
   artdaq_Application
   artdaq_Generators
   artdaq_DAQdata
@@ -199,11 +187,7 @@ simple_plugin(Candidate "generator"
   ${FHICLCPP}
   ${CETLIB}
   ${CETLIB_EXCEPT}
-  ${LIBPTMP}
-  ${LIBPTMP_TCS}
-  ${PROTOBUF}
-  $ENV{JSONCPP_LIB}/libjsoncpp.so
-  ${JSONCPP}
+  ${PTMP_LIBRARIES}
   dune-artdaq_DAQLogger   
 )
 
@@ -220,8 +204,7 @@ simple_plugin(IsoMuonFinder "generator"
   ${FHICLCPP}
   ${CETLIB}
   ${CETLIB_EXCEPT}
-  ${LIBPTMP}
-  ${PROTOBUF}
+  ${PTMP_LIBRARIES}
   dune-artdaq_DAQLogger   
 )
 
@@ -239,11 +222,7 @@ simple_plugin(SWTrigger "generator"
   ${FHICLCPP}
   ${CETLIB}
   ${CETLIB_EXCEPT}
-  ${LIBPTMP}
-  ${LIBPTMP_TCS}
-  ${PROTOBUF}
-  $ENV{JSONCPP_LIB}/libjsoncpp.so
-  ${JSONCPP}
+  ${PTMP_LIBRARIES}
   dune-artdaq_DAQLogger	  
 )
 

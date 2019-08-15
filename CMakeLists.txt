@@ -118,6 +118,8 @@ find_library( LIBPTMP_TCS NAMES ptmp-tcs PATHS $ENV{PTMP_TCS_LIB})
 find_library( LIBPTMP NAMES ptmp PATHS $ENV{PTMP_LIB})
 find_library( LIBZMQ NAMES zmq PATHS $ENV{ZMQ_LIB} NO_DEFAULT_PATH)
 find_library( LIBCZMQ NAMES czmq PATHS $ENV{CZMQ_LIB} NO_DEFAULT_PATH)
+
+set(PTMP_LIBRARIES ${LIBPTMP} ${LIBZMQ} ${LIBCZMQ} ${PROTOBUF} dl)
 #####################
 
 # have to make sure cmake doesn't select the system libraries

@@ -17,16 +17,11 @@ art_make_library( LIBRARY_NAME dune-artdaq_Generators_Felix_TriggerPrimitive
                   dune-artdaq_DAQLogger
                   ${CMAKE_THREAD_LIBS_INIT}
                   ${Boost_SYSTEM_LIBRARY}
-                  ${Boost_THREAD_LIBRARY}
                   ${CETLIB}
                   ${CETLIB_EXCEPT}
                   ${FHICLCPP}
                   artdaq-core_Data
-                  ${LIBZMQ}
-                  ${LIBPTMP}
-                  ${PROTOBUF}
-                  $ENV{JSONCPP_LIB}/libjsoncpp.so
-                  ${JSONCPP}
+                  ${PTMP_LIBRARIES}
                   numa
 )
 

@@ -4,6 +4,8 @@
 
 #include <sstream>
 
+#include "ptmp/upif.h"
+
 namespace ptmp_util
 {
 
@@ -81,7 +83,7 @@ namespace ptmp_util
         json root;
         root["input"]=make_ptmp_socket_json("SUB", "connect", inendpoints);
         root["output"]=make_ptmp_socket_json("PUB", "bind", outendpoints);
-        root["method"]=algorithm;
+        root["engine"]=algorithm;
         root["name"]=thread;
         return root.dump();
     }
@@ -119,4 +121,15 @@ namespace ptmp_util
         }
         return ret;
     }
+
+    bool add_plugin_libraries(const std::vector<std::string>& libs)
+    {
+        for(auto const& lib: libs){
+            if(!upif::plugins().add(lib)){
+                return false;
+            }
+        }
+        return true;
+    }
+
 } //ptmp_util

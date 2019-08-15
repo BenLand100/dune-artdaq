@@ -24,17 +24,17 @@ cet_make_exec(numa-where
 
 cet_make_exec(synced_replayer
   SOURCE synced_replayer.cpp
-  LIBRARIES ${TP_LIBS} ptmp ${LIBCZMQ}
+  LIBRARIES ${TP_LIBS} ${PTMP_LIBRARIES} ${LIBCZMQ}
 )
 
 cet_make_exec(dumped_hits_to_text
   SOURCE dumped_hits_to_text.cpp
-  LIBRARIES ${TP_LIBS} ptmp ${LIBCZMQ}
+  LIBRARIES ${TP_LIBS} ${PTMP_LIBRARIES} ${LIBCZMQ}
 )
 
 cet_make_exec(dumped_tpsets_to_text
   SOURCE dumped_tpsets_to_text.cpp
-  LIBRARIES ${TP_LIBS} ptmp ${LIBCZMQ}
+  LIBRARIES ${TP_LIBS} ${PTMP_LIBRARIES} ${LIBCZMQ}
 )
 
 cet_make_exec(run_on_fragment 

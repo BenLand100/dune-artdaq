@@ -4,7 +4,7 @@ cet_make_exec(test_PowerTwoHist
 
 cet_make_exec(check_latency
   SOURCE check_latency.cc
-  LIBRARIES ${LIBPTMP} ${LIBCZMQ}
+  LIBRARIES ${PTMP_LIBRARIES}
 )
 
 cet_script(check_many_latency.sh)
