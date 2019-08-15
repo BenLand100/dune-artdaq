@@ -94,6 +94,17 @@ dune::SWTrigger::SWTrigger(fhicl::ParameterSet const & ps):
 
   ts_receiver_.reset(new dune::HwClockSubscriber(ps.get<std::string>("zmq_connection_ts","tcp://*:5566")));
   DAQLogger::LogInfo(instance_name_) << "Done configure (end of constructor)\n";
+
+  // TODO: This code is duplicated in the candidate generator
+  std::vector<std::string> libs=ps.get<std::vector<std::string>>("ptmp_plugin_libraries");
+  bool success=ptmp_util::add_plugin_libraries(libs);
+  if(!success){
+      std::ostringstream ss;
+      ss << "Couldn't load one of the requested ptmp_plugin_libraries: ";
+      for(auto const& lib: libs) ss << lib << ", ";
+      DAQLogger::LogError(instance_name_) << ss.str();
+  }
+
 }
 
 // start() routine --------------------------------------------------------------------------

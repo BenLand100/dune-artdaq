@@ -69,6 +69,7 @@ dune::Candidate::Candidate(fhicl::ParameterSet const & ps):
   if(tpwinsocks_.size()!=tpwoutsocks_.size()){
       throw cet::exception("Size of TPWindow input and output socket configs do not match. Check tpwindow_inputs and tpwindow_outputs fhicl parameters");
   }
+  // TODO: This code is duplicated in the SWTrigger
   std::vector<std::string> libs=ps.get<std::vector<std::string>>("ptmp_plugin_libraries");
   bool success=ptmp_util::add_plugin_libraries(libs);
   if(!success){
