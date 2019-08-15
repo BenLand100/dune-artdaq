@@ -216,6 +216,7 @@ void dune::SWTrigger::stop(void)
 
   DAQLogger::LogInfo(instance_name_) << "Joining threads.";
   tpset_handler.join();
+  ts_subscriber_->join();
   DAQLogger::LogInfo(instance_name_) << "Threads joined.";
 
   std::ostringstream ss_stats;
