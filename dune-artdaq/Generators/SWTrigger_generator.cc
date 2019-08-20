@@ -21,6 +21,7 @@
 #include "dune-artdaq/DAQLogger/DAQLogger.hh"
 #include "dune-artdaq/Generators/swTrigger/ptmp_util.hh"
 #include "dune-artdaq/Generators/swTrigger/trigger_util.hh"
+#include "dune-artdaq/Generators/swTrigger/fhicl-to-json.hh"
 
 #include "fhiclcpp/ParameterSet.h"
 #include "timingBoard/InhibitGet.h" // The interface to the ZeroMQ trigger inhibit master
@@ -56,6 +57,7 @@ dune::SWTrigger::SWTrigger(fhicl::ParameterSet const & ps):
   ,tardy_(ps.get<int>("tardy"))
   ,tdout_(ps.get<std::string>("TD_output"))
   ,td_alg_(ps.get<std::string>("TD_algorithm"))
+  ,td_alg_config_json_(fhicl_to_json::jsonify(ps.get<fhicl::ParameterSet>("TD_algorithm_config")))
   ,prev_counts_(0)
   ,norecvds_(0)
   ,n_recvds_(0)
@@ -65,7 +67,7 @@ dune::SWTrigger::SWTrigger(fhicl::ParameterSet const & ps):
   ,loops_(0)
   ,qtpsets_(0)
   ,count_(0)
-  ,trigger_holdoff_time_(ps.get<uint64_t>("trigger_holdoff_time_pdts_ticks", 6000*25))
+  ,trigger_holdoff_time_(ps.get<uint64_t>("trigger_holdoff_time_pdts_ticks", 25000000))
 {
 
   std::stringstream instance_name_ss;
@@ -134,7 +136,12 @@ void dune::SWTrigger::start(void)
   tczipper_.reset(new ptmp::TPZipper( ptmp_util::make_ptmp_tpsorted_string(tc_inputs_,{tczipout_},tardy_) ));
 
   // TPFilter to run module algorithm
-  if(!faketrigger_) tdGen_.reset(new ptmp::TPFilter( ptmp_util::make_ptmp_tpfilter_string({tczipout_}, {tdout_}, td_alg_, "td_gen") ));
+  nlohmann::json algconfig=nlohmann::json::parse(td_alg_config_json_);
+  if(!faketrigger_) tdGen_.reset(new ptmp::TPFilter( ptmp_util::make_ptmp_tpfilter_string({tczipout_},
+                                                                                          {tdout_},
+                                                                                          td_alg_,
+                                                                                          "td_gen",
+                                                                                          &algconfig) ));
   DAQLogger::LogInfo(instance_name_) << "Started TPZipper and TPFilter with algorithm " << td_alg_;
 
   // Start a TPSet recieving/sending thread
