@@ -1,3 +1,4 @@
+
 #include "dune-artdaq/Generators/SSP.hh"
 #include "dune-artdaq/Generators/anlBoard/anlExceptions.h"
 #include "dune-artdaq/DAQLogger/DAQLogger.hh"
@@ -293,6 +294,8 @@ void dune::SSP::ConfigureDAQ(fhicl::ParameterSet const& ps){
       throw SSPDAQ::EDAQConfigError("");
   }
 
+  unsigned int trigLatency=daqConfig.get<unsigned int>("TriggerLatency",0);
+
   int dummyPeriod=daqConfig.get<int>("DummyTriggerPeriod",-1);
 
   unsigned int hardwareClockRate=daqConfig.get<unsigned int>("HardwareClockRate",0);
@@ -308,14 +311,27 @@ void dune::SSP::ConfigureDAQ(fhicl::ParameterSet const& ps){
 
   fFragmentTimestampOffset=daqConfig.get<int>("FragmentTimestampOffset",0);
 
+  std::string triggerRequestAddress;
+
+  // PAR 2019-08-21 TODO: It would be nice to use a more descriptive
+  // parameter name here, but this is the parameter name that the RC
+  // sets to the connection in our partition, so we have to use it
+  // (for now)
+  triggerRequestAddress=daqConfig.get<std::string>("zmq_fragment_connection_out","");
+
   device_interface_->SetPreTrigLength(preTrigLength);
   device_interface_->SetPostTrigLength(postTrigLength);
   device_interface_->SetUseExternalTimestamp(useExternalTimestamp);
   device_interface_->SetTriggerWriteDelay(triggerWriteDelay);
+  device_interface_->SetTriggerLatency(trigLatency);
   device_interface_->SetDummyPeriod(dummyPeriod);
   device_interface_->SetHardwareClockRateInMHz(hardwareClockRate);
   device_interface_->SetTriggerMask(triggerMask);
   device_interface_->SetFragmentTimestampOffset(fFragmentTimestampOffset);
+  if(triggerRequestAddress.length()){
+      device_interface_->StartRequestReceiver(triggerRequestAddress);
+  }
+  
 }
 
 
