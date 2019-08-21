@@ -10,6 +10,7 @@
 #include <ctime>
 #include <iomanip>
 #include <pthread.h>
+#include <utility> // For make_pair
 
 #define REORD_DEBUG
 #define QATCOMP_DEBUG
@@ -127,12 +128,18 @@ void NetioHandler::startTriggerMatchers(){
             --queuedElements;
 	  */
 
-          size_t qSize = m_pcqs[tid]->sizeGuess() ;
+          size_t qSize = m_pcqs[tid]->sizeGuess();
           if (qSize > 0.5 * m_pcqs[tid]->capacity()) {
 	     DAQLogger::LogInfo("NetioHandler::startTriggerMatchers") << "Removing old non requested data; (" << qSize << ") messages in queue.";
-	     //m_pcqs[tid]->popXFront(m_pcqs[tid]->sizeGuess());
 	     m_pcqs[tid]->popXFront(0.8 * qSize);
 	  }
+
+          // Do the same for the timestamp queue
+          size_t qSizeTS = m_timestamp_map[tid]->sizeGuess();
+          if (qSizeTS > 0.5 * m_timestamp_map[tid]->capacity()) {
+	     m_timestamp_map[tid]->popXFront(0.8 * qSize);
+	  }
+
 	  return;
 	}
 
@@ -141,6 +148,14 @@ void NetioHandler::startTriggerMatchers(){
 
         DAQLogger::LogInfo("NetioHandler::startTriggerMatchers") << "Got request for trigger " << m_triggerTimestamp;
 
+        std::pair<uint64_t, uint64_t> ts_recv(0ul,0ul);
+        while(m_timestamp_map[tid]->read(ts_recv) && ts_recv.first < m_triggerTimestamp){
+            m_timestamp_map[tid]->popFront();
+        }
+        if(ts_recv.second!=0ul){
+            const uint64_t now_us=std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+            DAQLogger::LogInfo("NetioHandler::startTriggerMatchers") << "Trigger latency was " << (now_us-ts_recv.second) << "us";
+        }
         uint_fast64_t startWindowTimestamp = m_triggerTimestamp - (uint_fast64_t)(m_windowOffset * m_tickdist);
         WIBHeader wh = *(reinterpret_cast<const WIBHeader*>( m_pcqs[tid]->frontPtr() ));
         m_lastTimestamp = wh.timestamp();
@@ -336,15 +351,18 @@ void NetioHandler::startSubscribers(){
             badOnes++;
             badSizes.push_back(msg.size());
             badFrags.push_back(msg.num_fragments());
-            //DAQLogger::LogWarning("NetioHandler::subscriber")
-            //  << " Received message with non-expected size! Bad omen!"
-            //  << " -> Trigger matching is unreliable until next queue turnaround!\n";
           }     
 	  else {
 	    SUPERCHUNK_CHAR_STRUCT ics;
 	    msg.serialize_to_usr_buffer((void*)&ics);
 
 	    bool storeOk = m_pcqs[m_channels[chn]]->write(ics); // RS -> Add possibility for dry_run! (No push mode.)
+
+            // The first frame in the message
+            dune::FelixFrame* frame=reinterpret_cast<dune::FelixFrame*>(&ics);
+            uint64_t timestamp=frame->timestamp();
+            uint64_t now_us=std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+            m_timestamp_map[m_channels[chn]]->write(std::make_pair(timestamp, now_us));
 
             if(m_doTPFinding){
                 if(!m_tp_finders[m_channels[chn]]->addMessage(ics)){
@@ -353,7 +371,6 @@ void NetioHandler::startSubscribers(){
             }
 
 	    if (!storeOk) {
-              //DAQLogger::LogWarning("NetioHandler::subscriber") << " Fragments queue is full. Lost: " << lostData;
               if(!busy()) {
                 m_pcqs[m_channels[chn]]->popXFront(m_pcqs[m_channels[chn]]->capacity()/2);
                 lostData+= m_pcqs[m_channels[chn]]->capacity()/2;
@@ -361,51 +378,23 @@ void NetioHandler::startSubscribers(){
               else {
                 ++lostData;
               }
-	    //  if(lostData%10000 == 0) {
-		//DAQLogger::LogWarning("NetioHandler::subscriber") << " Fragments queue is full. Lost: " << lostData;
-	      //}
 	    }
 	    goodOnes++;
           }
-          // RS -> Add more sophisticated quality check.
-          /*newTs = *(reinterpret_cast<const uint_fast64_t*>((&wcs)+8)); 
-          if ( (newTs-ts)!= expDist ){
-            distFails.push_back( std::make_pair(ts, newTs) );
-          }
-          ts = newTs;*/
         }
-
-        // unsubscriber from publisher
-        //m_sub_sockets[chn]->unsubscribe(chn, netio::endpoint(m_host, m_port));
-        //DAQLogger::LogInfo("NetioHandler::subscriber") << "Joining... Unsubscribed from channel[" << chn << "]";
         
         // Joining subscriber...
         std::ostringstream subsummary;
         for (unsigned i=0; i<badSizes.size(); ++i){
           subsummary << "(MSG SIZE: " << badSizes[i] << " FRAGS:" << badFrags[i] << "),\n";
         }
-        /*std::ostringstream distsummary;
-        for (unsigned i=0; i< distFails.size(); ++i){
-          distsummary << "BAD DISTANCE: ts0:" << std::hex << distFails[i].first << " t1:" << distFails[i].second
-                      << " dist:" << std::dec << distFails[i].second - distFails[i].first << '\n';
-        }*/
         DAQLogger::LogInfo("NetioHandler::subscriber") 
           << " -> Subscriber joining for link " << chn << '\n' 
           << " -> Failure summary: sum(BAD) " << badOnes << " sum(GOOD) " << goodOnes << " sum(LOST) " << lostData << '\n'
           << subsummary.str()
           << " -> Failed timestamp distances (expected distance between messages: " << expDist << ")\n";
-          //<< distsummary.str();
         DAQLogger::LogInfo("NetioHandler::subscriber") << lostTPData << " messages failed to push to TriggerPrimitiveFinder";
-        // for(auto const& it: m_tp_finders){
-        //     const uint64_t id=it.first;
-        //     TriggerPrimitiveFinder& tpf=*(it.second);
-        //     tpf.waitForJobs();
-        //     DAQLogger::LogInfo("NetioHandler::subscriber")
-        //         << "Primitive finder  " << id << '\n'
-        //         << "  messages received: " << tpf.getNMessages()  << '\n'
-        //         << "  windows processed: " << tpf.getNWindowsProcessed() << '\n'
-        //         << "  primitives found:  " << tpf.getNPrimitivesFound() << '\n';
-        // }
+
 	})
 				 );
     set_thread_name(m_netioSubscribers[i], "nioh-sub", i);
@@ -485,6 +474,8 @@ bool NetioHandler::addChannel(uint64_t chn, uint16_t tag, std::string host, uint
   m_port=port;
   m_channels.push_back(chn);
   m_pcqs[chn] = std::make_unique<FrameQueue>(queueSize);
+  m_timestamp_map[chn] = std::make_unique<TimestampQueue>(queueSize);
+
   if(m_doTPFinding){
       try{
           m_tp_finders[chn]=std::make_unique<TriggerPrimitiveFinder>(tpf_params);

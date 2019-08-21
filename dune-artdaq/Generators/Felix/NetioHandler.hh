@@ -159,6 +159,10 @@ private:
   std::map<uint64_t, UniqueFrameQueue> m_pcqs;
 #endif
 
+  // Map from data timestamp to the system time when we received it,
+  // so we can measure the selection request latency in the software trigger
+  typedef folly::ProducerConsumerQueue<std::pair<uint64_t, uint64_t>> TimestampQueue;
+  std::map<uint64_t, std::unique_ptr<TimestampQueue>> m_timestamp_map;
   // Queues for the collection channels only: to be used in the trigger primitive finding
   std::map<uint64_t, std::unique_ptr<TriggerPrimitiveFinder>> m_tp_finders;
 
