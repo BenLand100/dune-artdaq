@@ -93,9 +93,12 @@ dune::SWTrigger::SWTrigger(fhicl::ParameterSet const & ps):
   fragment_publisher_->BindPublisher();
 
   ts_receiver_.reset(new dune::HwClockSubscriber(ps.get<std::string>("zmq_connection_ts","tcp://*:5566")));
+
+  dune::DAQLogger::LogInfo("SWTrigger::metrics_thread") << "Creating metrics thread";
+  metricsThread = std::thread(&SWTrigger::metrics_thread, this);
+  // TODO: This code is duplicated in the candidate generator
   DAQLogger::LogInfo(instance_name_) << "Done configure (end of constructor)\n";
 
-  // TODO: This code is duplicated in the candidate generator
   std::vector<std::string> libs=ps.get<std::vector<std::string>>("ptmp_plugin_libraries");
   bool success=ptmp_util::add_plugin_libraries(libs);
   if(!success){
@@ -149,6 +152,33 @@ void dune::SWTrigger::readTS() {
 }
 
 // tpsetHandler() routine ------------------------------------------------------------------
+
+
+void dune::SWTrigger::metrics_thread() {
+//  
+  ptmp::data::TPSet SetReceived_for_metrics;
+  ptmp::TPReceiver* receiver_for_metrics = new ptmp::TPReceiver( ptmp_util::make_ptmp_socket_string("SUB","connect",{tczipout_}) ); //Connect to TPZipper
+  long unsigned int TPSet_count = 0;
+  auto start = std::chrono::system_clock::now();
+
+  while(!stopping_flag_.load()){
+    bool received_for_metrics = (*receiver_for_metrics)(SetReceived_for_metrics, timeout_); 
+    if (received_for_metrics) {
+      TPSet_count++;
+    }
+    if (artdaq::Globals::metricMan_) {
+      auto end = std::chrono::system_clock::now();
+      auto elapsed_to_cast = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+      long unsigned int elapsed = elapsed_to_cast.count();
+      dune::DAQLogger::LogInfo("SWTrigger::metrics_thread") << "Publishing metrics TPSets: " << TPSet_count << " time: " << elapsed;
+      artdaq::Globals::metricMan_->sendMetric("TPSets",  TPSet_count,  "sets", 1, artdaq::MetricMode::LastPoint);
+      artdaq::Globals::metricMan_->sendMetric("Time",  elapsed,  "ms", 1, artdaq::MetricMode::LastPoint);
+      TPSet_count = 0;
+      start = std::chrono::system_clock::now();
+    }
+  }
+  delete receiver_for_metrics;
+}
 
 void dune::SWTrigger::tpsetHandler() {
 
@@ -216,6 +246,7 @@ void dune::SWTrigger::stop(void)
 
   DAQLogger::LogInfo(instance_name_) << "Joining threads.";
   tpset_handler.join();
+  metricsThread.join();
   ts_subscriber_->join();
   DAQLogger::LogInfo(instance_name_) << "Threads joined.";
 

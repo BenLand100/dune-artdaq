@@ -61,6 +61,9 @@ namespace dune {
     
     void tpsetHandler();
 
+    void metrics_thread();
+    std::thread metricsThread;
+
     bool getNext_(artdaq::FragmentPtrs & output) override;
 
     bool checkHWStatus_() override;
