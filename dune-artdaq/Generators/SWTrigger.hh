@@ -147,7 +147,7 @@ namespace dune {
 
     // The Module Level algorithm
     std::string td_alg_;
-
+    std::string td_alg_config_json_;
     // Per-input counts:
     size_t prev_counts_; // The value of TPSet::count() for TPZipper output in the previous go-round
     size_t norecvds_;    // How many times the input has timed out

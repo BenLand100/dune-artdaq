@@ -133,21 +133,19 @@ int main(int argc, char* argv[])
         uint64_t now = ticks.count();
         if (ok) {
         
-            if (tps.tps_size()>0) {
-                if (number >= count*1000 || (seconds-start_seconds > total_time)) {
-                    DumpFileAndClose(0);
-                }
+            if (number >= count*1000 || (seconds-start_seconds > total_time)) {
+                DumpFileAndClose(0);
+            }
 
-                ntp[number++] = data{now, tps.tstart(), (uint64_t)tps.created(), (uint64_t)tps.tps_size()};
+            ntp[number++] = data{now, tps.tstart(), (uint64_t)tps.created(), (uint64_t)tps.tps_size()};
           
-                if (print && number %10000==0) {
-                    double latency_hit = now - tps.tstart();
-                    double latency_tpset = now - tps.created()*50;
-                    std::string thestring = ("Hit latency: " + std::to_string(latency_hit/5000) +
-                                             " ms \tTPSet latency: " + std::to_string(latency_tpset/5000) + " ms");
-                    std::cout << thestring <<"\r";
-                    std::cout.flush();
-                }
+            if (print && number %10000==0) {
+                double latency_hit = now - tps.tstart();
+                double latency_tpset = now - tps.created()*50;
+                std::string thestring = ("Hit latency: " + std::to_string(latency_hit/5000) +
+                                         " ms \tTPSet latency: " + std::to_string(latency_tpset/5000) + " ms");
+                std::cout << thestring <<"\r";
+                std::cout.flush();
             }
         }
         if(seconds-start_seconds > total_time) DumpFileAndClose(0);

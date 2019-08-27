@@ -223,7 +223,8 @@ simple_plugin(SWTrigger "generator"
   ${CETLIB}
   ${CETLIB_EXCEPT}
   ${PTMP_LIBRARIES}
-  dune-artdaq_DAQLogger	  
+  dune-artdaq_DAQLogger
+  fhicl-to-json
 )
 
 if ( (DEFINED ENV{PROTODUNE_WIBSOFT_LIB}) AND (DEFINED ENV{PROTODUNE_WIBSOFT_INC}) )

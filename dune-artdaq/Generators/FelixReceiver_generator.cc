@@ -51,7 +51,7 @@ dune::FelixReceiver::FelixReceiver(fhicl::ParameterSet const & ps)
 
 
   // Metrics
-  instance_name_for_metrics_ = "FelixReceiver";
+  instance_name_for_metrics_ = std::string("felix") + ps.get<std::string>("board_id");
   num_frags_m_ = 0;
 }
 

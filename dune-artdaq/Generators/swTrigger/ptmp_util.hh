@@ -76,15 +76,17 @@ namespace ptmp_util
     // method - The trigger candidate or decision algorithm name.
     // name - The thread name where TPFilter is running.
     std::string make_ptmp_tpfilter_string(std::vector<std::string> inendpoints,
-                                        std::vector<std::string> outendpoints,
-                                        std::string algorithm,
-                                        std::string thread)
+                                          std::vector<std::string> outendpoints,
+                                          std::string algorithm,
+                                          std::string threadname,
+                                          json* config=nullptr)
     {
         json root;
         root["input"]=make_ptmp_socket_json("SUB", "connect", inendpoints);
         root["output"]=make_ptmp_socket_json("PUB", "bind", outendpoints);
         root["engine"]=algorithm;
-        root["name"]=thread;
+        root["name"]=threadname;
+        if(config) root["engine_config"]=*config;
         return root.dump();
     }
 

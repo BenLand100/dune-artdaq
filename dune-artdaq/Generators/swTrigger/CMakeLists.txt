@@ -8,3 +8,8 @@ cet_make_exec(check_latency
 )
 
 cet_script(check_many_latency.sh)
+
+art_make_library( LIBRARY_NAME fhicl-to-json
+		  SOURCE fhicl-to-json.cpp
+                  LIBRARIES ${FHICLCPP} ${CETLIB}
+)

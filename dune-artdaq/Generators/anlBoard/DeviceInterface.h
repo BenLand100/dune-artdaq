@@ -7,6 +7,7 @@
 #include "SafeQueue.h"
 #include "EventPacket.h"
 #include <string>
+#include "dune-artdaq/Generators/Felix/RequestReceiver.hh"
 
 namespace SSPDAQ{
 
@@ -27,10 +28,18 @@ namespace SSPDAQ{
     //Real work is done in Initialize which is called manually.
     DeviceInterface(SSPDAQ::Comm_t commType, unsigned long deviceId);
 
+    ~DeviceInterface(){
+      if(fRequestReceiver){
+	delete fRequestReceiver;
+      }
+    }
+
     void OpenSlowControl();
 
     //Does all the real work in connecting to and setting up the device
     void Initialize();
+
+    void StartRequestReceiver(std::string address);
 
     //Start a run :-)
     void Start();
@@ -116,6 +125,8 @@ namespace SSPDAQ{
 
     void SetTriggerWriteDelay(unsigned long delay){fTriggerWriteDelay=delay;}
 
+    void SetTriggerLatency(unsigned long latency){fTriggerLatency=latency;}
+
     void SetDummyPeriod(int period){fDummyPeriod=period;}
 
     void SetUseExternalTimestamp(bool val){fUseExternalTimestamp=val;}
@@ -185,6 +196,8 @@ namespace SSPDAQ{
 
     unsigned long fTriggerWriteDelay;
 
+    unsigned long fTriggerLatency;
+
     unsigned int fTriggerMask;
 
     int fFragmentTimestampOffset;
@@ -206,6 +219,8 @@ namespace SSPDAQ{
     std::atomic<bool> fShouldStop;
 
     std::thread* fDataThread;
+
+    RequestReceiver* fRequestReceiver;
 
     std::mutex fBufferMutex;
 

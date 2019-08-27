@@ -29,8 +29,8 @@ ftd2xx          v1_2_7a
 rogue           v2_10_0_3_gfaeedd0
 protodune_timing v5_1_0
 jsoncpp         v1_8_0
-ptmp            v0_4_0
-ptmp_tcs        v0_0_4
+ptmp            v0_5_0
+ptmp_tcs        v0_1_1
 end_product_list
 
 # e10 - with gcc 4.9.3a and -std=c++14
