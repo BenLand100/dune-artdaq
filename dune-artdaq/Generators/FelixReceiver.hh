@@ -26,6 +26,7 @@
 #include "dune-raw-data/Overlays/FragmentType.hh"
 
 #include "Felix/FelixHardwareInterface.hh"
+#include "Felix/FelixOnHostInterface.hh"
 
 #include <random>
 #include <vector>
@@ -59,6 +60,12 @@ namespace dune {
     void stop() override;
     void stopNoMutex() override {}
 
+    bool configured;
+
+    // RS -> I know it's not the best, but for now this is how we support 2 modes.
+    // Based on configuration on_mode_ we either create flx_hw or netio_hw
+    std::unique_ptr<FelixOnHostInterface> flx_hardware_interface_;
+
     // Configurable HWInterface. Can take care of multiple links.
     std::unique_ptr<FelixHardwareInterface> netio_hardware_interface_;
     // Exposed infos from HWInterace to pre-allocate ArtDAQ fragment with correct size.
@@ -76,9 +83,13 @@ namespace dune {
     // C++03-style API for greater realism
 
     size_t frame_size_;
+    std::string op_mode_;
+    unsigned num_links_;
     //char* readout_buffer_;
+    bool onhost;
 
     FragmentType fragment_type_;
+    std::vector<uint16_t> flx_frag_ids_;
 
     // Metrics
     std::string instance_name_for_metrics_;
