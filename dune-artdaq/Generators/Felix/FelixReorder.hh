@@ -10,6 +10,8 @@
  * Date: July 2018
 */
 
+#include "dune-raw-data/Overlays/FelixFragment.hh"
+
 #include <inttypes.h>
 #include <immintrin.h>
 #include <string>

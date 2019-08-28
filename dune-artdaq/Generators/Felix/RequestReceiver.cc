@@ -43,8 +43,12 @@ void RequestReceiver::start() {
   m_prevTrigger.seqID = 0;
   m_receiver = std::thread(&RequestReceiver::thread, this);
   set_thread_name(m_receiver, "req-recv", 1);
+  cpu_set_t cpuset;
+  CPU_ZERO(&cpuset);
+  CPU_SET(0, &cpuset);
+  int ret = pthread_setaffinity_np(m_receiver.native_handle(), sizeof(cpu_set_t), &cpuset);
   dune::DAQLogger::LogInfo("RequestReceiver::start")
-      << "Request receiver thread started!";
+      << "Request receiver thread started! pinned successfully? " << ret;
 }
 
 void RequestReceiver::stop() {

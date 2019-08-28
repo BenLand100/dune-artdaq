@@ -1,6 +1,6 @@
 /// Thijs Miedema, last edit 2018-08-30
 
-#include "FelixFormat.hh"
+#include "dune-raw-data/Overlays/FelixFragment.hh"
 #include "FelixReorder.hh"
 
 #define UNUSED(x) (void)(x)
@@ -28,8 +28,8 @@ void FelixReorder::handle_headers(uint8_t* dst, const uint8_t* src, const unsign
         return;
     }
     
-    const WIBHeader *wib_frame_0 = reinterpret_cast<WIBHeader const *>(dst + bitfield_size);
-    const WIBHeader *wib_frame_n = reinterpret_cast<WIBHeader const *>(src);
+    const dune::WIBHeader *wib_frame_0 = reinterpret_cast<dune::WIBHeader const *>(dst + bitfield_size);
+    const dune::WIBHeader *wib_frame_n = reinterpret_cast<dune::WIBHeader const *>(src);
     
     bool check_failed = false;
 
@@ -48,9 +48,9 @@ void FelixReorder::handle_headers(uint8_t* dst, const uint8_t* src, const unsign
 
     // COLDATA header checks.
     for (unsigned j = 0; j < 4; ++j) {
-        const ColdataHeader *col_frame_0 = reinterpret_cast<ColdataHeader const *>
+        const dune::ColdataHeader *col_frame_0 = reinterpret_cast<dune::ColdataHeader const *>
             (dst + bitfield_size + m_wib_header_size + j * m_coldata_header_size);
-        const ColdataHeader *col_frame_n = reinterpret_cast<ColdataHeader const *>
+        const dune::ColdataHeader *col_frame_n = reinterpret_cast<dune::ColdataHeader const *>
             (src + m_wib_header_size + j * (m_coldata_header_size + m_num_bytes_per_block));
         
         check_failed |= col_frame_0->s1_error ^ col_frame_n->s1_error;
@@ -79,7 +79,7 @@ void FelixReorder::handle_headers(uint8_t* dst, const uint8_t* src, const unsign
 void FelixReorder::baseline_handle_frames(uint8_t *dst, const uint8_t *psrc, const unsigned frames_start, const unsigned frames_stop, const unsigned &num_frames, unsigned *num_faulty)
 {
     // Store all ADC values in uint16_t.
-    const FelixFrame *src = reinterpret_cast<FelixFrame const *>(psrc);
+    const dune::FelixFrame *src = reinterpret_cast<dune::FelixFrame const *>(psrc);
     uint8_t *end = dst + num_frames * m_num_bytes_per_data;
 
     for (unsigned fr = frames_start; fr < frames_stop; ++fr)
@@ -88,7 +88,7 @@ void FelixReorder::baseline_handle_frames(uint8_t *dst, const uint8_t *psrc, con
 
         for (unsigned ch = 0; ch < m_num_ch_per_frame; ++ch)
         {
-            adc_t curr_val = (src + fr - frames_start)->channel(ch);
+            dune::adc_t curr_val = (src + fr - frames_start)->channel(ch);
             memcpy(dst + (ch * num_frames + fr) * m_adc_size, &curr_val, m_adc_size);
         }
     }
