@@ -153,11 +153,14 @@ namespace dune {
     size_t ntriggers_;
     size_t fqueue_;
     size_t loops_;
-    size_t qtpsets_;
+    std::atomic<size_t> qtpsets_;
+    std::atomic<size_t> n_trigger_decisions_;
     
     size_t count_;
 
     uint64_t trigger_holdoff_time_;
+
+    size_t metric_reporting_interval_seconds;
   };
 }
 

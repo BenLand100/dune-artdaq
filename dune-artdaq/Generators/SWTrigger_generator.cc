@@ -66,8 +66,10 @@ dune::SWTrigger::SWTrigger(fhicl::ParameterSet const & ps):
   ,fqueue_(0)
   ,loops_(0)
   ,qtpsets_(0)
+  ,n_trigger_decisions_(0)
   ,count_(0)
   ,trigger_holdoff_time_(ps.get<uint64_t>("trigger_holdoff_time_pdts_ticks", 25000000))
+  ,metric_reporting_interval_seconds(ps.get<size_t>("metric_reporting_interval_seconds", 10))
 {
 
   std::stringstream instance_name_ss;
@@ -165,32 +167,41 @@ void dune::SWTrigger::readTS() {
 
 void dune::SWTrigger::metrics_thread() {
 //  
-  unsigned int metric_reporting_interval_seconds = 10;
-  ptmp::data::TPSet SetReceived_for_metrics;
-  ptmp::TPReceiver* receiver_for_metrics = new ptmp::TPReceiver( ptmp_util::make_ptmp_socket_string("SUB","connect",{tczipout_}) ); //Connect to TPZipper
-  long unsigned int TPSet_count = 0;
+//  ptmp::data::TPSet SetReceived_for_metrics;
+//  ptmp::TPReceiver* receiver_for_metrics = new ptmp::TPReceiver( ptmp_util::make_ptmp_socket_string("SUB","connect",{tczipout_}) ); //Connect to TPZipper
+  long unsigned int TP_count = 0;
   long unsigned int last_nTPhits = 0;
-  auto start = std::chrono::system_clock::now();
 
+  long unsigned int TP_getNext_count = 0;
+  long unsigned int last_qtpsets= 0;
+
+  long unsigned int TD_count = 0;
+  long unsigned int last_trigger_decisions= 0;
   while(!stopping_flag_.load()){
     if (artdaq::Globals::metricMan_ && artdaq::Globals::metricMan_->Running()) {
-      TPSet_count = nTPhits_ - last_nTPhits;
+      TP_count = nTPhits_ - last_nTPhits;
       last_nTPhits = nTPhits_;
-      auto end = std::chrono::system_clock::now();
-      auto elapsed_to_cast = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-      long unsigned int elapsed = elapsed_to_cast.count();
-      // dune::DAQLogger::LogInfo("SWTrigger::metrics_thread") << "Publishing metrics TPSets: " << TPSet_count << " time: " << elapsed;
-      artdaq::Globals::metricMan_->sendMetric("TPSets",  TPSet_count,  "sets", 1, artdaq::MetricMode::LastPoint);
-      artdaq::Globals::metricMan_->sendMetric("Time",  elapsed,  "ms", 1, artdaq::MetricMode::LastPoint);
-      TPSet_count = 0;
-      start = std::chrono::system_clock::now();
+
+      TP_getNext_count = qtpsets_ - last_qtpsets;
+      last_qtpsets = qtpsets_;
+
+      TD_count = n_trigger_decisions_ - last_trigger_decisions;
+      last_trigger_decisions = n_trigger_decisions_;
+
+      dune::DAQLogger::LogInfo("SWTrigger::metrics_thread") << "Publishing metrics TPs: " << TP_count << "TP in getNext(): " << TP_getNext_count << "Trigger Decisions sent out: " << TD_count;
+      artdaq::Globals::metricMan_->sendMetric("TPs",  TP_count,  "hits ", 1, artdaq::MetricMode::LastPoint);
+      artdaq::Globals::metricMan_->sendMetric("TPs_getNext",  TP_getNext_count,  "hits ", 1, artdaq::MetricMode::LastPoint);
+      artdaq::Globals::metricMan_->sendMetric("TDs",  TD_count,  "decisions", 1, artdaq::MetricMode::LastPoint);
+      TP_count = 0;
+      TP_getNext_count = 0;
+      TD_count = 0;
     }
     for(size_t i=0; i<metric_reporting_interval_seconds; ++i){
       std::this_thread::sleep_for(std::chrono::seconds(1));
       if(stopping_flag_.load()) break;
     }
   }
-  delete receiver_for_metrics;
+  // delete receiver_for_metrics;
 }
 
 void dune::SWTrigger::tpsetHandler() {
@@ -389,7 +400,9 @@ bool dune::SWTrigger::getNext_(artdaq::FragmentPtrs &frags)
         frags.emplace_back(std::move(frag));
         // We only increment the event counter for events we send out
         ev_counter_inc();
-            
+
+	n_trigger_decisions_++;
+         
         prev_timestamp=*trigger_timestamp;
       }
     }
