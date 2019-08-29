@@ -6,7 +6,6 @@
 #include "design_fir.h"
 #include "ProcessingTasks.h"
 
-// #include "dune-artdaq/Generators/Felix/FelixFormat.hh"
 #include "dune-artdaq/Generators/Felix/Types.hh"
 #include "dune-raw-data/Overlays/FelixHitFormat.hh"
 

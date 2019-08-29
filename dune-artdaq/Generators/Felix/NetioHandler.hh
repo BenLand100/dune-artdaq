@@ -4,7 +4,6 @@
 #include "dune-raw-data/Overlays/FragmentType.hh"
 #include "ProducerConsumerQueue.hh"
 #include "ReusableThread.hh"
-//#include "NetioSubscriber.hh"
 #include "NetioWIBRecords.hh"
 #include "Utilities.hh"
 #include "Types.hh"

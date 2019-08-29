@@ -17,7 +17,7 @@
 #include "artdaq-core/Data/Fragment.hh" 
 #include "artdaq/Generators/CommandableFragmentGenerator.hh"
 #include "dune-raw-data/Overlays/FragmentType.hh"
-#include "dune-artdaq/Generators/Felix/ProducerConsumerQueue.hh"
+#include "ProducerConsumerQueue.hh"
 
 #include <vector>
 #include <atomic>

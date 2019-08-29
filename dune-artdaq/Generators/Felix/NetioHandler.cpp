@@ -1,4 +1,5 @@
 #include "dune-artdaq/DAQLogger/DAQLogger.hh"
+#include "dune-raw-data/Overlays/FelixFragment.hh"
 #include "NetioHandler.hh"
 #include "NetioWIBRecords.hh"
 #include "ReusableThread.hh"
@@ -9,6 +10,7 @@
 
 #include <ctime>
 #include <iomanip>
+#include <exception>
 #include <pthread.h>
 #include <utility> // For make_pair
 
@@ -64,7 +66,8 @@ NetioHandler::~NetioHandler() {
 
 bool NetioHandler::setupContext(std::string contextStr) {
   DAQLogger::LogInfo("NetioHandler::setupContext")
-    << "Creating context and starting bacground thread for " << contextStr; 
+    << "Creating context and starting bacground thread for " << contextStr;
+
   m_context = new netio::context(contextStr);
   m_netio_bg_thread = std::thread( [&](){m_context->event_loop()->run_forever();} );
   set_thread_name(m_netio_bg_thread, "nioh-bg", 0);
@@ -157,7 +160,7 @@ void NetioHandler::startTriggerMatchers(){
             DAQLogger::LogInfo("NetioHandler::startTriggerMatchers") << "Trigger latency was " << (now_us-ts_recv.second) << "us";
         }
         uint_fast64_t startWindowTimestamp = m_triggerTimestamp - (uint_fast64_t)(m_windowOffset * m_tickdist);
-        WIBHeader wh = *(reinterpret_cast<const WIBHeader*>( m_pcqs[tid]->frontPtr() ));
+        dune::WIBHeader wh = *(reinterpret_cast<const dune::WIBHeader*>( m_pcqs[tid]->frontPtr() ));
         m_lastTimestamp = wh.timestamp();
         m_positionDepth = 0;
 	//GLM: Check if there is such a delay in trigger requests that data have gone already...

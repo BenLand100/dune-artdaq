@@ -9,7 +9,7 @@
 #include "artdaq/Generators/CommandableFragmentGenerator.hh"
 
 #include "dune-raw-data/Overlays/FragmentType.hh"
-#include "dune-artdaq/Generators/Felix/ProducerConsumerQueue.hh"
+#include "ProducerConsumerQueue.hh"
 
 #include <random>
 #include <vector>

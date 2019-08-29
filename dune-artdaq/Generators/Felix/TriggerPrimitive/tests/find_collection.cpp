@@ -1,7 +1,7 @@
 #include <iostream>
 #include <fstream>
 
-#include "dune-artdaq/Generators/Felix/FelixFormat.hh"
+#include "dune-raw-data/Overlays/FelixFormat.hh"
 
 int main(int, char**)
 {
@@ -28,10 +28,10 @@ int main(int, char**)
     char* buffer = new char[464];
     is.read(buffer,464);
     is.close();
-    FelixFrame* frame=reinterpret_cast<FelixFrame*>(buffer);
+    dune::FelixFrame* frame=reinterpret_cast<dune::FelixFrame*>(buffer);
     // Set every channel's value to its channel number, so I can see
     // what the numbering scheme is
-    for(unsigned ch=0; ch<FelixFrame::num_ch_per_frame; ++ch){
+    for(unsigned ch=0; ch<dune::FelixFrame::num_ch_per_frame; ++ch){
         frame->set_channel(ch, ch);
     }
     // Set the collection channels to 0xfff, so they show up
