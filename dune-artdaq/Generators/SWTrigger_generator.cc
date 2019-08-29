@@ -173,11 +173,11 @@ void dune::SWTrigger::metrics_thread() {
     if (received_for_metrics) {
       TPSet_count++;
     }
-    if (artdaq::Globals::metricMan_) {
+    if (artdaq::Globals::metricMan_ && artdaq::Globals::metricMan_->Running()) {
       auto end = std::chrono::system_clock::now();
       auto elapsed_to_cast = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
       long unsigned int elapsed = elapsed_to_cast.count();
-      dune::DAQLogger::LogInfo("SWTrigger::metrics_thread") << "Publishing metrics TPSets: " << TPSet_count << " time: " << elapsed;
+      // dune::DAQLogger::LogInfo("SWTrigger::metrics_thread") << "Publishing metrics TPSets: " << TPSet_count << " time: " << elapsed;
       artdaq::Globals::metricMan_->sendMetric("TPSets",  TPSet_count,  "sets", 1, artdaq::MetricMode::LastPoint);
       artdaq::Globals::metricMan_->sendMetric("Time",  elapsed,  "ms", 1, artdaq::MetricMode::LastPoint);
       TPSet_count = 0;
@@ -350,6 +350,7 @@ bool dune::SWTrigger::getNext_(artdaq::FragmentPtrs &frags)
 {
 
   static uint64_t prev_timestamp=0;
+  ++loops_;
 
   // TODO: Change the check here to "if stopping_flag && we've got all of the fragments in the queue"
   if (stopping_flag_.load()) return false;
@@ -364,6 +365,7 @@ bool dune::SWTrigger::getNext_(artdaq::FragmentPtrs &frags)
 
   uint64_t* trigger_timestamp = timestamp_queue_.frontPtr();
   if (trigger_timestamp) {
+    ++qtpsets_;
     DAQLogger::LogInfo(instance_name_) << "Trigger requested for 0x" << std::hex << (*trigger_timestamp) << std::dec;
     if(*trigger_timestamp < prev_timestamp+trigger_holdoff_time_){
       DAQLogger::LogInfo(instance_name_) << "Trigger too close to previous trigger time of " << prev_timestamp << ". Not sending";
