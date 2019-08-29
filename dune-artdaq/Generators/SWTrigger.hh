@@ -48,9 +48,6 @@ namespace dune {
     explicit SWTrigger(fhicl::ParameterSet const & ps);
 
   protected:
-    std::string metricsReportingInstanceName() const {
-      return "";
-    }
 
   private:
 

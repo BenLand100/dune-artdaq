@@ -110,6 +110,8 @@ dune::SWTrigger::SWTrigger(fhicl::ParameterSet const & ps):
       DAQLogger::LogError(instance_name_) << ss.str();
   }
 
+  metricsReportingInstanceName("swTrigger");
+
 }
 
 // start() routine --------------------------------------------------------------------------
