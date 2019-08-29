@@ -308,7 +308,7 @@ void TriggerPrimitiveFinder::metrics_thread()
         double hitrate=double(nhits)/m_metric_reporting_interval_seconds;
         double adcsumrate=double(adcsum)/m_metric_reporting_interval_seconds;
 
-        if(artdaq::Globals::metricMan_) {
+        if(artdaq::Globals::metricMan_ && artdaq::Globals::metricMan_->Running()) {
             dune::DAQLogger::LogInfo("TriggerPrimitiveFinder::metrics_thread") << "Publishing metrics hitrate: " << hitrate << " adcsumrate: " << adcsumrate;
             artdaq::Globals::metricMan_->sendMetric("Hit Rate",  hitrate   ,  "Hz", 1, artdaq::MetricMode::LastPoint);
             artdaq::Globals::metricMan_->sendMetric("ADC sum rate", adcsumrate, "ADC/s", 1, artdaq::MetricMode::LastPoint);
