@@ -1,6 +1,6 @@
 # The parent line must be the first non-comment line in the file
 # This line defines the product name and version
-parent dune_artdaq	v2019_07_30_develop
+parent dune_artdaq	v2019_08_29_develop_self_trigger_and_felix
 defaultqual	e15
 
 # These optional lines define the installed directories where
@@ -18,7 +18,7 @@ bindir      fq_dir      bin
 #
 product		version		optional
 artdaq		v2019_08_28_protoDFO_pduneHacks
-dune_raw_data 	v2019_07_17_for_dune-artdaq
+dune_raw_data 	v2019_08_29_for_dune-artdaq_self_trigger_and_felix
 cetbuildtools	v7_02_01	-	only_for_build
 smc_compiler    v6_6_0          -nq-    only_for_build
 uhal		v2_6_0
