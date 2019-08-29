@@ -324,8 +324,8 @@ nprocessors=$( grep -E "processor\s+:" /proc/cpuinfo | wc -l )
 trace_file_label=$( basename $localdiskdir )
 
 dune_artdaq_InhibitMaster_version=$( sed -r -n "s/^\s*dune_artdaq_InhibitMaster\s+(\S+).*/\1/p" $ARTDAQ_DEMO_DIR/ups/product_deps )
-dim_version=v20r20
-artdaq_dim_plugin_version=v0_02_08d
+artdaq_zmq_plugin_version=v2019_08_23_protoDFO_testing
+artdaq_dim_plugin_version=v0_02_08e
 TRACE_version=v3_13_07
 pyzmq_version=v18_0_1a
 
@@ -432,7 +432,7 @@ cd $startdir
         export LD_LIBRARY_PATH=\$LD_LIBRARY_PATH:/nfs/sw/sysadmin/QAT/QAT2.0/qatzip2/qatzip/src
 
        setup pyzmq $pyzmq_version  -q p2714b
-       setup dim $dim_version -q e15
+       setup artdaq_zmq_plugin $artdaq_zmq_plugin_version -q e15:prof:s64
        setup artdaq_dim_plugin $artdaq_dim_plugin_version -q e15:prof:s64
 
        setup TRACE $TRACE_version
