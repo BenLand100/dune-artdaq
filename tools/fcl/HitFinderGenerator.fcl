@@ -1,0 +1,224 @@
+   daq: {
+
+      ## Run number to use for output file
+      run_number: 1  # default
+
+      ## Whether to print debug messages to console
+      debug_cout: true  # default
+
+      ## Timeout to use (in seconds) for automatic transitions
+      transition_timeout: 30  # default
+
+      fragment_receiver: {
+
+         ## Name of the CommandableFragmentGenerator plugin to load
+         generator: HitFinderCPUReceiver
+         ## The type of Fragments this CFG will be generating. "Empty" will auto-detect type based on Fragments generated.
+         expected_fragment_type: CPUHITS  # default
+
+         ## The identification number for this CommandableFragmentGenerator
+         board_id: 666
+
+         ## The Fragment ID created by this CommandableFragmentGenerator
+         fragment_id: 777  # default
+         
+         ## The maximum time in microseconds before we timeout for a TPReceiver call
+         timeout: 100
+
+         ## The amount of time the BR should wait before the next call to the TPReceiver
+         waitretry: 10
+
+         ## The maximum  number of time the BR should try to call the TPReceiver
+         ntimes_retry: 10
+    
+         ## The number of input PTMP messages in the outpout
+         ptmp_aggregation: 5
+         
+         ## The ip:port for receiving the hits from the CPU
+         receiver_socket: "tcp://127.0.0.1:40000"
+
+         ## The ip:port for sending the hits to the data selector
+         sender_socket: "tcp://X.X.X.X:40001"
+         
+
+   }
+
+
+      event_builder: {
+
+         ## Maximum event size (all Fragments), in bytes
+         max_event_size_bytes: 5000000
+
+         ## Maximum amount of time elapsed before a buffer is marked as abandoned. Time is reset each time an operation is performed on the buffer.
+         stale_buffer_timeout_usec: 5000000  # default
+
+         ## Whether buffers are allowed to be overwritten when safe (state == Full or Reading)
+         overwrite_mode: false  # default
+
+         ## Whether to automatically restart art processes that fail for any reason
+         restart_crashed_art_processes: true  # default
+
+         ## Key to use for shared memory access
+         shared_memory_key: 3202880093  # default
+
+         ## Number of events in the Shared Memory (incomplete + pending art)
+         buffer_count: 10
+
+         ##  Maximum Fragment size, in bytes
+         max_fragment_size_bytes: 7000000
+
+         ## Amount of time (in seconds) an event can exist in shared memory before being released to art. Used as input to default parameter of "stale_buffer_timeout_usec".
+         event_queue_wait_time: 5  # default
+
+         ## When true, buffers are not marked Empty when read, but return to Full state. Buffers are overwritten in order received.
+         broadcast_mode: false  # default
+
+         ## Number of art procceses to start
+         
+         art_analyzer_count: 1  # default
+
+         ## Number of Fragments to expect per event
+
+         expected_fragments_per_event: 1000
+
+         ## Maximum number of over-size Fragments to drop before throwing an exception.  Default is 1, which means to throw an exception if any over-size Fragments are dropped. Set to 0 to disable.
+
+         maximum_oversize_fragment_count: 1  # default
+
+         ## Whether the run and subrun ID of an event should be updated whenever a Fragment is added.
+
+         update_run_ids_on_new_fragment: true  # default
+
+         ## Whether to use the artdaq Sequence ID (true) or the Timestamp (false) for art Event numbers
+
+         use_sequence_id_for_event_number: true  # default
+
+         ## Whether Init Fragments are expected to be sent to art. If true, a Warning message is printed when an Init Fragment is requested but none are available.
+
+         send_init_fragments: true  # default
+
+         ## Interval at which an incomplete event report should be written
+
+         incomplete_event_report_interval_ms: -1  # default
+
+         ## Amount of time broadcast fragments should live in the broadcast shared memory segment
+
+         fragment_broadcast_timeout_ms: 3000  # default
+
+         ## Amount of time that an art process should run to not be considered "DOA"
+
+         minimum_art_lifetime_s: 2.00000  # default
+
+         ## During shutdown, SMEM will wait for this amount of time while it is checking that the art threads are done reading buffers.
+
+         expected_art_event_processing_time_us: 100000  # default
+
+         broadcast_shared_memory_key: 3471315549  # default
+
+         ## Buffers in the broadcast shared memory segment
+
+         broadcast_buffer_count: 10  # default
+
+         ## Size of the buffers in the broadcast shared memory segment
+
+         broadcast_buffer_size: 1048576  # default
+
+         ## Whether to start and manage art threads (Sets art_analyzer count to 0 and overwrite_mode to true when false)
+
+         use_art: true  # default
+
+         ## Prints the startup command line for the art process so that the user may (for example) run it in GDB or valgrind
+
+         manual_art: false  # default
+
+         ## Enable sending Data Request messages
+
+         send_requests: false  # default
+
+         ## Port to send DataRequests on
+
+         request_port: 3001  # default
+
+         ## How long to wait before sending new DataRequests
+
+         request_delay_ms: 10  # default
+
+         ## How long to wait for pending requests to be sent at shutdown
+
+         request_shutdown_timeout_us: 100000  # default
+
+         ## Use this hostname for multicast output(to assign to the proper NIC)
+
+         multicast_interface_ip: "0.0.0.0"  # default
+
+         ## Multicast address to send DataRequests to
+
+         request_address: "227.128.12.26"  # default
+
+         ## FHiCL table containing RoutingToken configuration
+
+         routing_token_config: {
+
+            ## True if using the Routing Master
+
+            use_routing_master: false  # default
+
+            ## Port to send tokens on
+
+            routing_token_port: 35555  # default
+
+            ## Hostname or IP of RoutingMaster
+
+            routing_master_hostname: "localhost"  # default
+         }
+      }
+
+      ## Number of events to generate and process
+
+      events_to_generate: 0  # default
+
+      services: {
+
+         scheduler: {
+
+            ## This parameter is necessary for correct function of artdaq. Do not modify.
+
+            errorOnFailureToPut: false  # default
+         }
+
+      }
+
+      physics: {
+
+         analyzers: {
+         }
+
+         producers: {
+         }
+
+         filters: {
+         }
+
+         # ## Output modules (configured in the outputs block) to use
+
+         # my_output_modules: [
+         #    <string>,
+         #    ...
+         # ]
+      }
+
+      # outputs: {
+
+      # }
+      
+      # source: {
+
+      #    ## Module type of source. Should be "RawInput", "NetMonInput", or an experiment-defined input type (e.g. "DemoInput")
+
+      #    module_type: 
+      # }
+
+      ## Name of this art processing job
+
+      process_name: "DAQ"  # default
+   }

@@ -3,6 +3,7 @@
 
 #include "dune-raw-data/Overlays/FragmentType.hh"
 #include "dune-raw-data/Overlays/FelixFragment.hh"
+#include "dune-raw-data/Overlays/CPUHitsFragment.hh"
 #include "artdaq/DAQrate/RequestReceiver.hh"
 #include "fhiclcpp/fwd.h"
 
@@ -36,7 +37,7 @@ public:
   // Functionalities
   void StartDatataking();
   void StopDatataking();
-  bool FillFragment( std::unique_ptr<artdaq::Fragment>& frag );
+  bool FillFragment( std::unique_ptr<artdaq::Fragment>& frag, std::unique_ptr<artdaq::Fragment>& fraghits );
 
   // Info
   int SerialNumber() const;
@@ -52,15 +53,18 @@ public:
     std::string host_;
     unsigned short port_;
     unsigned short tag_;    
+    fhicl::ParameterSet tpf_params_;
 
     LinkParameters ( const unsigned short& id,
                      const std::string& host,
                      const unsigned short& port,
-                     const unsigned short& tag ):
+                     const unsigned short& tag,
+                     fhicl::ParameterSet tpf_params):
         id_( id ),
         host_( host ),
         port_( port ),
-        tag_( tag )
+        tag_( tag ),
+        tpf_params_(tpf_params)
     { }
   };
 
@@ -76,6 +80,7 @@ private:
   unsigned window_;
   unsigned window_offset_;
   bool reordering_;
+  bool trigger_primitive_finding_;
   bool compression_;
   int qat_engine_;
   std::string requester_address_;
@@ -98,7 +103,9 @@ private:
 
   // Fragment related
   dune::FragmentType fragment_type_;
+  dune::FragmentType fragment_hits_type_;
   dune::FelixFragmentBase::Metadata fragment_meta_;
+  dune::CPUHitsFragment::Metadata fragment_hits_meta_;
 
   std::size_t usecs_between_sends_;
   

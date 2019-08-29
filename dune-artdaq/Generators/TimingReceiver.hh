@@ -5,7 +5,7 @@
 //# /*
 //#      TimingReceiver.hh (goes with: TimingReceiver_generator.cpp)
 //#
-//#  Giles Barr, Justo Martin-Albo, Farrukh Azfar, Jan 2017,  May 2017 
+//#  Giles Barr, Justo Martin-Albo, Farrukh Azfar, Jan 2017,  May 2017
 //#  for ProtoDUNE
 //# */
 //################################################################################
@@ -26,6 +26,7 @@
 #include <memory>
 #include <map>
 #include <chrono>
+#include <thread>
 
 #pragma GCC diagnostic ignored "-Wunused"
 #pragma GCC diagnostic ignored "-Wunused-parameter"
@@ -33,42 +34,41 @@
 #pragma GCC diagnostic push
 #include "uhal/uhal.hpp"   // The real uhal
 #pragma GCC diagnostic pop
-#include "timingBoard/StatusPublisher.hh"
-#include "timingBoard/FragmentPublisher.hh"
 
-//class testclass : private boost::noncopyable {
-//public:
-//  testclass(std::string& initstring);
-//};
 
-// This little class is a fiddle, the explanation is in the top of 
-// TimingReceiver_generator.cc.   It is to avoid the uhal verbose messages 
+// This little class is a fiddle, the explanation is in the top of
+// TimingReceiver_generator.cc.   It is to avoid the uhal verbose messages
 // as the connectionManager is being constructed
 namespace dune {
-  class SetUHALLog {
-    public:
-      SetUHALLog(int);   // Constructor
-  };
+class SetUHALLog {
+  public:
+    SetUHALLog(int);   // Constructor
+};
 }
 
-using namespace uhal;
 
 namespace dune {
 class TimingFragment;
 }
 
 namespace pdt {
-    class PartitionNode; // Forward definition
+class PartitionNode; // Forward definition
+}
+
+namespace artdaq {
+class HwClockPublisher;
+class StatusPublisher;
+class FragmentPublisher;
 }
 
 namespace dune {
-  class TimingReceiver : public artdaq::CommandableFragmentGenerator {
+class TimingReceiver : public artdaq::CommandableFragmentGenerator {
   public:
     explicit TimingReceiver(fhicl::ParameterSet const & ps);
 
   protected:
     std::string metricsReportingInstanceName() const {
-      return "";
+        return "";
     }
 
   private:
@@ -107,6 +107,10 @@ namespace dune {
     // Reporting functionality, for future use, if/when needed
     std::string report() override { return ""; }
 
+    void publishHwTime();
+    void startHwTimePublisher();
+    void stopHwTimePublisher();
+
     std::string instance_name_;
 
     // stopping_flag_ : This is written in stopNoMutex() and
@@ -121,40 +125,41 @@ namespace dune {
     uint32_t stopping_flag_;
 
     uint32_t throttling_state_;  // 0=XON, 1=XOFF state as set in the hardware.
-    uint32_t stopping_state_;    // 0=running, 1=told hardware to stop, but it 
-                                 // may have more data for me, 2=hardware has
-                                 // no more data, OK for getNext_() to return false
+    uint32_t stopping_state_;    // 0=running, 1=told hardware to stop, but it
+    // may have more data for me, 2=hardware has
+    // no more data, OK for getNext_() to return false
 
     // Items that are mostly FHICL parameters being poked down to the hardware
     // or other software components
     uint32_t inhibitget_timer_; // Time in us before we give up on the InhibitGet and
-                                // just start the run.  A value over 10000000 (10s) 
-                                // is treated as infinite time wait (which should
-                                // be used for production running)
-    
+    // just start the run.  A value over 10000000 (10s)
+    // is treated as infinite time wait (which should
+    // be used for production running)
+
     // Items needed for uHAL
-    dune::SetUHALLog logFiddle_;  // See explanation of this fiddle in 
-             // TimingReceiver_generator.cc comments near the constructor.  
+    dune::SetUHALLog logFiddle_;  // See explanation of this fiddle in
+    // TimingReceiver_generator.cc comments near the constructor.
     const std::string connectionsFile_;
-    std::string bcmc_;  // This is a fiddle because Connection Manager wants it non-Const  
-    uhal::ConnectionManager connectionManager_; 
+    std::string bcmc_;  // This is a fiddle because Connection Manager wants it non-Const
+    uhal::ConnectionManager connectionManager_;
     uhal::HwInterface hw_;
 
     // Things that are Fhicl parameters
     uint32_t partition_number_; // The partition number we're talking to
-    uint32_t debugprint_;  // Controls the printing of stuff as info messages. 
-                           // 0=minimal, 
-                           // 1=Also reports throttling changes that go to hardware, 
-                           // 2=calls the bufstatus and hwstatus during init, 
-                           // 3=Debug message for each trigger and all throttling data
+    uint32_t debugprint_;  // Controls the printing of stuff as info messages.
+    // 0=minimal,
+    // 1=Also reports throttling changes that go to hardware,
+    // 2=calls the bufstatus and hwstatus during init,
+    // 3=Debug message for each trigger and all throttling data
     uint32_t trigger_mask_;         // Trigger mask
     uint32_t end_run_wait_;         // Number of microsecs to wait at the end of a run before looking for last event
     bool enable_spill_commands_; // Should we tell the board to enable spill start/stop as event-generating commands?
     bool enable_spill_gate_; // Whether to enable the spill gate on the timing board
-
+    
     std::string zmq_conn_;  // String specifying the zmq connection to subscribe for inhibit information
     std::string zmq_conn_out_;  // String specifying the zmq connection we will send our inhibit information to
     std::string zmq_fragment_conn_out_; // String specifying the zmq connection we publish fragments on
+    std::string zmq_hwtimer_conn_out_; // String specifying the zmq connection we publish fragments on
     std::vector<int> valid_firmware_versions_fcl_; // Valid versions of the firmware according to the fcl file. We take the union of these and any versions hardcoded into the board reader as being allowed
 
     // Things for metrics (need to use int because the metrics send class signature uses 'int')
@@ -172,9 +177,11 @@ namespace dune {
 
     std::unique_ptr<artdaq::StatusPublisher> status_publisher_;
     std::unique_ptr<artdaq::FragmentPublisher> fragment_publisher_;
+    std::unique_ptr<artdaq::HwClockPublisher> hwtime_publisher_;
 
     int want_inhibit_; // Do we want to request a trigger inhibit?
 
+    bool propagate_trigger_;
     // Some timestamps of the most recent of each type of event. We
     // fill these by reading events from the event buffer, and add
     // their values to the subsequent event fragments, so that the
@@ -187,12 +194,16 @@ namespace dune {
     uint32_t last_runstart_tstamph_;   //                                       (high 32 bits)
 
 // Internal functions
-    void reset_met_variables(bool onlyspill=false);   // If onlyspill, only reset the in-spill variables
+    void reset_met_variables(bool onlyspill = false); // If onlyspill, only reset the in-spill variables
     void update_met_variables(dune::TimingFragment& fo); // Update variables for met
     void send_met_variables();    // Send the variables to the metrics system
     void fiddle_trigger_mask();  // Modify the trigger mask so we only see triggers in our partition
     // TODO: Should this be const?
     const pdt::PartitionNode& master_partition();
+    std::atomic<bool> hwclock_publisher_stop_;
+    std::thread hwclock_publisher_thread_;
+
+    bool send_fragments_; // Should we send fragments corresponding to hardware triggers to artdaq?
 
     bool use_routing_master_;
   };

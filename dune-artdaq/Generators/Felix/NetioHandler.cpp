@@ -5,12 +5,14 @@
 #include "ReusableThread.hh"
 #include "FelixReorder.hh"
 
+#include "dune-artdaq/Generators/Felix/TriggerPrimitive/frame_expand.h"
 //#include <libxmlrpc.h>
 
 #include <ctime>
 #include <iomanip>
 #include <exception>
 #include <pthread.h>
+#include <utility> // For make_pair
 
 #define REORD_DEBUG
 #define QATCOMP_DEBUG
@@ -55,6 +57,7 @@ NetioHandler::~NetioHandler() {
   //m_sub_sockets.clear();
 
   m_pcqs.clear(); 
+  m_tp_finders.clear();
   if (m_verbose) { 
     DAQLogger::LogInfo("NetioHandler::~NetioHandler")
       << "NIOH terminated. Clean shutdown."; 
@@ -68,6 +71,7 @@ bool NetioHandler::setupContext(std::string contextStr) {
   m_context = new netio::context(contextStr);
   m_netio_bg_thread = std::thread( [&](){m_context->event_loop()->run_forever();} );
   set_thread_name(m_netio_bg_thread, "nioh-bg", 0);
+  DAQLogger::LogInfo("NetioHandler::setupContext") << "done";
   return true;
 }
 
@@ -76,6 +80,8 @@ bool NetioHandler::stopContext() {
     << "Stopping eventloop, destroying context."; 
   m_context->event_loop()->stop();
   m_netio_bg_thread.join();
+  DAQLogger::LogInfo("NetioHandler::stopContext")
+    << "Background thread joined"; 
   delete m_context;
   return true;
 }
@@ -125,19 +131,34 @@ void NetioHandler::startTriggerMatchers(){
             --queuedElements;
 	  */
 
-          size_t qSize = m_pcqs[tid]->sizeGuess() ;
+          size_t qSize = m_pcqs[tid]->sizeGuess();
           if (qSize > 0.5 * m_pcqs[tid]->capacity()) {
 	     DAQLogger::LogInfo("NetioHandler::startTriggerMatchers") << "Removing old non requested data; (" << qSize << ") messages in queue.";
-	     //m_pcqs[tid]->popXFront(m_pcqs[tid]->sizeGuess());
 	     m_pcqs[tid]->popXFront(0.8 * qSize);
 	  }
+
+          // Do the same for the timestamp queue
+          size_t qSizeTS = m_timestamp_map[tid]->sizeGuess();
+          if (qSizeTS > 0.5 * m_timestamp_map[tid]->capacity()) {
+	     m_timestamp_map[tid]->popXFront(0.8 * qSize);
+	  }
+
 	  return;
 	}
 
         // GLM: Try this simplistic approach: do trigger matching and empty the queue until that point
         //      Requires time ordered trigger requests!!
 
+        DAQLogger::LogInfo("NetioHandler::startTriggerMatchers") << "Got request for trigger " << m_triggerTimestamp;
 
+        std::pair<uint64_t, uint64_t> ts_recv(0ul,0ul);
+        while(m_timestamp_map[tid]->read(ts_recv) && ts_recv.first < m_triggerTimestamp){
+            m_timestamp_map[tid]->popFront();
+        }
+        if(ts_recv.second!=0ul){
+            const uint64_t now_us=std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+            DAQLogger::LogInfo("NetioHandler::startTriggerMatchers") << "Trigger latency was " << (now_us-ts_recv.second) << "us";
+        }
         uint_fast64_t startWindowTimestamp = m_triggerTimestamp - (uint_fast64_t)(m_windowOffset * m_tickdist);
         dune::WIBHeader wh = *(reinterpret_cast<const dune::WIBHeader*>( m_pcqs[tid]->frontPtr() ));
         m_lastTimestamp = wh.timestamp();
@@ -225,6 +246,10 @@ void NetioHandler::startTriggerMatchers(){
           }
         }
          
+        if(m_doTPFinding){
+            DAQLogger::LogInfo("NetioHandler::startTriggerMatchers") << "Calling hitsToFragment(" << m_triggerTimestamp << ", " << (m_tickdist*m_timeWindowNumFrames) << ", " <<  m_fragmentPtrHits << ")";
+            m_tp_finders[tid]->hitsToFragment(m_triggerTimestamp, m_tickdist*m_timeWindowNumFrames, m_fragmentPtrHits);
+        }
         /*m_fragmentPtr->resizeBytes( m_msgsize*(2 + m_timeWindow/framesPerMsg) );
         for(unsigned i=0; i<(m_timeWindow/framesPerMsg)+2; i++) //read out 21 messages
         {
@@ -274,12 +299,15 @@ bool NetioHandler::busy(){
   return (busyLinks != 0) ? true : false;
 }
 
-bool NetioHandler::triggerWorkers(uint64_t timestamp, uint64_t sequence_id, std::unique_ptr<artdaq::Fragment>& frag) {
+bool NetioHandler::triggerWorkers(uint64_t timestamp, uint64_t sequence_id,
+                                  std::unique_ptr<artdaq::Fragment>& frag,
+                                  std::unique_ptr<artdaq::Fragment>& fraghits) {
   if (m_stop_trigger.load()) return false; // check if we should proceed with the trigger.
  
   m_triggerTimestamp = timestamp;
   m_triggerSequenceId = sequence_id;
   m_fragmentPtr = frag.get();
+  m_fragmentPtrHits = fraghits.get();
 
   // Set functors for extractors.
   for (uint32_t i=0; i<m_activeChannels; ++i){
@@ -308,69 +336,68 @@ void NetioHandler::startSubscribers(){
         size_t goodOnes=0;
         size_t badOnes=0;
         size_t lostData=0;
+        size_t lostTPData=0;
 
         std::vector<size_t> badSizes;
         std::vector<size_t> badFrags;
 	uint64_t expDist = (m_msgsize/m_framesize)*m_tickdist;
         std::vector<std::pair<uint_fast64_t, uint_fast64_t>> distFails;
         while (!m_stop_subs) {
-          m_sub_sockets[m_channels[chn]]->recv(ep, std::ref(msg));
+          try{
+            m_sub_sockets[m_channels[chn]]->recv(ep, std::ref(msg));
+          } 
+          catch (netio::connection_closed) {
+              break;
+          }
           m_nmessages++;
           if (msg.size()!=m_msgsize) { // non-serializable
             badOnes++;
             badSizes.push_back(msg.size());
             badFrags.push_back(msg.num_fragments());
-            //DAQLogger::LogWarning("NetioHandler::subscriber")
-            //  << " Received message with non-expected size! Bad omen!"
-            //  << " -> Trigger matching is unreliable until next queue turnaround!\n";
           }     
 	  else {
 	    SUPERCHUNK_CHAR_STRUCT ics;
 	    msg.serialize_to_usr_buffer((void*)&ics);
-	    bool storeOk = m_pcqs[m_channels[chn]]->write( std::move(ics) ); // RS -> Add possibility for dry_run! (No push mode.)
+
+	    bool storeOk = m_pcqs[m_channels[chn]]->write(ics); // RS -> Add possibility for dry_run! (No push mode.)
+
+            // The first frame in the message
+            dune::FelixFrame* frame=reinterpret_cast<dune::FelixFrame*>(&ics);
+            uint64_t timestamp=frame->timestamp();
+            uint64_t now_us=std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+            m_timestamp_map[m_channels[chn]]->write(std::make_pair(timestamp, now_us));
+
+            if(m_doTPFinding){
+                if(!m_tp_finders[m_channels[chn]]->addMessage(ics)){
+                    ++lostTPData;
+                }
+            }
+
 	    if (!storeOk) {
-              //DAQLogger::LogWarning("NetioHandler::subscriber") << " Fragments queue is full. Lost: " << lostData;
               if(!busy()) {
                 m_pcqs[m_channels[chn]]->popXFront(m_pcqs[m_channels[chn]]->capacity()/2);
                 lostData+= m_pcqs[m_channels[chn]]->capacity()/2;
               }
               else {
-                ++ lostData;
+                ++lostData;
               }
-	    //  if(lostData%10000 == 0) {
-		//DAQLogger::LogWarning("NetioHandler::subscriber") << " Fragments queue is full. Lost: " << lostData;
-	      //}
 	    }
 	    goodOnes++;
           }
-          // RS -> Add more sophisticated quality check.
-          /*newTs = *(reinterpret_cast<const uint_fast64_t*>((&wcs)+8)); 
-          if ( (newTs-ts)!= expDist ){
-            distFails.push_back( std::make_pair(ts, newTs) );
-          }
-          ts = newTs;*/
         }
-
-        // unsubscriber from publisher
-        //m_sub_sockets[chn]->unsubscribe(chn, netio::endpoint(m_host, m_port));
-        //DAQLogger::LogInfo("NetioHandler::subscriber") << "Joining... Unsubscribed from channel[" << chn << "]";
         
         // Joining subscriber...
         std::ostringstream subsummary;
         for (unsigned i=0; i<badSizes.size(); ++i){
           subsummary << "(MSG SIZE: " << badSizes[i] << " FRAGS:" << badFrags[i] << "),\n";
         }
-        /*std::ostringstream distsummary;
-        for (unsigned i=0; i< distFails.size(); ++i){
-          distsummary << "BAD DISTANCE: ts0:" << std::hex << distFails[i].first << " t1:" << distFails[i].second
-                      << " dist:" << std::dec << distFails[i].second - distFails[i].first << '\n';
-        }*/
         DAQLogger::LogInfo("NetioHandler::subscriber") 
           << " -> Subscriber joining for link " << chn << '\n' 
           << " -> Failure summary: sum(BAD) " << badOnes << " sum(GOOD) " << goodOnes << " sum(LOST) " << lostData << '\n'
           << subsummary.str()
           << " -> Failed timestamp distances (expected distance between messages: " << expDist << ")\n";
-          //<< distsummary.str();
+        DAQLogger::LogInfo("NetioHandler::subscriber") << lostTPData << " messages failed to push to TriggerPrimitiveFinder";
+
 	})
 				 );
     set_thread_name(m_netioSubscribers[i], "nioh-sub", i);
@@ -385,6 +412,12 @@ bool NetioHandler::flushQueues(){
 
 void NetioHandler::stopSubscribers(){
   m_stop_subs=true;
+  for(auto& tp_finder: m_tp_finders){
+      tp_finder.second->stop();
+  }
+  for(auto& sub_socket: m_sub_sockets){
+      sub_socket.second->close();
+  }
   for (uint32_t i=0; i<m_netioSubscribers.size(); ++i) {
     m_netioSubscribers[i].join();
     DAQLogger::LogInfo("NetioHandler::stopSubscriber") << "Subscriber[" << i << "] joined."; 
@@ -438,11 +471,33 @@ void NetioHandler::lockTrmsToCPUs(uint32_t offset) {
   }
 }
 
-bool NetioHandler::addChannel(uint64_t chn, uint16_t tag, std::string host, uint16_t port, size_t queueSize, bool zerocopy){
+bool NetioHandler::addChannel(uint64_t chn, uint16_t tag, std::string host, uint16_t port, size_t queueSize, bool zerocopy, fhicl::ParameterSet const& tpf_params){
+    DAQLogger::LogInfo("NetioHandler::addChannel") << "entering...";
   m_host=host;
   m_port=port;
   m_channels.push_back(chn);
   m_pcqs[chn] = std::make_unique<FrameQueue>(queueSize);
+  m_timestamp_map[chn] = std::make_unique<TimestampQueue>(queueSize);
+
+  if(m_doTPFinding){
+      try{
+          m_tp_finders[chn]=std::make_unique<TriggerPrimitiveFinder>(tpf_params);
+      }
+      catch(std::bad_alloc& e){
+          DAQLogger::LogInfo("NetioHandler::addChannel") << "std::bad_alloc thrown in make_unique: " << e.what();
+          throw;
+      }
+      catch(std::exception& e){
+          DAQLogger::LogInfo("NetioHandler::addChannel") << "std::exception thrown in make_unique: " << e.what();
+          throw;
+      }
+      catch(...){
+          DAQLogger::LogInfo("NetioHandler::addChannel") << "exception thrown in make_unique";
+          throw;
+      }
+  }
+
+  DAQLogger::LogInfo("NetioHandler::addChannel") << "setting up netio...";
   if (m_extract) {
   try {
     netio::sockcfg cfg = netio::sockcfg::cfg(); 
@@ -466,21 +521,23 @@ bool NetioHandler::addChannel(uint64_t chn, uint16_t tag, std::string host, uint
       << "Activated channel in NIOH. chn:" << chn << " tag:" << tag << " host:" << host << " port:" << port;
   }
   }
+
   m_activeChannels++;
+
   return true;
 } 
 
 bool NetioHandler::subscribe(uint64_t chn, uint16_t tag){
   DAQLogger::LogInfo("NetioHandler::subscribe") << "Subscribing to tag (chn, tag):" << chn << "," << tag;
   m_sub_sockets[chn]->subscribe(tag, netio::endpoint(m_host, m_port));
-  std::this_thread::sleep_for(std::chrono::microseconds(10000)); // This is needed... Why? :/
+  std::this_thread::sleep_for(std::chrono::microseconds(100000)); // This is needed... Why? :/
   return true;
 }
 
 bool NetioHandler::unsubscribe(uint64_t chn, uint16_t tag){
   DAQLogger::LogInfo("NetioHandler::unsubscribe") << "Unsubscribing from tag (chn, tag):" << chn << "," << tag;
   m_sub_sockets[chn]->unsubscribe(tag, netio::endpoint(m_host, m_port));
-  std::this_thread::sleep_for(std::chrono::microseconds(10000)); // This is needed... Why? :/
+  std::this_thread::sleep_for(std::chrono::microseconds(100000)); // This is needed... Why? :/
   return true;
 }
 
@@ -492,7 +549,7 @@ void NetioHandler::recalculateByteSizes()
      m_timeWindowByteSizeIn = m_msgsize * m_timeWindowNumMessages;
      m_timeWindowNumFrames = m_timeWindowByteSizeIn / FelixReorder::m_num_bytes_per_frame;
  
-     //if (m_do_reorder)
+     //if (m_doreorder)
      //    m_timeWindowByteSizeOut = m_timeWindowByteSizeIn 
      //        * FelixReorderer::num_bytes_per_reord_frame / FelixReorderer::num_bytes_per_frame;
      //else

@@ -29,11 +29,13 @@ dune::FelixReceiver::FelixReceiver(fhicl::ParameterSet const & ps)
   CommandableFragmentGenerator(ps),
   timestamp_(0),
   timestampScale_(ps.get<int>("timestamp_scale_factor", 1)),
+  metadata_hits_(CPUHitsFragment::VERSION),
   frame_size_(ps.get<size_t>("frame_size")),
   op_mode_(ps.get<std::string>("op_mode", "publish")),
   num_links_(ps.get<unsigned>("num_links", 10)),
-  //readout_buffer_(nullptr),
-  fragment_type_(static_cast<decltype(fragment_type_)>( artdaq::Fragment::InvalidFragmentType ))
+  fragment_type_(toFragmentType("FELIX")),
+  fragment_type_hits_(toFragmentType("CPUHITS"))
+  // fragment_type_(static_cast<decltype(fragment_type_)>( artdaq::Fragment::InvalidFragmentType ))
 {
   DAQLogger::LogInfo("dune::FelixReceiver::FelixReceiver")<< "Preparing HardwareInterface for FELIX.";
 
@@ -50,15 +52,19 @@ dune::FelixReceiver::FelixReceiver(fhicl::ParameterSet const & ps)
     trigger_window_size_ = netio_hardware_interface_->TriggerWindowSize();
   }
 
+  if(fragmentIDs().size()!=2){
+      DAQLogger::LogError("dune::FelixReceiver::FelixReceiver")<< "The fragmentIDs vector has size " << fragmentIDs().size() << ", but it should be 2. Make sure the fragment_ids fhicl parameter is set and has two items";
+  }
+
   /* ADDITIONAL METADATA IF NEEDED */
   // RS -> These metadata will be cleared out!
   metadata_.num_frames = 0;
   metadata_.reordered = 0;
   metadata_.compressed = 0;
-  fragment_type_ = toFragmentType("FELIX");
+
 
   // Metrics
-  instance_name_for_metrics_ = "FelixReceiver";
+  instance_name_for_metrics_ = std::string("felix") + ps.get<std::string>("board_id");
   num_frags_m_ = 0;
 }
 
@@ -84,11 +90,10 @@ bool dune::FelixReceiver::getNext_(artdaq::FragmentPtrs & frags) {
     }
     DAQLogger::LogInfo("dune::FelixReceiver::getNext_") << "No more busy links, returning...";
     return false;
-
   } else { // Should continue
 
     if (onhost) {
-      // ONHOIST MODE
+      // ONHOST MODE
       std::chrono::high_resolution_clock::time_point t1 = std::chrono::high_resolution_clock::now();    
       for (uint32_t i=0; i<num_links_; ++i){
         std::unique_ptr<artdaq::Fragment> fragptr(
@@ -110,17 +115,24 @@ bool dune::FelixReceiver::getNext_(artdaq::FragmentPtrs & frags) {
       // EOF ONHOST MODE
     } else { 
       // PUBLISH MODE
+      auto ev_no=ev_counter();
       std::unique_ptr<artdaq::Fragment> fragptr(
-        artdaq::Fragment::FragmentBytes(0, ev_counter(), fragment_id(),
+        artdaq::Fragment::FragmentBytes(0, ev_no, fragmentIDs()[0],
                                         fragment_type_, metadata_, timestamp_)
-      );
+        );
+      std::unique_ptr<artdaq::Fragment> fragptrhits(
+        artdaq::Fragment::FragmentBytes(0, ev_no, fragmentIDs()[1],
+                                        fragment_type_hits_, metadata_hits_, timestamp_)
+        );
+
       bool done = false;
       while ( !done ){
-        done = netio_hardware_interface_->FillFragment( fragptr );
+        done = netio_hardware_interface_->FillFragment( fragptr, fragptrhits );
         if (should_stop()) { return true; } // interrupt data capture and return; at next getNext stopping will be done
       }
       frags.emplace_back( std::move(fragptr) );
-      num_frags_m_++;
+      frags.emplace_back( std::move(fragptrhits) );
+      num_frags_m_ += 2;
       ev_counter_inc();
       return true;
       // EOF PUBLISH MODE

@@ -1,4 +1,3 @@
-
 simple_plugin(TPCMilliSliceSimulatorWithCopy "generator"
   dune-raw-data_Overlays
   artdaq_Application
@@ -33,6 +32,7 @@ simple_plugin(SSP "generator"
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-unused-but-set-variable -Wno-unused-parameter -Wno-pointer-arith")
 include_directories($ENV{FELIX_DEPS_INC})
 add_subdirectory(Felix)
+
 simple_plugin(FelixReceiver "generator"
   dune-raw-data_Overlays
   dune-artdaq_Generators_Felix
@@ -48,9 +48,28 @@ simple_plugin(FelixReceiver "generator"
   ${CETLIB}
   ${CETLIB_EXCEPT}
   dune-artdaq_DAQLogger
+  )
+  
+
+
+simple_plugin(HitFinderCPUReceiver "generator"
+  dune-raw-data_Overlays
+  dune-artdaq_DAQLogger
+  artdaq_Application
+  artdaq_Generators
+  artdaq_DAQdata
+  artdaq-core_Utilities
+  artdaq-core_Data
+  artdaq-utilities_Plugins
+  ${CANVAS}
+  ${FHICLCPP}
+  ${CETLIB}
+  ${CETLIB_EXCEPT}
+  ${PTMP_LIBRARIES}
+  dune-artdaq_DAQLogger
 )
 
-  add_subdirectory(ToyHardwareInterface)
+add_subdirectory(ToyHardwareInterface)
 simple_plugin(ToySimulator "generator"
   dune-artdaq_Generators_ToyHardwareInterface
   dune-raw-data_Overlays
@@ -155,6 +174,60 @@ simple_plugin(TimingReceiver "generator"
   ${UHAL_LOG}
   ${PDT_CORE}
   )
+
+add_subdirectory(swTrigger)
+
+simple_plugin(Candidate "generator"
+  dune-raw-data_Overlays
+  artdaq_Application
+  artdaq_Generators
+  artdaq_DAQdata
+  artdaq-core_Utilities
+  artdaq-core_Data
+  artdaq-utilities_Plugins
+  ${CANVAS}
+  ${FHICLCPP}
+  ${CETLIB}
+  ${CETLIB_EXCEPT}
+  ${PTMP_LIBRARIES}
+  dune-artdaq_DAQLogger   
+)
+
+simple_plugin(IsoMuonFinder "generator"
+  dune-raw-data_Overlays
+  artdaq_Application
+  artdaq_Generators
+  artdaq_DAQdata
+  dune-artdaq_Generators_timingBoard
+  artdaq-core_Utilities
+  artdaq-core_Data
+  artdaq-utilities_Plugins
+  ${CANVAS}
+  ${FHICLCPP}
+  ${CETLIB}
+  ${CETLIB_EXCEPT}
+  ${PTMP_LIBRARIES}
+  dune-artdaq_DAQLogger   
+)
+
+simple_plugin(SWTrigger "generator"
+  dune-raw-data_Overlays
+  dune-artdaq_Generators_timingBoard
+  artdaq_Application
+  artdaq_Generators
+  artdaq_DAQdata
+  artdaq_DAQrate
+  artdaq-core_Utilities
+  artdaq-core_Data
+  artdaq-utilities_Plugins
+  ${CANVAS}
+  ${FHICLCPP}
+  ${CETLIB}
+  ${CETLIB_EXCEPT}
+  ${PTMP_LIBRARIES}
+  dune-artdaq_DAQLogger
+  fhicl-to-json
+)
 
 if ( (DEFINED ENV{PROTODUNE_WIBSOFT_LIB}) AND (DEFINED ENV{PROTODUNE_WIBSOFT_INC}) )
 

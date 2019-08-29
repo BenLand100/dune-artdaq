@@ -9,8 +9,9 @@
 SSPDAQ::DeviceInterface::DeviceInterface(SSPDAQ::Comm_t commType, unsigned long deviceId)
   : fCommType(commType), fDeviceId(deviceId), fState(SSPDAQ::DeviceInterface::kUninitialized),
     fUseExternalTimestamp(false), fHardwareClockRateInMHz(128), fPreTrigLength(1E8), 
-    fPostTrigLength(1E7), fTriggerWriteDelay(1000), fTriggerMask(0), fDummyPeriod(-1), 
-    fSlowControlOnly(false), fPartitionNumber(0), fTimingAddress(0), exception_(false), fDataThread(0){
+    fPostTrigLength(1E7), fTriggerWriteDelay(1000), fTriggerLatency(0), fTriggerMask(0),
+    fDummyPeriod(-1), fSlowControlOnly(false), fPartitionNumber(0), fTimingAddress(0), exception_(false),
+    fDataThread(0), fRequestReceiver(0){
 }
 
 void SSPDAQ::DeviceInterface::OpenSlowControl(){
@@ -134,6 +135,9 @@ void SSPDAQ::DeviceInterface::Stop(){
   if(fState==SSPDAQ::DeviceInterface::kRunning){
     dune::DAQLogger::LogInfo("SSP_DeviceInterface")<<"Device interface stopping run"<<std::endl;
     fShouldStop=true;
+    if(fRequestReceiver){
+      fRequestReceiver->stop();
+    }
     dune::DAQLogger::LogInfo("SSP_DeviceInterface")<<"Signalling read thread to end..."<<std::endl;
     fDataThread->join();
     dune::DAQLogger::LogInfo("SSP_DeviceInterface")<<"Read thread terminated!"<<std::endl;
@@ -159,6 +163,12 @@ void SSPDAQ::DeviceInterface::Stop(){
 
   fState=SSPDAQ::DeviceInterface::kStopped;
 
+}
+
+void SSPDAQ::DeviceInterface::StartRequestReceiver(std::string address){
+
+  dune::DAQLogger::LogInfo("SSP_DeviceInterface")<<"Subscribing to software triggers at "<<address<<" and ignoring hardware triggers."<<std::endl;
+  fRequestReceiver=new RequestReceiver(address);
 }
 
 void SSPDAQ::DeviceInterface::Start(){
@@ -206,6 +216,10 @@ void SSPDAQ::DeviceInterface::Start(){
   fDataThread=new std::thread(&SSPDAQ::DeviceInterface::HardwareReadLoop,this);
   dune::DAQLogger::LogInfo("SSP_DeviceInterface")<<"Read thread is up!"<<std::endl;
 
+  if(fRequestReceiver){
+    fRequestReceiver->start();
+  }
+
   dune::DAQLogger::LogInfo("SSP_DeviceInterface")<<"Run started!"<<std::endl;
 }
 
@@ -243,16 +257,37 @@ void SSPDAQ::DeviceInterface::HardwareReadLoop(){
     // fall over.                                                //
     ///////////////////////////////////////////////////////////////
 
-    SSPDAQ::TriggerInfo newTrigger;
-    
-    if(this->GetTriggerInfo(fPacketBuffer.back(),newTrigger)){
-      if(fTriggers.size()&&(newTrigger.startTime<fTriggers.back().endTime)){
-      dune::DAQLogger::LogError("SSP_DeviceInterface")<<"Seen trigger with start time overlapping with previous, falling over!"<<std::endl;	
-      throw(EEventReadError());
-      //	set_exception(true);	
-      return;
+    if(fRequestReceiver){
+      while(true){
+	auto t=fRequestReceiver->getNextRequest(0);
+	if(t.timestamp==0){
+	  break;
+	}
+
+        auto localTimestamp = t.timestamp*3 - fFragmentTimestampOffset;
+	
+	SSPDAQ::TriggerInfo newTrigger;
+	
+	newTrigger.triggerTime=localTimestamp;
+	newTrigger.startTime=localTimestamp-fPreTrigLength;
+	newTrigger.endTime=localTimestamp+fPostTrigLength;
+	newTrigger.triggerType=0xFFFF;
+	fTriggers.push(newTrigger);
       }
-      fTriggers.push(newTrigger);
+    }
+    else{
+
+      SSPDAQ::TriggerInfo newTrigger;
+    
+      if(this->GetTriggerInfo(fPacketBuffer.back(),newTrigger)){
+	if(fTriggers.size()&&(newTrigger.startTime<fTriggers.back().endTime)){
+	  dune::DAQLogger::LogError("SSP_DeviceInterface")<<"Seen trigger with start time overlapping with previous, falling over!"<<std::endl;	
+	  throw(EEventReadError());
+	  //	set_exception(true);	
+	  return;
+	}
+	fTriggers.push(newTrigger);
+      }
     }
 
     ////////////////////////////////////////////////////////////
@@ -266,7 +301,7 @@ void SSPDAQ::DeviceInterface::HardwareReadLoop(){
       firstInterestingTime=fTriggers.front().startTime-fTriggerWriteDelay;
     }
     else{
-      firstInterestingTime=packetTime-fPreTrigLength-fTriggerWriteDelay;
+      firstInterestingTime=packetTime-fPreTrigLength-fTriggerLatency-fTriggerWriteDelay;
     }
 
     while(GetTimestamp(fPacketBuffer.front().header)<firstInterestingTime){

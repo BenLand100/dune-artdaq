@@ -43,6 +43,10 @@
 
 #include "messagefacility/MessageLogger/MessageLogger.h"
 
+#include "StatusPublisher.hh"
+#include "FragmentPublisher.hh"
+#include "HwClockPublisher.hh"
+
 // Fiddle (static global: There should be a nicer way of allowing the 
 // data_take() function to see the trg object)
 dune::TimingReceiver* trgp = 0;
