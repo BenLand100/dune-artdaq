@@ -163,17 +163,17 @@ void dune::SWTrigger::readTS() {
 
 void dune::SWTrigger::metrics_thread() {
 //  
+  unsigned int metric_reporting_interval_seconds = 10;
   ptmp::data::TPSet SetReceived_for_metrics;
   ptmp::TPReceiver* receiver_for_metrics = new ptmp::TPReceiver( ptmp_util::make_ptmp_socket_string("SUB","connect",{tczipout_}) ); //Connect to TPZipper
   long unsigned int TPSet_count = 0;
+  long unsigned int last_nTPhits = 0;
   auto start = std::chrono::system_clock::now();
 
   while(!stopping_flag_.load()){
-    bool received_for_metrics = (*receiver_for_metrics)(SetReceived_for_metrics, timeout_); 
-    if (received_for_metrics) {
-      TPSet_count++;
-    }
     if (artdaq::Globals::metricMan_ && artdaq::Globals::metricMan_->Running()) {
+      TPSet_count = nTPhits_ - last_nTPhits;
+      last_nTPhits = nTPhits_;
       auto end = std::chrono::system_clock::now();
       auto elapsed_to_cast = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
       long unsigned int elapsed = elapsed_to_cast.count();
@@ -182,6 +182,10 @@ void dune::SWTrigger::metrics_thread() {
       artdaq::Globals::metricMan_->sendMetric("Time",  elapsed,  "ms", 1, artdaq::MetricMode::LastPoint);
       TPSet_count = 0;
       start = std::chrono::system_clock::now();
+    }
+    for(size_t i=0; i<metric_reporting_interval_seconds; ++i){
+      std::this_thread::sleep_for(std::chrono::seconds(1));
+      if(stopping_flag_.load()) break;
     }
   }
   delete receiver_for_metrics;

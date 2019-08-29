@@ -152,7 +152,7 @@ namespace dune {
     size_t prev_counts_; // The value of TPSet::count() for TPZipper output in the previous go-round
     size_t norecvds_;    // How many times the input has timed out
     size_t n_recvds_;    // How many TPSets have been received on the input
-    size_t nTPhits_;     // How many TrigPrims have been received on the input
+    std::atomic<size_t> nTPhits_;     // How many TrigPrims have been received on the input
     size_t ntriggers_;
     size_t fqueue_;
     size_t loops_;
