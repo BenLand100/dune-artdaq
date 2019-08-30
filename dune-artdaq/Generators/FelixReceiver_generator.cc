@@ -52,10 +52,6 @@ dune::FelixReceiver::FelixReceiver(fhicl::ParameterSet const & ps)
     trigger_window_size_ = netio_hardware_interface_->TriggerWindowSize();
   }
 
-  if(fragmentIDs().size()!=2){
-      DAQLogger::LogError("dune::FelixReceiver::FelixReceiver")<< "The fragmentIDs vector has size " << fragmentIDs().size() << ", but it should be 2. Make sure the fragment_ids fhicl parameter is set and has two items";
-  }
-
   /* ADDITIONAL METADATA IF NEEDED */
   // RS -> These metadata will be cleared out!
   metadata_.num_frames = 0;
