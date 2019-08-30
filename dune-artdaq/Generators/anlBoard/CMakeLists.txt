@@ -9,7 +9,7 @@ art_make(LIBRARY_NAME dune-artdaq_Generators_anlBoard
         ${FHICLCPP}
         ${CETLIB}
         ${Boost_SYSTEM_LIBRARY}
- 	dune-artdaq_Generators_Felix
+        dune-artdaq_Generators_Felix_RequestReceiver
 	dune-artdaq_DAQLogger
         -lpthread
         )

@@ -23,6 +23,13 @@ MESSAGE(INFO " PROTODUNE_FELIX_DEPS_LIB: " $ENV{PROTODUNE_FELIX_DEPS_LIB})
 MESSAGE(INFO " PROTODUNE_FELIX_DEPS_INC: " ${PROTODUNE_FELIX_DEPS_INC})
 include_directories( ${PROTODUNE_FELIX_DEPS_INC} )
 
+art_make_library( LIBRARY_NAME dune-artdaq_Generators_Felix_RequestReceiver
+		  SOURCE RequestReceiver.cc
+                  LIBRARIES
+                  ${LIBZMQ}
+                  ${CMAKE_THREAD_LIBS_INIT}
+                  dune-artdaq_DAQLogger
+)
 
 if(DEFINED ENV{FABRIC_ROOT_DIR})
     message(STATUS "FABRIC_ROOT_DIR environment variable defined. Bypassing UPS netio...")
@@ -49,7 +56,8 @@ if(DEFINED ENV{FABRIC_ROOT_DIR})
 
         pthread
         tbb
-        ${LIBZMQ}
+        dune-artdaq_Generators_Felix_RequestReceiver
+        EXCLUDE RequestReceiver.cc
     )
 else()
     art_make(
@@ -78,7 +86,9 @@ else()
 
         pthread
         tbb
-        ${LIBZMQ}
+
+        dune-artdaq_Generators_Felix_RequestReceiver
+        EXCLUDE RequestReceiver.cc
     )
 endif()
 
