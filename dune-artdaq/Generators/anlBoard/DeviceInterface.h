@@ -126,6 +126,8 @@ namespace SSPDAQ{
 
     void SetPartitionNumber(unsigned int val){fPartitionNumber=val;}
 
+    void SetTimingAddress(unsigned int val){fTimingAddress=val;}
+
     void PrintHardwareState();
 
     std::string GetIdentifier();
@@ -194,6 +196,8 @@ namespace SSPDAQ{
     unsigned int fMaxFragsPerRead;
 
     unsigned int fPartitionNumber;
+
+    unsigned int fTimingAddress;
 
     std::queue<TriggerInfo> fTriggers;
 

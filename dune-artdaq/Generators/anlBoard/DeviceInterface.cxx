@@ -10,7 +10,7 @@ SSPDAQ::DeviceInterface::DeviceInterface(SSPDAQ::Comm_t commType, unsigned long 
   : fCommType(commType), fDeviceId(deviceId), fState(SSPDAQ::DeviceInterface::kUninitialized),
     fUseExternalTimestamp(false), fHardwareClockRateInMHz(128), fPreTrigLength(1E8), 
     fPostTrigLength(1E7), fTriggerWriteDelay(1000), fTriggerMask(0), fDummyPeriod(-1), 
-    fSlowControlOnly(false), fPartitionNumber(0), exception_(false), fDataThread(0){
+    fSlowControlOnly(false), fPartitionNumber(0), fTimingAddress(0), exception_(false), fDataThread(0){
 }
 
 void SSPDAQ::DeviceInterface::OpenSlowControl(){
@@ -62,28 +62,67 @@ void SSPDAQ::DeviceInterface::Initialize(){
   //Reset timing endpoint
   SSPDAQ::RegMap& duneReg=SSPDAQ::RegMap::Get();
 
-  unsigned int nTries=0;
   unsigned int pdts_status=0;
+  unsigned int pdts_control=0;
+  unsigned int dsp_clock_control=0;
 
-  while(nTries<5){
-    fDevice->DeviceWrite(duneReg.pdts_control, 0x80000000 + fPartitionNumber);
-    fDevice->DeviceWrite(duneReg.pdts_control, 0x00000000 + fPartitionNumber);
-    usleep(2000000);
-    fDevice->DeviceWrite(duneReg.dsp_clock_control,0x431);
-    usleep(2000000);
-    fDevice->DeviceRead(duneReg.pdts_status, &pdts_status);
-    if((pdts_status&0xF)==0x8) break;
-    dune::DAQLogger::LogInfo("SSP_DeviceInterface")<<"Timing endpoint sync failed (try "<<nTries<<")"<<std::endl;
-    ++nTries;
-  }
-  if((pdts_status&0xF)==0x8){
-    dune::DAQLogger::LogInfo("SSP_DeviceInterface")<<"Timing endpoint synced!"<<std::endl;
+  fDevice->DeviceRead(duneReg.pdts_status, &pdts_status);
+  fDevice->DeviceRead(duneReg.pdts_control, &pdts_control);
+  fDevice->DeviceRead(duneReg.dsp_clock_control, &dsp_clock_control);
+
+  unsigned int presentTimingAddress=(pdts_control>>16)&0xFF;
+  unsigned int presentTimingPartition=pdts_control&0x3;
+
+  dune::DAQLogger::LogInfo("SSP_DeviceInterface")<<"SSP HW presently on partition "<< presentTimingPartition
+						 <<", address "<<std::hex<<presentTimingAddress<<" with endpoint status "
+						 <<(pdts_status&0xF)<<" and dsp_clock_control at "<<dsp_clock_control
+						 <<std::dec<<std::endl;
+
+  if((pdts_status&0xF)>=0x6 && (pdts_status&0xF)<=0x8 && presentTimingAddress==fTimingAddress && presentTimingPartition==fPartitionNumber
+     && dsp_clock_control==0x31){
+
+    dune::DAQLogger::LogInfo("SSP_DeviceInterface")<<"Clock already looks ok... skipping endpoint reset."<<std::endl;
+
   }
   else{
-    dune::DAQLogger::LogError("SSP_DeviceInterface")<<"Giving up on endpoint sync after 5 tries. Value of pdts_status register was "
-						    <<std::hex<<pdts_status<<std::dec<<std::endl;
+    dune::DAQLogger::LogInfo("SSP_DeviceInterface")<<"Syncing SSP to PDTS (partition "<<fPartitionNumber
+						   <<", endpoint address "<<std::hex<<fTimingAddress
+						   <<std::dec<<")"<<std::endl;
+
+    unsigned int nTries=0;
+    
+    while(nTries<5){
+      fDevice->DeviceWrite(duneReg.dsp_clock_control,0x30);
+      fDevice->DeviceWrite(duneReg.pdts_control, 0x80000000 + fPartitionNumber + fTimingAddress*0x10000);
+      fDevice->DeviceWrite(duneReg.pdts_control, 0x00000000 + fPartitionNumber + fTimingAddress*0x10000);
+      usleep(2000000);
+      fDevice->DeviceWrite(duneReg.dsp_clock_control,0x31);
+      usleep(2000000);
+      fDevice->DeviceRead(duneReg.pdts_status, &pdts_status);
+      if((pdts_status&0xF)>=0x6 && (pdts_status&0xF)<=0x8 ) break;
+      dune::DAQLogger::LogInfo("SSP_DeviceInterface")<<"Timing endpoint sync failed (try "<<nTries<<")"<<std::endl;
+      ++nTries;
+    }
+   
+    if((pdts_status&0xF)>=0x6 && (pdts_status&0xF)<=0x8 ){
+      dune::DAQLogger::LogInfo("SSP_DeviceInterface")<<"Timing endpoint synced!"<<std::endl;
+    }
+    else{
+      dune::DAQLogger::LogError("SSP_DeviceInterface")<<"Giving up on endpoint sync after 5 tries. Value of pdts_status register was "
+						      <<std::hex<<pdts_status<<std::dec<<std::endl;
+    } 
   }
- 
+
+  //Wait until pdts_status reaches exactly 0x8 before resolving.
+  if((pdts_status&0xF)!=0x8){
+    dune::DAQLogger::LogInfo("SSP_DeviceInterface")<<"Waiting for endpoint to reach status 0x8..."<<std::endl;
+  }
+  while((pdts_status&0xF)!=0x8){
+    usleep(2000000);
+    fDevice->DeviceRead(duneReg.pdts_status, &pdts_status);
+  }
+
+  dune::DAQLogger::LogInfo("SSP_DeviceInterface")<<"Endpoint is in running state, continuing with configuration!"<<std::endl;
 }
 
 void SSPDAQ::DeviceInterface::Stop(){
