@@ -113,6 +113,14 @@ void SSPDAQ::DeviceInterface::Initialize(){
     } 
   }
 
+#if 0
+  // 27-Sep-2019, KAB: commented out this block of code using the pre-processor "#if 0" above
+  // and "#endif" below.  I did this in an attempt to get the SSP code working at the ICEBERG
+  // teststand, at which I'm not sure how we interact with the Timing system, and I suspect
+  // that the pdts_status will never switch from 6 to 8 until we start talking with the 
+  // timing system as part of the artdaq system.
+  // With this block commented out, we were able to take data.
+
   //Wait until pdts_status reaches exactly 0x8 before resolving.
   if((pdts_status&0xF)!=0x8){
     dune::DAQLogger::LogInfo("SSP_DeviceInterface")<<"Waiting for endpoint to reach status 0x8..."<<std::endl;
@@ -121,6 +129,7 @@ void SSPDAQ::DeviceInterface::Initialize(){
     usleep(2000000);
     fDevice->DeviceRead(duneReg.pdts_status, &pdts_status);
   }
+#endif
 
   dune::DAQLogger::LogInfo("SSP_DeviceInterface")<<"Endpoint is in running state, continuing with configuration!"<<std::endl;
 }
