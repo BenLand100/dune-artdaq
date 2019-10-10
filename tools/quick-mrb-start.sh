@@ -550,8 +550,10 @@ source /nfs/sw/artdaq/products_dev/setup
 # RSIPOS 03/07/18 -> Infiniband workaround for FELIX BR build
         #source /nfs/sw/felix/HACK-FELIX-BR-BUILD.sh
         export ICP_ROOT=/nfs/sw/felix/QAT/QAT2.0
+	set +u
         export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/nfs/sw/felix/QAT/QAT2.0/build
         export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/nfs/sw/felix/QAT/QAT2.0/qatzip2/qatzip/src
+	set -u
 
 export DISABLE_DOXYGEN="defined"
 export MRB_INSTALL=$startdir/$localproducts_subdir
