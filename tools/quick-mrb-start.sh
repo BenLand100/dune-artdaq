@@ -158,6 +158,11 @@ while [ -n "${1-}" ];do
 done
 eval "set -- $args \"\$@\""; unset args aa
 
+# Trim away any whitespace read in by the options code...
+dune_artdaq_branch=$( echo $dune_artdaq_branch | sed -r 's/^\s*(\S+)\s*$/\1/' )
+dune_raw_data_branch=$( echo $dune_raw_data_branch | sed -r 's/^\s*(\S+)\s*$/\1/' )
+
+
 which lsb_release 2>&1 > /dev/null
 if [[ "$?" != "0" ]]; then
     echo "According to the \"which\" command, lsb_release is not available - this needs to be installed in order for dune-artdaq installation to work" >&2
