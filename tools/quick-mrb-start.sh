@@ -8,6 +8,61 @@
 # JCF, Mar-2-2017
 # Modified it again to work with the brand new dune-artdaq package
 
+dune_artdaq_branch="develop"
+dune_raw_data_branch="for_dune-artdaq"
+
+env_opts_var=`basename $0 | sed 's/\.sh$//' | tr 'a-z-' 'A-Z_'`_OPTS
+USAGE="\
+Usage: `basename $0` [options]
+
+Examples: 
+`basename $0` 
+`basename $0` --use-dune-artdaq-branch <name of existing dune-artdaq branch> --use-dune-raw-data-branch <name of existing dune-raw-data branch> --dune-raw-data-developer 
+`basename $0` --debug --use-dune-artdaq-branch <name of existing dune-artdaq branch> --not-dune-artdaq-developer
+
+Options:
+--debug       perform a debug build
+--include-artdaq-repos  use if you plan on developing the artdaq code (contact jcfree@fnal.gov or biery@fnal.gov before attempting this)
+--use-dune-artdaq-branch <branchname>  instead of checking out the $dune_artdaq_branch branch of dune-artdaq, check out <branchname>
+--use-dune-raw-data-branch <branchname>  instead of checking out the $dune_raw_data_branch branch of dune-raw-data, check out <branchname>
+--not-dune-artdaq-developer  use if you don't have write access to the dune-artdaq repository
+--dune-raw-data-developer    use if you have (and want to use) write access to the dune-raw-data repository
+
+Full installation instructions are at https://twiki.cern.ch/twiki/bin/view/CENF/Installation
+"
+
+# Process script arguments and options
+eval env_opts=\${$env_opts_var-} # can be args too
+eval "set -- $env_opts \"\$@\""
+op1chr='rest=`expr "$op" : "[^-]\(.*\)"`   && set -- "-$rest" "$@"'
+op1arg='rest=`expr "$op" : "[^-]\(.*\)"`   && set --  "$rest" "$@"'
+reqarg="$op1arg;"'test -z "${1+1}" &&echo opt -$op requires arg. &&echo "$USAGE" &&exit'
+args= do_help= opt_v=0; opt_lrd_w=0; opt_la_nw=0; inc_artdaq_repos=0; 
+
+
+while [ -n "${1-}" ];do
+    if expr "x${1-}" : 'x-' >/dev/null;then
+        op=`expr "x$1" : 'x-\(.*\)'`; shift   # done with $1
+        leq=`expr "x$op" : 'x-[^=]*\(=\)'` lev=`expr "x$op" : 'x-[^=]*=\(.*\)'`
+        test -n "$leq"&&eval "set -- \"\$lev\" \"\$@\""&&op=`expr "x$op" : 'x\([^=]*\)'`
+        case "$op" in
+            \?*|h|-help)     eval $op1chr; do_help=1;;
+	    -debug)     opt_debug=--debug;;
+	    -include-artdaq-repos) inc_artdaq_repos=1;;
+	    -use-dune-artdaq-branch) eval $reqarg; dune_artdaq_branch=$1; shift;;
+	    -use-dune-raw-data-branch) eval $reqarg; dune_raw_data_branch=$1; shift;;
+	    -not-dune-artdaq-developer) opt_la_nw=1;;
+	    -dune-raw-data-developer)  opt_lrd_w=1;;
+            *)          echo "Unknown option -$op"; do_help=1;;
+        esac
+    else
+        aa=`echo "$1" | sed -e"s/'/'\"'\"'/g"` args="$args '$aa'"; shift
+    fi
+done
+eval "set -- $args \"\$@\""; unset args aa
+
+test -n "${do_help-}" -o $# -ge 3 && echo "$USAGE" && exit
+
 export USER=${USER:-$(whoami)}
 export HOSTNAME=${HOSTNAME:-$(hostname)}
 
@@ -95,7 +150,7 @@ quick_mrb_start_edits=$( diff $startdir/quick-mrb-start.sh $qms_tmpdir/quick-mrb
 cd $returndir
 
 if [[ -n $quick_mrb_start_edits ]]; then
-    
+   
     cat<<EOF >&2
 
 Error: this script you're trying to run doesn't match with the version
@@ -111,52 +166,6 @@ EOF
     exit 1
 fi
 
-dune_artdaq_branch="develop"
-dune_raw_data_branch="for_dune-artdaq"
-
-env_opts_var=`basename $0 | sed 's/\.sh$//' | tr 'a-z-' 'A-Z_'`_OPTS
-USAGE="\
-   usage: `basename $0` [options]
-examples: `basename $0` 
-          `basename $0` --dune-raw-data-developer 
-          `basename $0` --debug --dune-raw-data-developer
---debug       perform a debug build
---include-artdaq-repos  use if you plan on developing the artdaq code (contact jcfree@fnal.gov or biery@fnal.gov before attempting this)
---use-dune-artdaq-branch <branchname>  instead of checking out the $dune_artdaq_branch branch of dune-artdaq, check out <branchname>
---use-dune-raw-data-branch <branchname>  instead of checking out the $dune_raw_data_branch branch of dune-raw-data, check out <branchname>
---not-dune-artdaq-developer  use if you don't have write access to the dune-artdaq repository
---dune-raw-data-developer    use if you have (and want to use) write access to the dune-raw-data repository
-"
-
-# Process script arguments and options
-eval env_opts=\${$env_opts_var-} # can be args too
-eval "set -- $env_opts \"\$@\""
-op1chr='rest=`expr "$op" : "[^-]\(.*\)"`   && set -- "-$rest" "$@"'
-op1arg='rest=`expr "$op" : "[^-]\(.*\)"`   && set --  "$rest" "$@"'
-reqarg="$op1arg;"'test -z "${1+1}" &&echo opt -$op requires arg. &&echo "$USAGE" &&exit'
-args= do_help= opt_v=0; opt_lrd_w=0; opt_la_nw=0; inc_artdaq_repos=0; 
-
-
-while [ -n "${1-}" ];do
-    if expr "x${1-}" : 'x-' >/dev/null;then
-        op=`expr "x$1" : 'x-\(.*\)'`; shift   # done with $1
-        leq=`expr "x$op" : 'x-[^=]*\(=\)'` lev=`expr "x$op" : 'x-[^=]*=\(.*\)'`
-        test -n "$leq"&&eval "set -- \"\$lev\" \"\$@\""&&op=`expr "x$op" : 'x\([^=]*\)'`
-        case "$op" in
-            \?*|h*)     eval $op1chr; do_help=1;;
-	    -debug)     opt_debug=--debug;;
-	    -include-artdaq-repos) inc_artdaq_repos=1;;
-	    -use-dune-artdaq-branch) eval $reqarg; dune_artdaq_branch=$1; shift;;
-	    -use-dune-raw-data-branch) eval $reqarg; dune_raw_data_branch=$1; shift;;
-	    -not-dune-artdaq-developer) opt_la_nw=1;;
-	    -dune-raw-data-developer)  opt_lrd_w=1;;
-            *)          echo "Unknown option -$op"; do_help=1;;
-        esac
-    else
-        aa=`echo "$1" | sed -e"s/'/'\"'\"'/g"` args="$args '$aa'"; shift
-    fi
-done
-eval "set -- $args \"\$@\""; unset args aa
 
 # Trim away any whitespace read in by the options code...
 dune_artdaq_branch=$( echo $dune_artdaq_branch | sed -r -n 's/^[^[:alnum:]_-./]*([[:alnum:]_-./]+)[^[:alnum:]_-./]*$/\1/p' )
@@ -184,8 +193,6 @@ fi
 
 
 set -u   # complain about uninitialed shell variables - helps development
-
-test -n "${do_help-}" -o $# -ge 3 && echo "$USAGE" && exit
 
 localdiskdir=$( echo $startdir | sed -r 's!/nfs/sw/work_dirs!/scratch!' )
 if [[ ! -e $localdiskdir ]]; then
