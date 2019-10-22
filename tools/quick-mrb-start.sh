@@ -159,8 +159,8 @@ done
 eval "set -- $args \"\$@\""; unset args aa
 
 # Trim away any whitespace read in by the options code...
-dune_artdaq_branch=$( echo $dune_artdaq_branch | sed -r -n 's/^[^[:alnum:]_-]*([[:alnum:]_-]+)[^[:alnum:]_-]*$/\1/p' )
-dune_raw_data_branch=$( echo $dune_raw_data_branch | sed -r -n 's/^[^[:alnum:]_-]*([[:alnum:]_-]+)[^[:alnum:]_-]*$/\1/p' )
+dune_artdaq_branch=$( echo $dune_artdaq_branch | sed -r -n 's/^[^[:alnum:]_-./]*([[:alnum:]_-./]+)[^[:alnum:]_-./]*$/\1/p' )
+dune_raw_data_branch=$( echo $dune_raw_data_branch | sed -r -n 's/^[^[:alnum:]_-./]*([[:alnum:]_-./]+)[^[:alnum:]_-./]*$/\1/p' )
 
 if [[ -z $dune_artdaq_branch || -z $dune_raw_data_branch ]]; then
     cat<<EOF >&2
