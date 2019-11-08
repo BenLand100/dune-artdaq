@@ -131,7 +131,7 @@ bool CRT::FragGen::getNext_(
 
     if(bytes_read == 0){
       // Pause for a little bit if we didn't get anything to keep load down.
-      usleep(100); //Used to be 10000 usec, but that's more than 3 TPC readout windows!  
+      usleep(10); //Used to be 10000 usec, but that's more than 3 TPC readout windows!  
 
       // So that we still record metrics if we didn't write maxFrags but wrote
       // at least one.
@@ -200,28 +200,27 @@ std::unique_ptr<artdaq::Fragment> CRT::FragGen::buildFragment(const size_t& byte
   // changed since the last tuning, so we can probably back off on
   // rolloverThreshold.  Whatever we do, it should never be >
   // std::numeric_limits<uint32_t>::max().
-  const uint64_t rolloverThreshold = 100000000;
+  //  const uint64_t rolloverThreshold = 100000000;
+
   uint64_t newUppertime = uppertime;
 
   //L. Jiang Oct.2019
-  const uint64_t rolloverThreshold = 100000000;
-  uint64_t newUppertime = uppertime;
   const auto currentUNIX = time(nullptr);
 
   if(oldUNIX == 0) {oldUNIX = currentUNIX;}  //only of very first event
 
   //const auto currentUNIX = time(nullptr);
 
-  const auto deltaUNIX = currentUNIX - oldUNIX;
+  uint32_t deltaUNIX = currentUNIX - oldUNIX;
 
   if(deltaUNIX > 0 ){
-    deltaUNIX /= (20./1.e9)*TMath::Pow(2.,32.); //number of clock counter reset between two consecutive events
+    deltaUNIX /= (20./1.e9)*pow(2.,32.); //number of clock counter reset between two consecutive events
     deltaUNIX = (int)deltaUNIX;
-    newUpperTime += deltaUNIX;
+    newUppertime += deltaUNIX;
   } 
 
   if(lowertime < oldlowertime) {
-      newUpperTime++;
+      newUppertime++;
   }
 
   
@@ -244,59 +243,9 @@ std::unique_ptr<artdaq::Fragment> CRT::FragGen::buildFragment(const size_t& byte
     << uppertime << ", lowertime = " << lowertime << ", and runstarttime = "
     << runstarttime << ".  Timestamp is " << timestamp_ << "\n";*/
 
-  //Sanity check on timestamps
-  
-  //if(oldUNIX == 0) {oldUNIX = currentUNIX;}  //only of very first event
-
-  //const auto currentUNIX = time(nullptr);
-
-  //const auto deltaUNIX = oldUNIX - currentUNIX;
-
-  //deltaUNIX /= (20./1.e9)*TMath::Pow(2.,32.); //number of clock counter reset between two consecutive events
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-  if((uint64_t)(lowertime + rolloverThreshold) < oldlowertime){
-    /*TLOG(TLVL_DEBUG, "CRT") << "lowertime " << lowertime
-      << " and oldlowertime " << oldlowertime << " caused a rollover.  "
-      "uppertime is now " << uppertime << ".\n";*/
-    newUppertime++;
-  }
-  oldlowertime = lowertime;
-
-  timestamp_ = ((uint64_t)newUppertime << 32) + lowertime + runstarttime;
-  /*TLOG(TLVL_INFO, "CRT") << "Constructing a timestamp with uppertime = "
-    << uppertime << ", lowertime = " << lowertime << ", and runstarttime = "
-    << runstarttime << ".  Timestamp is " << timestamp_ << "\n";*/
 
   //Sanity check on timestamps
-  const auto currentUNIX = time(nullptr);
+
   const uint64_t inSeconds = timestamp_*20./1.e9; //20 nanosecond ticks in the ProtoDUNE-SP timing system
   const int64_t deltaT = inSeconds - currentUNIX; //In seconds
   if(labs(deltaT) > alarmDeltaT) //Print a warning and don't update uppertime.  This might make us 
