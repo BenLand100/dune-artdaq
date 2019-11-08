@@ -91,6 +91,8 @@ namespace CRT
     // rolled over and need to increment uppertime.
     uint32_t oldlowertime = 0;
 
+    auto oldUNIX = 0;
+
     // The 64-bit global timestamp of the start of the run. We need to
     // retrieve and store this to repair the CRT's internal 32-bit time.
     uint64_t runstarttime;

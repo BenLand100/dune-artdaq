@@ -203,6 +203,85 @@ std::unique_ptr<artdaq::Fragment> CRT::FragGen::buildFragment(const size_t& byte
   const uint64_t rolloverThreshold = 100000000;
   uint64_t newUppertime = uppertime;
 
+  //L. Jiang Oct.2019
+  const uint64_t rolloverThreshold = 100000000;
+  uint64_t newUppertime = uppertime;
+  const auto currentUNIX = time(nullptr);
+
+  if(oldUNIX == 0) {oldUNIX = currentUNIX;}  //only of very first event
+
+  //const auto currentUNIX = time(nullptr);
+
+  const auto deltaUNIX = currentUNIX - oldUNIX;
+
+  if(deltaUNIX > 0 ){
+    deltaUNIX /= (20./1.e9)*TMath::Pow(2.,32.); //number of clock counter reset between two consecutive events
+    deltaUNIX = (int)deltaUNIX;
+    newUpperTime += deltaUNIX;
+  } 
+
+  if(lowertime < oldlowertime) {
+      newUpperTime++;
+  }
+
+  
+  //  //detecting if there is additional rollover
+  //if((uint64_t)(lowertime + rolloverThreshold) < oldlowertime){
+  //  /*TLOG(TLVL_DEBUG, "CRT") << "lowertime " << lowertime
+  //    << " and oldlowertime " << oldlowertime << " caused a rollover.  "
+  //    "uppertime is now " << uppertime << ".\n";*/
+  //  newUppertime++;
+  //  
+  //}
+
+
+  oldlowertime = lowertime;
+
+  oldUNIX = currentUNIX;
+
+  timestamp_ = ((uint64_t)newUppertime << 32) + lowertime + runstarttime;
+  /*TLOG(TLVL_INFO, "CRT") << "Constructing a timestamp with uppertime = "
+    << uppertime << ", lowertime = " << lowertime << ", and runstarttime = "
+    << runstarttime << ".  Timestamp is " << timestamp_ << "\n";*/
+
+  //Sanity check on timestamps
+  
+  //if(oldUNIX == 0) {oldUNIX = currentUNIX;}  //only of very first event
+
+  //const auto currentUNIX = time(nullptr);
+
+  //const auto deltaUNIX = oldUNIX - currentUNIX;
+
+  //deltaUNIX /= (20./1.e9)*TMath::Pow(2.,32.); //number of clock counter reset between two consecutive events
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
   if((uint64_t)(lowertime + rolloverThreshold) < oldlowertime){
     /*TLOG(TLVL_DEBUG, "CRT") << "lowertime " << lowertime
       << " and oldlowertime " << oldlowertime << " caused a rollover.  "
