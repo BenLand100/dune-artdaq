@@ -222,9 +222,8 @@ std::unique_ptr<artdaq::Fragment> CRT::FragGen::buildFragment(const size_t& byte
     deltaUNIX = (int)deltaUNIX; //lower end, need to check if it is off by one additional rollover    
     newUppertime += deltaUNIX; //adding an intenger number of seconds (86s) corresponding to how many resets we detect (should old do this when pausing the run
   } 
-  
   //detecting if there is an additional rollover
-  if((uint64_t)(lowertime + rolloverThreshold) < oldlowertime){
+  else if((uint64_t)(lowertime + rolloverThreshold) < oldlowertime){
     /*TLOG(TLVL_DEBUG, "CRT") << "lowertime " << lowertime
       << " and oldlowertime " << oldlowertime << " caused a rollover.  "
       "uppertime is now " << uppertime << ".\n";*/
