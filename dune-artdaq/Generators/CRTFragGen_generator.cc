@@ -230,13 +230,6 @@ std::unique_ptr<artdaq::Fragment> CRT::FragGen::buildFragment(const size_t& byte
     newUppertime++;  
   }
   
-  if((uint64_t)(lowertime + 4.e9) < oldlowertime){ //this is to cover the case when the 1s interval is right on top of the reset time +-0.5s
-    /*TLOG(TLVL_DEBUG, "CRT") << "lowertime " << lowertime
-      << " and oldlowertime " << oldlowertime << " caused a rollover.  "
-      "uppertime is now " << uppertime << ".\n";*/
-    newUppertime++;  
-  }
-
   oldlowertime = lowertime;
 
   //building the new timestamp
