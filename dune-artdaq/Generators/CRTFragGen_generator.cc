@@ -230,7 +230,7 @@ std::unique_ptr<artdaq::Fragment> CRT::FragGen::buildFragment(const size_t& byte
     newUppertime++;  
   }
   
-  oldlowertime = lowertime;
+  //  oldlowertime = lowertime;
 
   //building the new timestamp
   timestamp_ = ((uint64_t)newUppertime << 32) + lowertime + runstarttime;
@@ -238,8 +238,8 @@ std::unique_ptr<artdaq::Fragment> CRT::FragGen::buildFragment(const size_t& byte
   //debug for the moment the new deltaUNIX time constructor, need to change WARNIGN to INFO or comment it out
   if (deltaUNIX > 0) {
     TLOG(TLVL_WARNING, "CRT") << "Constructing a timestamp with deltaUNIX included, current linux time = "
-			      << currentUNIX << "uppertime is = " 
-			      << uppertime << " differenze between olf and new UNIX time = "
+			      << currentUNIX << " uppertime is = " 
+			      << uppertime << " differenze between old and new UNIX time = "
 			      << deltaUNIX << ", lowertime = " << lowertime << ", and runstarttime = "
 			      << runstarttime << ".  Timestamp is " << timestamp_ << "\n";
   }
@@ -260,10 +260,21 @@ std::unique_ptr<artdaq::Fragment> CRT::FragGen::buildFragment(const size_t& byte
                               << currentUNIX << ".  lowertime = " << lowertime << ", uppertime = " << uppertime 
                               << ", and runstarttime = " << runstarttime << ".  Throwing out this Fragment to "
                               << "prevent a single bad board from ruining all of our data.\n";
+
+    //include recovery if reset time is +1 so deltaT = -86
+    if(labs(deltaT) == 86 ) { //decrease or increase uppertime and timestamp by 1 reset cycle - 86 sec.
+      if(deltaT < 0) {newUppertime--;} 
+      if(deltaT > 0) {newUppertime++;}
+      timestamp_ = ((uint64_t)newUppertime << 32) + lowertime + runstarttime;
+      uppertime = newUppertime; //This timestamp "makes sense", so keep track of 32-bit rollovers.                                                                                                                                       
+      oldUNIX = currentUNIX;
+    }
+
   }
   else { 
     uppertime = newUppertime; //This timestamp "makes sense", so keep track of 32-bit rollovers.
     oldUNIX = currentUNIX;
+    oldlowertime = lowertime;
   }
 
 
