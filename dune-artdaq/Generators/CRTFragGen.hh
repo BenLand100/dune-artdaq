@@ -91,6 +91,8 @@ namespace CRT
     // rolled over and need to increment uppertime.
     uint32_t oldlowertime = 0;
 
+    uint64_t oldUNIX = 0;
+
     // The 64-bit global timestamp of the start of the run. We need to
     // retrieve and store this to repair the CRT's internal 32-bit time.
     uint64_t runstarttime;
@@ -115,7 +117,7 @@ namespace CRT
     bool gotRunStartTime;
 
     //When should we get worried about timestamps getting out of sync?  In seconds
-    static constexpr int64_t alarmDeltaT = 2; 
+    static constexpr int64_t alarmDeltaT = 1; 
   };
 }
 

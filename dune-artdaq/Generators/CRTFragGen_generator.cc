@@ -112,6 +112,11 @@ bool CRT::FragGen::getNext_(
                               << time(nullptr) << " seconds.  Looks like we skipped " << uppertime 
                               << " 32-bit rollovers, so set uppertime to " << uppertime << ".\n";
     gotRunStartTime = true;
+
+    //CM 11/2019
+    //initializing oldUNIX time
+    oldUNIX = time(nullptr);
+
   }
                                                                                                      
   if(should_stop()){
@@ -131,7 +136,7 @@ bool CRT::FragGen::getNext_(
 
     if(bytes_read == 0){
       // Pause for a little bit if we didn't get anything to keep load down.
-      usleep(100); //Used to be 10000 usec, but that's more than 3 TPC readout windows!  
+      usleep(10); //Used to be 10000 usec, but that's more than 3 TPC readout windows!  
 
       // So that we still record metrics if we didn't write maxFrags but wrote
       // at least one.
@@ -200,38 +205,80 @@ std::unique_ptr<artdaq::Fragment> CRT::FragGen::buildFragment(const size_t& byte
   // changed since the last tuning, so we can probably back off on
   // rolloverThreshold.  Whatever we do, it should never be >
   // std::numeric_limits<uint32_t>::max().
+
   const uint64_t rolloverThreshold = 100000000;
+
   uint64_t newUppertime = uppertime;
 
-  if((uint64_t)(lowertime + rolloverThreshold) < oldlowertime){
+  // L. Jiang && C. Mariani Oct.2019
+  uint64_t currentUNIX = time(nullptr);
+
+  //determine the number of reset that occurred if the time passed is greater than 86s
+
+  uint64_t deltaUNIX = currentUNIX - oldUNIX;
+
+  if(deltaUNIX > 0 ){ // reset happen at > 86 sec.
+    deltaUNIX /= (20./1.e9)*pow(2.,32.); //number of clock counter between two consecutive events considering the 20ns ticks
+    deltaUNIX = (int)deltaUNIX; //lower end, need to check if it is off by one additional rollover    
+    newUppertime += deltaUNIX; //adding an intenger number of seconds (86s) corresponding to how many resets we detect (should old do this when pausing the run)
+  } 
+  //detecting if there is an additional rollover
+  else if((uint64_t)(lowertime + rolloverThreshold) < oldlowertime){
     /*TLOG(TLVL_DEBUG, "CRT") << "lowertime " << lowertime
       << " and oldlowertime " << oldlowertime << " caused a rollover.  "
       "uppertime is now " << uppertime << ".\n";*/
-    newUppertime++;
+    newUppertime++;  
   }
-  oldlowertime = lowertime;
+  
+  //  oldlowertime = lowertime;
 
+  //building the new timestamp
   timestamp_ = ((uint64_t)newUppertime << 32) + lowertime + runstarttime;
-  /*TLOG(TLVL_INFO, "CRT") << "Constructing a timestamp with uppertime = "
-    << uppertime << ", lowertime = " << lowertime << ", and runstarttime = "
-    << runstarttime << ".  Timestamp is " << timestamp_ << "\n";*/
 
-  //Sanity check on timestamps
-  const auto currentUNIX = time(nullptr);
+  //debug for the moment the new deltaUNIX time constructor, need to change WARNIGN to INFO or comment it out
+  if (deltaUNIX > 0) {
+    TLOG(TLVL_INFO, "CRT") << "Constructing a timestamp with deltaUNIX included, current linux time = "
+			      << currentUNIX << " uppertime is = " 
+			      << uppertime << " difference between the old and the new UNIX time = "
+			      << deltaUNIX << ", lowertime = " << lowertime << ", and runstarttime = "
+			      << runstarttime << ".  Timestamp is " << timestamp_ << "\n";
+  }
+  
+  //Sanity check on timestamps, repeating somehow what we did before to cross check - TBF
+
   const uint64_t inSeconds = timestamp_*20./1.e9; //20 nanosecond ticks in the ProtoDUNE-SP timing system
+
   const int64_t deltaT = inSeconds - currentUNIX; //In seconds
+
   if(labs(deltaT) > alarmDeltaT) //Print a warning and don't update uppertime.  This might make us 
                                  //a little more robust against one or two boards having internal timing 
                                  //problems.  If it happens to all boards for too long, I won't try to 
                                  //recover.  
   {
     TLOG(TLVL_WARNING, "CRT") << "Got a large time difference of " << deltaT << " between CRT timestamp of " 
-                              << timestamp_ << "( " << inSeconds << " seconds) and current system time of "
-                              << currentUNIX << ".  lowertime = " << lowertime << ", uppertime = " << uppertime 
-                              << ", and runstarttime = " << runstarttime << ".  Throwing out this Fragment to "
-                              << "prevent a single bad board from ruining all of our data.\n";
+			   << timestamp_ << "( " << inSeconds << " seconds) and current system time of "
+			   << currentUNIX << ".  lowertime = " << lowertime << ", uppertime = " << uppertime 
+			   << ", runstarttime = " << runstarttime << " and deltaUNIX = " << deltaUNIX 
+			   << ".  Throwing out this Fragment to "
+			   << "prevent a single bad board from ruining all of our data.\n";
+
+    //include recovery if reset time is +1 so deltaT = -86
+    if(labs(deltaT) == 86 ) { //decrease or increase uppertime and timestamp by 1 reset cycle - 86 sec.
+      if(deltaT < 0) {newUppertime--;} 
+      if(deltaT > 0) {newUppertime++;}
+      timestamp_ = ((uint64_t)newUppertime << 32) + lowertime + runstarttime;
+      uppertime = newUppertime; 
+      oldUNIX = currentUNIX;
+      oldlowertime = lowertime;
+    }
+
   }
-  else uppertime = newUppertime; //This timestamp "makes sense", so keep track of 32-bit rollovers.
+  else { 
+    uppertime = newUppertime; //This timestamp "makes sense", so keep track of 32-bit rollovers.
+    oldUNIX = currentUNIX;
+    oldlowertime = lowertime;
+  }
+
 
   // And also copy the repaired timestamp into the buffer itself.
   // Code downstream in artdaq reads timestamp_, but both will always be
