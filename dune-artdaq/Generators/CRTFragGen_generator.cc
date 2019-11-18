@@ -261,17 +261,6 @@ std::unique_ptr<artdaq::Fragment> CRT::FragGen::buildFragment(const size_t& byte
 			   << ", runstarttime = " << runstarttime << " and deltaUNIX = " << deltaUNIX 
 			   << ".  Throwing out this Fragment to "
 			   << "prevent a single bad board from ruining all of our data.\n";
-
-    //include recovery if reset time is +1 so deltaT = -86
-    if(labs(deltaT) == 86 ) { //decrease or increase uppertime and timestamp by 1 reset cycle - 86 sec.
-      if(deltaT < 0) {newUppertime--;} 
-      if(deltaT > 0) {newUppertime++;}
-      timestamp_ = ((uint64_t)newUppertime << 32) + lowertime + runstarttime;
-      uppertime = newUppertime; 
-      oldUNIX = currentUNIX;
-      oldlowertime = lowertime;
-    }
-
   }
   else { 
     uppertime = newUppertime; //This timestamp "makes sense", so keep track of 32-bit rollovers.
