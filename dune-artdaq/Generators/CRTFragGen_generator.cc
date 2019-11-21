@@ -206,7 +206,7 @@ std::unique_ptr<artdaq::Fragment> CRT::FragGen::buildFragment(const size_t& byte
   // rolloverThreshold.  Whatever we do, it should never be >
   // std::numeric_limits<uint32_t>::max().
 
-  const uint64_t rolloverThreshold = 100000000;
+  const uint64_t rolloverThreshold = 1000; //was 100000000
 
   uint64_t newUppertime = uppertime;
 
@@ -215,7 +215,17 @@ std::unique_ptr<artdaq::Fragment> CRT::FragGen::buildFragment(const size_t& byte
 
   //determine the number of reset that occurred if the time passed is greater than 86s
 
-  uint64_t deltaUNIX = currentUNIX - oldUNIX;
+  //  uint64_t deltaUNIX = currentUNIX - oldUNIX;
+  uint64_t deltaUNIX = currentUNIX - (((uint64_t)uppertime << 32) + lowertime + runstarttime);
+
+  //run restart and new starttime
+
+  if ( deltaUNIX > 10 ) { 
+    getRunStartTime();
+    usleep(10); 
+    uppertime = 0;
+    deltaUNIX = currentUNIX - (((uint64_t)uppertime << 32) + lowertime + runstarttime);
+  } //if going to configure and then start - get new starttime - fix me
 
   if(deltaUNIX > 0 ){ // reset happen at > 86 sec.
     deltaUNIX /= (20./1.e9)*pow(2.,32.); //number of clock counter between two consecutive events considering the 20ns ticks
@@ -235,13 +245,15 @@ std::unique_ptr<artdaq::Fragment> CRT::FragGen::buildFragment(const size_t& byte
   //building the new timestamp
   timestamp_ = ((uint64_t)newUppertime << 32) + lowertime + runstarttime;
 
+
   //debug for the moment the new deltaUNIX time constructor, need to change WARNIGN to INFO or comment it out
   if (deltaUNIX > 0) {
     TLOG(TLVL_INFO, "CRT") << "Constructing a timestamp with deltaUNIX included, current linux time = "
-			      << currentUNIX << " uppertime is = " 
-			      << uppertime << " difference between the old and the new UNIX time = "
-			      << deltaUNIX << ", lowertime = " << lowertime << ", and runstarttime = "
-			      << runstarttime << ".  Timestamp is " << timestamp_ << "\n";
+			   << currentUNIX << " newUppertime is = " 
+			   << newUppertime << " uppertime is = "
+			   << uppertime << " difference between the old and the new UNIX time = "
+			   << deltaUNIX << ", lowertime = " << lowertime 
+			   << ".  Timestamp is " << timestamp_ << "\n";
   }
   
   //Sanity check on timestamps, repeating somehow what we did before to cross check - TBF
@@ -256,12 +268,17 @@ std::unique_ptr<artdaq::Fragment> CRT::FragGen::buildFragment(const size_t& byte
                                  //recover.  
   {
     TLOG(TLVL_WARNING, "CRT") << "Got a large time difference of " << deltaT << " between CRT timestamp of " 
-			   << timestamp_ << "( " << inSeconds << " seconds) and current system time of "
-			   << currentUNIX << ".  lowertime = " << lowertime << ", uppertime = " << uppertime 
-			   << ", runstarttime = " << runstarttime << " and deltaUNIX = " << deltaUNIX 
-			   << ".  Throwing out this Fragment to "
-			   << "prevent a single bad board from ruining all of our data.\n";
+			      << timestamp_ << "( " << inSeconds << " seconds) - lowertime = " 
+			      << lowertime << ", uppertime = " << uppertime 
+			      << ", newuppertime = " << newUppertime  
+			      << " and deltaUNIX = " << deltaUNIX 
+			      << ".  Throwing out this Fragment to "
+			      << "prevent a single bad board from ruining all of our data.\n";
+    if( deltaT <= -85 ) {
+      uppertime = newUppertime++;
+    }
   }
+
   else { 
     uppertime = newUppertime; //This timestamp "makes sense", so keep track of 32-bit rollovers.
     oldUNIX = currentUNIX;
