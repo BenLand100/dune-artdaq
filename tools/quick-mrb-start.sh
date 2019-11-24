@@ -356,7 +356,8 @@ pyzmq_version=v18_0_1a
 
 
 cd $localdiskdir
-    cat >setupDUNEARTDAQ_forBuilding <<-EOF
+
+cat >setupDUNEARTDAQ_forBuilding <<EOF
 
         basedir=\$PWD                                                                                  
         
@@ -388,7 +389,39 @@ cd $localdiskdir
           echo
           return
         fi
-                               
+
+        version_for_build=\$( sed -r -n "s/^\s*parent\s+dune_artdaq\s+(\S+)\s*\$/\1/p" \$basedir/srcs/dune_artdaq/ups/product_deps  )
+
+        if [[ -z \$version_for_build ]]; then
+             echo Unable to determine the version of dune-artdaq from looking at \$basedir/srcs/dune_artdaq/ups/product_deps >&2
+             echo This is unexpected - please contact John Freeman, either on Slack or at jcfree@fnal.gov >&2
+             return 1
+        fi 
+
+        qualifier_for_build=\$( sed -r -n "s/^\s*defaultqual\s+(\S+)\s*\$/\1/p" \$basedir/srcs/dune_artdaq/ups/product_deps )
+
+        if [[ -z \$qualifier_for_build ]]; then
+           echo Unable to determine the qualifier_for_build for dune_artdaq from looking at \$basedir/srcs/dune_artdaq/ups/product_deps >&2
+             echo This is unexpected - please contact John Freeman, either on Slack or at jcfree@fnal.gov >&2
+             return 1
+        fi      
+
+        version_for_running=\$( sed -r -n "s/^\s*setup\s+dune_artdaq\s+(\S+)\s+\-q\s+\S+\s*/\1/p" $startdir/setupDUNEARTDAQ_forRunning )
+        qualifier_for_running=\$( sed -r -n "s/^\s*setup\s+dune_artdaq\s+\S+\s+\-q\s+(\S+):prof\s*/\1/p" $startdir/setupDUNEARTDAQ_forRunning ) 
+
+        if [[ "\$version_for_running" != "\$version_for_build" || "\$qualifier_for_running" != "\$qualifier_for_build" ]]; then 
+        setupline=\$( sed -r -n "/^\s*setup\s+dune_artdaq\s+\S+\s+\-q\s+\S+\s*/p" $startdir/setupDUNEARTDAQ_forRunning )
+        echo "ATTENTION: the file \"\$basedir/srcs/dune_artdaq/ups/product_deps\" "
+        echo "has the dune-artdaq version \"\$version_for_build\" and qualifier \"\$qualifier_for_build\" listed"
+        echo "Therefore you'll need to edit $startdir/setupDUNEARTDAQ_forRunning"
+        echo "by updating the existing line \"\$setupline\" "
+        echo "so that its version and qualifier match what's in product_deps"
+        echo "otherwise your code changes will not be picked up when you run"
+        echo
+        echo "This script will return without setting up the build environment until the above edit is made"
+        return 0
+        fi
+     
         sh -c "[ \`ps \$\$ | grep bash | wc -l\` -gt 0 ] || { echo 'Please switch to the bash shell before running dune-artdaq.'; exi
 t; }" || exit                                                                                           
 
@@ -425,7 +458,9 @@ echo "  mrb install -j32  # to build and 'install' the built code"
 echo " (where 'install' means copy-to-products-area \"$startdir/$localproducts_subdir\" and use in runtime environment)"
 echo ""
 
+
 EOF
+
 
 cd $startdir
     cat >setupDUNEARTDAQ_forRunning <<-EOF
