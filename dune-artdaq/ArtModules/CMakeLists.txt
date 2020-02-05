@@ -65,6 +65,7 @@ simple_plugin(DuneInput "source"
   dune-raw-data_Overlays
   artdaq_ArtModules
   artdaq-core_Core
+  artdaq-core_Utilities
   artdaq_DAQdata
   artdaq-utilities_Plugins
   art_Framework_Core

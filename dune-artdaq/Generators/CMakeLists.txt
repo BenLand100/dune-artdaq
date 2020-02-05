@@ -2,6 +2,7 @@
 simple_plugin(TPCMilliSliceSimulatorWithCopy "generator"
   dune-raw-data_Overlays
   artdaq_Application
+  artdaq_Generators
   artdaq_DAQdata
   artdaq-core_Data
   artdaq-core_Utilities
@@ -10,7 +11,7 @@ simple_plugin(TPCMilliSliceSimulatorWithCopy "generator"
   ${FHICLCPP}
   ${MF_MESSAGELOGGER}
   ${CETLIB}
-  boost_system
+  ${BOOST_SYSTEM}
   ${CETLIB_EXCEPT}
   )
 
@@ -18,6 +19,7 @@ simple_plugin(SSP "generator"
   dune-raw-data_Overlays
   dune-artdaq_Generators_anlBoard
   artdaq_Application
+  artdaq_Generators
   artdaq_DAQdata
   artdaq-core_Utilities
   artdaq-utilities_Plugins
@@ -51,6 +53,7 @@ simple_plugin(ToySimulator "generator"
   dune-raw-data_Overlays
   dune-artdaq_DAQLogger
   artdaq_Application
+  artdaq_Generators
   artdaq_DAQdata
   artdaq-core_Utilities
   artdaq-core_Data
@@ -61,7 +64,7 @@ simple_plugin(ToySimulator "generator"
   ${MF_UTILITIES}
   ${CETLIB}
   ${CETLIB_EXCEPT}
-  boost_system
+  ${BOOST_SYSTEM}
   )
 
   add_subdirectory(anlBoard)
@@ -74,10 +77,11 @@ simple_plugin(TpcRceReceiver "generator"
   dune-artdaq_Generators_rce
   artdaq-core_Data
   artdaq_Application
+  artdaq_Generators
   artdaq_DAQdata
   artdaq-core_Utilities
   dune-artdaq_DAQLogger
-  #artdaq-utilities_Plugins
+  artdaq-utilities_Plugins
   ${CANVAS}
   ${FHICLCPP}
   ${CETLIB}
@@ -94,6 +98,7 @@ simple_plugin(PennReceiver "generator"
   dune-artdaq_Generators_pennBoard
   artdaq-core_Data
   artdaq_Application
+  artdaq_Generators
   artdaq_DAQdata
   artdaq-core_Utilities
   artdaq-utilities_Plugins
@@ -111,6 +116,7 @@ simple_plugin(TriggerBoardReader "generator"
   dune-artdaq_Generators_TriggerBoard
   artdaq-core_Data
   artdaq_Application
+  artdaq_Generators
   artdaq_DAQdata
   artdaq-core_Utilities
   artdaq-utilities_Plugins
@@ -156,11 +162,12 @@ simple_plugin(WIBReader "generator"
          $ENV{PROTODUNE_WIBSOFT_LIB}/libWIB.so
          $ENV{PROTODUNE_WIBSOFT_LIB}/libToolException.so
          artdaq_Application
+	 artdaq_Generators
 	 dune-artdaq_DAQLogger
   	 ${CETLIB_EXCEPT}
   	 ${CETLIB}
   	 ${FHICLCPP}
-	 boost_system
+	 ${Boost_SYSTEM_LIBRARY}
 )
 
 else()
@@ -175,6 +182,7 @@ simple_plugin(CRTFragGen "generator"
   dune-artdaq_Generators_CRTInterface
   dune-raw-data_Overlays
   artdaq_Application
+  artdaq_Generators
   artdaq_DAQdata
   artdaq-core_Utilities
   artdaq-core_Data
@@ -185,5 +193,7 @@ simple_plugin(CRTFragGen "generator"
   ${MF_UTILITIES}
   ${CETLIB}
   ${CETLIB_EXCEPT}
+  ${UHAL_UHAL}
+  ${UHAL_LOG}
   )
  

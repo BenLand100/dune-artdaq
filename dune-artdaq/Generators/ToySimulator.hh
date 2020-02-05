@@ -20,7 +20,7 @@
 
 #include "fhiclcpp/fwd.h"
 #include "artdaq-core/Data/Fragment.hh" 
-#include "artdaq/Application/CommandableFragmentGenerator.hh"
+#include "artdaq/Generators/CommandableFragmentGenerator.hh"
 #include "dune-raw-data/Overlays/ToyFragment.hh"
 #include "dune-raw-data/Overlays/FragmentType.hh"
 
