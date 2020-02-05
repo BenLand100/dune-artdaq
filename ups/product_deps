@@ -22,7 +22,7 @@ dune_raw_data 	v2020_02_04_copy_ProtoDUNE_November2019area
 cetbuildtools	v7_02_01	-	only_for_build
 smc_compiler    v6_6_0          -nq-    only_for_build
 uhal		v2_6_0
-dune_artdaq_InhibitMaster v0_02_05
+dune_artdaq_InhibitMaster v0_01_01
 protodune_wibsoft v339
 end_product_list
 
