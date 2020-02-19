@@ -7,6 +7,8 @@
 
 #include "dam/DataFragmentUnpack.hh"
 
+#include "dune-artdaq/DAQLogger/DAQLogger.hh"
+
 namespace dune{
 namespace rce {
 
@@ -100,18 +102,22 @@ void RssiSink::
       // check header
       if (*header >> 40 != 0x8b309e) {
          ++stats_local.bad_hdrs;
+         DAQLogger::LogWarning("RceRssiReceiver") << "Bad header found, (decimal " << *header << ") now have " << stats_local.bad_hdrs << " total bad header(s) found";
          is_okay = false;
       }
       else {
          // check trailer
          if (trailer != ~*header) {
             ++stats_local.bad_trlr;
+            DAQLogger::LogWarning("RceRssiReceiver") << "Bad trailer found, (decimal " << trailer << ") now have " << stats_local.bad_trlr << " total bad trailer(s) found";
             is_okay = false;
          }
 
          // check size
-         if (nbytes != n64 * sizeof(uint64_t) + padding) {
+         auto expected_size = n64 * sizeof(uint64_t) + padding;
+         if (nbytes != expected_size) {
             ++stats_local.err_size;
+            DAQLogger::LogWarning("RceRssiReceiver") << "Size error found (" << nbytes << " bytes not the same as expected value of " << expected_size << ")";
             is_okay = false;
          }
       }
@@ -119,8 +125,10 @@ void RssiSink::
       // check TpcStream
       if (is_okay) {
          DataFragmentUnpack data(header);
-         if (!data.isTpcNormal())
+         if (!data.isTpcNormal()) {
+            DAQLogger::LogWarning("RceRssiReceiver") << "data.isTpcNormal() found to be false";
             is_okay = false;
+         }
       }
 
       if (!is_okay)
