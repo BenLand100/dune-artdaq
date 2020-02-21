@@ -37,10 +37,10 @@
 #include <cstdio>
 
 
-#include "timingBoard/InhibitGet.h" // The interface to the ZeroMQ trigger inhibit master
-#include "timingBoard/StatusPublisher.hh"
-#include "timingBoard/FragmentPublisher.hh"
-#include "timingBoard/HwClockPublisher.hh"
+//#include "timingBoard/InhibitGet.h" // The interface to the ZeroMQ trigger inhibit master
+// #include "timingBoard/StatusPublisher.hh"
+// #include "timingBoard/FragmentPublisher.hh"
+// #include "timingBoard/HwClockPublisher.hh"
 
 #pragma GCC diagnostic ignored "-Wpedantic"
 #pragma GCC diagnostic ignored "-Woverloaded-virtual"
@@ -75,7 +75,7 @@ dune::TimingReceiver::TimingReceiver(fhicl::ParameterSet const & ps):
   , stopping_flag_(0)
   , throttling_state_(0)
   , stopping_state_(0)
-  , inhibitget_timer_(ps.get<uint32_t>("inhibit_get_timer", 5000000))  // 3 secs TODO: Should make this a ps.get()
+  //  , inhibitget_timer_(ps.get<uint32_t>("inhibit_get_timer", 5000000))  // 3 secs TODO: Should make this a ps.get()
   , logFiddle_(0)            // This is a fudge, see explanation above
   , connectionsFile_(ps.get<std::string>("connections_file", "/home/artdaq1/giles/a_vm_mbp/dune-artdaq/Generators/timingBoard/connections.xml"))
   , bcmc_( "file://" + connectionsFile_ )  // a string (non-const)
@@ -87,10 +87,10 @@ dune::TimingReceiver::TimingReceiver(fhicl::ParameterSet const & ps):
   , end_run_wait_(ps.get<uint32_t>("end_run_wait", 1000))
   , enable_spill_commands_(ps.get<bool>("enable_spill_commands", false))
   , enable_spill_gate_(ps.get<bool>("enable_spill_gate", false))
-  , zmq_conn_(ps.get<std::string>("zmq_connection", "tcp://pddaq-gen05-daq0:5566"))
-  , zmq_conn_out_(ps.get<std::string>("zmq_connection_out", "tcp://*:5599"))
-  , zmq_fragment_conn_out_(ps.get<std::string>("zmq_fragment_connection_out", "tcp://*:7123"))
-  , zmq_hwtimer_conn_out_(ps.get<std::string>("zmq_hwtimer_conn_out", "tcp://*:5555"))
+  //  , zmq_conn_(ps.get<std::string>("zmq_connection", "tcp://pddaq-gen05-daq0:5566"))
+  //  , zmq_conn_out_(ps.get<std::string>("zmq_connection_out", "tcp://*:5599"))
+  //  , zmq_fragment_conn_out_(ps.get<std::string>("zmq_fragment_connection_out", "tcp://*:7123"))
+  //  , zmq_hwtimer_conn_out_(ps.get<std::string>("zmq_hwtimer_conn_out", "tcp://*:5555"))
   , valid_firmware_versions_fcl_(ps.get<std::vector<int>>("valid_firmware_versions", std::vector<int>()))
   , want_inhibit_(false)
   , propagate_trigger_(ps.get<uint32_t>("generated_fragments_per_event", 1))
@@ -123,7 +123,7 @@ dune::TimingReceiver::TimingReceiver(fhicl::ParameterSet const & ps):
     // - Command generators set up                       [done here]
     // - Spills or fake spills enabled                   [wait for firmware upgrade]
 
-  if (inhibitget_timer_ == 0) inhibitget_timer_ = 2000000000;  // Zero inhibitget_timer waits infinite.
+    //  if (inhibitget_timer_ == 0) inhibitget_timer_ = 2000000000;  // Zero inhibitget_timer waits infinite.
 
   // PAR 2018-03-09: We don't do any pre-partition-setup steps in
   // the board reader any more. They're done by the butler. I'm
@@ -223,19 +223,19 @@ dune::TimingReceiver::TimingReceiver(fhicl::ParameterSet const & ps):
   // InhibitGet_connect() in start(), in order to do so as late as
   // possible and minimize the chance of reading stale messages from
   // the InhibitMaster
-  InhibitGet_init(inhibitget_timer_);
+  //  InhibitGet_init(inhibitget_timer_);
 
   // Set up outgoing connection to InhibitMaster: this is where we
   // broadcast whether we're happy to take triggers
-  status_publisher_.reset(new artdaq::StatusPublisher(instance_name_, zmq_conn_out_));
-  status_publisher_->BindPublisher();
+  //  status_publisher_.reset(new artdaq::StatusPublisher(instance_name_, zmq_conn_out_));
+  //  status_publisher_->BindPublisher();
 
-  if(propagate_trigger_) {
-    fragment_publisher_.reset(new artdaq::FragmentPublisher(zmq_fragment_conn_out_));
-    fragment_publisher_->BindPublisher();
-  }
-  hwtime_publisher_.reset(new artdaq::HwClockPublisher(zmq_hwtimer_conn_out_ ));
-  hwtime_publisher_->bind();
+  // if(propagate_trigger_) {
+  //   fragment_publisher_.reset(new artdaq::FragmentPublisher(zmq_fragment_conn_out_));
+  //   fragment_publisher_->BindPublisher();
+  // }
+  //  hwtime_publisher_.reset(new artdaq::HwClockPublisher(zmq_hwtimer_conn_out_ ));
+  //  hwtime_publisher_->bind();
 
   // TODO: Do we really need to sleep here to wait for the socket to bind?
   usleep(2000000);
@@ -243,36 +243,36 @@ dune::TimingReceiver::TimingReceiver(fhicl::ParameterSet const & ps):
 }
 
 
-// ----------------------------------------------------------------------------
-void dune::TimingReceiver::publishHwTime() {
-  while( !hwclock_publisher_stop_ ) {
-      uhal::ValVector<uint32_t> ts_enc = hw_.getNode("master_top.master.tstamp.ctr.val").readBlock(2);
-      hw_.dispatch();
-      uint64_t ts = ((uint64_t)ts_enc[1] << 32) + ts_enc[0];
-      DAQLogger::LogInfo(instance_name_) << "Retrieved hw timestamp " << ts;
-      this->hwtime_publisher_->publish(ts);
-      std::this_thread::sleep_for(std::chrono::milliseconds(1500));
-  }
+// // ----------------------------------------------------------------------------
+// void dune::TimingReceiver::publishHwTime() {
+//   while( !hwclock_publisher_stop_ ) {
+//       uhal::ValVector<uint32_t> ts_enc = hw_.getNode("master_top.master.tstamp.ctr.val").readBlock(2);
+//       hw_.dispatch();
+//       uint64_t ts = ((uint64_t)ts_enc[1] << 32) + ts_enc[0];
+//       DAQLogger::LogInfo(instance_name_) << "Retrieved hw timestamp " << ts;
+//       this->hwtime_publisher_->publish(ts);
+//       std::this_thread::sleep_for(std::chrono::milliseconds(1500));
+//   }
 
-  DAQLogger::LogInfo(instance_name_) << "HwClock Publisher shutting down";
-}
-
-
-// ----------------------------------------------------------------------------
-void dune::TimingReceiver::startHwTimePublisher() {
-
-  DAQLogger::LogInfo(instance_name_) << "Starting HwClock Publisher ";
-
-  hwclock_publisher_stop_ = false;
-  hwclock_publisher_thread_ = std::thread(&dune::TimingReceiver::publishHwTime, this);
-}
+//   DAQLogger::LogInfo(instance_name_) << "HwClock Publisher shutting down";
+// }
 
 
-// ----------------------------------------------------------------------------
-void dune::TimingReceiver::stopHwTimePublisher() {
-  hwclock_publisher_stop_ = true;
-  hwclock_publisher_thread_.join();
-}
+// // ----------------------------------------------------------------------------
+// void dune::TimingReceiver::startHwTimePublisher() {
+
+//   DAQLogger::LogInfo(instance_name_) << "Starting HwClock Publisher ";
+
+//   hwclock_publisher_stop_ = false;
+//   hwclock_publisher_thread_ = std::thread(&dune::TimingReceiver::publishHwTime, this);
+// }
+
+
+// // ----------------------------------------------------------------------------
+// void dune::TimingReceiver::stopHwTimePublisher() {
+//   hwclock_publisher_stop_ = true;
+//   hwclock_publisher_thread_.join();
+// }
 
 
 // start() routine --------------------------------------------------------------------------
@@ -312,12 +312,12 @@ void dune::TimingReceiver::start(void) {
     // it's all gone pear-shaped?
   }
 
-  InhibitGet_connect(zmq_conn_.c_str());
-  InhibitGet_retime(inhibitget_timer_);
+  //  InhibitGet_connect(zmq_conn_.c_str());
+  //  InhibitGet_retime(inhibitget_timer_);
 
   this->reset_met_variables(false);
 
-  this->startHwTimePublisher();
+  //  this->startHwTimePublisher();
 }
 
 
@@ -368,7 +368,7 @@ void dune::TimingReceiver::stop(void) {
     }
   }
 
-  this->stopHwTimePublisher();
+  //  this->stopHwTimePublisher();
 
 }
 
@@ -430,16 +430,16 @@ bool dune::TimingReceiver::checkHWStatus_()
     new_want_inhibit=false;
   }
 
-  if (new_want_inhibit && !want_inhibit_) {
-    DAQLogger::LogInfo(instance_name_) << "Want inhibit Status change: Publishing bad status: \"" << status_msg << "\"";
-    status_publisher_->PublishBadStatus(status_msg);
-  }
-  if (want_inhibit_ && !new_want_inhibit) {
-    DAQLogger::LogInfo(instance_name_) << "Want inhibit status change: Publishing good status";
-    status_publisher_->PublishGoodStatus();
-  }
+  // if (new_want_inhibit && !want_inhibit_) {
+  //   DAQLogger::LogInfo(instance_name_) << "Want inhibit Status change: Publishing bad status: \"" << status_msg << "\"";
+  //   status_publisher_->PublishBadStatus(status_msg);
+  // }
+  // if (want_inhibit_ && !new_want_inhibit) {
+  //   DAQLogger::LogInfo(instance_name_) << "Want inhibit status change: Publishing good status";
+  //   status_publisher_->PublishGoodStatus();
+  // }
 
-  want_inhibit_ = new_want_inhibit;
+  // want_inhibit_ = new_want_inhibit;
 
   // Check that the timing-trigger endpoint ("ext-trig" in the
   // butler), which is listening to the trigger board, is is a ready
@@ -618,10 +618,10 @@ bool dune::TimingReceiver::getNext_(artdaq::FragmentPtrs &frags) {
                                     commandType == dune::TimingCommand::SpillStop);
 
         if (shouldSendFragment) {
-          // Send the fragment out on ZeroMQ for FELIX and whoever else wants to listen for it
-          int pubSuccess = fragment_publisher_->PublishFragment(f.get(), &fo);
-          if (!pubSuccess)
-            DAQLogger::LogInfo(instance_name_) << "Publishing fragment to ZeroMQ failed";
+	  //          // Send the fragment out on ZeroMQ for FELIX and whoever else wants to listen for it
+	  //          int pubSuccess = fragment_publisher_->PublishFragment(f.get(), &fo);
+	  //          if (!pubSuccess)
+	  //            DAQLogger::LogInfo(instance_name_) << "Publishing fragment to ZeroMQ failed";
 
           frags.emplace_back(std::move(f));
           // We only increment the event counter for events we send out
@@ -677,36 +677,36 @@ bool dune::TimingReceiver::getNext_(artdaq::FragmentPtrs &frags) {
     }
 
     // Check for throttling change
-    // Do not allow a throttling change after the run has been requested to stop
-    do {     // do {} while(false); allows pleasing use of break to get out without lots of nesting
-      if (stopping_flag_ != 0) break;      // throttling change not desired after run stop request.
-      uint32_t tf = InhibitGet_get();      // Can give 0=No change, 1=OK, 2=Not OK)
-      uint32_t bit = 1;                    // If we change, this is the value to set. 1=running
-      TLOG(TLVL_TIMING) << "Received value " << tf << " from InhibitGet_get()\n";
-      if (tf == 0) break;                  // No change, so no need to do anything
+    // // Do not allow a throttling change after the run has been requested to stop
+    // do {     // do {} while(false); allows pleasing use of break to get out without lots of nesting
+    //   if (stopping_flag_ != 0) break;      // throttling change not desired after run stop request.
+    //   uint32_t tf = InhibitGet_get();      // Can give 0=No change, 1=OK, 2=Not OK)
+    //   uint32_t bit = 1;                    // If we change, this is the value to set. 1=running
+    //   TLOG(TLVL_TIMING) << "Received value " << tf << " from InhibitGet_get()\n";
+    //   if (tf == 0) break;                  // No change, so no need to do anything
 
 
-      if (tf == 1) {                       // Want to be running
-        if (throttling_state_ != 1) break; // No change needed
-        bit = 1;                           // To set running (line not needed, bit is set to 1 already)
-      } else if (tf == 2) {                // Want to be stopped
-        if (throttling_state_ == 1) break; // Already stopped, no change needed
-        bit = 0;                           // To set stopped
-      } else {                             // Should never happen, InhibitGet_get returned unknown value.
-        DAQLogger::LogWarning(instance_name_) << "TimingReceiver_generator.cc: Logic error should not happen";
-        break;                             // Treat as no change
-      }
-      std::stringstream change_msg;
-      change_msg << "Throttle state change: Writing " << bit
-                 << " to trig_en.  [Throttling state was " << throttling_state_
-                 << "]\n";
-      TLOG(TLVL_TIMING) << change_msg.str();
-      if (debugprint_ > 0) {
-        DAQLogger::LogInfo(instance_name_) << change_msg.str();
-      }
-      master_partition().enableTriggers(bit); // Set XOFF or XON as requested
-      throttling_state_ = bit ^ 0x1;       // throttling_state is the opposite of bit
-    } while (false);                       // Do loop once only (mainly to have lots of 'break's above)
+    //   if (tf == 1) {                       // Want to be running
+    //     if (throttling_state_ != 1) break; // No change needed
+    //     bit = 1;                           // To set running (line not needed, bit is set to 1 already)
+    //   } else if (tf == 2) {                // Want to be stopped
+    //     if (throttling_state_ == 1) break; // Already stopped, no change needed
+    //     bit = 0;                           // To set stopped
+    //   } else {                             // Should never happen, InhibitGet_get returned unknown value.
+    //     DAQLogger::LogWarning(instance_name_) << "TimingReceiver_generator.cc: Logic error should not happen";
+    //     break;                             // Treat as no change
+    //   }
+    //   std::stringstream change_msg;
+    //   change_msg << "Throttle state change: Writing " << bit
+    //              << " to trig_en.  [Throttling state was " << throttling_state_
+    //              << "]\n";
+    //   TLOG(TLVL_TIMING) << change_msg.str();
+    //   if (debugprint_ > 0) {
+    //     DAQLogger::LogInfo(instance_name_) << change_msg.str();
+    //   }
+    //   master_partition().enableTriggers(bit); // Set XOFF or XON as requested
+    //   throttling_state_ = bit ^ 0x1;       // throttling_state is the opposite of bit
+    // } while (false);                       // Do loop once only (mainly to have lots of 'break's above)
 
     // Limit the number of tests we do before returning
     if (!(counter < max_counter)) break;

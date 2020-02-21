@@ -128,11 +128,11 @@ simple_plugin(TriggerBoardReader "generator"
   ${JSONCPP}
   )
 
-add_subdirectory(timingBoard)
+#add_subdirectory(timingBoard)
 include_directories($ENV{SMC_HOME}/lib/C++)
 simple_plugin(TimingReceiver "generator"
   dune-raw-data_Overlays
-  dune-artdaq_Generators_timingBoard
+#  dune-artdaq_Generators_timingBoard
   artdaq-core_Data
   artdaq_Application
   artdaq_DAQdata
