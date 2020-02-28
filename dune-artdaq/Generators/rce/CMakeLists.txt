@@ -13,6 +13,7 @@ art_make(
    artdaq_Generators
    artdaq_DAQdata
    artdaq-core_Utilities
+   dune-artdaq_DAQLogger
    ${CANVAS}
    ${FHICLCPP}
    ${CETLIB}
