@@ -394,81 +394,83 @@ void dune::TimingReceiver::stopNoMutex(void) {
 // ----------------------------------------------------------------------------
 bool dune::TimingReceiver::checkHWStatus_()
 {
-  static bool first=true;
-  if(first){
-    DAQLogger::LogInfo(instance_name_) << "First call of checkHWStatus_()";
-    first=false;
-  }
 
-  auto dsmptr = artdaq::BoardReaderCore::GetDataSenderManagerPtr();
-  if(!dsmptr)
-    TLOG(TLVL_HWSTATUS) << "DataSenderManagerPtr not valid.";
-
-  auto mp_ovrflw = master_partition().readROBWarningOverflow();
-  int n_remaining_table_entries = dsmptr? dsmptr->GetRemainingRoutingTableEntries() : -1;
-  int n_table_count = dsmptr? dsmptr->GetRoutingTableEntryCount() : -1;
-  TLOG(TLVL_HWSTATUS) << "hwstatus: buf_warn=" << mp_ovrflw
-                      << " table_count=" << n_table_count
-                      << " table_entries_remaining=" << n_remaining_table_entries;
-
-  bool new_want_inhibit=false;
-  std::string status_msg="";
-
-  if(mp_ovrflw){
-    // Tell the InhibitMaster that we want to stop triggers, then
-    // carry on with this iteration of the loop
-    DAQLogger::LogInfo(instance_name_) << "buf_warn is high, with " << master_partition().numEventsInBuffer() << " events in buffer. Requesting InhibitMaster to stop triggers";
-    status_msg="ROBWarningOverflow";
-    new_want_inhibit=true;
-  }
-  //check if there are available routing tokens, and if not inhibit
-  else if (use_routing_master_ && n_remaining_table_entries == 0) {
-    new_want_inhibit=true;
-    status_msg="NoAvailableTokens";
-  }
-  else{
-    new_want_inhibit=false;
-  }
-
-  // if (new_want_inhibit && !want_inhibit_) {
-  //   DAQLogger::LogInfo(instance_name_) << "Want inhibit Status change: Publishing bad status: \"" << status_msg << "\"";
-  //   status_publisher_->PublishBadStatus(status_msg);
-  // }
-  // if (want_inhibit_ && !new_want_inhibit) {
-  //   DAQLogger::LogInfo(instance_name_) << "Want inhibit status change: Publishing good status";
-  //   status_publisher_->PublishGoodStatus();
+  //  DAQLogger::LogInfo(instance_name_) << "JCF, Feb-21-2020: Skipping call of checkHWStatus";
+  // static bool first=true;
+  // if(first){
+  //   DAQLogger::LogInfo(instance_name_) << "First call of checkHWStatus_()";
+  //   first=false;
   // }
 
-  // want_inhibit_ = new_want_inhibit;
+  // auto dsmptr = artdaq::BoardReaderCore::GetDataSenderManagerPtr();
+  // if(!dsmptr)
+  //   TLOG(TLVL_HWSTATUS) << "DataSenderManagerPtr not valid.";
 
-  // Check that the timing-trigger endpoint ("ext-trig" in the
-  // butler), which is listening to the trigger board, is is a ready
-  // state. It gets upset by errors on the return path and/or by the
-  // CTB firmware being reloaded. If it's not ready, and this
-  // partition is using external triggers (as specified by the
-  // trigger mask), then that's a fatal error, so we return false to
-  // tell artdaq to stop the run
-  //
-  // Extra complication: only the TLU has the necessary registers (the fanouts do not), so test that first
-  if (!hw_.getNodes("master_top.trig").empty()) {
-    ValWord<uint32_t> trig_endpoint_ready = hw_.getNode("master_top.trig.csr.stat.ep_rdy").read();
-    // The full status of the endpoint
-    ValWord<uint32_t> trig_endpoint_status = hw_.getNode("master_top.trig.csr.stat.ep_stat").read();
-    hw_.dispatch();
-    if (trig_endpoint_ready.value() == 0 || trig_endpoint_status.value() > 0x8) {
-      // Is this partition interested in external triggers? The lowest four triggers are internal; higher are external
-      bool want_external = trigger_mask_ & 0xfffffff0;
-      if (want_external) {
-        DAQLogger::LogError(instance_name_)
-            << "timing-trigger endpoint is not ready: status is "
-            << std::showbase << std::hex << trig_endpoint_status.value()
-            << " when trigger mask is "
-            << std::showbase << std::hex << trigger_mask_
-            << ". This is a fatal error";
-        return false;
-      }
-    }
-  }
+  // auto mp_ovrflw = master_partition().readROBWarningOverflow();
+  // int n_remaining_table_entries = dsmptr? dsmptr->GetRemainingRoutingTableEntries() : -1;
+  // int n_table_count = dsmptr? dsmptr->GetRoutingTableEntryCount() : -1;
+  // TLOG(TLVL_HWSTATUS) << "hwstatus: buf_warn=" << mp_ovrflw
+  //                     << " table_count=" << n_table_count
+  //                     << " table_entries_remaining=" << n_remaining_table_entries;
+
+  // bool new_want_inhibit=false;
+  // std::string status_msg="";
+
+  // if(mp_ovrflw){
+  //   // Tell the InhibitMaster that we want to stop triggers, then
+  //   // carry on with this iteration of the loop
+  //   DAQLogger::LogInfo(instance_name_) << "buf_warn is high, with " << master_partition().numEventsInBuffer() << " events in buffer. Requesting InhibitMaster to stop triggers";
+  //   status_msg="ROBWarningOverflow";
+  //   new_want_inhibit=true;
+  // }
+  // //check if there are available routing tokens, and if not inhibit
+  // else if (use_routing_master_ && n_remaining_table_entries == 0) {
+  //   new_want_inhibit=true;
+  //   status_msg="NoAvailableTokens";
+  // }
+  // else{
+  //   new_want_inhibit=false;
+  // }
+
+  // // if (new_want_inhibit && !want_inhibit_) {
+  // //   DAQLogger::LogInfo(instance_name_) << "Want inhibit Status change: Publishing bad status: \"" << status_msg << "\"";
+  // //   status_publisher_->PublishBadStatus(status_msg);
+  // // }
+  // // if (want_inhibit_ && !new_want_inhibit) {
+  // //   DAQLogger::LogInfo(instance_name_) << "Want inhibit status change: Publishing good status";
+  // //   status_publisher_->PublishGoodStatus();
+  // // }
+
+  // // want_inhibit_ = new_want_inhibit;
+
+  // // Check that the timing-trigger endpoint ("ext-trig" in the
+  // // butler), which is listening to the trigger board, is is a ready
+  // // state. It gets upset by errors on the return path and/or by the
+  // // CTB firmware being reloaded. If it's not ready, and this
+  // // partition is using external triggers (as specified by the
+  // // trigger mask), then that's a fatal error, so we return false to
+  // // tell artdaq to stop the run
+  // //
+  // // Extra complication: only the TLU has the necessary registers (the fanouts do not), so test that first
+  // if (!hw_.getNodes("master_top.trig").empty()) {
+  //   ValWord<uint32_t> trig_endpoint_ready = hw_.getNode("master_top.trig.csr.stat.ep_rdy").read();
+  //   // The full status of the endpoint
+  //   ValWord<uint32_t> trig_endpoint_status = hw_.getNode("master_top.trig.csr.stat.ep_stat").read();
+  //   hw_.dispatch();
+  //   if (trig_endpoint_ready.value() == 0 || trig_endpoint_status.value() > 0x8) {
+  //     // Is this partition interested in external triggers? The lowest four triggers are internal; higher are external
+  //     bool want_external = trigger_mask_ & 0xfffffff0;
+  //     if (want_external) {
+  //       DAQLogger::LogError(instance_name_)
+  //           << "timing-trigger endpoint is not ready: status is "
+  //           << std::showbase << std::hex << trig_endpoint_status.value()
+  //           << " when trigger mask is "
+  //           << std::showbase << std::hex << trigger_mask_
+  //           << ". This is a fatal error";
+  //       return false;
+  //     }
+  //   }
+  // }
 
 
   return true;
