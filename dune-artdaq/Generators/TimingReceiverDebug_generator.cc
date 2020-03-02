@@ -489,9 +489,11 @@ bool dune::TimingReceiverDebug::getNext_(artdaq::FragmentPtrs &frags) {
   static size_t ncalls = 1;
 
   if (ncalls == 1) {
-    //master_partition().enableTriggers(1);
-    DAQLogger::LogInfo(instance_name_) << "JCF, Feb-28-2020: may need to call enableTriggers(1) here";
+    master_partition().enableTriggers(1);
+    DAQLogger::LogInfo(instance_name_) << "JCF, Mar-2-2020: on first call to getNext_(), explicitly calling master_partition().enableTriggers(1)";
+    //DAQLogger::LogInfo(instance_name_) << "JCF, Feb-28-2020: may need to call enableTriggers(1) here";
   }
+  DAQLogger::LogInfo(instance_name_) << "JCF, Mar-2-2020: call #" << ncalls << " for getNext_()";
   ncalls++;
 
   if(!send_fragments_){
