@@ -549,7 +549,9 @@ bool dune::TimingReceiverDebug::getNext_(artdaq::FragmentPtrs &frags) {
     //  Wes testing moving this to checkHWStatus_
     //
     */
-    unsigned int havedata = (master_partition().numEventsInBuffer() > 0); // Wait for a complete event
+    auto numEventsInBuffer = master_partition().numEventsInBuffer();
+    unsigned int havedata = (numEventsInBuffer > 0); // Wait for a complete event
+    DAQLogger::LogInfo(instance_name_) << "numEventsInBuffer == " << numEventsInBuffer << ", havedata == " << havedata;
     if (havedata) timeout = 1;  // If we have data, we don't wait around in case there is more or a throttle
 
     TLOG(TLVL_TIMING) << "havedata: " << havedata;
@@ -565,6 +567,8 @@ bool dune::TimingReceiverDebug::getNext_(artdaq::FragmentPtrs &frags) {
         // start/end, run start), mostly to get the timestamp
         // calculation done in the fragment, but partly to make the
         // code easier to follow(?)
+
+	DAQLogger::LogInfo(instance_name_) << "Creating fragment";
         std::unique_ptr<artdaq::Fragment> f = artdaq::Fragment::FragmentBytes( TimingFragment::size() * sizeof(uint32_t),
                                               artdaq::Fragment::InvalidSequenceID,
                                               artdaq::Fragment::InvalidFragmentID,
