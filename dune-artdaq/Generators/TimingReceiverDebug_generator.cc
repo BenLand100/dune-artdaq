@@ -318,6 +318,8 @@ void dune::TimingReceiverDebug::start(void) {
     DAQLogger::LogError(instance_name_) << "A pdt::RunRequestTimeoutExpired exception was thrown on start";
    }
 
+  master_partition().enableTriggers(1);
+
   //  InhibitGet_connect(zmq_conn_.c_str());
   //  InhibitGet_retime(inhibitget_timer_);
 
