@@ -493,7 +493,7 @@ bool dune::TimingReceiverDebug::getNext_(artdaq::FragmentPtrs &frags) {
   //   DAQLogger::LogInfo(instance_name_) << "JCF, Mar-2-2020: on first call to getNext_(), explicitly calling master_partition().enableTriggers(1)";
   //   //DAQLogger::LogInfo(instance_name_) << "JCF, Feb-28-2020: may need to call enableTriggers(1) here";
   // }
-  DAQLogger::LogInfo(instance_name_) << "JCF, Mar-2-2020: call #" << ncalls << " for getNext_()";
+  DAQLogger::LogDebug(instance_name_) << "JCF, Mar-10-2020: call #" << ncalls << " for getNext_()";
   ncalls++;
 
   if(!send_fragments_){
@@ -551,7 +551,7 @@ bool dune::TimingReceiverDebug::getNext_(artdaq::FragmentPtrs &frags) {
     */
     auto numEventsInBuffer = master_partition().numEventsInBuffer();
     unsigned int havedata = (numEventsInBuffer > 0); // Wait for a complete event
-    DAQLogger::LogInfo(instance_name_) << "numEventsInBuffer == " << numEventsInBuffer << ", havedata == " << havedata;
+    DAQLogger::LogDebug(instance_name_) << "numEventsInBuffer == " << numEventsInBuffer << ", havedata == " << havedata;
     if (havedata) timeout = 1;  // If we have data, we don't wait around in case there is more or a throttle
 
     TLOG(TLVL_TIMING) << "havedata: " << havedata;
