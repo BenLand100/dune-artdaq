@@ -212,12 +212,14 @@ dune::TimingReceiverDebug::TimingReceiverDebug(fhicl::ParameterSet const & ps):
   // // Modify the trigger mask so we only see fake triggers in our own partition
   // fiddle_trigger_mask();
 
-  // // arguments to enable() are whether to enable and whether to
-  // // dispatch() respectively
-  // master_partition().enable(0, true);
-  // master_partition().stop();
-  // master_partition().enable(1, true);
-  // master_partition().configure(trigger_mask_, enable_spill_gate_);
+  // arguments to enable() are whether to enable and whether to
+  // dispatch() respectively
+  master_partition().enable(0, true);
+  master_partition().stop();
+  master_partition().enable(1, true);
+
+  DAQLogger::LogInfo(instance_name_) << "This code is designed for the Iceberg teststand rather than ProtoDUNE, so enable_spill_gate should be 0/false. Checking its actual value: " << enable_spill_gate_;
+  master_partition().configure(trigger_mask_, enable_spill_gate_);
 
   // // Set up connection to Inhibit Master. This is the inbound
   // // connection (ie, InhibitMaster talks to us to say whether we
@@ -293,10 +295,13 @@ void dune::TimingReceiverDebug::start(void) {
   // - Enable the partition                            [done here]
   // - Set the command mask                            [done here]
 
-  // // These are the steps taken by pdtbutler's `configure` command
-  // master_partition().reset();
-  // master_partition().configure(trigger_mask_, enable_spill_gate_);
-  // master_partition().enable(1);
+  // These are the steps taken by pdtbutler's `configure` command
+
+  // JCF, Mar-10-2020
+  // Commenting out the reset since this is already done by Shekhar
+  //  master_partition().reset();
+  master_partition().configure(trigger_mask_, enable_spill_gate_);
+  master_partition().enable(1);
 
   // Dave N's message part 3
   // To start a run (assuming that no data has been read out between runs):
@@ -307,12 +312,11 @@ void dune::TimingReceiverDebug::start(void) {
   // - Wait for run_stat to go high                    [done by master_partition().start()]
 
 
-  // try {
-  //   master_partition().start();
-  // } // catch (pdt::RunRequestTimeoutExpired& e) {
-  //    // TODO TODO TODO: What do I do here to notify artdaq that
-  //    // it's all gone pear-shaped?
-  //  }
+  try {
+    master_partition().start();
+  } catch (pdt::RunRequestTimeoutExpired& e) {
+    DAQLogger::LogError(instance_name_) << "A pdt::RunRequestTimeoutExpired exception was thrown on start";
+   }
 
   //  InhibitGet_connect(zmq_conn_.c_str());
   //  InhibitGet_retime(inhibitget_timer_);
@@ -486,16 +490,6 @@ bool dune::TimingReceiverDebug::checkHWStatus_()
 // ----------------------------------------------------------------------------
 bool dune::TimingReceiverDebug::getNext_(artdaq::FragmentPtrs &frags) {
 
-  static size_t ncalls = 1;
-
-  // if (ncalls == 1) {
-  //   master_partition().enableTriggers(1);
-  //   DAQLogger::LogInfo(instance_name_) << "JCF, Mar-2-2020: on first call to getNext_(), explicitly calling master_partition().enableTriggers(1)";
-  //   //DAQLogger::LogInfo(instance_name_) << "JCF, Feb-28-2020: may need to call enableTriggers(1) here";
-  // }
-  DAQLogger::LogDebug(instance_name_) << "JCF, Mar-10-2020: call #" << ncalls << " for getNext_()";
-  ncalls++;
-
   if(!send_fragments_){
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
     if (stopping_flag_ != 0) return false;
@@ -528,9 +522,9 @@ bool dune::TimingReceiverDebug::getNext_(artdaq::FragmentPtrs &frags) {
     if (stopping_state_ == 0 && stopping_flag_ != 0) {
       DAQLogger::LogInfo(instance_name_) << "getNext_ saw stopping_flag with value " << (uint32_t)stopping_flag_;
       // Stop the run, disable buffer and triggers
-      //      master_partition().stop();
+      master_partition().stop();
 
-      //      hw_.dispatch();
+      hw_.dispatch();
       DAQLogger::LogInfo(instance_name_) << "Partition stopped. Waiting " << end_run_wait_ << "us for straggling events";
       throttling_state_ = 0;  // Note for now, we remove XOFF immediately at end
       // of run, discuss with hw people if that is right.
