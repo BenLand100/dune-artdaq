@@ -297,9 +297,7 @@ void dune::TimingReceiverDebug::start(void) {
 
   // These are the steps taken by pdtbutler's `configure` command
 
-  // JCF, Mar-10-2020
-  // Commenting out the reset since this is already done by Shekhar
-  //  master_partition().reset();
+  master_partition().reset();
   master_partition().configure(trigger_mask_, enable_spill_gate_);
   master_partition().enable(1);
 
@@ -317,8 +315,6 @@ void dune::TimingReceiverDebug::start(void) {
   } catch (pdt::RunRequestTimeoutExpired& e) {
     DAQLogger::LogError(instance_name_) << "A pdt::RunRequestTimeoutExpired exception was thrown on start";
    }
-
-  master_partition().enableTriggers(1);
 
   //  InhibitGet_connect(zmq_conn_.c_str());
   //  InhibitGet_retime(inhibitget_timer_);
@@ -491,6 +487,18 @@ bool dune::TimingReceiverDebug::checkHWStatus_()
 
 // ----------------------------------------------------------------------------
 bool dune::TimingReceiverDebug::getNext_(artdaq::FragmentPtrs &frags) {
+
+  static size_t ncalls = 1;
+ 
+  if (ncalls == 1) {
+    DAQLogger::LogInfo(instance_name_) << "JCF, Mar-10-2020: sleeping for two seconds on first call to getNext_; will enable triggers on next call to getNext_";
+    std::this_thread::sleep_for(std::chrono::milliseconds(2000));
+  } else if (ncalls == 2) {
+    DAQLogger::LogInfo(instance_name_) << "Enabling triggers";
+    master_partition().enableTriggers(1);
+  }
+
+  ncalls++;
 
   if(!send_fragments_){
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
