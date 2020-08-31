@@ -21,7 +21,7 @@ artdaq		v3_03_02
 dune_raw_data 	v1_17_06
 cetbuildtools	v7_02_01	-	only_for_build
 uhal		v2_6_0
-protodune_wibsoft v339
+protodune_wibsoft v006_iceberg_wib
 end_product_list
 
 # e10 - with gcc 4.9.3a and -std=c++14
