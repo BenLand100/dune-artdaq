@@ -1,14 +1,16 @@
-#ifndef FELIX_REORDERER_HH_
-#define FELIX_REORDERER_HH_
+#ifndef FELIX_REORDER_HH_
+#define FELIX_REORDER_HH_
 
 /*
- * FelixReorderer
+ * FelixReorder
  * Authors
  *  Milo Vermeulen for base implementation
  *  Thijs Miedema for AVX implementation
  * Description: Reorder Felix Frames in software to group headers and channeldata.
  * Date: July 2018
 */
+
+#include "dune-raw-data/Overlays/FelixFragment.hh"
 
 #include <inttypes.h>
 #include <immintrin.h>
@@ -17,7 +19,7 @@
 #include <cstring>
 
 
-class FelixReorderer
+class FelixReorder
 {
   private:
     /// SIZE CONSTANTS ///
@@ -66,15 +68,22 @@ class FelixReorderer
     static constexpr size_t m_num_bytes_per_reord_frame = m_wib_header_size + m_num_blocks_per_frame * (m_coldata_header_size + m_num_ch_per_block * 2);
 
     /// METHODS ///
-    static bool do_reorder(uint8_t* dst, const uint8_t* src, const unsigned &num_frames=10000) noexcept;
-    static bool do_avx_reorder(uint8_t* dst, const uint8_t* src, const unsigned &num_frames=10000) noexcept;
-    static bool do_avx512_reorder(uint8_t* dst, const uint8_t* src, const unsigned &num_frames=10000) noexcept;
+    static bool do_reorder(uint8_t* dst, const uint8_t* src, const unsigned &num_frames, unsigned *num_faulty) noexcept;
+    static bool do_avx_reorder(uint8_t* dst, const uint8_t* src, const unsigned &num_frames, unsigned *num_faulty) noexcept;
+    static bool do_avx512_reorder(uint8_t* dst, const uint8_t* src, const unsigned &num_frames, unsigned *num_faulty) noexcept;
 
-    static bool do_reorder_part(uint8_t* dst, const uint8_t* src, const unsigned frames_start, const unsigned frames_stop, const unsigned &num_frames=10000) noexcept;
-    static bool do_avx_reorder_part(uint8_t* dst, const uint8_t* src, const unsigned frames_start, const unsigned frames_stop, const unsigned &num_frames=10000) noexcept;
-    static bool do_avx512_reorder_part(uint8_t* dst, const uint8_t* src, const unsigned frames_start, const unsigned frames_stop, const unsigned &num_frames=10000) noexcept;
+    static bool do_reorder_part(uint8_t* dst, const uint8_t* src, const unsigned frames_start, const unsigned frames_stop, const unsigned &num_frames, unsigned *num_faulty) noexcept;
+    static bool do_avx_reorder_part(uint8_t* dst, const uint8_t* src, const unsigned frames_start, const unsigned frames_stop, const unsigned &num_frames, unsigned *num_faulty) noexcept;
+    static bool do_avx512_reorder_part(uint8_t* dst, const uint8_t* src, const unsigned frames_start, const unsigned frames_stop, const unsigned &num_frames, unsigned *num_faulty) noexcept;
 
-    
+    static unsigned calculate_reordered_size(unsigned num_frames, unsigned num_faulty)
+    {
+        return m_num_bytes_per_data * num_frames + 
+            (m_wib_header_size + m_num_blocks_per_frame * m_coldata_header_size) * 
+            (num_faulty + 1) +
+            (num_frames + 7) / 8;
+    }
+
 #ifdef __AVX2__ 
     static const bool avx_available = true;
 #else 
@@ -94,23 +103,26 @@ class FelixReorderer
     static constexpr unsigned m_frame2 = 2 * m_num_bytes_per_frame;
     static constexpr unsigned m_frame3 = 3 * m_num_bytes_per_frame;
 
-    /// MILO REORDERING ///
-    static void wib_header_copy(uint8_t* dst, const uint8_t* src, const unsigned frame_start, const unsigned frame_stop);
-    static void coldata_header_copy(uint8_t* dst, const uint8_t* src, const unsigned frames_start, const unsigned frames_stop);
-    static void adc_copy(uint8_t* dst, const uint8_t* src, const unsigned frames_start, const unsigned frames_stop, const unsigned &num_frames);
+    static void copy_headers(uint8_t* dst, const uint8_t* src);
+    static void handle_headers(uint8_t* dst, const uint8_t* src, const unsigned frame_index, const unsigned &num_frames, unsigned* num_faulty);
+
+    /// BASELINE REORDERING ///
+    static void baseline_handle_frames(uint8_t* dst, const uint8_t* src, const unsigned frames_start, const unsigned frames_stop, const unsigned &num_frames, unsigned *num_faulty);
 
     #ifdef __AVX2__
-    /// AVX REORDERING ///
+    /// AVX2 REORDERING ///
     static void reorder_avx_handle_four_segments(const uint8_t* src, uint8_t* dst, const unsigned &num_frames);
     static void reorder_avx_handle_block(const uint8_t* src, uint8_t* dst, const unsigned &num_frames);
-    static void reorder_avx_handle_frame(const uint8_t* src, uint8_t* dst, unsigned frame_num, const unsigned &num_frames); 
+    static void reorder_avx_handle_frame(const uint8_t* src, uint8_t* dst, unsigned frame_num, const unsigned &num_frames, unsigned *num_faulty); 
     #endif
     #ifdef __AVX512__REMOVE_ME_AFTER_GCC_PATCH
     /// AVX512 REORDERING /// 
     static void reorder_avx512_handle_four_frames_two_segments(const uint8_t* src, uint8_t* dst, const unsigned &num_frames);
     static void reorder_avx512_handle_four_frames_one_block(const uint8_t* src, uint8_t* dst, const unsigned &num_frames); 
-    static void reorder_avx512_handle_four_frames(const uint8_t* src, uint8_t* dst, unsigned frame_num, const unsigned &num_frames);
+    static void reorder_avx512_handle_four_frames(const uint8_t* src, uint8_t* dst, unsigned frame_num, const unsigned &num_frames, unsigned *num_faulty);
     #endif
 
 };
-#endif /* FELIX_REORDERER_HH_ */
+
+#endif /* FELIX_REORDER_HH_ */
+

@@ -34,7 +34,7 @@ public:
   // Functionalities
   void start();
   void stop();
-  TriggerInfo getNextRequest();
+  TriggerInfo getNextRequest(const long timeout_ms=2000);
 
 private:
   // Main worker function

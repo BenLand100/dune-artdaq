@@ -1,14 +1,16 @@
-#ifndef dune_artdaq_Generators_Felix_FelixHardwareInterface_hh
-#define dune_artdaq_Generators_Felix_FelixHardwareInterface_hh
+#ifndef dune_artdaq_Generators_Felix_FelixOnHostInterface_hh
+#define dune_artdaq_Generators_Felix_FelixOnHostInterface_hh
 
 #include "dune-raw-data/Overlays/FragmentType.hh"
 #include "dune-raw-data/Overlays/FelixFragment.hh"
-#include "dune-raw-data/Overlays/CPUHitsFragment.hh"
 #include "artdaq/DAQrate/RequestReceiver.hh"
 #include "fhiclcpp/fwd.h"
 
 #include "NetioHandler.hh"
+#include "QueueHandler.hh"
 #include "RequestReceiver.hh"
+
+#include "dune-artdaq/Generators/Felix/FelixProtoduneReader.hpp"
 
 #include <netio/netio.hpp>
 
@@ -19,25 +21,29 @@
 #include <condition_variable>
 
 /*
- * FelixHardwareInterface
+ * FelixOnHostInterface
  * Authors: Roland.Sipos@cern.ch
- *          Enrico.Gamberini@cern.ch 
- * Description: Hardware interface of FELIX BoardReader for ArtDAQ
+ * Description: HW interface for OnHost FELIX BoardReader for ArtDAQ
  * Date: November 2017
 */
-class FelixHardwareInterface {
+class FelixOnHostInterface {
 
 public:
-  FelixHardwareInterface(fhicl::ParameterSet const & ps);
-  ~FelixHardwareInterface();
+  FelixOnHostInterface(fhicl::ParameterSet const & ps);
+  ~FelixOnHostInterface();
 
   // Busy check of NETIO communication
-  bool Busy() { return nioh_.busy(); }
+  bool Busy();
+  bool SetupTriggerMatchers();
+  void LockTriggerMatchers();
+  bool TriggerWorkers(artdaq::FragmentPtrs& frags);
+
+  void RecalculateFragmentSizes();
 
   // Functionalities
   void StartDatataking();
   void StopDatataking();
-  bool FillFragment( std::unique_ptr<artdaq::Fragment>& frag, std::unique_ptr<artdaq::Fragment>& fraghits );
+  bool FillFragments( artdaq::FragmentPtrs& frags );
 
   // Info
   int SerialNumber() const;
@@ -53,34 +59,34 @@ public:
     std::string host_;
     unsigned short port_;
     unsigned short tag_;    
-    fhicl::ParameterSet tpf_params_;
 
     LinkParameters ( const unsigned short& id,
                      const std::string& host,
                      const unsigned short& port,
-                     const unsigned short& tag,
-                     fhicl::ParameterSet tpf_params):
+                     const unsigned short& tag ):
         id_( id ),
         host_( host ),
         port_( port ),
-        tag_( tag ),
-        tpf_params_(tpf_params)
+        tag_( tag )
     { }
   };
 
 private:
   // Configuration
+  CPUPin& cpu_pin_;
+  std::string pin_file_;
+
   bool fake_triggers_;
   bool extract_;
   unsigned queue_size_; // be careful with IOVEC messages -> 236640 byte per message!
   unsigned message_size_; //480
+  unsigned frame_size_;
   std::string backend_; // posix or fi_verbs
   bool zerocopy_;
   unsigned offset_;
   unsigned window_;
   unsigned window_offset_;
   bool reordering_;
-  bool trigger_primitive_finding_;
   bool compression_;
   int qat_engine_;
   std::string requester_address_;
@@ -88,9 +94,36 @@ private:
   unsigned short request_port_;
   unsigned short requests_size_;
 
-  // NETIO & NIOH & RequestReceiver
+  // OnHost mode
+  QueueHandler& queh_;
+  std::map<unsigned, std::unique_ptr<ProtoDuneReader>> card_readers_;
+  std::map<unsigned, std::map<uint32_t, uint32_t>> link_info_;
+  std::map<unsigned, std::thread> parser_threads_;
+  std::vector<std::thread> consumer_threads_;
+
+  // TriggerMatchers
+  std::vector<std::unique_ptr<ReusableThread>> trm_extractors_;
+  std::vector<std::function<void()>> trm_functors_;
+  std::vector<artdaq::Fragment*> frag_ptrs_;
+  // Thread control
+  std::atomic<bool> stop_trigger_;
+  // Trigger
+  uint64_t trigger_ts_;
+  uint64_t trigger_seq_id_;
+  std::vector<uint_fast64_t> last_tss_;
+  const uint_fast64_t tick_dist_=25;
+
+  size_t flx_queue_size_;
+  size_t num_sources_;
+  size_t num_links_;
+  size_t card_offset_;
+  uint32_t felix_id_;
+
+  // NETIO & NIOH
   std::vector<LinkParameters> link_parameters_;
-  NetioHandler& nioh_;
+//  NetioHandler& nioh_;
+
+  // RequestReceiver
   std::unique_ptr<RequestReceiver> request_receiver_;
 
   // Statistics and internals
@@ -103,9 +136,15 @@ private:
 
   // Fragment related
   dune::FragmentType fragment_type_;
-  dune::FragmentType fragment_hits_type_;
   dune::FelixFragmentBase::Metadata fragment_meta_;
-  dune::CPUHitsFragment::Metadata fragment_hits_meta_;
+  size_t m_timeWindowByteSizeIn;
+  size_t m_timeWindowByteSizeOut;
+  size_t m_timeWindowNumFrames;
+  size_t m_timeWindowNumMessages; 
+
+  // Reordering & Compression
+  std::unique_ptr<ReorderFacility> m_reorderFacility;
+  std::unique_ptr<QzCompressor> m_compressionFacility;
 
   std::size_t usecs_between_sends_;
   
