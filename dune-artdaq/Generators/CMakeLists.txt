@@ -28,22 +28,25 @@ simple_plugin(SSP "generator"
   ${CETLIB_EXCEPT}
   )
 
-#add_subdirectory(Felix)
-# simple_plugin(FelixReceiver "generator"
-#   dune-raw-data_Overlays
-#   dune-artdaq_Generators_Felix
-#   dune-artdaq_DAQLogger
-#   artdaq_Application
-#   artdaq_DAQdata
-#   artdaq-core_Utilities
-#   artdaq-core_Data
-#   artdaq-utilities_Plugins
-#   ${CANVAS}
-#   ${FHICLCPP}
-#   ${CETLIB}
-#   ${CETLIB_EXCEPT}
-#   dune-artdaq_DAQLogger
-# )
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-unused-but-set-variable -Wno-unused-parameter -Wno-pointer-arith")
+include_directories($ENV{PROTODUNE_FELIX_DEPS_INC})
+
+add_subdirectory(Felix)
+ simple_plugin(FelixReceiver "generator"
+   dune-raw-data_Overlays
+   dune-artdaq_Generators_Felix
+   dune-artdaq_DAQLogger
+   artdaq_Application
+   artdaq_DAQdata
+   artdaq-core_Utilities
+   artdaq-core_Data
+   artdaq-utilities_Plugins
+   ${CANVAS}
+   ${FHICLCPP}
+   ${CETLIB}
+   ${CETLIB_EXCEPT}
+   dune-artdaq_DAQLogger
+ )
 
   add_subdirectory(ToyHardwareInterface)
 simple_plugin(ToySimulator "generator"
