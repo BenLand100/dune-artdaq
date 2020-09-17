@@ -7,7 +7,7 @@
 
 //#include "canvas/Utilities/Exception.h"
 
-#include "artdaq/Generators/GeneratorMacros.hh"
+#include "artdaq/Application/GeneratorMacros.hh"
 
 #include "dune-raw-data/Overlays/FelixFragment.hh"
 #include "dune-raw-data/Overlays/FragmentType.hh"

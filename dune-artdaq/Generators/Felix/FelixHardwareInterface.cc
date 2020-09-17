@@ -1,4 +1,4 @@
-#include "artdaq/Generators/CommandableFragmentGenerator.hh"
+//#include "artdaq/Generators/CommandableFragmentGenerator.hh"
 #include "dune-artdaq/DAQLogger/DAQLogger.hh"
 #include "dune-artdaq/Generators/Felix/FelixHardwareInterface.hh"
 #include "dune-artdaq/Generators/Felix/NetioHandler.hh"

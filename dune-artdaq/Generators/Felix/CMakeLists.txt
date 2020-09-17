@@ -23,10 +23,13 @@ MESSAGE(INFO " PROTODUNE_FELIX_DEPS_LIB: " $ENV{PROTODUNE_FELIX_DEPS_LIB})
 MESSAGE(INFO " PROTODUNE_FELIX_DEPS_INC: " ${PROTODUNE_FELIX_DEPS_INC})
 include_directories( ${PROTODUNE_FELIX_DEPS_INC} )
 
+message(STATUS "ZMQLIBS == ${ZMQLIBS}")
+message(STATUS "LIBZMQ == ${LIBZMQ}")
+
 art_make_library( LIBRARY_NAME dune-artdaq_Generators_Felix_RequestReceiver
 		  SOURCE RequestReceiver.cc
                   LIBRARIES
-                  ${LIBZMQ}
+                  ${ZMQLIBS}
                   ${CMAKE_THREAD_LIBS_INIT}
                   dune-artdaq_DAQLogger
 )

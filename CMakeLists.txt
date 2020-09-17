@@ -7,8 +7,7 @@
 # ======================================================================
 
 
-# use cmake 2.8 or later
-cmake_minimum_required (VERSION 2.8)
+cmake_minimum_required (VERSION 3.0)
 
 project(dune-artdaq)
 
@@ -67,16 +66,27 @@ cet_report_compiler_flags()
 
 # these are minimum required versions, not the actual product versions
 find_ups_product( cetbuildtools v5_06_06 )
-find_ups_product( artdaq v2_01_00 )
-find_ups_product( artdaq_utilities v1_00_00)
-find_ups_product( artdaq_core v1_06_01 )
-find_ups_product( dune_raw_data v0_00_02 )
+
+# JCF, May-9-2019
+# Removing ups product minimums for the artdaq packages so that
+# dev-versioning can be used on ProtoDUNE
+find_ups_product( artdaq ) # v2_01_00 )
+find_ups_product( artdaq_utilities ) # v1_00_00)
+find_ups_product( artdaq_core ) # v1_06_01 )
+find_ups_product( dune_raw_data ) # v0_00_02 )
 find_ups_product( art v2_03_00 )
 find_ups_product( fhiclcpp v2_16_00 )
 find_ups_product( messagefacility v1_10_00 )
 find_ups_product( cetlib v1_03_00 )
 find_ups_product( netio v0_8_0 )
 find_ups_product( ftd2xx v1_2_7 )
+# add a newer version of ZMQ for PTMP
+find_ups_product( zmq v4_3_1 )
+find_ups_product( czmq v4_2_0 -q e15)
+# add protobuf for PTMP
+find_ups_product( protobuf v3_3_1a )
+find_ups_product( ptmp )
+find_ups_product( ptmp_tcs )
 find_ups_product( jsoncpp v1_8_0 )
 find_ups_root( v5_34_00 )
 find_ups_boost( v1_50_0 filesystem
@@ -85,7 +95,12 @@ find_ups_boost( v1_50_0 filesystem
  )
 find_ups_product( libxml2 v2_9_1a )
 find_ups_product( TRACE v3_07_00 )
-find_ups_product( protodune_timing v4_0_1 )
+#find_ups_product( protodune_timing v4_1_3 )
+find_ups_product( protodune_timing )
+find_ups_product( zmq v4_3_1)
+find_ups_product( czmq v4_2_0)
+find_ups_product( protobuf v3_3_1a)
+find_ups_product( protodune_felix_deps v0_0_1 )
 
 
 set(netio_INCLUDE_DIR $ENV{NETIO_INC})
@@ -99,6 +114,14 @@ include_directories($ENV{UHAL_INC}/uhal)
 find_library( UHAL_UHAL NAMES cactus_uhal_uhal PATHS $ENV{UHAL_LIB})
 find_library( UHAL_LOG  NAMES cactus_uhal_log  PATHS $ENV{UHAL_LIB})
 find_library( PDT_CORE  NAMES protodune_pdt_core PATHS $ENV{PROTODUNE_TIMING_LIB})
+find_library( PROTOBUF  NAMES protobuf      PATHS $ENV{PROTOBUF_LIB})
+include_directories($ENV{PTMP_INC})
+find_library( LIBPTMP_TCS NAMES ptmp-tcs PATHS $ENV{PTMP_TCS_LIB})
+find_library( LIBPTMP NAMES ptmp PATHS $ENV{PTMP_LIB})
+find_library( LIBZMQ NAMES zmq PATHS $ENV{ZMQ_LIB} NO_DEFAULT_PATH)
+find_library( LIBCZMQ NAMES czmq PATHS $ENV{CZMQ_LIB} NO_DEFAULT_PATH)
+
+set(PTMP_LIBRARIES ${LIBPTMP} ${LIBZMQ} ${LIBCZMQ} ${PROTOBUF} dl)
 #####################
 
 # have to make sure cmake doesn't select the system libraries
@@ -126,3 +149,4 @@ add_subdirectory(ups)
 
 # packaging utility
 include(UseCPack)
+

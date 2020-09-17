@@ -31,6 +31,7 @@ simple_plugin(SSP "generator"
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-unused-but-set-variable -Wno-unused-parameter -Wno-pointer-arith")
 include_directories($ENV{PROTODUNE_FELIX_DEPS_INC})
 
+
 add_subdirectory(Felix)
  simple_plugin(FelixReceiver "generator"
    dune-raw-data_Overlays
@@ -124,6 +125,9 @@ simple_plugin(TriggerBoardReader "generator"
   ${CETLIB_EXCEPT}
   ${JSONCPP}
   )
+
+add_subdirectory(swTrigger)
+
 
 # add_subdirectory(timingBoard)
 # include_directories($ENV{SMC_HOME}/lib/C++)

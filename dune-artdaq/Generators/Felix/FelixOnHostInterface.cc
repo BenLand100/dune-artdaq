@@ -1,7 +1,7 @@
-#include "artdaq/Generators/CommandableFragmentGenerator.hh"
+//#include "artdaq/Generators/CommandableFragmentGenerator.hh"
 #include "dune-artdaq/DAQLogger/DAQLogger.hh"
 #include "dune-artdaq/Generators/Felix/FelixOnHostInterface.hh"
-#include "dune-artdaq/Generators/Felix/FelixOnHostInterface.hh"
+//#include "dune-artdaq/Generators/Felix/FelixOnHostInterface.hh"
 #include "dune-raw-data/Overlays/FelixFragment.hh"
 #include "dune-raw-data/Overlays/FragmentType.hh"
 
