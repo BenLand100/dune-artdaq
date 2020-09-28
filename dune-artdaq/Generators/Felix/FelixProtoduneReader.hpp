@@ -23,7 +23,7 @@
 //#define DUMP_SUPCHUNKS // instead of netio messages, create superchunks directly.
 
 // Size of the circular buffer
-#define PROTODUNE_MEMSIZE  (8192*1024*1024UL) // (8192*1024*1024UL)
+#define PROTODUNE_MEMSIZE  (4096*1024*1024UL) // (8192*1024*1024UL)
 
 // Number of blocks that is not freed as it might contain data that still belongs
 // to a current chunk.

@@ -130,30 +130,51 @@ add_subdirectory(swTrigger)
 
 
 # add_subdirectory(timingBoard)
-# include_directories($ENV{SMC_HOME}/lib/C++)
-# simple_plugin(TimingReceiver "generator"
-#   dune-raw-data_Overlays
+include_directories($ENV{SMC_HOME}/lib/C++)
+ simple_plugin(TimingReceiver "generator"
+   dune-raw-data_Overlays
 #   dune-artdaq_Generators_timingBoard
-#   artdaq-core_Data
-#   artdaq_Application
-#   artdaq_DAQdata
-#   artdaq-core_Utilities
-#   artdaq-utilities_Plugins
-#   ${CANVAS}
-#   ${FHICLCPP}
-#   ${MF_MESSAGELOGGER}
-#   ${CETLIB}
-#   ${CETLIB_EXCEPT}
-#   dune-artdaq_DAQLogger
-#   ${UHAL_UHAL}
-#   ${UHAL_LOG}
-#   ${PDT_CORE}
-#   )
+   artdaq-core_Data
+   artdaq_Application
+   artdaq_DAQdata
+   artdaq-core_Utilities
+   artdaq-utilities_Plugins
+   ${CANVAS}
+   ${FHICLCPP}
+   ${MF_MESSAGELOGGER}
+   ${CETLIB}
+   ${CETLIB_EXCEPT}
+   dune-artdaq_DAQLogger
+   ${UHAL_UHAL}
+   ${UHAL_LOG}
+   ${PDT_CORE}
+   )
 
 # # The timing board reader #includes headers from uhal which generate
 # # compiler warnings, so we need to turn off -Werror for just this target
 
-# target_compile_options("dune-artdaq_Generators_TimingReceiver_generator" PRIVATE -Wno-error )
+ target_compile_options("dune-artdaq_Generators_TimingReceiver_generator" PRIVATE -Wno-error )
+
+include_directories($ENV{SMC_HOME}/lib/C++)
+simple_plugin(TimingReceiverDebug "generator"
+   dune-raw-data_Overlays
+#   dune-artdaq_Generators_timingBoard
+   artdaq-core_Data
+   artdaq_Application
+   artdaq_DAQdata
+   artdaq-core_Utilities
+   artdaq-utilities_Plugins
+   ${CANVAS}
+   ${FHICLCPP}
+   ${MF_MESSAGELOGGER}
+   ${CETLIB}
+   ${CETLIB_EXCEPT}
+   dune-artdaq_DAQLogger
+   ${UHAL_UHAL}
+   ${UHAL_LOG}
+   ${PDT_CORE}
+   )
+
 
 if ( (DEFINED ENV{PROTODUNE_WIBSOFT_LIB}) AND (DEFINED ENV{PROTODUNE_WIBSOFT_INC}) )
 
