@@ -78,32 +78,32 @@ inline std::string blckheader_to_hex(const felix::packetformat::block &block)
   return ss.str();
 }
 
-inline std::string subchunktrailer_to_hex(const felix::packetformat::subchunk& subchunk)
-{
-/*
- 57   enum Type
-  58   {
-     59     NULL_=0, FIRST, LAST, BOTH, MIDDLE, TIMEOUT, OUTOFBAND=7
-      60   };
-       61 
-        62   Type           type;
-         63   bool           trunc;
-          64   bool           chunk_error;
-           65   unsigned       length;
-            66   const block*   containing_block;
-             67   const char*    data;
-              68   bool           error = false;
-*/
+// inline std::string subchunktrailer_to_hex(const felix::packetformat::subchunk& subchunk)
+// {
+// /*
+//  57   enum Type
+//   58   {
+//      59     NULL_=0, FIRST, LAST, BOTH, MIDDLE, TIMEOUT, OUTOFBAND=7
+//       60   };
+//        61 
+//         62   Type           type;
+//          63   bool           trunc;
+//           64   bool           chunk_error;
+//            65   unsigned       length;
+//             66   const block*   containing_block;
+//              67   const char*    data;
+//               68   bool           error = false;
+// */
 
-  std::stringstream ss;
-  ss << std::hex
-     << " type:" << (unsigned)subchunk.type
-     << " trunc:" << (unsigned)subchunk.trunc
-     << " chunk_error:" << (unsigned)subchunk.chunk_error
-     << " error:" << (unsigned)subchunk.error
-     << std::dec;
-  return ss.str();
-}
+//   std::stringstream ss;
+//   ss << std::hex
+//      << " type:" << (unsigned)subchunk.type
+//      << " trunc:" << (unsigned)subchunk.trunc
+//      << " chunk_error:" << (unsigned)subchunk.chunk_error
+//      << " error:" << (unsigned)subchunk.error
+//      << std::dec;
+//   return ss.str();
+// }
 
 
 struct ProtoDuneParserOps : public felix::packetformat::ParserOperations
@@ -488,7 +488,8 @@ struct ProtoDuneParserOps : public felix::packetformat::ParserOperations
 
   void subchunk_processed_with_error(const felix::packetformat::subchunk& subchunk)
   {
-    std::cout << " SUBCHUNK_ERROR: " << subchunktrailer_to_hex(subchunk) << '\n';
+    //    std::cout << " SUBCHUNK_ERROR: " << subchunktrailer_to_hex(subchunk) << '\n';
+    std::cout << " SUBCHUNK_ERROR (JCF, Sep-28-2020: due to changed protodune_felix_deps product, unable to print contents used for diagnostic purposes)" << 'n';
     m_error_subchunk_ctr++;
   }
 
@@ -723,8 +724,9 @@ public:
     //flxCard.irq_disable(ALL_IRQS);
     //std::cout <<"flxCard.irq_diable(ALL_IRQS) issued.");
 
-    m_flxCards[m_cardno]->dma_fifo_flush();
-    std::cout <<"flxCard.dma_fifo_flush issued." << '\n';
+    //m_flxCards[m_cardno]->dma_fifo_flush();
+    //std::cout <<"flxCard.dma_fifo_flush issued." << '\n';
+    std::cout << "JCF, Sep-26-2020: on Roland's request, commented out flxCard.dma_fifo_flush() call" << '\n';
 
     //m_flxCards[m_cardno]->irq_enable(IRQ_DATA_AVAILABLE);
     //std::cout <<"flxCard.irq_enable(IRQ_DATA_AVAILABLE) issued.");
