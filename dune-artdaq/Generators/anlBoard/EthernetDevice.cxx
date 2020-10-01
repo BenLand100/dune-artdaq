@@ -31,6 +31,13 @@ void SSPDAQ::EthernetDevice::Open(bool slowControlOnly){
   boost::asio::ip::tcp::resolver::iterator dataEndpointIterator = resolver.resolve(dataQuery);
   
   boost::asio::connect(fDataSocket, dataEndpointIterator);
+
+  //Set limited receive buffer size to avoid taxing switch
+  //JTH: Remove this since it was causing event read errors. Could try again
+  //with a different value if there are more issues which point to switch problems.
+  //  boost::asio::socket_base::receive_buffer_size option(16384);
+  //  fDataSocket.set_option(option);
+
   dune::DAQLogger::LogInfo("SSP_EthernetDevice")<<"Connected to SSP Ethernet device at "<<fIP.to_string()<<std::endl;
 }
 

@@ -17,7 +17,7 @@
 #include "dune-artdaq/Generators/TimingReceiver.hh"
 #include "dune-artdaq/DAQLogger/DAQLogger.hh"
 
-#include "artdaq/Application/GeneratorMacros.hh"
+#include "artdaq/Generators/GeneratorMacros.hh"
 #include "cetlib/exception.h"
 #include "dune-raw-data/Overlays/FragmentType.hh"
 #include "dune-raw-data/Overlays/TimingFragment.hh"

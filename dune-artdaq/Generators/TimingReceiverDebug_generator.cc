@@ -17,7 +17,8 @@
 #include "dune-artdaq/Generators/TimingReceiverDebug.hh"
 #include "dune-artdaq/DAQLogger/DAQLogger.hh"
 
-#include "artdaq/Application/GeneratorMacros.hh"
+#include "artdaq/Generators/GeneratorMacros.hh"
+
 #include "cetlib/exception.h"
 #include "dune-raw-data/Overlays/FragmentType.hh"
 #include "dune-raw-data/Overlays/TimingFragment.hh"
@@ -39,6 +40,7 @@
 
 //#include "timingBoard/InhibitGet.h" // The interface to the ZeroMQ trigger inhibit master
 // #include "timingBoard/StatusPublisher.hh"
+
 #include "timingBoard/FragmentPublisher.hh"
 // #include "timingBoard/HwClockPublisher.hh"
 
@@ -102,6 +104,7 @@ dune::TimingReceiverDebug::TimingReceiverDebug(fhicl::ParameterSet const & ps):
   , last_runstart_tstamph_(0xffffffff)  // ...
   , send_fragments_(ps.get<bool>("send_fragments", false))
 {
+
 
   DAQLogger::LogWarning(instance_name_) << "JCF, Feb-28-2020: this is a variant of the TimingReceiver fragment generator which has been modified so that it doesn't issue any pdtbutler commands, but tries to read out data if data exists.";
 

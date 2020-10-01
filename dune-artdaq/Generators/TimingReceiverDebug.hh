@@ -15,7 +15,7 @@
 
 #include "fhiclcpp/fwd.h"
 #include "artdaq-core/Data/Fragment.hh" 
-#include "artdaq/Application/CommandableFragmentGenerator.hh"
+#include "artdaq/Generators/CommandableFragmentGenerator.hh"
 
 #include "dune-raw-data/Overlays/FragmentType.hh"
 
@@ -54,6 +54,7 @@ class TimingFragment;
 namespace pdt {
 class PartitionNode; // Forward definition
 }
+
 
  namespace artdaq {
 // class HwClockPublisher;
@@ -158,6 +159,7 @@ class TimingReceiverDebug : public artdaq::CommandableFragmentGenerator {
     
     // std::string zmq_conn_;  // String specifying the zmq connection to subscribe for inhibit information
     // std::string zmq_conn_out_;  // String specifying the zmq connection we will send our inhibit information to
+
     std::string zmq_fragment_conn_out_; // String specifying the zmq connection we publish fragments on
     // std::string zmq_hwtimer_conn_out_; // String specifying the zmq connection we publish fragments on
     std::vector<int> valid_firmware_versions_fcl_; // Valid versions of the firmware according to the fcl file. We take the union of these and any versions hardcoded into the board reader as being allowed
@@ -176,6 +178,7 @@ class TimingReceiverDebug : public artdaq::CommandableFragmentGenerator {
     std::vector<uint32_t> met_rejected_trig_count_;
 
   //    std::unique_ptr<artdaq::StatusPublisher> status_publisher_;
+
   std::unique_ptr<artdaq::FragmentPublisher> fragment_publisher_;
   //    std::unique_ptr<artdaq::HwClockPublisher> hwtime_publisher_;
 

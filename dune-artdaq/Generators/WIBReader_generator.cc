@@ -1,5 +1,5 @@
 #include "WIBReader.hh"
-#include "artdaq/Application/GeneratorMacros.hh"
+#include "artdaq/Generators/GeneratorMacros.hh"
 #include "dune-artdaq/DAQLogger/DAQLogger.hh"
 #include "cetlib/exception.h"
 

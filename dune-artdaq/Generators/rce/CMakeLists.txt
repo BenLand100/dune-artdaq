@@ -10,12 +10,14 @@ art_make(
 	LIB_LIBRARIES
    artdaq-core_Data
    artdaq_Application
+   artdaq_Generators
    artdaq_DAQdata
    artdaq-core_Utilities
+   dune-artdaq_DAQLogger
    ${CANVAS}
    ${FHICLCPP}
    ${CETLIB}
-
+  ${CETLIB_EXCEPT}
 	${Boost_SYSTEM_LIBRARY}
    ${Boost_THREAD_LIBRARY}
    ${Boost_ATOMIC_LIBRARY}
