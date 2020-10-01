@@ -20,7 +20,7 @@ using namespace dune;
 FelixOnHostInterface::FelixOnHostInterface(fhicl::ParameterSet const& ps) :
   cpu_pin_{ CPUPin::getInstance() },
   queh_{ QueueHandler::getInstance() },
-  flx_queue_size_{ 500000 },
+  flx_queue_size_{ 2000000 },
 //  num_sources_{ 2 },
   num_links_{ 5 },
 //  card_offset_{ 0 },
@@ -357,6 +357,7 @@ bool FelixOnHostInterface::TriggerWorkers(artdaq::FragmentPtrs& frags) {
 }
 
 bool FelixOnHostInterface::SetupTriggerMatchers(){
+  DAQLogger::LogInfo("FelixOnHostInterface::TriggerMatcher") << " Setting up matchers\n";
   stop_trigger_.store(false);
   for (uint32_t i=0; i<queh_.getNumOfChannels(); ++i){
     // Prepare resources
@@ -385,6 +386,8 @@ bool FelixOnHostInterface::SetupTriggerMatchers(){
           << " ["<< tid << "] Queue is empty... Is FelixCore publishing data?\n";
         return;
       }
+      DAQLogger::LogInfo("FelixOnHostInterface::TriggerMatcher")
+        << " ["<< tid << "] Yay, Queue has data!\n";
 
       if (trigger_ts_==0){ // Check if we got a trigger request
         size_t qsize = queue->sizeGuess();
@@ -393,8 +396,10 @@ bool FelixOnHostInterface::SetupTriggerMatchers(){
             << " ["<< tid <<"] Removing old non requested data; (" << qsize << ") messages in queue.";
           queue->popXFront(0.8 * qsize);
         }
+        DAQLogger::LogWarning("FelixOnHostInterface::TriggerMatcher") << "trigger_ts is zero!";
         return;
       }
+      DAQLogger::LogInfo("FelixOnHostInterface::TriggerMatcher") << "trigger_ts is non-zero.";
       // From here on we got a trigger and we need to extract.
       uint_fast64_t startWindowTimestamp = trigger_ts_ - (uint_fast64_t)(window_offset_ * tick_dist_);
       dune::WIBHeader wh = *(reinterpret_cast<const dune::WIBHeader*>( queue->frontPtr() ));
@@ -410,11 +415,16 @@ bool FelixOnHostInterface::SetupTriggerMatchers(){
 
       // Calculate tick difference
       uint_fast64_t timeTickDiff = (startWindowTimestamp-lastTs)/(uint_fast64_t)tick_dist_;
+      DAQLogger::LogInfo("FelixOnHostInterface::TriggerMatcher") << "timeTickDiff is " << timeTickDiff
+                                                                 << ", swt and lastTs are " << startWindowTimestamp
+                                                                 << " " << lastTs;
 
       // Wait to have enough frames in the queue
       uint_fast64_t minQueueSize = (timeTickDiff + window_) / framesPerMsg + 10;
       size_t qsize = queue->sizeGuess();
       uint_fast32_t waitingForDataCtr = 0;
+      DAQLogger::LogInfo("FelixOnHostInterface::TriggerMatcher") << "queue size is " << qsize
+                                                                 << ", and minQueueSize is " << minQueueSize;
       while (qsize < minQueueSize){
         std::this_thread::sleep_for(std::chrono::microseconds(100));
         qsize = queue->sizeGuess();
@@ -422,9 +432,12 @@ bool FelixOnHostInterface::SetupTriggerMatchers(){
         if (waitingForDataCtr > 20000){
           DAQLogger::LogWarning("FelixOnHostInterface::TriggerMatcher")
             << "Data stream delayed by over 2 secs with respect to trigger requests! ";
+          DAQLogger::LogInfo("FelixOnHostInterface::TriggerMatcher") << "queue size is " << qsize
+                                                                     << ", and minQueueSize is " << minQueueSize;
           return;
         }
       }
+      DAQLogger::LogInfo("FelixOnHostInterface::TriggerMatcher") << "queue size is " << qsize;
 
       // Pop until the start of window.
       queue->popXFront(timeTickDiff/framesPerMsg);

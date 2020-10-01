@@ -39,7 +39,7 @@
 
 //#include "timingBoard/InhibitGet.h" // The interface to the ZeroMQ trigger inhibit master
 // #include "timingBoard/StatusPublisher.hh"
-// #include "timingBoard/FragmentPublisher.hh"
+#include "timingBoard/FragmentPublisher.hh"
 // #include "timingBoard/HwClockPublisher.hh"
 
 #pragma GCC diagnostic ignored "-Wpedantic"
@@ -89,7 +89,7 @@ dune::TimingReceiverDebug::TimingReceiverDebug(fhicl::ParameterSet const & ps):
   , enable_spill_gate_(ps.get<bool>("enable_spill_gate", false))
   //  , zmq_conn_(ps.get<std::string>("zmq_connection", "tcp://pddaq-gen05-daq0:5566"))
   //  , zmq_conn_out_(ps.get<std::string>("zmq_connection_out", "tcp://*:5599"))
-  //  , zmq_fragment_conn_out_(ps.get<std::string>("zmq_fragment_connection_out", "tcp://*:7123"))
+      , zmq_fragment_conn_out_(ps.get<std::string>("zmq_fragment_connection_out", "tcp://*:7123"))
   //  , zmq_hwtimer_conn_out_(ps.get<std::string>("zmq_hwtimer_conn_out", "tcp://*:5555"))
   , valid_firmware_versions_fcl_(ps.get<std::vector<int>>("valid_firmware_versions", std::vector<int>()))
   , want_inhibit_(false)
@@ -103,7 +103,7 @@ dune::TimingReceiverDebug::TimingReceiverDebug(fhicl::ParameterSet const & ps):
   , send_fragments_(ps.get<bool>("send_fragments", false))
 {
 
-  DAQLogger::LogWarning(instance_name_) << "JCF, Feb-28-2020: this is a variant of the TimingReceiver fragment generator which has been modified so that it doesn't issue any pdtbutler commands, but tries to read out data if data exists. Do NOT use this for any sort of serious data taking; this exists to check that we can read any data at all, nothing more";
+  DAQLogger::LogWarning(instance_name_) << "JCF, Feb-28-2020: this is a variant of the TimingReceiver fragment generator which has been modified so that it doesn't issue any pdtbutler commands, but tries to read out data if data exists.";
 
   // TODO:
   // AT: Move hardware interface creation in here, for better exception handling
@@ -234,10 +234,10 @@ dune::TimingReceiverDebug::TimingReceiverDebug(fhicl::ParameterSet const & ps):
   // //  status_publisher_.reset(new artdaq::StatusPublisher(instance_name_, zmq_conn_out_));
   // //  status_publisher_->BindPublisher();
 
-  // // if(propagate_trigger_) {
-  // //   fragment_publisher_.reset(new artdaq::FragmentPublisher(zmq_fragment_conn_out_));
-  // //   fragment_publisher_->BindPublisher();
-  // // }
+  if(propagate_trigger_) {
+    fragment_publisher_.reset(new artdaq::FragmentPublisher(zmq_fragment_conn_out_));
+    fragment_publisher_->BindPublisher();
+  }
   // //  hwtime_publisher_.reset(new artdaq::HwClockPublisher(zmq_hwtimer_conn_out_ ));
   // //  hwtime_publisher_->bind();
 
@@ -640,10 +640,10 @@ bool dune::TimingReceiverDebug::getNext_(artdaq::FragmentPtrs &frags) {
                                     commandType == dune::TimingCommand::SpillStop);
 
         if (shouldSendFragment) {
-	  //          // Send the fragment out on ZeroMQ for FELIX and whoever else wants to listen for it
-	  //          int pubSuccess = fragment_publisher_->PublishFragment(f.get(), &fo);
-	  //          if (!pubSuccess)
-	  //            DAQLogger::LogInfo(instance_name_) << "Publishing fragment to ZeroMQ failed";
+	  // Send the fragment out on ZeroMQ for FELIX and whoever else wants to listen for it
+	  int pubSuccess = fragment_publisher_->PublishFragment(f.get(), &fo);
+	  if (!pubSuccess)
+	    DAQLogger::LogWarning(instance_name_) << "Publishing fragment to ZeroMQ failed";
 
           frags.emplace_back(std::move(f));
           // We only increment the event counter for events we send out
