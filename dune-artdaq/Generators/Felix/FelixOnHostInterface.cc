@@ -22,7 +22,7 @@ FelixOnHostInterface::FelixOnHostInterface(fhicl::ParameterSet const& ps) :
   queh_{ QueueHandler::getInstance() },
   flx_queue_size_{ 2000000 },
 //  num_sources_{ 2 },
-  num_links_{ 5 },
+  num_links_{ 6 },
 //  card_offset_{ 0 },
   felix_id_{ 712 },
 
