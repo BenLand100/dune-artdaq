@@ -29,10 +29,10 @@ void WIB2Reader::send_command(const C &msg, R &repl) {
     
     zmq::message_t request(cmd_str.size());
     memcpy((void*)request.data(), cmd_str.c_str(), cmd_str.size());
-    socket.send(request,zmq::send_flags::none);
+    socket->send(request,zmq::send_flags::none);
     
     zmq::message_t reply;
-    socket.recv(reply,zmq::recv_flags::none);
+    socket->recv(reply,zmq::recv_flags::none);
     
     std::string reply_str(static_cast<char*>(reply.data()), reply.size());
     repl.ParseFromString(reply_str);
@@ -54,14 +54,7 @@ WIB2Reader::WIB2Reader(fhicl::ParameterSet const& ps) :
 
   const std::string identification = "wibdaq::WIB2Reader::WIB2Reader";
 
-  bool success = setupWIB(ps);
-  
-  if (!success)
-  {
-    cet::exception excpt(identification);
-    excpt << "Failed to configure WIB";
-    throw excpt;
-  }
+  setupWIB(ps);
 }
 
 void WIB2Reader::setupWIB(fhicl::ParameterSet const& ps) {
@@ -91,10 +84,17 @@ void WIB2Reader::setupWIB(fhicl::ParameterSet const& ps) {
   socket = new zmq::socket_t(*context, ZMQ_REQ)
   socket.connect(wib_address); // tcp://192.168.121.*:1234
 
-  // FIXME reset and configure WIB (except FEMBs)
-    wib::Initialize req;
-    wib::Empty rep;
-    send_command(s,req,rep);
+  wib::ConfigureWIB req;
+  // FIXME populate fields to send to WIB
+  wib::Status rep;
+  send_command(s,req,rep);
+  
+  if (!rep.success())
+  {
+    cet::exception excpt(identification);
+    excpt << "Failed to configure WIB";
+    throw excpt;
+  }
   
   // Configure and power on FEMBs
   for(size_t iFEMB = 0; iFEMB < 4; iFEMB++)
@@ -106,6 +106,17 @@ void WIB2Reader::setupWIB(fhicl::ParameterSet const& ps) {
     }
     else
     {
+      wib::ConfigureFEMP req;
+      req.set_index(iFEMB);
+      req.set_enabled(false);
+      wib::Status rep;
+      send_command(s,req,rep);  
+      if (!rep.success())
+      {
+        cet::exception excpt(identification);
+        excpt << "Failed to configure FEMB"<<(iFEMB+1);
+        throw excpt;
+      }
       dune::DAQLogger::LogInfo(identification) << "FEMB"<<(iFEMB+1)<<" not enabled";
     }
   }
@@ -117,19 +128,30 @@ void WIB2Reader::setupWIB(fhicl::ParameterSet const& ps) {
 
 void WIB2Reader::setupFEMB(size_t iFEMB, fhicl::ParameterSet const& FEMB_config) {
 
-  const std::string identification = "wibdaq::WIB2Reader::setupFEMB";
-  
-  // FIXME power on FEMB
-  run_script("femb"+to_string(iFEMB)+"_on");
+  const std::string identification = "wibdaq::WIB2Reader::setupFEMB";  
 
-  // FIXME configure FEMB
-  run_script("femb"+to_string(iFEMB)+"_conf");
+  wib::ConfigureFEMP req;
+  req.set_index(iFEMB);
+  req.set_enabled(true);
+  //FIXME populate fields to send to WIB
+  wib::Status rep;
+  send_command(s,req,rep);  
+  if (!rep.success())
+  {
+    cet::exception excpt(identification);
+    excpt << "Failed to configure FEMB"<<(iFEMB+1);
+    throw excpt;
+  }
+  
+  dune::DAQLogger::LogInfo(identification) << "Configured FEMB"<<(iFEMB+1);
   
 }
 
 // "shutdown" transition
 WIB2Reader::~WIB2Reader() {
-
+    socket->close();
+    delete socket;
+    delete context;
 }
 
 // "start" transition
