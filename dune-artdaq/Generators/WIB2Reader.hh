@@ -1,7 +1,7 @@
 #ifndef __WIB2Reader_hh
 #define __WIB2Reader_hh
 
-#include <zmq.hpp>
+#include "zmq.hpp"
 
 #include "artdaq-core/Data/Fragment.hh"
 #include "artdaq/Generators/CommandableFragmentGenerator.hh"
@@ -25,11 +25,11 @@ private:
   bool getNext_(artdaq::FragmentPtrs& output) override;
   void stopNoMutex() override {}
 
-  bool setupWIB(fhicl::ParameterSet const& WIB_config);
-  bool setupFEMB(size_t iFEMB, fhicl::ParameterSet const& FEMB_config);
+  void setupWIB(const fhicl::ParameterSet &WIB_config);
+  void setupFEMB(size_t iFEMB, const fhicl::ParameterSet &FEMB_config);
   
   template <class R, class C>
-  void WIB2Reader::send_command(const C &msg, R &repl) 
+  void send_command(const C &msg, R &repl); 
   
   bool run_script(std::string name);
 

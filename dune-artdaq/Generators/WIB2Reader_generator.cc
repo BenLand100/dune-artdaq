@@ -10,7 +10,7 @@
 #include <chrono>
 #include <thread>
 
-#include <wib.pb.h>
+#include "dune-artdaq/Generators/wib2/wib.pb.h"
 
 // sends metric of register value at <register name> named WIB.<register name> with <level>
 // not averaged or summed, just the last value
@@ -29,10 +29,10 @@ void WIB2Reader::send_command(const C &msg, R &repl) {
     
     zmq::message_t request(cmd_str.size());
     memcpy((void*)request.data(), cmd_str.c_str(), cmd_str.size());
-    socket->send(request,zmq::send_flags::none);
+    socket->send(&request,0);
     
     zmq::message_t reply;
-    socket->recv(reply,zmq::recv_flags::none);
+    socket->recv(&reply,0);
     
     std::string reply_str(static_cast<char*>(reply.data()), reply.size());
     repl.ParseFromString(reply_str);
@@ -44,8 +44,8 @@ bool WIB2Reader::run_script(std::string name) {
     req.set_script(name);
     req.set_file(true);
     wib::Status rep;
-    send_command(*socket,req,rep);
-    return rep.status();
+    send_command(req,rep);
+    return rep.success();
 }
 
 // "initialize" transition
@@ -57,7 +57,7 @@ WIB2Reader::WIB2Reader(fhicl::ParameterSet const& ps) :
   setupWIB(ps);
 }
 
-void WIB2Reader::setupWIB(fhicl::ParameterSet const& ps) {
+void WIB2Reader::setupWIB(const fhicl::ParameterSet &ps) {
 
   const std::string identification = "wibdaq::WIB2Reader::setupWIB";
 
@@ -80,14 +80,14 @@ void WIB2Reader::setupWIB(fhicl::ParameterSet const& ps) {
   }
 
   dune::DAQLogger::LogInfo(identification) << "Connecting to WIB at " <<  wib_address;
-  context = new zmq::context_t(1)
-  socket = new zmq::socket_t(*context, ZMQ_REQ)
-  socket.connect(wib_address); // tcp://192.168.121.*:1234
+  context = new zmq::context_t(1);
+  socket = new zmq::socket_t(*context, ZMQ_REQ);
+  socket->connect(wib_address); // tcp://192.168.121.*:1234
 
   wib::ConfigureWIB req;
   // FIXME populate fields to send to WIB
   wib::Status rep;
-  send_command(s,req,rep);
+  send_command(req,rep);
   
   if (!rep.success())
   {
@@ -106,11 +106,11 @@ void WIB2Reader::setupWIB(fhicl::ParameterSet const& ps) {
     }
     else
     {
-      wib::ConfigureFEMP req;
+      wib::ConfigureFEMB req;
       req.set_index(iFEMB);
       req.set_enabled(false);
       wib::Status rep;
-      send_command(s,req,rep);  
+      send_command(req,rep);  
       if (!rep.success())
       {
         cet::exception excpt(identification);
@@ -126,16 +126,16 @@ void WIB2Reader::setupWIB(fhicl::ParameterSet const& ps) {
 }
 
 
-void WIB2Reader::setupFEMB(size_t iFEMB, fhicl::ParameterSet const& FEMB_config) {
+void WIB2Reader::setupFEMB(size_t iFEMB, const fhicl::ParameterSet &FEMB_config) {
 
   const std::string identification = "wibdaq::WIB2Reader::setupFEMB";  
 
-  wib::ConfigureFEMP req;
+  wib::ConfigureFEMB req;
   req.set_index(iFEMB);
   req.set_enabled(true);
   //FIXME populate fields to send to WIB
   wib::Status rep;
-  send_command(s,req,rep);  
+  send_command(req,rep);  
   if (!rep.success())
   {
     cet::exception excpt(identification);
@@ -157,12 +157,6 @@ WIB2Reader::~WIB2Reader() {
 // "start" transition
 void WIB2Reader::start() {
   const std::string identification = "wibdaq::WIB2Reader::start";
-  if (!wib) 
-  {
-    cet::exception excpt(identification);
-    excpt << "WIB object pointer NULL";
-    throw excpt;
-  }
 }
 
 // "stop" transition

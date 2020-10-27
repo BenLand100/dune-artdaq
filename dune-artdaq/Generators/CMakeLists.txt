@@ -205,6 +205,20 @@ message( FATAL_ERROR "You need environment variables called PROTODUNE_WIBSOFT_LI
 
 endif()
 
+add_subdirectory(wib2)
+
+simple_plugin(WIB2Reader "generator"
+	artdaq_Generators
+	dune-artdaq_DAQLogger
+	${CETLIB_EXCEPT}
+	${CETLIB}
+	${FHICLCPP}
+	${Boost_SYSTEM_LIBRARY}
+	zmq
+	wib2proto
+	protobuf
+)
+
 
 add_subdirectory(CRTInterface)
 simple_plugin(CRTFragGen "generator"
