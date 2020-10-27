@@ -1,0 +1,122 @@
+syntax = "proto3";
+
+package wib;
+
+import "google/protobuf/any.proto";
+
+message Command {
+    google.protobuf.Any cmd = 1;
+}
+
+message Script {
+    bytes script = 1;
+    bool file = 2;
+}
+
+message ReadDaqSpy {
+    bool buf0 = 1;
+    bool buf1 = 2;
+}
+
+/* Initialization Commands */
+
+message ConfigureWIB {
+    //add as necessary
+}
+
+message ConfigureFEMB {
+    int32 index = 1;
+    bool enabled = 2;
+    //add as necessary
+}
+
+
+message Update {
+    bytes root_archive = 1;
+    bytes boot_archive = 2;
+}
+
+message Reboot {
+}
+
+/* Low level debug commands */
+
+//peek wib memory
+message Peek {
+    uint64 addr = 1;
+}
+
+//poke wib memory
+message Poke {
+    uint64 addr = 1;
+    uint32 value = 2;
+}
+
+//peek coldata i2c bus
+message CDPoke {
+    uint32 femb_idx = 1;
+    uint32 coldata_idx = 2;
+    uint32 chip_addr = 3;
+    uint32 reg_page = 4;
+    uint32 reg_addr = 5;
+    uint32 data = 6;
+}
+
+//poke coldata i2c bus
+message CDPeek {
+    uint32 femb_idx = 1;
+    uint32 coldata_idx = 2;
+    uint32 chip_addr = 3;
+    uint32 reg_page = 4;
+    uint32 reg_addr = 5;
+}
+
+//fast command on all coldata chips
+message CDFastCmd {
+    uint32 cmd = 1;
+}
+
+/* CCM/SC/Monitoring commands */
+
+message GetSensors {
+}
+
+/* Command Replies */
+
+message Empty {
+}
+
+message Status {
+    bool success = 1;
+    bytes extra = 2;
+}
+
+message RegValue {
+    uint64 addr = 1;
+    uint32 value = 2;
+}
+
+message CDRegValue {
+    uint32 femb_idx = 1;
+    uint32 coldata_idx = 2;
+    uint32 chip_addr = 3;
+    uint32 reg_page = 4;
+    uint32 reg_addr = 5;
+    uint32 data = 6;
+}
+
+message DaqSpy {
+    bytes buf0 = 1;
+    bytes buf1 = 2;
+    bool success = 3;
+}
+
+message Sensors {
+    repeated double ltc2990_4E_voltages = 1;
+    repeated double ltc2990_4C_voltages = 2;
+    repeated double ltc2991_48_voltages = 3;
+    repeated double ad7414_49_temps = 4;
+    repeated double ad7414_4D_temps = 5;
+    repeated double ad7414_4A_temps = 6;
+    repeated double ltc2499_15_temps = 7;
+}
