@@ -174,7 +174,7 @@ void WIB2Reader::stop() {
 }
 
 // Called by BoardReaderMain in a loop between "start" and "stop"
-bool WIB2Reader::getNext_(artdaq::FragmentPtrs& /*frags*/) {
+bool WIB2Reader::getNext_(artdaq::FragmentPtrs& frags) {
   if (!spy_buffer_readout) {
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
 	return (! should_stop());
@@ -184,8 +184,21 @@ bool WIB2Reader::getNext_(artdaq::FragmentPtrs& /*frags*/) {
     req.set_buf0(true);
     req.set_buf1(true);
     wib::DaqSpy rep;	
-    send_command(req,rep);
-    //FIXME copy buffers into frags
+    send_command(req,rep);  
+    
+    size_t bytes_read = rep.buf0().size() + rep.buf1().size();
+    std::unique_ptr<artdaq::Fragment> fragptr(
+   					    artdaq::Fragment::FragmentBytes(bytes_read,  
+   									    ev_counter(), fragment_id(),
+   									    fragment_type_, 
+   									    metadata_,
+									    timestamp_));
+
+    memcpy(fragptr->dataBeginBytes(), rep.buf0().c_str(), rep.buf0().size());
+    memcpy(fragptr->dataBeginBytes()+rep.buf0().size() , rep.buf1().c_str(), rep.buf1().size());
+
+    frags.emplace_back(std::move(fragptr));
+    
     return ignore_daq_failures || rep.success();
   }
 }
