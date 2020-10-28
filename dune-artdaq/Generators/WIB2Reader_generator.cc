@@ -29,10 +29,10 @@ void WIB2Reader::send_command(const C &msg, R &repl) {
     
     zmq::message_t request(cmd_str.size());
     memcpy((void*)request.data(), cmd_str.c_str(), cmd_str.size());
-    socket->send(&request,0);
+    socket->send(request);
     
     zmq::message_t reply;
-    socket->recv(&reply,0);
+    socket->recv(&reply);
     
     std::string reply_str(static_cast<char*>(reply.data()), reply.size());
     repl.ParseFromString(reply_str);
@@ -81,12 +81,16 @@ void WIB2Reader::setupWIB(const fhicl::ParameterSet &ps) {
 
   dune::DAQLogger::LogInfo(identification) << "Connecting to WIB at " <<  wib_address;
   context = new zmq::context_t(1);
+  dune::DAQLogger::LogInfo(identification) << "ZMQ context initialized";
   socket = new zmq::socket_t(*context, ZMQ_REQ);
+  dune::DAQLogger::LogInfo(identification) << "ZMQ socket initialized";
   socket->connect(wib_address); // tcp://192.168.121.*:1234
+  dune::DAQLogger::LogInfo(identification) << "Connected!";
 
   wib::ConfigureWIB req;
   // FIXME populate fields to send to WIB
   wib::Status rep;
+  dune::DAQLogger::LogInfo(identification) << "Sending ConfigureWIB command";
   send_command(req,rep);
   
   if (!rep.success())
@@ -95,7 +99,8 @@ void WIB2Reader::setupWIB(const fhicl::ParameterSet &ps) {
     excpt << "Failed to configure WIB";
     throw excpt;
   }
-  
+
+  dune::DAQLogger::LogInfo(identification) << "Configuring FEMBs";
   // Configure and power on FEMBs
   for(size_t iFEMB = 0; iFEMB < 4; iFEMB++)
   {
