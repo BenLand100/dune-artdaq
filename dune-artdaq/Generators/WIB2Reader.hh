@@ -35,6 +35,8 @@ private:
 
   zmq::context_t *context = NULL;
   zmq::socket_t *socket = NULL;
+  bool spy_buffer_readout = false;
+  bool ignore_daq_failures = false;
 };
 
 }

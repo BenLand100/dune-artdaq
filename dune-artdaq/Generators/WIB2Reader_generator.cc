@@ -60,9 +60,12 @@ WIB2Reader::WIB2Reader(fhicl::ParameterSet const& ps) :
 void WIB2Reader::setupWIB(const fhicl::ParameterSet &ps) {
 
   const std::string identification = "wibdaq::WIB2Reader::setupWIB";
-
-  auto wib_address = ps.get<std::string>("WIB.address");
   
+  spy_buffer_readout = ps.get<bool>("WIB.config.spy_buffer_readout");
+  ignore_daq_failures = ps.get<bool>("WIB.config.ignore_daq_failures");
+ 
+  auto wib_address = ps.get<std::string>("WIB.config.address");
+ 
   auto enable_FEMBs = ps.get<std::vector<bool> >("WIB.config.enable_FEMBs");
   auto FEMB_configs = ps.get<std::vector<fhicl::ParameterSet> >("WIB.config.FEMBs");
  
@@ -79,6 +82,7 @@ void WIB2Reader::setupWIB(const fhicl::ParameterSet &ps) {
     throw excpt;
   }
 
+  
   dune::DAQLogger::LogInfo(identification) << "Connecting to WIB at " <<  wib_address;
   context = new zmq::context_t(1);
   dune::DAQLogger::LogInfo(identification) << "ZMQ context initialized";
@@ -171,9 +175,19 @@ void WIB2Reader::stop() {
 
 // Called by BoardReaderMain in a loop between "start" and "stop"
 bool WIB2Reader::getNext_(artdaq::FragmentPtrs& /*frags*/) {
-  // FIXME why did protodune sleep here???
-  std::this_thread::sleep_for(std::chrono::milliseconds(100));
-  return (! should_stop()); // returning false before should_stop makes all other BRs stop
+  if (!spy_buffer_readout) {
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+	return (! should_stop());
+  } else {
+    if (should_stop()) return false;
+    wib::ReadDaqSpy req;
+    req.set_buf0(true);
+    req.set_buf1(true);
+    wib::DaqSpy rep;	
+    send_command(req,rep);
+    //FIXME copy buffers into frags
+    return ignore_daq_failures || rep.success();
+  }
 }
 
 } // namespace
