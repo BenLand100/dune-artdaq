@@ -197,9 +197,9 @@ bool WIB2Reader::getNext_(artdaq::FragmentPtrs& frags) {
     memcpy(fragptr->dataBeginBytes(), rep.buf0().c_str(), rep.buf0().size());
     memcpy(fragptr->dataBeginBytes()+rep.buf0().size() , rep.buf1().c_str(), rep.buf1().size());
 
-    //FIXME this crashes
-	//frags.emplace_back(std::move(fragptr));
+    frags.emplace_back(std::move(fragptr));
     
+    ev_counter_inc(); 
     return ignore_daq_failures || rep.success();
   }
 }
