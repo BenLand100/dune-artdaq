@@ -176,6 +176,7 @@ void WIB2Reader::stop() {
 
 // Called by BoardReaderMain in a loop between "start" and "stop"
 bool WIB2Reader::getNext_(artdaq::FragmentPtrs& frags) {
+  const std::string identification = "wibdaq::WIB2Reader::getNext_";
   if (!spy_buffer_readout) {
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
 	return (! should_stop());
@@ -187,16 +188,15 @@ bool WIB2Reader::getNext_(artdaq::FragmentPtrs& frags) {
     wib::DaqSpy rep;	
     send_command(req,rep);  
    
-	std::string metadata("meta");
     size_t bytes_read = rep.buf0().size() + rep.buf1().size();
     std::unique_ptr<artdaq::Fragment> fragptr(
    					    artdaq::Fragment::FragmentBytes(bytes_read,  
    									    ev_counter(), fragment_id(),
-   									    /*FIXME*/42,metadata));
+   									    /*FIXME*/42,NULL));
 
+    dune::DAQLogger::LogInfo(identification) << "Created fragment " << ev_counter() << " " << fragment_id() << " " << bytes_read;
     memcpy(fragptr->dataBeginBytes(), rep.buf0().c_str(), rep.buf0().size());
     memcpy(fragptr->dataBeginBytes()+rep.buf0().size() , rep.buf1().c_str(), rep.buf1().size());
-
     frags.emplace_back(std::move(fragptr));
     
     ev_counter_inc(); 
