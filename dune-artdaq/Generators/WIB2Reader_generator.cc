@@ -1,6 +1,7 @@
 #include "WIB2Reader.hh"
 #include "artdaq/Generators/GeneratorMacros.hh"
 #include "dune-artdaq/DAQLogger/DAQLogger.hh"
+#include "dune-raw-data/Overlays/FragmentType.hh"
 #include "cetlib/exception.h"
 
 #include <sstream>
@@ -185,19 +186,19 @@ bool WIB2Reader::getNext_(artdaq::FragmentPtrs& frags) {
     req.set_buf1(true);
     wib::DaqSpy rep;	
     send_command(req,rep);  
-    
+   
+	std::string metadata("meta");
     size_t bytes_read = rep.buf0().size() + rep.buf1().size();
     std::unique_ptr<artdaq::Fragment> fragptr(
    					    artdaq::Fragment::FragmentBytes(bytes_read,  
    									    ev_counter(), fragment_id(),
-   									    fragment_type_, 
-   									    metadata_,
-									    timestamp_));
+   									    /*FIXME*/42,metadata));
 
     memcpy(fragptr->dataBeginBytes(), rep.buf0().c_str(), rep.buf0().size());
     memcpy(fragptr->dataBeginBytes()+rep.buf0().size() , rep.buf1().c_str(), rep.buf1().size());
 
-    frags.emplace_back(std::move(fragptr));
+    //FIXME this crashes
+	//frags.emplace_back(std::move(fragptr));
     
     return ignore_daq_failures || rep.success();
   }
