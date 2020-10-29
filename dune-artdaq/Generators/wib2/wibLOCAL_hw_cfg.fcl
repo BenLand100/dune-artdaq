@@ -1,0 +1,4 @@
+ 
+#include "wib2_standard.fcl" 
+
+daq: @local::wibLOCAL_standard 

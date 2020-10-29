@@ -1,0 +1,84 @@
+BEGIN_PROLOG
+#
+# FEMB configuration
+#
+femb_config_default: {
+
+}
+
+femb_config_default_femb1: @local::femb_config_default 
+femb_config_default_femb2: @local::femb_config_default 
+femb_config_default_femb3: @local::femb_config_default 
+femb_config_default_femb4: @local::femb_config_default 
+
+#
+# WIB configuration
+#
+wib_config: {
+#
+# Whether to enable spy buffer readout
+#
+spy_buffer_readout: false
+#
+# Don't let spy buffer errors stop readout
+#
+ignore_daq_failures: true
+#
+# WIB network address string
+#
+address: "" # proto, (IP address or DNS address), and port as "proto://addr:port"
+#
+# if true, power up and configure FEMBs, else power down and don't configure
+#
+enable_FEMBs: [true, true, true, true] # list of 4 bools
+#
+# FEMB configuration documents
+#
+FEMBs: [@local::femb_config_default_femb1, @local::femb_config_default_femb2, @local::femb_config_default_femb3, @local::femb_config_default_femb4] # list of 4 FEMB configurations
+}
+
+# standard wib configuration
+wib2_standard: {
+
+fragment_receiver: {
+
+generator: WIB2Reader 
+
+fragment_type: WIB2 
+
+fragment_id: 400 
+
+board_id: 400 
+
+WIB: {
+
+config: @local::wib_config 
+
+}
+
+destinations: {
+
+}
+
+sends_no_fragments: true 
+
+}
+
+metrics: {
+
+}
+
+}
+
+#
+# Simulated WIB with daq spy buffer readout
+#  
+wibLOCAL_standard: @local::wib2_standard 
+wibLOCAL_standard.fragment_receiver.fragment_id: 400 
+wibLOCAL_standard.fragment_receiver.board_id: 0
+wibLOCAL_standard.fragment_receiver.WIB.config.spy_buffer_readout: true
+wibLOCAL_standard.fragment_receiver.sends_no_fragments: false
+wibLOCAL_standard.fragment_receiver.WIB.config.address: "tcp://localhost:1234" 
+wibLOCAL_standard.fragment_receiver.WIB.config.enable_FEMBs: [true, true, true, true] 
+
+END_PROLOG
