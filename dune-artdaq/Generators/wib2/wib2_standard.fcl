@@ -62,9 +62,9 @@ fragment_receiver: {
 
 generator: WIB2Reader 
 
-fragment_id: 400 
+fragment_id: 9000 
 
-board_id: 400 
+board_id: 9000 
 
 WIB: {
 
@@ -76,7 +76,8 @@ destinations: {
 
 }
 
-sends_no_fragments: false #default should be true, not false (for no daq)
+sends_no_fragments: false #default should be true (for no daq)
+generated_fragments_per_event: 1 #default should be 0 (for no daq)
 
 }
 
@@ -91,9 +92,8 @@ metrics: {
 #  
 wibLOCAL_standard: @local::wib2_standard 
 wibLOCAL_standard.fragment_receiver.fragment_id: 400 
-wibLOCAL_standard.fragment_receiver.board_id: 0
+wibLOCAL_standard.fragment_receiver.board_id: 400
 wibLOCAL_standard.fragment_receiver.WIB.config.spy_buffer_readout: true
-wibLOCAL_standard.fragment_receiver.sends_no_fragments: false
 wibLOCAL_standard.fragment_receiver.WIB.config.address: "tcp://localhost:1234" 
 wibLOCAL_standard.fragment_receiver.WIB.config.enable_FEMBs: [true, true, true, true] 
 
