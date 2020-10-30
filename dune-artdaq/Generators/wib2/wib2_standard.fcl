@@ -33,25 +33,20 @@ femb_config_default_femb4: @local::femb_config_default
 # WIB configuration
 #
 wib_config: {
-#
+
 # Whether to enable spy buffer readout
-#
 spy_buffer_readout: false
-#
+
 # Don't let spy buffer errors stop readout
-#
 ignore_daq_failures: true
-#
+
 # WIB network address string
-#
 address: "" # proto, (IP address or DNS address), and port as "proto://addr:port"
-#
+
 # if true, FEMB included in serial stream, otherwise excluded
-#
 enable_FEMBs: [true, true, true, true] # list of 4 bools
-#
+
 # FEMB configuration documents
-#
 FEMBs: [@local::femb_config_default_femb1, @local::femb_config_default_femb2, @local::femb_config_default_femb3, @local::femb_config_default_femb4] # list of 4 FEMB configurations
 }
 
@@ -61,6 +56,8 @@ wib2_standard: {
 fragment_receiver: {
 
 generator: WIB2Reader 
+
+request_mode: "ignored"
 
 fragment_id: 9000 
 
