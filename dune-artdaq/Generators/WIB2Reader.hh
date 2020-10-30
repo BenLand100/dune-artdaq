@@ -26,7 +26,6 @@ private:
   void stopNoMutex() override {}
 
   void setupWIB(const fhicl::ParameterSet &WIB_config);
-  void setupFEMB(size_t iFEMB, const fhicl::ParameterSet &FEMB_config);
   
   template <class R, class C>
   void send_command(const C &msg, R &repl); 

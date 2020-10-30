@@ -4,6 +4,24 @@ BEGIN_PROLOG
 #
 femb_config_default: {
 
+# LArASIC channel conf
+test_cap: false     # test capacitor enabled
+gain: 0             # 14, 25, 7.8, 4.7 mV/fC (0 - 3)
+peak_time 0         # 1.0, 0.5, 3, 2 us (0 - 3)
+baseline: 0         # 0 (900 mV), 1 (200 mV)
+pulse_dac: 0        # 6bit dac value
+
+# LArASIC global conf
+leak: 0             # 0 (500 pA), 1 (100 pA)
+leak_10x: false     # multiply leak by 10 if true
+ac_couple: false    # false (DC coupling), true (AC coupling)
+buffer: 0           # 0 (no buffer), 1 (se buffer), 2 (sedc buffer)
+
+# COLDATA calibration strobe
+strobe_skip: 255    # 2MHz periods to skip after strobe
+strobe_delay: 255   # offset from 2MHz to start strobe in 64MHz periods
+strobe_length: 255  # length of strobe in 64MHz periods
+
 }
 
 femb_config_default_femb1: @local::femb_config_default 
@@ -28,7 +46,7 @@ ignore_daq_failures: true
 #
 address: "" # proto, (IP address or DNS address), and port as "proto://addr:port"
 #
-# if true, power up and configure FEMBs, else power down and don't configure
+# if true, FEMB included in serial stream, otherwise excluded
 #
 enable_FEMBs: [true, true, true, true] # list of 4 bools
 #
@@ -44,8 +62,6 @@ fragment_receiver: {
 
 generator: WIB2Reader 
 
-fragment_type: WIB2 
-
 fragment_id: 400 
 
 board_id: 400 
@@ -60,7 +76,7 @@ destinations: {
 
 }
 
-sends_no_fragments: true 
+sends_no_fragments: false #default should be true, not false (for no daq)
 
 }
 
