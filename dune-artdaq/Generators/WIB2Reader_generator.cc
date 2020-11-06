@@ -63,6 +63,7 @@ void WIB2Reader::setupWIB(const fhicl::ParameterSet &ps) {
   const std::string identification = "wibdaq::WIB2Reader::setupWIB";
   
   spy_buffer_readout = ps.get<bool>("WIB.config.spy_buffer_readout");
+  ignore_config_failures = ps.get<bool>("WIB.config.ignore_config_failures");
   ignore_daq_failures = ps.get<bool>("WIB.config.ignore_daq_failures");
   enable_pulser = ps.get<bool>("WIB.config.enable_pulser");
   frontend_cold = ps.get<bool>("WIB.config.frontend_cold");
@@ -125,7 +126,7 @@ void WIB2Reader::setupWIB(const fhicl::ParameterSet &ps) {
   wib::Status rep;
   send_command(req,rep);
   
-  if (!rep.success())
+  if (!rep.success() && !ignore_config_failures)
   {
     cet::exception excpt(identification);
     excpt << "Failed to configure WIB";

@@ -37,6 +37,9 @@ wib_config: {
 # Whether to enable spy buffer readout
 spy_buffer_readout: false
 
+# Ignore failures to configure the WIB/FEMB
+ignore_config_failures: true
+
 # Don't let spy buffer errors stop readout
 ignore_daq_failures: true
 
