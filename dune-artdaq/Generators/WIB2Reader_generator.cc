@@ -64,8 +64,8 @@ void WIB2Reader::setupWIB(const fhicl::ParameterSet &ps) {
   
   spy_buffer_readout = ps.get<bool>("WIB.config.spy_buffer_readout");
   ignore_daq_failures = ps.get<bool>("WIB.config.ignore_daq_failures");
-  enable_pulser = ps.get<std::vector<bool> >("WIB.config.enable_pulser");
-  frontend_cold = ps.get<std::vector<bool> >("WIB.config.frontend_cold");
+  enable_pulser = ps.get<bool>("WIB.config.enable_pulser");
+  frontend_cold = ps.get<bool>("WIB.config.frontend_cold");
  
   auto wib_address = ps.get<std::string>("WIB.config.address");
  
@@ -149,7 +149,7 @@ void WIB2Reader::start() {
   const std::string identification = "wibdaq::WIB2Reader::start";
   if (enable_pulser) {
       wib::Pulser req;
-      pulser.set_start(true);
+      req.set_start(true);
       wib::Empty rep;
       send_command(req,rep);
   }
@@ -160,7 +160,7 @@ void WIB2Reader::stop() {
   const std::string identification = "wibdaq::WIB2Reader::stop";
   if (enable_pulser) {
       wib::Pulser req;
-      pulser.set_start(true);
+      req.set_start(false);
       wib::Empty rep;
       send_command(req,rep);
   }
@@ -177,7 +177,7 @@ bool WIB2Reader::getNext_(artdaq::FragmentPtrs& frags) {
     wib::ReadDaqSpy req;
     req.set_buf0(true);
     req.set_buf1(true);
-    wib::DaqSpy rep;	
+    wib::ReadDaqSpy::DaqSpy rep;	
     send_command(req,rep);  
    
     size_t bytes_read = rep.buf0().size() + rep.buf1().size();
