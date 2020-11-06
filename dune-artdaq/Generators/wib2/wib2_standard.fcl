@@ -7,7 +7,7 @@ femb_config_default: {
 # LArASIC channel conf
 test_cap: false     # test capacitor enabled
 gain: 0             # 14, 25, 7.8, 4.7 mV/fC (0 - 3)
-peak_time 0         # 1.0, 0.5, 3, 2 us (0 - 3)
+peak_time: 0        # 1.0, 0.5, 3, 2 us (0 - 3)
 baseline: 0         # 0 (900 mV), 1 (200 mV)
 pulse_dac: 0        # 6bit dac value
 
