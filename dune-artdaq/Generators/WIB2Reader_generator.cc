@@ -64,6 +64,8 @@ void WIB2Reader::setupWIB(const fhicl::ParameterSet &ps) {
   
   spy_buffer_readout = ps.get<bool>("WIB.config.spy_buffer_readout");
   ignore_daq_failures = ps.get<bool>("WIB.config.ignore_daq_failures");
+  enable_pulser = ps.get<std::vector<bool> >("WIB.config.enable_pulser");
+  frontend_cold = ps.get<std::vector<bool> >("WIB.config.frontend_cold");
  
   auto wib_address = ps.get<std::string>("WIB.config.address");
  
@@ -93,6 +95,7 @@ void WIB2Reader::setupWIB(const fhicl::ParameterSet &ps) {
   dune::DAQLogger::LogInfo(identification) << "Connected!";
 
   wib::ConfigureWIB req;
+  req.set_cold(frontend_cold);
 
   dune::DAQLogger::LogInfo(identification) << "Configuring FEMBs";
   for(size_t iFEMB = 0; iFEMB < 4; iFEMB++)
@@ -144,11 +147,23 @@ WIB2Reader::~WIB2Reader() {
 // "start" transition
 void WIB2Reader::start() {
   const std::string identification = "wibdaq::WIB2Reader::start";
+  if (enable_pulser) {
+      wib::Pulser req;
+      pulser.set_start(true);
+      wib::Empty rep;
+      send_command(req,rep);
+  }
 }
 
 // "stop" transition
 void WIB2Reader::stop() {
   const std::string identification = "wibdaq::WIB2Reader::stop";
+  if (enable_pulser) {
+      wib::Pulser req;
+      pulser.set_start(true);
+      wib::Empty rep;
+      send_command(req,rep);
+  }
 }
 
 // Called by BoardReaderMain in a loop between "start" and "stop"

@@ -46,6 +46,12 @@ address: "" # proto, (IP address or DNS address), and port as "proto://addr:port
 # if true, FEMB included in serial stream, otherwise excluded
 enable_FEMBs: [true, true, true, true] # list of 4 bools
 
+# if true, the pulser will be turned on for the run
+enable_pulser: true
+
+# if true, load the COLDATA with PLL settings for 77k
+frontend_cold: false
+
 # FEMB configuration documents
 FEMBs: [@local::femb_config_default_femb1, @local::femb_config_default_femb2, @local::femb_config_default_femb3, @local::femb_config_default_femb4] # list of 4 FEMB configurations
 }
