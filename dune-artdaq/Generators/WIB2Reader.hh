@@ -36,6 +36,7 @@ private:
   zmq::socket_t *socket = NULL;
   bool spy_buffer_readout = false;
   bool ignore_daq_failures = false;
+  bool ignore_config_failures = false;
   bool frontend_cold = false;
   bool enable_pulser = false;
 };
