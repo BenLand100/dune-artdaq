@@ -83,7 +83,7 @@ destinations: {
 }
 
 sends_no_fragments: false #default should be true (for no daq)
-generated_fragments_per_event: 1 #default should be 0 (for no daq)
+generated_fragments_per_event: 2 #default should be 0 (for no daq)
 
 }
 
@@ -97,7 +97,7 @@ metrics: {
 # Simulated WIB with daq spy buffer readout
 #  
 wibLOCAL_standard: @local::wib2_standard 
-wibLOCAL_standard.fragment_receiver.fragment_id: 400 
+wibLOCAL_standard.fragment_receiver.fragment_ids: [400,401] 
 wibLOCAL_standard.fragment_receiver.board_id: 400
 wibLOCAL_standard.fragment_receiver.WIB.config.spy_buffer_readout: true
 wibLOCAL_standard.fragment_receiver.WIB.config.address: "tcp://localhost:1234" 

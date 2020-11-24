@@ -2,6 +2,7 @@
 #include "artdaq/Generators/GeneratorMacros.hh"
 #include "dune-artdaq/DAQLogger/DAQLogger.hh"
 #include "dune-raw-data/Overlays/FragmentType.hh"
+#include "dune-raw-data/Overlays/Frame14Fragment.hh"
 #include "cetlib/exception.h"
 
 #include <sstream>
@@ -180,17 +181,40 @@ bool WIB2Reader::getNext_(artdaq::FragmentPtrs& frags) {
     req.set_buf1(true);
     wib::ReadDaqSpy::DaqSpy rep;	
     send_command(req,rep);  
-   
-    size_t bytes_read = rep.buf0().size() + rep.buf1().size();
-    std::unique_ptr<artdaq::Fragment> fragptr(
-   					    artdaq::Fragment::FragmentBytes(bytes_read,  
-   									    ev_counter(), fragment_id(),
-   									    /*FIXME*/42,NULL));
-
-    dune::DAQLogger::LogInfo(identification) << "Created fragment " << ev_counter() << " " << fragment_id() << " " << bytes_read;
-    memcpy(fragptr->dataBeginBytes(), rep.buf0().c_str(), rep.buf0().size());
-    memcpy(fragptr->dataBeginBytes()+rep.buf0().size() , rep.buf1().c_str(), rep.buf1().size());
-    frags.emplace_back(std::move(fragptr));
+    {   //buf0
+        Frame14Fragment::Metadata meta;
+        meta.control_word  = 0xabcd; //FIXME
+        meta.version = 0; //FIXME
+        meta.reordered = 0;
+        meta.compressed = 0;
+        meta.num_frames = rep.buf0().size() / sizeof(dune::frame14::frame14);
+        meta.offset_frames = 0; //FIXME what is this
+        meta.window_frames = 0; //FIXME what is this
+        std::unique_ptr<artdaq::Fragment> fragptr(
+       					    artdaq::Fragment::FragmentBytes(rep.buf0().size(),  
+       									    ev_counter(), fragmentIDs()[0],
+       									    toFragmentType("FRAME14"),meta));
+        dune::DAQLogger::LogInfo(identification) << "Created fragment " << ev_counter() << " " << fragmentIDs()[0] << " " << bytes_read;
+        memcpy(fragptr->dataBeginBytes(), rep.buf0().c_str(), rep.buf0().size());
+        frags.emplace_back(std::move(fragptr));
+    }
+    {   //buf1
+        Frame14Fragment::Metadata meta;
+        meta.control_word  = 0xabcd; //FIXME
+        meta.version = 0; //FIXME
+        meta.reordered = 0;
+        meta.compressed = 0;
+        meta.num_frames = rep.buf0().size() / sizeof(dune::frame14::frame14);
+        meta.offset_frames = 0; //FIXME what is this
+        meta.window_frames = 0; //FIXME what is this
+        std::unique_ptr<artdaq::Fragment> fragptr(
+       					    artdaq::Fragment::FragmentBytes(rep.buf0().size(),  
+       									    ev_counter(), fragmentIDs()[1],
+       									    toFragmentType("FRAME14"),meta));
+        dune::DAQLogger::LogInfo(identification) << "Created fragment " << ev_counter() << " " <<fragmentIDs()[1] << " " << bytes_read;
+        memcpy(fragptr->dataBeginBytes(), rep.buf0().c_str(), rep.buf0().size());
+        frags.emplace_back(std::move(fragptr));
+    }
     
     ev_counter_inc(); 
     return ignore_daq_failures || rep.success();
