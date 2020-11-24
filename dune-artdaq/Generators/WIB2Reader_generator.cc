@@ -14,10 +14,6 @@
 
 #include "dune-artdaq/Generators/wib2/wib.pb.h"
 
-// sends metric of register value at <register name> named WIB.<register name> with <level>
-// not averaged or summed, just the last value
-#define sendRegMetric(name,level) artdaq::Globals::metricMan_->sendMetric(name,   (long unsigned int) wib->Read(name), "", level, artdaq::MetricMode::LastPoint, "WIB");
-
 namespace wib2daq {
 
 template <class R, class C>
@@ -182,8 +178,8 @@ bool WIB2Reader::getNext_(artdaq::FragmentPtrs& frags) {
     wib::ReadDaqSpy::DaqSpy rep;	
     send_command(req,rep);  
     {   //buf0
-        Frame14Fragment::Metadata meta;
-        meta.control_word  = 0xabcd; //FIXME
+        dune::Frame14Fragment::Metadata meta;
+        meta.control_word  = 0xdef; //FIXME
         meta.version = 0; //FIXME
         meta.reordered = 0;
         meta.compressed = 0;
@@ -193,14 +189,14 @@ bool WIB2Reader::getNext_(artdaq::FragmentPtrs& frags) {
         std::unique_ptr<artdaq::Fragment> fragptr(
        					    artdaq::Fragment::FragmentBytes(rep.buf0().size(),  
        									    ev_counter(), fragmentIDs()[0],
-       									    toFragmentType("FRAME14"),meta));
-        dune::DAQLogger::LogInfo(identification) << "Created fragment " << ev_counter() << " " << fragmentIDs()[0] << " " << bytes_read;
+       									    dune::detail::FragmentType::FRAME14,meta));
+        dune::DAQLogger::LogInfo(identification) << "Created fragment " << ev_counter() << " " << fragmentIDs()[0] << " " << rep.buf0().size();
         memcpy(fragptr->dataBeginBytes(), rep.buf0().c_str(), rep.buf0().size());
         frags.emplace_back(std::move(fragptr));
     }
     {   //buf1
-        Frame14Fragment::Metadata meta;
-        meta.control_word  = 0xabcd; //FIXME
+        dune::Frame14Fragment::Metadata meta;
+        meta.control_word  = 0xdef; //FIXME
         meta.version = 0; //FIXME
         meta.reordered = 0;
         meta.compressed = 0;
@@ -210,8 +206,8 @@ bool WIB2Reader::getNext_(artdaq::FragmentPtrs& frags) {
         std::unique_ptr<artdaq::Fragment> fragptr(
        					    artdaq::Fragment::FragmentBytes(rep.buf0().size(),  
        									    ev_counter(), fragmentIDs()[1],
-       									    toFragmentType("FRAME14"),meta));
-        dune::DAQLogger::LogInfo(identification) << "Created fragment " << ev_counter() << " " <<fragmentIDs()[1] << " " << bytes_read;
+       									    dune::detail::FRAME14,meta));
+        dune::DAQLogger::LogInfo(identification) << "Created fragment " << ev_counter() << " " <<fragmentIDs()[1] << " " << rep.buf0().size();
         memcpy(fragptr->dataBeginBytes(), rep.buf0().c_str(), rep.buf0().size());
         frags.emplace_back(std::move(fragptr));
     }
