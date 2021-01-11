@@ -94,6 +94,7 @@ void WIB2Reader::setupWIB(const fhicl::ParameterSet &ps) {
 
   wib::ConfigureWIB req;
   req.set_cold(frontend_cold);
+  req.set_pulser(enable_pulser);
 
   dune::DAQLogger::LogInfo(identification) << "Configuring FEMBs";
   for(size_t iFEMB = 0; iFEMB < 4; iFEMB++)
@@ -145,23 +146,11 @@ WIB2Reader::~WIB2Reader() {
 // "start" transition
 void WIB2Reader::start() {
   const std::string identification = "wibdaq::WIB2Reader::start";
-  if (enable_pulser) {
-      wib::Pulser req;
-      req.set_start(true);
-      wib::Empty rep;
-      send_command(req,rep);
-  }
 }
 
 // "stop" transition
 void WIB2Reader::stop() {
   const std::string identification = "wibdaq::WIB2Reader::stop";
-  if (enable_pulser) {
-      wib::Pulser req;
-      req.set_start(false);
-      wib::Empty rep;
-      send_command(req,rep);
-  }
 }
 
 // Called by BoardReaderMain in a loop between "start" and "stop"

@@ -64,14 +64,14 @@ message ConfigureWIB {
     message ConfigureFEMB {
         bool enabled = 1; // FEMB serial receiver enabled
         
-        // LArASIC channel
+        // LArASIC global
         bool test_cap = 2; // test capacitor enabled
         uint32 gain = 3; // 14, 25, 7.8, 4.7 mV/fC (0 - 3)
         uint32 peak_time = 4; // 1.0, 0.5, 3, 2 us (0 - 3)
         uint32 baseline = 5; // 0 (900 mV), 1 (200 mV)
         uint32 pulse_dac = 6; // 6bit dac value
         
-        // LArASIC global
+        // LArASIC channel
         uint32 leak = 7; // 0 (500 pA), 1 (100 pA)
         bool leak_10x = 8; // multiply leak by 10 if true
         bool ac_couple = 9; // false (DC coupling), true (AC coupling)
@@ -85,15 +85,9 @@ message ConfigureWIB {
 
     repeated ConfigureFEMB fembs = 1; //must supply 4
     bool cold = 2; // True if front end is COLD (77k)
+    bool pulser = 3; // True if pulser (and LArASIC sdacsw2) should be enabled
     
     //replies Status
-}
-
-//Start or stop the pulser
-message Pulser {
-    bool start = 1; // true to start, false to stop
-    
-    //replies Empty
 }
 
 /** System control commands **/
@@ -166,15 +160,97 @@ message GetSensors {
 
     //replies Sensors
     message Sensors {
-        repeated double ltc2990_4E_voltages = 1;
-        repeated double ltc2990_4C_voltages = 2;
+    
+        // 5V (before)
+        // 5V
+        // VCCPSPLL_Z_1P2V
+        // PS_DDR4_VTT
+        repeated double ltc2990_4e_voltages = 1;
+        
+        // 1.2 V (before)
+        // 1.2 V
+        // 3.3 V (before)
+        // 3.3 V
+        repeated double ltc2990_4c_voltages = 2;
+        
+        // In pairs (before,after)
+        // 0.85 V
+        // 0.9 V
+        // 2.5 V
+        // 1.8 V
         repeated double ltc2991_48_voltages = 3;
-        repeated double ad7414_49_temps = 4;
-        repeated double ad7414_4D_temps = 5;
-        repeated double ad7414_4A_temps = 6;
+        
+        // Onboard temperature sensors
+        double ad7414_49_temp = 4;
+        double ad7414_4d_temp = 5;
+        double ad7414_4a_temp = 6;
+        
+        // 0x15 LTC2499 temperature sensor inputs from LTM4644 for FEMB 0 - 3 and WIB 1 - 3
         repeated double ltc2499_15_temps = 7;
+        
+        //DC2DC (4.22V,3.0V,2.5V,1.5V) in (before,after) 0.1ohm pairs for FEMB 0
+        repeated double femb0_dc2dc_ltc2991_voltages = 8;
+        
+        //DC2DC (4.22V,3.0V,2.5V,1.5V) in (before,after) 0.1ohm pairs for FEMB 1
+        repeated double femb1_dc2dc_ltc2991_voltages = 9;
+        
+        //DC2DC (4.22V,3.0V,2.5V,1.5V) in (before,after) 0.1ohm pairs for FEMB 2
+        repeated double femb2_dc2dc_ltc2991_voltages = 10;
+        
+        //DC2DC (4.22V,3.0V,2.5V,1.5V) in (before,after) 0.1ohm pairs for FEMB 3
+        repeated double femb3_dc2dc_ltc2991_voltages = 11;
+        
+        //LDO 2.5V femb 0-3 in (before after) 0.1ohm pairs for LDO A1
+        repeated double femb_ldo_a0_ltc2991_voltages = 12;
+        
+        //LDO 2.5V femb 0-3 in (before after) 0.1ohm pairs for LDO A1
+        repeated double femb_ldo_a1_ltc2991_voltages = 13;
+        
+        //BIAS 5V femb 0-3 in (before after) 0.1ohm pairs 
+        repeated double femb_bias_ltc2991_voltages = 14;
     }
 }
+
+// reads the hardcoded firmware timestamp to verify firmware version
+message GetTimestamp {
+    
+    message Timestamp {
+        uint32 timestamp = 1;
+        uint32 day = 2;
+        uint32 month = 3;
+        uint32 year = 4;
+        uint32 hour = 5;
+        uint32 min = 6;
+        uint32 sec = 7;
+    }
+}
+
+// sets the fake time generator start value
+message SetFakeTime {
+    uint64 time = 1;
+    
+    //replies Empty
+}
+
+// starts fake time generator (subject to network latency)
+message StartFakeTime {
+    
+    //replies Empty
+}
+
+
+
+// reads the wib_server (or boot) log, optionally clearing the log
+message LogControl {
+    bool clear_log = 1; //clears log buffer
+    bool return_log = 2; //returns contents of log since last clear if true
+    bool boot_log = 3; //overrides return_log
+    
+    message Log {
+        bytes contents = 1;
+    }
+}
+
 
 /*** Generic Command Replies (not valid `cmd` options) ***/
 
