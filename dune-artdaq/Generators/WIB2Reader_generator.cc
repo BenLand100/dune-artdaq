@@ -193,11 +193,11 @@ bool WIB2Reader::getNext_(artdaq::FragmentPtrs& frags) {
         meta.offset_frames = 0; //FIXME what is this
         meta.window_frames = 0; //FIXME what is this
         std::unique_ptr<artdaq::Fragment> fragptr(
-       					    artdaq::Fragment::FragmentBytes(rep.buf0().size(),  
+       					    artdaq::Fragment::FragmentBytes(rep.buf1().size(),  
        									    ev_counter(), fragmentIDs()[1],
-       									    dune::detail::FRAME14,meta));
-        dune::DAQLogger::LogInfo(identification) << "Created fragment " << ev_counter() << " " <<fragmentIDs()[1] << " " << rep.buf0().size();
-        memcpy(fragptr->dataBeginBytes(), rep.buf0().c_str(), rep.buf0().size());
+       									    dune::detail::FragmentType::FRAME14,meta));
+        dune::DAQLogger::LogInfo(identification) << "Created fragment " << ev_counter() << " " <<fragmentIDs()[1] << " " << rep.buf1().size();
+        memcpy(fragptr->dataBeginBytes(), rep.buf1().c_str(), rep.buf1().size());
         frags.emplace_back(std::move(fragptr));
     }
     
