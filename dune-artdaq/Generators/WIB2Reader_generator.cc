@@ -167,9 +167,10 @@ bool WIB2Reader::getNext_(artdaq::FragmentPtrs& frags) {
     wib::ReadDaqSpy::DaqSpy rep;	
     send_command(req,rep);  
     {   //buf0
+        dune::frame14::frame14 const* frame = (dune::frame14::frame14 const*)(rep.buf0().c_str());
         dune::Frame14Fragment::Metadata meta;
         meta.control_word  = 0xdef; //FIXME
-        meta.version = 0; //FIXME
+        meta.version = frame->frame_version;
         meta.reordered = 0;
         meta.compressed = 0;
         meta.num_frames = rep.buf0().size() / sizeof(dune::frame14::frame14);
@@ -184,9 +185,10 @@ bool WIB2Reader::getNext_(artdaq::FragmentPtrs& frags) {
         frags.emplace_back(std::move(fragptr));
     }
     {   //buf1
+        dune::frame14::frame14 const* frame = (dune::frame14::frame14 const*)(rep.buf1().c_str());
         dune::Frame14Fragment::Metadata meta;
         meta.control_word  = 0xdef; //FIXME
-        meta.version = 0; //FIXME
+        meta.version = frame->frame_version;
         meta.reordered = 0;
         meta.compressed = 0;
         meta.num_frames = rep.buf0().size() / sizeof(dune::frame14::frame14);
