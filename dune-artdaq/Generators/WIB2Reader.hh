@@ -18,6 +18,8 @@ public:
   virtual ~WIB2Reader();
 
 private:
+  std::vector<bool> enable_FEMBs;
+
   // "start" transition
   void start() override;
   // "stop" transition

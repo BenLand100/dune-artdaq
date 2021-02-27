@@ -67,7 +67,7 @@ void WIB2Reader::setupWIB(const fhicl::ParameterSet &ps) {
  
   auto wib_address = ps.get<std::string>("WIB.config.address");
  
-  auto enable_FEMBs = ps.get<std::vector<bool> >("WIB.config.enable_FEMBs");
+  enable_FEMBs = ps.get<std::vector<bool> >("WIB.config.enable_FEMBs");
   auto FEMB_configs = ps.get<std::vector<fhicl::ParameterSet> >("WIB.config.FEMBs");
  
   if (enable_FEMBs.size() != 4)
@@ -162,11 +162,11 @@ bool WIB2Reader::getNext_(artdaq::FragmentPtrs& frags) {
   } else {
     if (should_stop()) return false;
     wib::ReadDaqSpy req;
-    req.set_buf0(true);
-    req.set_buf1(true);
+    req.set_buf0(enable_FEMBs[0] || enable_FEMBs[1]);
+    req.set_buf1(enable_FEMBs[2] || enable_FEMBs[3]);
     wib::ReadDaqSpy::DaqSpy rep;	
     send_command(req,rep);  
-    {   //buf0
+    if (enable_FEMBs[0] || enable_FEMBs[1]) {   //buf0
         dune::frame14::frame14 const* frame = (dune::frame14::frame14 const*)(rep.buf0().c_str());
         dune::Frame14Fragment::Metadata meta;
         meta.control_word  = 0xdef; //FIXME
@@ -183,8 +183,22 @@ bool WIB2Reader::getNext_(artdaq::FragmentPtrs& frags) {
         dune::DAQLogger::LogInfo(identification) << "Created fragment " << ev_counter() << " " << fragmentIDs()[0] << " " << rep.buf0().size();
         memcpy(fragptr->dataBeginBytes(), rep.buf0().c_str(), rep.buf0().size());
         frags.emplace_back(std::move(fragptr));
+    } else {
+        dune::Frame14Fragment::Metadata meta;
+        meta.control_word  = 0xdef; //FIXME
+        meta.version = 0;
+        meta.reordered = 0;
+        meta.compressed = 0;
+        meta.num_frames = 0;
+        meta.offset_frames = 0; //FIXME what is this
+        meta.window_frames = 0; //FIXME what is this
+        std::unique_ptr<artdaq::Fragment> fragptr(
+       					    artdaq::Fragment::FragmentBytes(0,  
+       									    ev_counter(), fragmentIDs()[0],
+       									    dune::detail::FragmentType::FRAME14,meta));
+        frags.emplace_back(std::move(fragptr));
     }
-    {   //buf1
+    if (enable_FEMBs[2] || enable_FEMBs[3]) {   //buf1
         dune::frame14::frame14 const* frame = (dune::frame14::frame14 const*)(rep.buf1().c_str());
         dune::Frame14Fragment::Metadata meta;
         meta.control_word  = 0xdef; //FIXME
@@ -200,6 +214,20 @@ bool WIB2Reader::getNext_(artdaq::FragmentPtrs& frags) {
        									    dune::detail::FragmentType::FRAME14,meta));
         dune::DAQLogger::LogInfo(identification) << "Created fragment " << ev_counter() << " " <<fragmentIDs()[1] << " " << rep.buf1().size();
         memcpy(fragptr->dataBeginBytes(), rep.buf1().c_str(), rep.buf1().size());
+        frags.emplace_back(std::move(fragptr));
+    } else {
+        dune::Frame14Fragment::Metadata meta;
+        meta.control_word  = 0xdef; //FIXME
+        meta.version = 0;
+        meta.reordered = 0;
+        meta.compressed = 0;
+        meta.num_frames = 0;
+        meta.offset_frames = 0; //FIXME what is this
+        meta.window_frames = 0; //FIXME what is this
+        std::unique_ptr<artdaq::Fragment> fragptr(
+       					    artdaq::Fragment::FragmentBytes(0,  
+       									    ev_counter(), fragmentIDs()[1],
+       									    dune::detail::FragmentType::FRAME14,meta));
         frags.emplace_back(std::move(fragptr));
     }
     
