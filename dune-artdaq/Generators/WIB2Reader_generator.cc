@@ -166,7 +166,7 @@ bool WIB2Reader::getNext_(artdaq::FragmentPtrs& frags) {
     req.set_buf1(enable_FEMBs[2] || enable_FEMBs[3]);
     wib::ReadDaqSpy::DaqSpy rep;	
     send_command(req,rep);  
-    if (enable_FEMBs[0] || enable_FEMBs[1]) {   //buf0
+    if (rep.success() && (enable_FEMBs[0] || enable_FEMBs[1])) {   //buf0
         dune::frame14::frame14 const* frame = (dune::frame14::frame14 const*)(rep.buf0().c_str());
         dune::Frame14Fragment::Metadata meta;
         meta.control_word  = 0xdef; //FIXME
@@ -198,7 +198,7 @@ bool WIB2Reader::getNext_(artdaq::FragmentPtrs& frags) {
        									    dune::detail::FragmentType::FRAME14,meta));
         frags.emplace_back(std::move(fragptr));
     }
-    if (enable_FEMBs[2] || enable_FEMBs[3]) {   //buf1
+    if (rep.success() && (enable_FEMBs[2] || enable_FEMBs[3])) {   //buf1
         dune::frame14::frame14 const* frame = (dune::frame14::frame14 const*)(rep.buf1().c_str());
         dune::Frame14Fragment::Metadata meta;
         meta.control_word  = 0xdef; //FIXME
