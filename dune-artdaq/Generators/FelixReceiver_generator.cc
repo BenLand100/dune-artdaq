@@ -47,9 +47,9 @@ dune::FelixReceiver::FelixReceiver(fhicl::ParameterSet const & ps)
     flx_frag_ids_ = fragmentIDs();
   } else { // Fallback to publisher mode.
     onhost = false;
-    netio_hardware_interface_ = std::unique_ptr<FelixHardwareInterface>( new FelixHardwareInterface(ps) );
-    message_size_ = netio_hardware_interface_->MessageSize();
-    trigger_window_size_ = netio_hardware_interface_->TriggerWindowSize();
+    //netio_hardware_interface_ = std::unique_ptr<FelixHardwareInterface>( new FelixHardwareInterface(ps) );
+    //message_size_ = netio_hardware_interface_->MessageSize();
+    //trigger_window_size_ = netio_hardware_interface_->TriggerWindowSize();
   }
 
   /* ADDITIONAL METADATA IF NEEDED */
@@ -80,9 +80,9 @@ bool dune::FelixReceiver::getNext_(artdaq::FragmentPtrs & frags) {
       auto tdelta = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now() - t1);
       DAQLogger::LogInfo("dune::FelixReceiver::getNext_") << " TRIGGER MATCHING TOOK " << tdelta.count() << " us";
     } else {
-      while ( netio_hardware_interface_->Busy() ) {
-        std::this_thread::sleep_for(std::chrono::microseconds(50));
-      }
+      //while ( netio_hardware_interface_->Busy() ) {
+      //  std::this_thread::sleep_for(std::chrono::microseconds(50));
+      //}
     }
     DAQLogger::LogInfo("dune::FelixReceiver::getNext_") << "No more busy links, returning...";
     return false;
@@ -121,11 +121,11 @@ bool dune::FelixReceiver::getNext_(artdaq::FragmentPtrs & frags) {
                                         fragment_type_hits_, metadata_hits_, timestamp_)
         );
 
-      bool done = false;
-      while ( !done ){
-        done = netio_hardware_interface_->FillFragment( fragptr, fragptrhits );
-        if (should_stop()) { return true; } // interrupt data capture and return; at next getNext stopping will be done
-      }
+      //bool done = false;
+      //while ( !done ){
+      //  done = netio_hardware_interface_->FillFragment( fragptr, fragptrhits );
+      //  if (should_stop()) { return true; } // interrupt data capture and return; at next getNext stopping will be done
+      //}
       frags.emplace_back( std::move(fragptr) );
       frags.emplace_back( std::move(fragptrhits) );
       num_frags_m_ += 2;
@@ -143,7 +143,7 @@ void dune::FelixReceiver::start() {
   if (op_mode_ == "onhost") {
     flx_hardware_interface_->StartDatataking();
   } else {
-    netio_hardware_interface_->StartDatataking();
+    //netio_hardware_interface_->StartDatataking();
   }
 }
 
@@ -153,7 +153,7 @@ void dune::FelixReceiver::stop() {
     if (op_mode_ == "onhost") {
       flx_hardware_interface_->StopDatataking();
     } else {
-      netio_hardware_interface_->StopDatataking();
+      //netio_hardware_interface_->StopDatataking();
     }
   }
 }

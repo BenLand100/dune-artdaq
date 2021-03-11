@@ -14,14 +14,10 @@ include_directories( SYSTEM $ENV{ICP_ROOT}/qatzip2/qatzip/include )
 # on np04-srv-019, as suggested at https://stackoverflow.com/questions/5470257
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=native -mno-avx512f -mno-avx512er -mno-avx512cd -mno-avx512pf -mno-avx512dq -mno-avx512bw -mno-avx512vl -mno-avx512ifma -mno-avx512vbmi -mtune=native")
 
-
-#MESSAGE(INFO "FELIX-DEPS INC: " $ENV{FELIX_DEPS_INC})
-#MESSAGE(INFO "FELIX-DEPS LIB: " $ENV{FELIX_DEPS_LIB})
-#include_directories( SYSTEM $ENV{FELIX_DEPS_INC})
-
-MESSAGE(INFO " PROTODUNE_FELIX_DEPS_LIB: " $ENV{PROTODUNE_FELIX_DEPS_LIB})
-MESSAGE(INFO " PROTODUNE_FELIX_DEPS_INC: " ${PROTODUNE_FELIX_DEPS_INC})
-include_directories( ${PROTODUNE_FELIX_DEPS_INC} )
+MESSAGE(INFO " FELIX_LIB: " $ENV{FELIX_LIB})
+MESSAGE(INFO " FELIX_INC: " ${FELIX_INC})
+#include_directories( ${PROTODUNE_FELIX_DEPS_INC} )
+include_directories( ${FELIX_INC} )
 
 message(STATUS "ZMQLIBS == ${ZMQLIBS}")
 message(STATUS "LIBZMQ == ${LIBZMQ}")
@@ -73,18 +69,20 @@ else()
         dune-artdaq_DAQLogger
 	dune-raw-data_Overlays
         dune-artdaq_Generators_Felix_TriggerPrimitive
-        ${netio_LIBRARY_DIR}/libnetio.so
-        ${netio_LIBRARY_DIR}/libfabric.so
-        $ENV{ICP_ROOT}/qatzip2/qatzip/src/libqatzip.so
-        $ENV{ICP_ROOT}/build/libqat_s.so
-        $ENV{ICP_ROOT}/build/libusdm_drv_s.so
+        #${netio_LIBRARY_DIR}/libnetio.so
+        #${netio_LIBRARY_DIR}/libfabric.so
+        #$ENV{ICP_ROOT}/qatzip2/qatzip/src/libqatzip.so
+        #$ENV{ICP_ROOT}/build/libqat_s.so
+        #$ENV{ICP_ROOT}/build/libusdm_drv_s.so
 
         # FELIX deps
-        $ENV{PROTODUNE_FELIX_DEPS_LIB}/libpacketformat.so
-        $ENV{PROTODUNE_FELIX_DEPS_LIB}/libFlxCard.so
-        $ENV{PROTODUNE_FELIX_DEPS_LIB}/libdrivers_rcc.so
-        $ENV{PROTODUNE_FELIX_DEPS_LIB}/libcmem_rcc.so
-        $ENV{PROTODUNE_FELIX_DEPS_LIB}/librcc_error.so
+
+#	$ENV{PROTODUNE_FELIX_DEPS_LIB}/libpacketformat.so
+        $ENV{FELIX_LIB}/libpacketformat.so
+        $ENV{FELIX_LIB}/libFlxCard.so
+        $ENV{FELIX_LIB}/libdrivers_rcc.so
+        $ENV{FELIX_LIB}/libcmem_rcc.so
+        $ENV{FELIX_LIB}/librcc_error.so
         # FELIX deps
 
         pthread

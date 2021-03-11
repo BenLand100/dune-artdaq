@@ -100,7 +100,8 @@ find_ups_product( protodune_timing )
 find_ups_product( zmq v4_3_1)
 find_ups_product( czmq v4_2_0)
 find_ups_product( protobuf v3_3_1a)
-find_ups_product( protodune_felix_deps v0_0_1 )
+#find_ups_product( protodune_felix_deps v0_0_1 )
+find_ups_product( felix v1_1_1 )
 
 
 set(netio_INCLUDE_DIR $ENV{NETIO_INC})

@@ -135,7 +135,7 @@ FelixOnHostInterface::FelixOnHostInterface(fhicl::ParameterSet const& ps) :
   m_reorderFacility = std::make_unique<ReorderFacility>(false); // forceNoAVX = false
   // Reordering
   if (reordering_) { // from config
-    m_compressionFacility = std::make_unique<QzCompressor>(QzCompressor::QzAlgo::Deflate, 4, 64);
+    //m_compressionFacility = std::make_unique<QzCompressor>(QzCompressor::QzAlgo::Deflate, 4, 64);
     fragment_meta_.reordered = 1;
   } else {
     fragment_meta_.reordered = 0;
@@ -145,17 +145,17 @@ FelixOnHostInterface::FelixOnHostInterface(fhicl::ParameterSet const& ps) :
   RecalculateFragmentSizes();
 
   // QAT compression
-  if (compression_) {
-    int ret = m_compressionFacility->init(m_timeWindowByteSizeOut, -1); // engine
-    DAQLogger::LogInfo("dune::FelixOnHostInterface::FelixOnHostInterface")
-      << "Init QAT: " << ret;
-    if (ret==0){
-      fragment_meta_.compressed = 1;
-    } else {
+  //if (compression_) {
+    //int ret = m_compressionFacility->init(m_timeWindowByteSizeOut, -1); // engine
+    //DAQLogger::LogInfo("dune::FelixOnHostInterface::FelixOnHostInterface")
+    //  << "Init QAT: " << ret;
+    //if (ret==0){
+    //  fragment_meta_.compressed = 1;
+    //} else {
       compression_ = false;
       fragment_meta_.compressed = 0;
-    }
-  }
+    //}
+  //}
 
 
   // metadata settings
@@ -190,7 +190,7 @@ FelixOnHostInterface::~FelixOnHostInterface(){
     << "Destructing FelixOnHostInterface. Joining request thread.";
 // RS2019 -> Adding unsub func! Probably this is at a VERY VERY WRONG PLACE.
 
-  m_compressionFacility->shutdown();
+  //m_compressionFacility->shutdown();
 
 /*
   nioh_.stopSubscribers();
@@ -465,8 +465,8 @@ bool FelixOnHostInterface::SetupTriggerMatchers(){
       }
 
       if (compression_) {
-        uint_fast32_t compSize = m_compressionFacility->do_compress(frag_ptrs_[tid], fragSize);
-        DAQLogger::LogInfo("FelixOnHostInterface::TriggerMatcher") << "[" << tid << "] Compressed size: " << compSize;
+        //uint_fast32_t compSize = m_compressionFacility->do_compress(frag_ptrs_[tid], fragSize);
+        //DAQLogger::LogInfo("FelixOnHostInterface::TriggerMatcher") << "[" << tid << "] Compressed size: " << compSize;
       } else {
         if (reordering_) {
           frag_ptrs_[tid]->resizeBytes(fragSize);

@@ -26,7 +26,7 @@
 #include "dune-raw-data/Overlays/CPUHitsFragment.hh"
 #include "dune-raw-data/Overlays/FragmentType.hh"
 
-#include "Felix/FelixHardwareInterface.hh"
+//#include "Felix/FelixHardwareInterface.hh"
 #include "Felix/FelixOnHostInterface.hh"
 
 #include <random>
@@ -68,7 +68,7 @@ namespace dune {
     std::unique_ptr<FelixOnHostInterface> flx_hardware_interface_;
 
     // Configurable HWInterface. Can take care of multiple links.
-    std::unique_ptr<FelixHardwareInterface> netio_hardware_interface_;
+    //std::unique_ptr<FelixHardwareInterface> netio_hardware_interface_;
     // Exposed infos from HWInterace to pre-allocate ArtDAQ fragment with correct size.
     unsigned message_size_;
     unsigned trigger_window_size_;

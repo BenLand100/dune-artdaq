@@ -6,9 +6,10 @@
 #include "artdaq/DAQrate/RequestReceiver.hh"
 #include "fhiclcpp/fwd.h"
 
-#include "NetioHandler.hh"
+//#include "NetioHandler.hh"
 #include "QueueHandler.hh"
 #include "RequestReceiver.hh"
+#include "ReorderFacility.hh"
 
 #include "dune-artdaq/Generators/Felix/FelixProtoduneReader.hpp"
 
@@ -144,7 +145,7 @@ private:
 
   // Reordering & Compression
   std::unique_ptr<ReorderFacility> m_reorderFacility;
-  std::unique_ptr<QzCompressor> m_compressionFacility;
+//  std::unique_ptr<QzCompressor> m_compressionFacility;
 
   std::size_t usecs_between_sends_;
   

@@ -31,7 +31,9 @@ simple_plugin(SSP "generator"
   )
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-unused-but-set-variable -Wno-unused-parameter -Wno-pointer-arith")
+
 include_directories($ENV{PROTODUNE_FELIX_DEPS_INC})
+#include_directories($ENV{FELIX_INC})
 
 
 add_subdirectory(Felix)

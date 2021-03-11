@@ -3,18 +3,18 @@
 #include "flxcard/FlxCard.h"
 #include "flxcard/FlxException.h"
 #include "cmem.hpp"
-#include "circular_dma.hpp"
 
 #include "dune-artdaq/Generators/Felix/CPUPin.hpp"
 
 #include "dune-artdaq/Generators/Felix/QueueHandler.hh"
-#include "dune-artdaq/Generators/Felix/NetioHandler.hh"
+//#include "dune-artdaq/Generators/Felix/NetioHandler.hh"
 
 #include "ProducerConsumerQueue.hh"
 
-#include "netio/netio.hpp"
+//#include "netio/netio.hpp"
 
 #include <iomanip>
+#include <stdexcept>
 
 //#include <boost/lockfree/spsc_queue.hpp>
 
@@ -142,7 +142,7 @@ struct ProtoDuneParserOps : public felix::packetformat::ParserOperations
   std::unique_ptr<folly::ProducerConsumerQueue<SUPERCHUNK_CHAR_STRUCT>>& m_pcq;
 
 #ifdef TAGPUBLISHER
-  std::unique_ptr<netio::tag_publisher> m_tagPub;
+  //std::unique_ptr<netio::tag_publisher> m_tagPub;
 #endif
 #ifdef IOVEC
   iovec* m_vec[IOVEC_QUEUE];
@@ -419,9 +419,9 @@ struct ProtoDuneParserOps : public felix::packetformat::ParserOperations
       flush_iovec();
     }
 #elif defined(TAGPUBLISHER)
-    netio::message msg((uint8_t**)chunk.subchunks(), chunk.subchunk_lengths(), chunk.subchunk_number());
-    SUPERCHUNK_CHAR_STRUCT superchunk;
-    msg.serialize_to_usr_buffer((void*)&superchunk);    
+    //netio::message msg((uint8_t**)chunk.subchunks(), chunk.subchunk_lengths(), chunk.subchunk_number());
+    //SUPERCHUNK_CHAR_STRUCT superchunk;
+    //msg.serialize_to_usr_buffer((void*)&superchunk);    
     //m_tagPub->publish(msg);
 #elif defined(DUMP_SUPCHUNKS) //DUMP_SUPCHUNKS
     SUPERCHUNK_CHAR_STRUCT superchunk;
@@ -436,10 +436,10 @@ struct ProtoDuneParserOps : public felix::packetformat::ParserOperations
       }
     m_pcq->write( std::move(superchunk) );
 #else
-    netio::message msg((uint8_t**)chunk.subchunks(), chunk.subchunk_lengths(), chunk.subchunk_number());
-    SUPERCHUNK_CHAR_STRUCT superchunk;
-    msg.serialize_to_usr_buffer((void*)&superchunk);
-    m_pcq->write( std::move(superchunk) ); 
+    //netio::message msg((uint8_t**)chunk.subchunks(), chunk.subchunk_lengths(), chunk.subchunk_number());
+    //SUPERCHUNK_CHAR_STRUCT superchunk;
+    //msg.serialize_to_usr_buffer((void*)&superchunk);
+    //m_pcq->write( std::move(superchunk) ); 
 //    m_pub->publish(0, msg);
 #endif
     log_packet(false);
@@ -460,8 +460,8 @@ struct ProtoDuneParserOps : public felix::packetformat::ParserOperations
       flush_iovec();
     }
 #elif defined(TAGPUBLISHER)
-    netio::message msg((uint8_t*)chunk.data, chunk.length);
-    m_tagPub->publish(msg);
+    //netio::message msg((uint8_t*)chunk.data, chunk.length);
+    //m_tagPub->publish(msg);
 #else
     //netio::message msg((uint8_t*)chunk.data, chunk.length);
     std::cout << " SHORTCHUNK IS NOT HANDLED AND IT SHOULD NOT HAPPEN YAY! \n";
@@ -490,6 +490,7 @@ struct ProtoDuneParserOps : public felix::packetformat::ParserOperations
   {
     //    std::cout << " SUBCHUNK_ERROR: " << subchunktrailer_to_hex(subchunk) << '\n';
     std::cout << " SUBCHUNK_ERROR (JCF, Sep-28-2020: due to changed protodune_felix_deps product, unable to print contents used for diagnostic purposes)" << 'n';
+    //    throw std::runtime_error("JCF, Mar-8-2021: attempting to capture the call stack");
     m_error_subchunk_ctr++;
   }
 
@@ -536,7 +537,7 @@ public:
     m_parser(m_parser_ops),
     m_queue(6000000)
   {
-
+    m_parser.configure(4096, true);
     unsigned id = link;
     std::thread statistics([this, id]()
     {
