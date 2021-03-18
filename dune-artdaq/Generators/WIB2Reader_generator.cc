@@ -274,6 +274,10 @@ bool WIB2Reader::acquireAsyncData(artdaq::FragmentPtrs& frags) {
   wib::ReadDaqSpy req;
   req.set_buf0(enable_FEMBs[0] || enable_FEMBs[1]);
   req.set_buf1(enable_FEMBs[2] || enable_FEMBs[3]);
+  //trigger_command should probably be 0, but allow triggers without a timing component ("Sync")
+  req.set_trigger_command(trigger_command);
+  req.set_trigger_rec_ticks(trigger_rec_ticks);
+  req.set_trigger_timeout_ms(trigger_timeout_ms);
   wib::ReadDaqSpy::DaqSpy rep;	
   send_command(req,rep);  
   if (rep.success() && (enable_FEMBs[0] || enable_FEMBs[1])) {   //buf0
