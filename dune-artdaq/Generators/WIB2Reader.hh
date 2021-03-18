@@ -6,7 +6,8 @@
 #include "artdaq-core/Data/Fragment.hh"
 #include "artdaq/Generators/CommandableFragmentGenerator.hh"
 
-#include "RequestReceiver.hh"
+#include "dune-artdaq/Generators/wib2/wib.pb.h"
+#include "Felix/RequestReceiver.hh"
 
 namespace wib2daq {
 
@@ -25,7 +26,11 @@ private:
   void start() override;
   // "stop" transition
   void stop() override;
+  
+  bool acquireAsyncData(artdaq::FragmentPtrs& frags);
+  void acquireSyncData(artdaq::FragmentPtrs& frags);
   bool getNext_(artdaq::FragmentPtrs& output) override;
+  
   void stopNoMutex() override {}
 
   void setupWIB(const fhicl::ParameterSet &WIB_config);

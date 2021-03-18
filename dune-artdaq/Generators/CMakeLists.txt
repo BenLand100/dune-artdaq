@@ -210,6 +210,7 @@ add_subdirectory(wib2)
 simple_plugin(WIB2Reader "generator"
 	artdaq_Generators
 	dune-artdaq_DAQLogger
+	dune-artdaq_Generators_Felix #for the RequestReceiver
 	${CETLIB_EXCEPT}
 	${CETLIB}
 	${FHICLCPP}
