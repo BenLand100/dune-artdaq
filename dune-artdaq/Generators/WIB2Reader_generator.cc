@@ -59,8 +59,8 @@ void WIB2Reader::setupWIB(const fhicl::ParameterSet &ps) {
   
   spy_buffer_readout = ps.get<bool>("WIB.config.spy_buffer_readout");
   trigger_command = ps.get<uint8_t>("WIB.config.trigger_command");
-  trigger_rec_ticks = ps.get<uint8_t>("WIB.config.trigger_rec_ticks");
-  trigger_timeout_ms = ps.get<uint8_t>("WIB.config.trigger_timeout_ms");
+  trigger_rec_ticks = ps.get<uint32_t>("WIB.config.trigger_rec_ticks");
+  trigger_timeout_ms = ps.get<uint32_t>("WIB.config.trigger_timeout_ms");
   auto timing_address = ps.get<std::string>("WIB.config.timing_address");
   if (timing_address.length() > 0) {
     request_receiver = std::make_unique<RequestReceiver>(timing_address);
