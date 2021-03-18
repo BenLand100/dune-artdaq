@@ -60,6 +60,13 @@ void WIB2Reader::setupWIB(const fhicl::ParameterSet &ps) {
   const std::string identification = "wibdaq::WIB2Reader::setupWIB";
   
   spy_buffer_readout = ps.get<bool>("WIB.config.spy_buffer_readout");
+  trigger_command = ps.get<uint8_t>("WIB.config.trigger_command");
+  trigger_rec_ticks = ps.get<uint8_t>("WIB.config.trigger_rec_ticks");
+  trigger_timeout_ms = ps.get<uint8_t>("WIB.config.trigger_timeout_ms");
+  auto timing_address = ps.get<std::string>("WIB.config.timing_address");
+  if (timing_address.length() > 0) {
+    request_receiver = std::make_unique<RequestReceiver>(requester_address_);
+  }
   ignore_config_failures = ps.get<bool>("WIB.config.ignore_config_failures");
   ignore_daq_failures = ps.get<bool>("WIB.config.ignore_daq_failures");
   enable_pulser = ps.get<bool>("WIB.config.enable_pulser");
@@ -146,11 +153,147 @@ WIB2Reader::~WIB2Reader() {
 // "start" transition
 void WIB2Reader::start() {
   const std::string identification = "wibdaq::WIB2Reader::start";
+  if (request_receiver) request_receiver->start();
 }
 
 // "stop" transition
 void WIB2Reader::stop() {
   const std::string identification = "wibdaq::WIB2Reader::stop";
+  if (request_receiver) request_receiver->stop();
+}
+
+int cmp_buf_to_ts(const char *buf, size_t size, uint64_t ts) {
+  dune::frame14::frame14 const* frame = (dune::frame14::frame14 const*)buf;
+  const size_t n = size / sizeof(dune::frame14::frame14);
+  const uint64_t start = frame[0].timestamp;
+  const uint64_t end = frame[n-1].timestamp;
+  if (ts <= end && ts >= start) {
+    return 0; // buf contains ts
+  } else if (ts < start) {
+    return -1; // buf is before ts
+  } else {
+    return 1; // buf is after ts
+  }
+}
+
+const std::unique_ptr<artdaq::Fragment> buf_to_frag(const char *buf, size_t size, int frag_id, int ev_id) {
+  dune::frame14::frame14 const* frame = (dune::frame14::frame14 const*)buf;
+  dune::Frame14Fragment::Metadata meta;
+  meta.control_word  = 0xdef; //FIXME
+  meta.version = frame->frame_version; // all versions have this in the same place
+  meta.reordered = 0;
+  meta.compressed = 0;
+  meta.num_frames = size / sizeof(dune::frame14::frame14);
+  meta.offset_frames = 0; //FIXME what is this
+  meta.window_frames = 0; //FIXME what is this
+  std::unique_ptr<artdaq::Fragment> fragptr(
+ 					    artdaq::Fragment::FragmentBytes(size, ev_id, frag_id],
+ 									    dune::detail::FragmentType::FRAME14,meta));
+  memcpy(fragptr->dataBeginBytes(), buf, size);
+  return fragptr;
+}
+
+const std::unique_ptr<artdaq::Fragment> empty_frag(int frag_id, int ev_id) {
+  dune::Frame14Fragment::Metadata meta;
+  meta.control_word  = 0xdef; //FIXME
+  meta.version = 0;
+  meta.reordered = 0;
+  meta.compressed = 0;
+  meta.num_frames = 0;
+  meta.offset_frames = 0; //FIXME what is this
+  meta.window_frames = 0; //FIXME what is this
+  std::unique_ptr<artdaq::Fragment> fragptr(
+ 					    artdaq::Fragment::FragmentBytes(0, ev_id, frag_id,
+ 									    dune::detail::FragmentType::FRAME14,meta));
+  return fragptr;
+}
+
+int cmp_spydaq_to_ts(std::unique_ptr<wib::ReadDaqSpy::DaqSpy> last_data, uint64_t ts) {
+  return (enable_FEMBs[0] || enable_FEMBs[1]) ? 
+              cmp_buf_to_ts(last_data->buf0(),last_data->buf0().size(),ts) : 
+              cmp_buf_to_ts(last_data->buf1(),last_data->buf1().size(),ts) ;
+}
+
+void WIB2Reader::acquireSyncData(artdaq::FragmentPtrs& frags) {
+  if (!last_trigger) {
+    TriggerInfo request = request_receiver_->getNextRequest();
+    last_trigger = std::make_unique(request);
+    dune::DAQLogger::LogInfo(identification) << "Received request " << last_trigger->seqID " at timestamp " << last_trigger->timestamp;
+  }
+  if (!last_data) {
+    wib::ReadDaqSpy req;
+    req.set_buf0(enable_FEMBs[0] || enable_FEMBs[1]);
+    req.set_buf1(enable_FEMBs[2] || enable_FEMBs[3]);
+    req.set_trigger_command(trigger_command);
+    req.set_trigger_rec_ticks(trigger_rec_ticks);
+    req.set_trigger_timeout_ms(trigger_timeout_ms);
+    wib::ReadDaqSpy::DaqSpy rep;	
+    send_command(req,rep);  
+    if (rep.success()) {
+      last_data = std::make_unique(rep);
+      dune::DAQLogger::LogInfo(identification) << "Acquired data from WIB";
+    } else {
+      dune::DAQLogger::LogInfo(identification) << "Acquisition from WIB failed";
+      return; // try again next time
+    }
+  }
+  
+  const uint64_t req_ts = last_trigger->timestamp;
+  const uint64_t req_id = last_trigger->seqID;
+  const int cmp = cmp_spydaq_to_ts(last_data,req_ts)
+  if (cmp == 0) { // trigger is in this data window
+    if (enable_FEMBs[0] || enable_FEMBs[1]) {   //buf0
+      const std::unique_ptr<artdaq::Fragment> fragptr = buf2frag(last_data->buf0().c_str(),last_data->buf0.size(),fragmentIDs()[0],ereq_id);
+      dune::DAQLogger::LogInfo(identification) << "Created fragment " << req_id << " " <<fragmentIDs()[0] << " " << last_data->buf0().size();
+      frags.emplace_back(std::move(fragptr));
+    } else {
+      const std::unique_ptr<artdaq::Fragment> fragptr = empty_frag(fragmentIDs()[0],req_id);
+      frags.emplace_back(std::move(fragptr));
+    }
+    if (enable_FEMBs[2] || enable_FEMBs[3]) {   //buf1
+      const std::unique_ptr<artdaq::Fragment> fragptr = buf2frag(last_data->buf1().c_str(),last_data->buf1.size(),fragmentIDs()[1],req_id);
+      dune::DAQLogger::LogInfo(identification) << "Created fragment " << req_id << " " <<fragmentIDs()[1] << " " << last_data->buf1().size();
+      frags.emplace_back(std::move(fragptr));
+    } else {
+      const std::unique_ptr<artdaq::Fragment> fragptr = empty_frag(fragmentIDs()[1],req_id);
+      frags.emplace_back(std::move(fragptr));
+    }
+    last_data = nullptr;
+    last_trigger = nullptr;
+  } else if (cmp < 0) { // trigger is in the future
+    dune::DAQLogger::LogInfo(identification) << "Discarding stale data";
+    last_data = nullptr; // throw away the stale data
+  } else { // trigger is in the past
+    dune::DAQLogger::LogInfo(identification) << "Discarding stale trigger";
+    last_trigger = nullptr; // throw away the stale trigger
+  } 
+}
+
+
+bool WIB2Reader::acquireAsyncData(artdaq::FragmentPtrs& frags) {
+  wib::ReadDaqSpy req;
+  req.set_buf0(enable_FEMBs[0] || enable_FEMBs[1]);
+  req.set_buf1(enable_FEMBs[2] || enable_FEMBs[3]);
+  wib::ReadDaqSpy::DaqSpy rep;	
+  send_command(req,rep);  
+  if (rep.success() && (enable_FEMBs[0] || enable_FEMBs[1])) {   //buf0
+    const std::unique_ptr<artdaq::Fragment> fragptr = buf2frag(rep.buf0().c_str(),rep.buf0.size(),fragmentIDs()[0],ev_counter());
+    dune::DAQLogger::LogInfo(identification) << "Created fragment " << ev_counter() << " " <<fragmentIDs()[0] << " " << rep.buf0().size();
+    frags.emplace_back(std::move(fragptr));
+  } else {
+    const std::unique_ptr<artdaq::Fragment> fragptr = empty_frag(fragmentIDs()[0],ev_counter());
+    frags.emplace_back(std::move(fragptr));
+  }
+  if (rep.success() && (enable_FEMBs[2] || enable_FEMBs[3])) {   //buf1
+    const std::unique_ptr<artdaq::Fragment> fragptr = buf2frag(rep.buf1().c_str(),rep.buf1.size(),fragmentIDs()[1],ev_counter());
+    dune::DAQLogger::LogInfo(identification) << "Created fragment " << ev_counter() << " " <<fragmentIDs()[1] << " " << rep.buf1().size();
+    frags.emplace_back(std::move(fragptr));
+  } else {
+    const std::unique_ptr<artdaq::Fragment> fragptr = empty_frag(fragmentIDs()[1],ev_counter());
+    frags.emplace_back(std::move(fragptr));
+  }
+  ev_counter_inc(); 
+  return rep.success()
 }
 
 // Called by BoardReaderMain in a loop between "start" and "stop"
@@ -158,81 +301,15 @@ bool WIB2Reader::getNext_(artdaq::FragmentPtrs& frags) {
   const std::string identification = "wibdaq::WIB2Reader::getNext_";
   if (!spy_buffer_readout) {
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
-	return (! should_stop());
+    return (! should_stop());
+  } else if (request_receiver) {
+    if (should_stop()) return false;
+    acquireSyncData(frags);
+    return true;
   } else {
     if (should_stop()) return false;
-    wib::ReadDaqSpy req;
-    req.set_buf0(enable_FEMBs[0] || enable_FEMBs[1]);
-    req.set_buf1(enable_FEMBs[2] || enable_FEMBs[3]);
-    wib::ReadDaqSpy::DaqSpy rep;	
-    send_command(req,rep);  
-    if (rep.success() && (enable_FEMBs[0] || enable_FEMBs[1])) {   //buf0
-        dune::frame14::frame14 const* frame = (dune::frame14::frame14 const*)(rep.buf0().c_str());
-        dune::Frame14Fragment::Metadata meta;
-        meta.control_word  = 0xdef; //FIXME
-        meta.version = frame->frame_version;
-        meta.reordered = 0;
-        meta.compressed = 0;
-        meta.num_frames = rep.buf0().size() / sizeof(dune::frame14::frame14);
-        meta.offset_frames = 0; //FIXME what is this
-        meta.window_frames = 0; //FIXME what is this
-        std::unique_ptr<artdaq::Fragment> fragptr(
-       					    artdaq::Fragment::FragmentBytes(rep.buf0().size(),  
-       									    ev_counter(), fragmentIDs()[0],
-       									    dune::detail::FragmentType::FRAME14,meta));
-        dune::DAQLogger::LogInfo(identification) << "Created fragment " << ev_counter() << " " << fragmentIDs()[0] << " " << rep.buf0().size();
-        memcpy(fragptr->dataBeginBytes(), rep.buf0().c_str(), rep.buf0().size());
-        frags.emplace_back(std::move(fragptr));
-    } else {
-        dune::Frame14Fragment::Metadata meta;
-        meta.control_word  = 0xdef; //FIXME
-        meta.version = 0;
-        meta.reordered = 0;
-        meta.compressed = 0;
-        meta.num_frames = 0;
-        meta.offset_frames = 0; //FIXME what is this
-        meta.window_frames = 0; //FIXME what is this
-        std::unique_ptr<artdaq::Fragment> fragptr(
-       					    artdaq::Fragment::FragmentBytes(0,  
-       									    ev_counter(), fragmentIDs()[0],
-       									    dune::detail::FragmentType::FRAME14,meta));
-        frags.emplace_back(std::move(fragptr));
-    }
-    if (rep.success() && (enable_FEMBs[2] || enable_FEMBs[3])) {   //buf1
-        dune::frame14::frame14 const* frame = (dune::frame14::frame14 const*)(rep.buf1().c_str());
-        dune::Frame14Fragment::Metadata meta;
-        meta.control_word  = 0xdef; //FIXME
-        meta.version = frame->frame_version;
-        meta.reordered = 0;
-        meta.compressed = 0;
-        meta.num_frames = rep.buf0().size() / sizeof(dune::frame14::frame14);
-        meta.offset_frames = 0; //FIXME what is this
-        meta.window_frames = 0; //FIXME what is this
-        std::unique_ptr<artdaq::Fragment> fragptr(
-       					    artdaq::Fragment::FragmentBytes(rep.buf1().size(),  
-       									    ev_counter(), fragmentIDs()[1],
-       									    dune::detail::FragmentType::FRAME14,meta));
-        dune::DAQLogger::LogInfo(identification) << "Created fragment " << ev_counter() << " " <<fragmentIDs()[1] << " " << rep.buf1().size();
-        memcpy(fragptr->dataBeginBytes(), rep.buf1().c_str(), rep.buf1().size());
-        frags.emplace_back(std::move(fragptr));
-    } else {
-        dune::Frame14Fragment::Metadata meta;
-        meta.control_word  = 0xdef; //FIXME
-        meta.version = 0;
-        meta.reordered = 0;
-        meta.compressed = 0;
-        meta.num_frames = 0;
-        meta.offset_frames = 0; //FIXME what is this
-        meta.window_frames = 0; //FIXME what is this
-        std::unique_ptr<artdaq::Fragment> fragptr(
-       					    artdaq::Fragment::FragmentBytes(0,  
-       									    ev_counter(), fragmentIDs()[1],
-       									    dune::detail::FragmentType::FRAME14,meta));
-        frags.emplace_back(std::move(fragptr));
-    }
-    
-    ev_counter_inc(); 
-    return ignore_daq_failures || rep.success();
+    bool success = acquireAsyncData(frags);
+    return ignore_daq_failures || success;
   }
 }
 

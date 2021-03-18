@@ -4,6 +4,8 @@ BEGIN_PROLOG
 #
 femb_config_default: {
 
+# NOTE: comments are for revision 2 LArASIC datasheet
+
 # LArASIC channel conf
 test_cap: false     # test capacitor enabled
 gain: 0             # 14, 25, 7.8, 4.7 mV/fC (0 - 3)
@@ -37,11 +39,25 @@ wib_config: {
 # Whether to enable spy buffer readout
 spy_buffer_readout: false
 
+# TLU command to trigger on, or 0 for asynchronous software trigger
+trigger_command: 0 
+
+# If using TLU trigger, record this many 4.15834 ns ticks after trigger
+trigger_rec_ticks: 180360
+
+# Maximum time to wait for a trigger before returning no trigger in ms
+trigger_timeout_ms: 60000
+
+# If empty, generate fragments for every acquisiton. 
+# If non-empty, read TriggerInfo from this zmq socket, and emit fragments for triggers
+# May need to set request_mode to "window" for this to work
+timing_address: ""
+  
 # Ignore failures to configure the WIB/FEMB
-ignore_config_failures: true
+ignore_config_failures: false
 
 # Don't let spy buffer errors stop readout
-ignore_daq_failures: true
+ignore_daq_failures: false
 
 # WIB network address string
 address: "" # proto, (IP address or DNS address), and port as "proto://addr:port"

@@ -6,6 +6,7 @@
 #include "artdaq-core/Data/Fragment.hh"
 #include "artdaq/Generators/CommandableFragmentGenerator.hh"
 
+#include "RequestReceiver.hh"
 
 namespace wib2daq {
 
@@ -33,7 +34,15 @@ private:
   void send_command(const C &msg, R &repl); 
   
   bool run_script(std::string name);
-
+  
+  uint8_t trigger_command = 0; //TLU command code
+  uint32_t trigger_rec_ticks = 0; //4.15834 ns ticks (18 bit max)
+  uint32_t trigger_timeout_ms = 0; //Maximum number of ms to wait for trigger (32 bit max)
+  std::unique_ptr<RequestReceiver> request_receiver = nullptr;
+  std::unique_ptr<TriggerInfo> last_trigger = nullptr;
+  std::unique_ptr<wib::ReadDaqSpy::DaqSpy> last_data = nullptr;
+  
+  
   zmq::context_t *context = NULL;
   zmq::socket_t *socket = NULL;
   bool spy_buffer_readout = false;
