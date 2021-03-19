@@ -165,12 +165,13 @@ int cmp_buf_to_ts(const char *buf, size_t size, uint64_t ts) {
   const size_t n = size / sizeof(dune::frame14::frame14);
   const uint64_t start = frame[0].timestamp;
   const uint64_t end = frame[n-1].timestamp;
+  dune::DAQLogger::LogInfo("cmp_buf_to_ts") << "ts: " << ts << " start: " << start << " end: " << end;
   if (ts <= end && ts >= start) {
     return 0; // buf contains ts
   } else if (ts < start) {
-    return -1; // buf is before ts
+    return -1; // ts is before buf
   } else {
-    return 1; // buf is after ts
+    return 1; // ts is after buf
   }
 }
 
@@ -259,7 +260,7 @@ void WIB2Reader::acquireSyncData(artdaq::FragmentPtrs& frags) {
     }
     last_data = nullptr;
     last_trigger = nullptr;
-  } else if (cmp < 0) { // trigger is in the future
+  } else if (cmp > 0) { // trigger is in the future
     dune::DAQLogger::LogInfo(identification) << "Discarding stale data";
     last_data = nullptr; // throw away the stale data
   } else { // trigger is in the past
