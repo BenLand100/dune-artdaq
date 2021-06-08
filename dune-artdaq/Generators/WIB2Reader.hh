@@ -34,6 +34,8 @@ private:
   void stopNoMutex() override {}
 
   void setupWIB(const fhicl::ParameterSet &WIB_config);
+  void setupWIBCryo(const fhicl::ParameterSet &WIB_config);
+  void setupWIB3Asic(const fhicl::ParameterSet &WIB_config);
   
   template <class R, class C>
   void send_command(const C &msg, R &repl); 
@@ -53,8 +55,8 @@ private:
   bool spy_buffer_readout = false;
   bool ignore_daq_failures = false;
   bool ignore_config_failures = false;
-  bool frontend_cold = false;
-  bool enable_pulser = false;
+
+  bool is_cryo = false;
 };
 
 }

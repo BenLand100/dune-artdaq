@@ -49,7 +49,6 @@ WIB2Reader::WIB2Reader(fhicl::ParameterSet const& ps) :
     CommandableFragmentGenerator(ps) {
 
   const std::string identification = "wibdaq::WIB2Reader::WIB2Reader";
-
   setupWIB(ps);
 }
 
@@ -67,35 +66,35 @@ void WIB2Reader::setupWIB(const fhicl::ParameterSet &ps) {
   }
   ignore_config_failures = ps.get<bool>("WIB.config.ignore_config_failures");
   ignore_daq_failures = ps.get<bool>("WIB.config.ignore_daq_failures");
-  enable_pulser = ps.get<bool>("WIB.config.enable_pulser");
-  frontend_cold = ps.get<bool>("WIB.config.frontend_cold");
  
   auto wib_address = ps.get<std::string>("WIB.config.address");
  
   enable_FEMBs = ps.get<std::vector<bool> >("WIB.config.enable_FEMBs");
-  auto FEMB_configs = ps.get<std::vector<fhicl::ParameterSet> >("WIB.config.FEMBs");
- 
   if (enable_FEMBs.size() != 4)
   {
     cet::exception excpt(identification);
     excpt << "Length of WIB.config.enable_FEMBs must be 4, not: " << enable_FEMBs.size();
     throw excpt;
   }
-  if (FEMB_configs.size() != 4)
+
+  is_cryo = ps.get<bool>("WIB.is_cryo", false);
+  is_cryo ? setupWIBCryo(ps) : setupWIB3Asic(ps);
+}
+
+void WIB2Reader::setupWIB3Asic(const fhicl::ParameterSet &ps) {
+
+  const std::string identification = "wibdaq::WIB2Reader::setupWIB3Asic";
+  
+  bool enable_pulser = ps.get<bool>("WIB.config.enable_pulser");
+  bool frontend_cold = ps.get<bool>("WIB.config.frontend_cold");
+
+  auto FEMB_configs = ps.get<std::vector<fhicl::ParameterSet> >("WIB.config.FEMBs");
+   if (FEMB_configs.size() != 4)
   {
     cet::exception excpt(identification);
     excpt << "Length of WIB.config.FEMBs must be 4, not: " << FEMB_configs.size();
     throw excpt;
   }
-
-  
-  dune::DAQLogger::LogInfo(identification) << "Connecting to WIB at " <<  wib_address;
-  context = new zmq::context_t(1);
-  dune::DAQLogger::LogInfo(identification) << "ZMQ context initialized";
-  socket = new zmq::socket_t(*context, ZMQ_REQ);
-  dune::DAQLogger::LogInfo(identification) << "ZMQ socket initialized";
-  socket->connect(wib_address); // tcp://192.168.121.*:1234
-  dune::DAQLogger::LogInfo(identification) << "Connected!";
 
   wib::ConfigureWIB req;
   req.set_cold(frontend_cold);
@@ -137,9 +136,13 @@ void WIB2Reader::setupWIB(const fhicl::ParameterSet &ps) {
   }
   
   dune::DAQLogger::LogInfo(identification) << "Configured WIB";
-  
 }
 
+void WIB2Reader::setupWIBCryo(const fhicl::ParameterSet &ps) {
+  const std::string identification = "wibdaq::WIB2Reader::setupWIBCryo";
+
+  dune::DAQLogger::LogInfo(identification) << "Configured WIB";
+}
 
 // "shutdown" transition
 WIB2Reader::~WIB2Reader() {
@@ -268,7 +271,6 @@ void WIB2Reader::acquireSyncData(artdaq::FragmentPtrs& frags) {
     last_trigger = nullptr; // throw away the stale trigger
   } 
 }
-
 
 bool WIB2Reader::acquireAsyncData(artdaq::FragmentPtrs& frags) {
   const std::string identification = "wibdaq::WIB2Reader::acquireAsyncData";
